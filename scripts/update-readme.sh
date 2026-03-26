@@ -12,6 +12,11 @@ if [ ! -f "$README" ]; then
   exit 0
 fi
 
+# If README doesn't have AUTO-UPDATE markers, skip
+if ! grep -q "AUTO-UPDATE:START" "$README" 2>/dev/null; then
+  exit 0
+fi
+
 # Helper: trim whitespace and carriage returns from numbers
 trim() {
   echo "$1" | tr -d '[:space:]'
@@ -96,15 +101,29 @@ P14=$(phase_status "Phase 1.4")
 P15=$(phase_status "Phase 1.5")
 P16=$(phase_status "Phase 1.6")
 
-# File counts
+# File counts (Python + TypeScript)
 SRC_FILES=0
 TEST_FILES=0
 if [ -d "$REPO_ROOT/src" ]; then
-  SRC_FILES=$(trim "$(find "$REPO_ROOT/src" -type f \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | wc -l)")
-  TEST_FILES=$(trim "$(find "$REPO_ROOT/src" -type f \( -name '*.test.*' -o -name '*.spec.*' \) 2>/dev/null | wc -l)")
+  SRC_FILES=$(trim "$(find "$REPO_ROOT/src" -type f \( -name '*.py' -o -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | wc -l)")
+  TEST_FILES=$(trim "$(find "$REPO_ROOT/tests" -type f -name '*.py' 2>/dev/null | wc -l)")
 fi
 SRC_FILES=${SRC_FILES:-0}
 TEST_FILES=${TEST_FILES:-0}
+
+# SQL migration count
+SQL_FILES=0
+if [ -d "$REPO_ROOT/migrations" ]; then
+  SQL_FILES=$(trim "$(find "$REPO_ROOT/migrations" -type f -name '*.sql' 2>/dev/null | wc -l)")
+fi
+SQL_FILES=${SQL_FILES:-0}
+
+# dbt model count
+DBT_MODELS=0
+if [ -d "$REPO_ROOT/dbt/models" ]; then
+  DBT_MODELS=$(trim "$(find "$REPO_ROOT/dbt/models" -type f -name '*.sql' 2>/dev/null | wc -l)")
+fi
+DBT_MODELS=${DBT_MODELS:-0}
 
 # --- Build dynamic section ---
 
@@ -127,11 +146,11 @@ ${PROGRESS_BAR} ${PERCENT}% (${DONE}/${TOTAL} tasks)
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1.1 | Foundation | ${P11} |
-| 1.2 | Data Import | ${P12} |
-| 1.3 | Data Cleaning | ${P13} |
-| 1.4 | Data Analysis | ${P14} |
-| 1.5 | Dashboard & Viz | ${P15} |
-| 1.6 | Polish & Testing | ${P16} |
+| 1.2 | Bronze Layer | ${P12} |
+| 1.3 | Silver Layer | ${P13} |
+| 1.4 | Gold Layer | ${P14} |
+| 1.5 | Dashboard | ${P15} |
+| 1.6 | Testing | ${P16} |
 
 ### Stats
 
@@ -141,6 +160,8 @@ ${PROGRESS_BAR} ${PERCENT}% (${DONE}/${TOTAL} tasks)
 | Branches | ${BRANCH_COUNT} |
 | Source files | ${SRC_FILES} |
 | Test files | ${TEST_FILES} |
+| SQL migrations | ${SQL_FILES} |
+| dbt models | ${DBT_MODELS} |
 
 ### Recent Activity
 

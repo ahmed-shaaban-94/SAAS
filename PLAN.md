@@ -1,191 +1,146 @@
 # DataPulse — Phase 1 Plan (MVP)
 
-> Business/Sales Analytics Dashboard SaaS
-> Pipeline: Import -> Clean -> Analyze -> Dashboard
+> Business/Sales Analytics Platform
+> Architecture: Medallion (Bronze -> Silver -> Gold) + Dashboard
 
 ---
 
-## Phase 1.1: Foundation
+## Phase 1.1: Foundation [DONE]
 
-**Goal**: Skeleton app with auth, navigation, and database ready.
+**Goal**: Python environment, Docker infrastructure, and import pipeline ready.
+
+### Completed
+- [x] Python 3.12 project with pyproject.toml (polars, pyarrow, sqlalchemy, dbt, structlog)
+- [x] Docker Compose: PostgreSQL 16 + Python app + pgAdmin + JupyterLab
+- [x] Pydantic Settings config (`src/datapulse/config.py`)
+- [x] structlog logging setup
+- [x] Generic file reader (`import_pipeline/reader.py`) — CSV + Excel via Polars
+- [x] Type detector (`import_pipeline/type_detector.py`) — auto-detect column types
+- [x] File validator (`import_pipeline/validator.py`) — size + format checks
+- [x] Pydantic models for ImportConfig, ImportResult, ColumnInfo
+- [x] Unit tests for reader and type detector
+- [x] dbt project initialized with profiles.yml
+
+### Deliverable
+Docker environment running with PostgreSQL, import pipeline reads CSV/Excel into Polars DataFrames.
+
+---
+
+## Phase 1.2: Bronze Layer — Data Import [DONE]
+
+**Goal**: Load raw Excel sales data into PostgreSQL bronze schema.
+
+### Completed
+- [x] SQL migration: `001_create_bronze_schema.sql` — bronze schema + typed sales table with indexes
+- [x] Column mapping: Excel headers -> snake_case DB columns (46 columns)
+- [x] Bronze loader pipeline: Excel -> Polars concat -> Parquet -> PostgreSQL
+- [x] CLI entry point: `python -m datapulse.bronze.loader --source <dir>`
+- [x] Parquet archival: 272 MB Excel -> 57 MB Parquet (snappy compression)
+- [x] Batch insert: 50K rows per batch with progress logging
+- [x] dbt source definition for bronze.sales
+- [x] dbt base model: bronze_sales.sql
+- [x] Data loaded: 1,134,799 rows (Q1.2023–Q4.2025, 12 quarterly files)
+
+### Deliverable
+All sales data loaded in `bronze.sales` typed table. Parquet archive saved for backup.
+
+---
+
+## Phase 1.3: Silver Layer — Data Cleaning [NEXT]
+
+**Goal**: Clean and standardize bronze data via dbt models.
+
+### Tasks
+- [ ] Create dbt staging models in `dbt/models/staging/`:
+  - `stg_sales.sql` — rename columns, cast types, trim strings, parse dates
+  - `stg_sales.yml` — column descriptions + tests (not_null, unique, accepted_values)
+- [ ] Handle data quality issues:
+  - [ ] Remove/flag duplicate transactions (by reference_no + date + material)
+  - [ ] Standardize empty strings to NULL
+  - [ ] Parse and validate date column
+  - [ ] Cast numeric columns (quantity, net_sales, gross_sales) — handle edge cases
+  - [ ] Standardize category/division/segment values (trim, upper)
+- [ ] Add dbt tests: not_null, unique, relationships, accepted_values
+- [ ] Run `dbt build` and verify silver layer
+- [ ] Document data quality rules in dbt YAML
+
+### Deliverable
+Clean, validated data in silver schema. dbt tests passing.
+
+---
+
+## Phase 1.4: Gold Layer — Business Metrics [PLANNED]
+
+**Goal**: Aggregated tables for analytics and dashboards.
+
+### Tasks
+- [ ] Create dbt mart models in `dbt/models/marts/`:
+  - `fct_sales.sql` — fact table with cleaned sales transactions
+  - `dim_product.sql` — product dimension (material, brand, category, subcategory)
+  - `dim_customer.sql` — customer dimension (customer, site, buyer)
+  - `dim_date.sql` — date dimension (calendar table)
+  - `dim_personnel.sql` — personnel dimension
+  - `agg_sales_daily.sql` — daily sales aggregation
+  - `agg_sales_monthly.sql` — monthly sales aggregation
+  - `agg_sales_by_category.sql` — sales by product category
+  - `agg_sales_by_site.sql` — sales by site/location
+- [ ] Add dbt documentation and tests for all mart models
+- [ ] Run `dbt build` and verify gold layer
+- [ ] Create Python analysis utilities for ad-hoc queries
+
+### Deliverable
+Business-ready aggregated tables. Star schema with facts and dimensions.
+
+---
+
+## Phase 1.5: Dashboard & Visualization [PLANNED]
+
+**Goal**: Interactive web dashboard for sales analytics.
 
 ### Tasks
 - [ ] Initialize Next.js 14 project with TypeScript, Tailwind CSS, App Router
-- [ ] Install and configure shadcn/ui (default theme) with base components: button, input, card, dialog, dropdown-menu, toast, tabs, table, badge, skeleton, sheet, separator, label, form, select, popover, command
-- [ ] Install core dependencies: zustand, zod, react-hook-form, @hookform/resolvers, sonner, lucide-react, date-fns
-- [ ] Create Supabase project and configure `.env.local`
-- [ ] Run database migrations:
-  - `001_organizations.sql` — organizations + profiles tables
-  - `002_datasets.sql` — datasets + dataset_rows tables
-  - `003_cleaning_operations.sql` — cleaning operations table
-  - `004_dashboards.sql` — dashboards + dashboard_widgets tables
-  - `005_rls_policies.sql` — RLS policies on all tables
-- [ ] Configure Supabase Storage bucket `raw-files` (private, 50MB limit)
-- [ ] Create Supabase client helpers: `src/lib/supabase/client.ts`, `server.ts`, `middleware.ts`
-- [ ] Generate TypeScript types from Supabase schema
-- [ ] Build auth pages: login (`/login`), signup (`/signup` — creates org + profile)
-- [ ] Add auth middleware: protect all `/(app)/*` routes
-- [ ] Build app shell layout: sidebar + topbar + breadcrumbs
-- [ ] Define TypeScript types: `dataset.ts`, `cleaning.ts`, `analysis.ts`, `dashboard.ts`
+- [ ] Install and configure shadcn/ui
+- [ ] Build API layer connecting to PostgreSQL gold schema
+- [ ] Build chart components (Recharts):
+  - Bar chart, Line chart, Pie chart, KPI cards
+- [ ] Build dashboard grid (react-grid-layout) with drag-and-drop
+- [ ] Build filter bar (date range, category, site, brand)
+- [ ] Build dashboard CRUD (save/load layouts)
+- [ ] Add export: PNG and PDF
+- [ ] Add light/dark theme
 
 ### Deliverable
-User can sign up, log in, and see the app shell with sidebar navigation.
+Interactive dashboard with multiple chart types, filters, and export.
 
 ---
 
-## Phase 1.2: Data Import
+## Phase 1.6: Polish & Testing [PLANNED]
 
-**Goal**: Upload CSV/Excel, preview, and persist to database.
+**Goal**: Production-ready with comprehensive testing.
 
 ### Tasks
-- [ ] Install papaparse and xlsx (SheetJS)
-- [ ] Build CSV parser wrapper (`src/lib/parsers/csv-parser.ts`) — streaming, encoding detection
-- [ ] Build Excel parser wrapper (`src/lib/parsers/excel-parser.ts`) — read first sheet, handle multiple sheets
-- [ ] Build type detector (`src/lib/parsers/type-detector.ts`) — sample first 100 rows, infer column types
-- [ ] Install @tanstack/react-table
-- [ ] Build import UI components:
-  - File dropzone (drag-and-drop, file type + size validation)
-  - Import preview table (first 100 rows)
-  - Column selector (include/exclude columns)
-  - Type detector badges (show detected type with override)
-- [ ] Build import wizard page (`/datasets/new`) — multi-step: Upload -> Preview -> Confirm
-- [ ] Create Zustand import store (file, parsed data, columns, selected columns, detected types)
-- [ ] Build API route: POST `/api/datasets` — create dataset metadata, upload raw file to Storage, batch-insert rows (1K chunks with progress)
-- [ ] Build dataset list page (`/datasets`) — name, row count, status, date
-- [ ] Build dataset detail page (`/datasets/[id]`) — paginated data table + column schema
-- [ ] Build API route: GET `/api/datasets/[id]/rows` — paginated rows (limit/offset)
+- [ ] Add error handling and validation at all boundaries
+- [ ] Write unit tests for all Python modules (80%+ coverage)
+- [ ] Write dbt tests for all models
+- [ ] Write E2E tests for dashboard (Playwright)
+- [ ] Performance testing with full dataset (1.1M rows)
+- [ ] Documentation: setup guide, architecture diagram
 
 ### Deliverable
-User uploads CSV/Excel, previews data, imports it, and sees it in a paginated table.
+Production-ready MVP with comprehensive test coverage.
 
 ---
 
-## Phase 1.3: Data Cleaning
+## Data Summary
 
-**Goal**: Interactive cleaning workspace with undo support.
-
-### Tasks
-- [ ] Build cleaning logic modules:
-  - `missing-values.ts` — detect nulls, fill strategies (value, mean, median, mode), drop rows
-  - `duplicates.ts` — find duplicates by key columns, mark for removal
-  - `type-cast.ts` — cast string to number/date with error handling
-  - `operations.ts` — orchestrator: apply operation, return affected row IDs + count
-- [ ] Build API route: POST `/api/datasets/[id]/clean` — apply operation, update rows, record in cleaning_operations
-- [ ] Build cleaning workspace page (`/datasets/[id]/clean`) — split view: sidebar + data preview
-- [ ] Build cleaning UI components:
-  - Cleaning sidebar (list of available operations)
-  - Missing values panel (select column, see null count, pick strategy)
-  - Duplicates panel (select key columns, preview duplicates, confirm)
-  - Type cast panel (select column, pick target type, preview)
-  - Rename column dialog
-  - Operation log (applied operations with undo button)
-- [ ] Create Zustand cleaning store (current operation, preview data, operation history)
-- [ ] Implement undo: delete last operation + replay remaining from raw data
-
-### Deliverable
-User cleans data interactively with undo, sees before/after stats.
-
----
-
-## Phase 1.4: Data Analysis
-
-**Goal**: Aggregation, grouping, filtering, pivot, and statistics.
-
-### Tasks
-- [ ] Build analysis engine (server-side SQL on JSONB):
-  - `aggregations.ts` — build SQL for SUM, AVG, MIN, MAX, COUNT using JSONB operators
-  - `grouping.ts` — GROUP BY with JSONB field extraction
-  - `filtering.ts` — WHERE clause builder from filter config
-  - `statistics.ts` — per-column descriptive stats (mean, median, std dev, min, max, null count, unique count)
-  - `pivot.ts` — pivot query using conditional aggregation
-- [ ] Install simple-statistics
-- [ ] Build API route: POST `/api/datasets/[id]/analyze` — receives query config, builds SQL, returns results
-- [ ] Build API route: GET `/api/datasets/[id]/export` — export filtered/aggregated results as CSV
-- [ ] Build analysis workspace page (`/datasets/[id]/analyze`)
-- [ ] Build analysis UI components:
-  - Aggregation builder (pick columns + functions)
-  - Group-by picker (multi-select columns)
-  - Filter builder (column, operator, value conditions)
-  - Results table
-  - Stats card (per-column statistics)
-  - Pivot table (row dimension, column dimension, value + aggregation)
-- [ ] Create Zustand analysis store (query config, results, loading state)
-
-### Deliverable
-User runs aggregations, groups data, filters, views statistics, and exports results.
-
----
-
-## Phase 1.5: Dashboard & Visualization
-
-**Goal**: Create interactive dashboards with drag-and-drop chart widgets.
-
-### Tasks
-- [ ] Install recharts, react-grid-layout, html-to-image, jspdf
-- [ ] Build chart components (with chart-container wrapper for loading/error/empty states):
-  - Bar chart (horizontal + vertical, grouped + stacked)
-  - Line chart (single + multi-line)
-  - Pie chart (pie + donut)
-  - Scatter chart
-  - Area chart
-  - KPI card (big number + trend indicator)
-- [ ] Build dashboard grid (`dashboard-canvas.tsx`) — responsive, drag-and-drop in edit mode, static in view mode (dynamic import with `ssr: false`)
-- [ ] Build chart widget component — renders chart based on config, fetches its own data
-- [ ] Build chart builder dialog — multi-step: Pick type -> Configure axes/aggregation/groupBy -> Colors/title -> Preview
-- [ ] Build global filter bar — column filters propagating to all widgets
-- [ ] Build widget toolbar — edit, delete, duplicate actions
-- [ ] Build dashboard CRUD:
-  - API: GET/POST `/api/dashboards`, GET/PUT/DELETE `/api/dashboards/[id]`
-  - Dashboard list page (`/dashboards`)
-  - Create dashboard page (`/dashboards/new` — pick name + dataset)
-  - View mode (`/dashboards/[id]`)
-  - Edit mode (`/dashboards/[id]/edit`)
-- [ ] Create Zustand dashboard store (layout, widgets, global filters, dirty state, save action)
-- [ ] Build export utilities: `exportChartAsPng()`, `exportDashboardAsPdf()`
-- [ ] Add light/dark theme support for dashboards
-
-### Deliverable
-User creates dashboards with multiple chart types, drag-and-drop layout, global filters, and export.
-
----
-
-## Phase 1.6: Polish & Testing
-
-**Goal**: Error handling, edge cases, tests, documentation.
-
-### Tasks
-- [ ] Add global error boundary component
-- [ ] Add API route error wrapper (consistent error response format)
-- [ ] Add skeleton loaders for tables, charts, lists
-- [ ] Add progress bar for file import (batch progress)
-- [ ] Add Zod schemas for all API inputs
-- [ ] Add file type/size validation before upload
-- [ ] Install vitest, @testing-library/react, @testing-library/jest-dom
-- [ ] Write unit tests: parsers, type detector, cleaning operations, analysis builders, format utilities
-- [ ] Write integration tests: API routes (datasets CRUD, cleaning, analysis)
-- [ ] Install Playwright and write E2E tests: signup -> upload -> clean -> analyze -> dashboard
-- [ ] Verify 80%+ coverage on `src/lib/`
-- [ ] Write README.md with setup instructions
-- [ ] Create `.env.local.example` with all required variables
-
-### Deliverable
-Production-ready MVP with comprehensive error handling and test coverage.
-
----
-
-## Database Schema Summary
-
-| Table | Purpose |
-|-------|---------|
-| `organizations` | Multi-tenant foundation (id, name, slug) |
-| `profiles` | User profiles (id, org_id, full_name, role) |
-| `datasets` | Uploaded datasets (id, org_id, name, file_path, column_schema, status) |
-| `dataset_rows` | Data rows as JSONB (id, dataset_id, row_index, data, is_deleted) |
-| `cleaning_operations` | Immutable operation log (id, dataset_id, operation_type, config, sort_order) |
-| `dashboards` | Saved dashboards (id, org_id, dataset_id, name, layout, global_filters, theme) |
-| `dashboard_widgets` | Chart widget configs (id, dashboard_id, widget_type, config) |
-
-All tables have RLS policies keyed to `organization_id` via the `profiles` table.
+| Metric | Value |
+|--------|-------|
+| Source files | 12 quarterly Excel files (Q1.2023–Q4.2025) |
+| Total rows | 1,134,799 |
+| Columns | 46 |
+| Raw size (Excel) | 272 MB |
+| Parquet size | 57 MB |
+| Database table | `bronze.sales` (typed, indexed) |
 
 ---
 
@@ -193,27 +148,24 @@ All tables have RLS policies keyed to `organization_id` via the `profiles` table
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| File parsing | Client-side | Immediate preview, no server upload for parsing |
-| Data analysis | Server-side SQL | PostgreSQL handles aggregations on JSONB efficiently |
-| Data storage | JSONB rows | Dynamic schemas without DDL per dataset |
-| Client state | Zustand | Lightweight, immutable-friendly |
-| Dashboard grid | react-grid-layout | Drag/resize, serializable layout |
-| Charts | Recharts | React-native, composable, responsive |
+| Data architecture | Medallion (bronze/silver/gold) | Clear separation of raw, cleaned, and aggregated data |
+| Data processing | Polars + PyArrow | 10x faster than pandas for large datasets |
+| Storage format | Parquet (archive) + PostgreSQL (query) | Compressed archive + fast SQL queries |
+| Data transform | dbt | SQL-based transforms, testable, documented |
+| Bronze storage | Typed table (not JSONB) | 5-10x faster queries, proper indexes, less storage |
+| Containerization | Docker Compose | Reproducible environment, isolated services |
+| Excel engine | calamine (via fastexcel) | Fastest Excel reader for Polars |
 
 ---
 
 ## Success Criteria
 
-- [ ] User can sign up, create an organization, and log in
-- [ ] User can upload CSV and Excel files up to 50MB
-- [ ] User can preview data before importing
-- [ ] Imported data appears in a paginated, sortable table
-- [ ] User can apply at least 5 cleaning operations with undo
-- [ ] User can run aggregations with group-by and filters
-- [ ] User can view per-column statistics
-- [ ] User can create a dashboard with at least 4 chart types
-- [ ] Dashboard supports drag-and-drop layout with resize
-- [ ] Global filters propagate to all charts on a dashboard
-- [ ] Dashboard can be exported as PNG or PDF
-- [ ] All data is tenant-isolated via RLS
-- [ ] Core library modules have 80%+ test coverage
+- [x] Raw sales data loaded into PostgreSQL (1.1M+ rows)
+- [x] Parquet archive created (57 MB compressed)
+- [x] Docker environment running (PostgreSQL + app + pgAdmin)
+- [x] dbt project configured with bronze source
+- [ ] Silver layer: cleaned data with dbt tests passing
+- [ ] Gold layer: aggregated tables with star schema
+- [ ] Dashboard: interactive charts with filters
+- [ ] Test coverage: 80%+ on Python modules
+- [ ] All dbt tests passing
