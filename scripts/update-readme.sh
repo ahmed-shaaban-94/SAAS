@@ -32,8 +32,10 @@ RECENT_COMMITS=$(git log --oneline -10 2>/dev/null || echo "No commits yet")
 DONE=0
 TODO=0
 if [ -f "$PLAN" ]; then
-  DONE=$(trim "$(grep -c '\- \[x\]' "$PLAN" 2>/dev/null || echo 0)")
-  TODO=$(trim "$(grep -c '\- \[ \]' "$PLAN" 2>/dev/null || echo 0)")
+  DONE=$(grep -c '\- \[x\]' "$PLAN" 2>/dev/null || true)
+  TODO=$(grep -c '\- \[ \]' "$PLAN" 2>/dev/null || true)
+  DONE=$(trim "$DONE")
+  TODO=$(trim "$TODO")
 fi
 DONE=${DONE:-0}
 TODO=${TODO:-0}
@@ -68,8 +70,10 @@ phase_status() {
   fi
 
   local done_count todo_count total_count
-  done_count=$(trim "$(echo "$section" | grep -c '\- \[x\]' 2>/dev/null || echo 0)")
-  todo_count=$(trim "$(echo "$section" | grep -c '\- \[ \]' 2>/dev/null || echo 0)")
+  done_count=$(echo "$section" | grep -c '\- \[x\]' 2>/dev/null || true)
+  todo_count=$(echo "$section" | grep -c '\- \[ \]' 2>/dev/null || true)
+  done_count=$(trim "$done_count")
+  todo_count=$(trim "$todo_count")
   done_count=${done_count:-0}
   todo_count=${todo_count:-0}
   total_count=$((done_count + todo_count))

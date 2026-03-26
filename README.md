@@ -60,29 +60,25 @@ Upload CSV/Excel --> Clean Data --> Analyze --> Build Dashboard
 
 ## Roadmap
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1.1 | Foundation (Auth + App Shell) | Planned |
-| 1.2 | Data Import (CSV/Excel) | Planned |
-| 1.3 | Data Cleaning | Planned |
-| 1.4 | Data Analysis | Planned |
-| 1.5 | Dashboard & Visualization | Planned |
-| 1.6 | Polish & Testing | Planned |
-| 2 | Automation (n8n) | Future |
-| 3 | AI Analysis (LangGraph) | Future |
-| 4 | Website Expansion | Future |
+| Phase | Description |
+|-------|-------------|
+| 2 | Automation (n8n) |
+| 3 | AI Analysis (LangGraph) |
+| 4 | Website Expansion |
+
+> Phase 1 status is auto-updated below after every commit.
 
 <!-- AUTO-UPDATE:START -->
 <!-- This section is auto-updated by scripts/update-readme.sh on every commit -->
 
 ## Project Status
 
-**Last updated**: 2026-03-26 23:57 (`3b051d7` on `planning-phase-1`)
+**Last updated**: 2026-03-27 01:20 (`233665e` on `planning-phase-1`)
 
 ### Overall Progress
 
 ```
-[--------------------] 0% (00/74 tasks)
+[--------------------] 0% (0/74 tasks)
 ```
 
 ### Phase Status
@@ -100,15 +96,16 @@ Upload CSV/Excel --> Clean Data --> Analyze --> Build Dashboard
 
 | Metric | Value |
 |--------|-------|
-| Total commits | 5 |
-| Branches | 5 |
+| Total commits | 6 |
+| Branches | 6 |
 | Source files | 0 |
 | Test files | 0 |
 
 ### Recent Activity
 
 ```
-3b051d7 chore: add proper gitignore for Next.js project
+233665e fix: remove duplicate roadmap table and fix progress count display
+612ddc5 chore: add proper gitignore for Next.js project
 0473466 chore: add gitignore
 8b11059 feat: add auto-updating README with post-commit hook
 7ef554b docs: add project CLAUDE.md and PLAN.md for Phase 1 planning
