@@ -1,1 +1,35 @@
-# temp
+# dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# build
+.next/
+out/
+dist/
+build/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# testing
+coverage/
+playwright-report/
+test-results/
+
+# misc
+*.log
+npm-debug.log*
+README.md.tmp
