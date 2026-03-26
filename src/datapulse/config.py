@@ -14,11 +14,15 @@ class Settings(BaseSettings):
     # Paths
     raw_data_dir: Path = Path("data/raw")
     processed_data_dir: Path = Path("data/processed")
+    parquet_dir: Path = Path("data/processed/parquet")
 
     # Limits
-    max_file_size_mb: int = 50
-    max_rows: int = 100_000
-    max_columns: int = 100
+    max_file_size_mb: int = 500
+    max_rows: int = 10_000_000
+    max_columns: int = 200
+
+    # Bronze loader
+    bronze_batch_size: int = 50_000
 
     @property
     def max_file_size_bytes(self) -> int:

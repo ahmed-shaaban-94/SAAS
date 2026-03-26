@@ -21,6 +21,8 @@ services:
       - ./data:/app/data
       - ./notebooks:/app/notebooks
       - ./dbt:/app/dbt
+      - ./migrations:/app/migrations
+      - "E:/Data Analysis/sales/RAW FULL:/app/data/raw/sales"
 
   postgres:
     image: postgres:16-alpine

@@ -14,6 +14,9 @@ clean-targets:
 
 models:
   datapulse:
+    bronze:
+      +materialized: table
+      +schema: bronze
     staging:
       +materialized: view
       +schema: staging
