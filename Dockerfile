@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml .
 COPY src/ src/
 
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir -e ".[dev]" jupyterlab
+
+EXPOSE 8888
 
 # Default command: keep container running for interactive use
 CMD ["tail", "-f", "/dev/null"]
