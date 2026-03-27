@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: fct_sales
+    description: "Sales fact table. Grain: one line-item per invoice. Integer surrogate keys with COALESCE to -1 (Unknown). Financials rounded to 2 decimals."
+    columns:
+      - name: sales_key
+        description: "Surrogate primary key"
+        tests:
+          - unique
+          - not_null
+      - name: date_key
+        description: "FK to dim_date (YYYYMMDD integer)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: product_key
+        description: "FK to dim_product (-1 = Unknown)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_product')
+              field: product_key
+      - name: customer_key
+        description: "FK to dim_customer (-1 = Unknown)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_key
+      - name: site_key
+        description: "FK to dim_site (-1 = Unknown)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_site')
+              field: site_key
+      - name: staff_key
+        description: "FK to dim_staff (-1 = Unknown)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_staff')
+              field: staff_key
+      - name: billing_key
+        description: "FK to dim_billing (-1 = Unknown)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_billing')
+              field: billing_key
+      - name: invoice_id
+        description: "Degenerate dimension — invoice reference number"
+      - name: billing_way
+        description: "Degenerate dimension — billing type text (also resolved via billing_key)"
+      - name: quantity
+        description: "Units sold/returned (negative for returns). Rounded to 2 decimals."
+        tests:
+          - not_null
+      - name: sales
+        description: "Gross sales amount before discount. Rounded to 2 decimals."
+        tests:
+          - not_null
+      - name: discount
+        description: "Discount amount. Rounded to 2 decimals."
+        tests:
+          - not_null
+      - name: net_amount
+        description: "Net amount = sales - discount. Rounded to 2 decimals."
+        tests:
+          - not_null
+      - name: is_return
+        description: "True if this is a return transaction (by billing type or negative quantity)"
+        tests:
+          - not_null
+      - name: is_walk_in
+        description: "True if customer_id = site_code (counter/walk-in sale)"
+        tests:
+          - not_null
+      - name: has_insurance
+        description: "True if an insurance number is present on the transaction"
+        tests:
+          - not_null

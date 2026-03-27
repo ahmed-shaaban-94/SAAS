@@ -3,7 +3,7 @@
 Covers:
 - datapulse.bronze.loader: read_and_concat, save_parquet, main() CLI
 - datapulse.import_pipeline.reader: latin-1 retry, read_excel, row/column limits
-- datapulse.utils.logging: setup_logging (console and JSON renderers)
+- datapulse.logging: setup_logging (console and JSON renderers)
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from datapulse.bronze.loader import (
 from datapulse.import_pipeline.reader import read_csv, read_excel, read_file
 from datapulse.import_pipeline.models import ImportConfig, FileFormat
 from datapulse.import_pipeline.validator import ValidationError
-from datapulse.utils.logging import setup_logging, get_logger
+from datapulse.logging import setup_logging, get_logger
 
 
 FIXTURES = Path(__file__).parent / "fixtures"

@@ -23,3 +23,9 @@ models:
     marts:
       +materialized: table
       +schema: marts
+      dims:
+        +materialized: table
+      facts:
+        +materialized: table
+      aggs:
+        +materialized: table
