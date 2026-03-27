@@ -1,7 +1,15 @@
 {{
     config(
         materialized='table',
-        schema='marts'
+        schema='marts',
+        post_hook=[
+            "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
+            "ALTER TABLE {{ this }} FORCE ROW LEVEL SECURITY",
+            "DROP POLICY IF EXISTS owner_all ON {{ this }}",
+            "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
+            "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)"
+        ]
     )
 }}
 
@@ -32,6 +40,9 @@ dim_staff AS (
 
 SELECT
     ROW_NUMBER() OVER (ORDER BY s.invoice_date, s.invoice_id, s.drug_code)::INT AS sales_key,
+
+    -- Tenant
+    s.tenant_id,
 
     -- Foreign keys (clean integers)
     TO_CHAR(s.invoice_date, 'YYYYMMDD')::INT    AS date_key,

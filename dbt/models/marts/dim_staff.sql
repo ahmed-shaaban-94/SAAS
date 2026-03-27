@@ -1,7 +1,15 @@
 {{
     config(
         materialized='table',
-        schema='marts'
+        schema='marts',
+        post_hook=[
+            "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
+            "ALTER TABLE {{ this }} FORCE ROW LEVEL SECURITY",
+            "DROP POLICY IF EXISTS owner_all ON {{ this }}",
+            "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
+            "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)"
+        ]
     )
 }}
 
@@ -10,11 +18,12 @@
 
 WITH ranked AS (
     SELECT
+        tenant_id,
         staff_id,
         staff_name,
         staff_position,
         ROW_NUMBER() OVER (
-            PARTITION BY staff_id
+            PARTITION BY tenant_id, staff_id
             ORDER BY invoice_date DESC
         ) AS rn
     FROM {{ ref('stg_sales') }}
@@ -22,7 +31,8 @@ WITH ranked AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY staff_id)::INT            AS staff_key,
+    ROW_NUMBER() OVER (ORDER BY tenant_id, staff_id)::INT AS staff_key,
+    tenant_id,
     staff_id,
     staff_name,
     staff_position

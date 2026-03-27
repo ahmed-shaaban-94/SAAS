@@ -1,19 +1,29 @@
 {{
     config(
         materialized='table',
-        schema='marts'
+        schema='marts',
+        post_hook=[
+            "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
+            "ALTER TABLE {{ this }} FORCE ROW LEVEL SECURITY",
+            "DROP POLICY IF EXISTS owner_all ON {{ this }}",
+            "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
+            "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)"
+        ]
     )
 }}
 
 -- Customer dimension
 -- SCD Type 1: latest attribute wins
+-- Partitioned by (tenant_id, customer_id) for multi-tenant correctness
 
 WITH ranked AS (
     SELECT
+        tenant_id,
         customer_id,
         customer_name,
         ROW_NUMBER() OVER (
-            PARTITION BY customer_id
+            PARTITION BY tenant_id, customer_id
             ORDER BY invoice_date DESC
         ) AS rn
     FROM {{ ref('stg_sales') }}
@@ -21,7 +31,8 @@ WITH ranked AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY customer_id)::INT            AS customer_key,
+    ROW_NUMBER() OVER (ORDER BY tenant_id, customer_id)::INT AS customer_key,
+    tenant_id,
     customer_id,
     customer_name
 FROM ranked

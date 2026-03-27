@@ -1,7 +1,8 @@
 {{
     config(
         materialized='view',
-        schema='staging'
+        schema='staging',
+        post_hook=["ALTER VIEW {{ this }} SET (security_invoker = on)"]
     )
 }}
 
@@ -21,6 +22,7 @@ WITH source AS (
     SELECT
         -- Metadata
         id,
+        tenant_id,
         source_file,
         source_quarter,
         loaded_at,
@@ -73,6 +75,7 @@ deduplicated AS (
 
 SELECT
     -- Metadata
+    tenant_id,
     source_file,
     source_quarter,
     loaded_at,
