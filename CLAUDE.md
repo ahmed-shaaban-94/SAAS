@@ -59,6 +59,19 @@ src/datapulse/
 │   ├── reader.py                # read_csv(), read_excel(), read_file()
 │   ├── type_detector.py         # Auto-detect column types from DataFrame
 │   └── validator.py             # File validation (size, format)
+├── analytics/                   # Analytics module — gold layer queries
+│   ├── __init__.py
+│   ├── models.py                # Pydantic models (KPISummary, TrendResult, RankingResult, etc.)
+│   ├── repository.py            # SQLAlchemy read-only queries against marts schema
+│   └── service.py               # Business logic layer with default filters
+├── api/                         # FastAPI REST API
+│   ├── __init__.py
+│   ├── app.py                   # App factory (CORS, logging, routers)
+│   ├── deps.py                  # Dependency injection (sessions, services)
+│   └── routes/
+│       ├── __init__.py
+│       ├── health.py            # GET /health
+│       └── analytics.py         # 10 analytics endpoints under /api/v1/analytics/
 └── utils/
     ├── __init__.py
     └── logging.py               # structlog configuration
@@ -104,6 +117,7 @@ tests/
 | `app` | datapulse-app | 8888 | Python app + JupyterLab |
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
 | `pgadmin` | datapulse-pgadmin | 5050 | Database admin UI |
+| `api` | datapulse-api | 8000 | FastAPI analytics API |
 
 ```bash
 docker compose up -d --build
@@ -131,6 +145,14 @@ docker compose up -d --build
 | `marts.dim_site` | marts | distinct | Site dimension (name, area_manager) |
 | `marts.dim_staff` | marts | distinct | Staff dimension (name, position) |
 | `marts.fct_sales` | marts | ~1.1M | Fact table (FK to all dims, 4 financial measures) |
+| `marts.agg_sales_daily` | marts | varies | Daily sales aggregation |
+| `marts.agg_sales_monthly` | marts | varies | Monthly sales with MoM/YoY growth |
+| `marts.agg_sales_by_product` | marts | ~612K | Product performance by month |
+| `marts.agg_sales_by_customer` | marts | varies | Customer analytics by month |
+| `marts.agg_sales_by_site` | marts | varies | Site performance by month |
+| `marts.agg_sales_by_staff` | marts | ~44K | Staff performance by month |
+| `marts.agg_returns` | marts | varies | Return analysis by product/customer |
+| `marts.metrics_summary` | marts | ~1,096 | Daily KPI with MTD/YTD running totals |
 
 ### Bronze Sales Columns (Key)
 
@@ -193,7 +215,7 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 
 - **Phase 1.3**: Data Cleaning (silver layer via dbt) [DONE]
 - **Phase 1.3.5**: Security hardening, gold layer recovery, QC [DONE]
-- **Phase 1.4**: Data Analysis (gold layer aggregations, statistics)
+- **Phase 1.4**: Data Analysis (analytics module, aggregations, FastAPI API) [DONE]
 - **Phase 1.5**: Dashboard & Visualization (Next.js frontend)
 - **Phase 2**: Automation via n8n workflows
 - **Phase 3**: AI-powered analysis via LangGraph

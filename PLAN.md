@@ -74,27 +74,20 @@ Clean, validated data in silver schema (35 columns from 46, 7 dbt tests passing)
 
 ---
 
-## Phase 1.4: Gold Layer — Business Metrics [PLANNED]
+## Phase 1.4: Gold Layer — Business Metrics & Analytics [DONE]
 
-**Goal**: Aggregated tables for analytics and dashboards.
+**Goal**: Aggregated tables for analytics, Python analytics module, and REST API.
 
-### Tasks
-- [ ] Create dbt mart models in `dbt/models/marts/`:
-  - `fct_sales.sql` — fact table with cleaned sales transactions
-  - `dim_product.sql` — product dimension (material, brand, category, subcategory)
-  - `dim_customer.sql` — customer dimension (customer, site, buyer)
-  - `dim_date.sql` — date dimension (calendar table)
-  - `dim_personnel.sql` — personnel dimension
-  - `agg_sales_daily.sql` — daily sales aggregation
-  - `agg_sales_monthly.sql` — monthly sales aggregation
-  - `agg_sales_by_category.sql` — sales by product category
-  - `agg_sales_by_site.sql` — sales by site/location
-- [ ] Add dbt documentation and tests for all mart models
-- [ ] Run `dbt build` and verify gold layer
-- [ ] Create Python analysis utilities for ad-hoc queries
+### Completed
+- [x] 8 dbt aggregation models: agg_sales_daily, agg_sales_monthly, agg_sales_by_product, agg_sales_by_customer, agg_sales_by_site, agg_sales_by_staff, agg_returns, metrics_summary
+- [x] dbt schema YAML with ~40 tests for all aggregation models
+- [x] Python analytics module: Pydantic models, SQLAlchemy repository, business service layer
+- [x] FastAPI REST API: 10 analytics endpoints + health check
+- [x] Docker Compose: added api service (port 8000)
+- [x] Test fixtures and unit tests for models, repository, service, and API endpoints
 
 ### Deliverable
-Business-ready aggregated tables. Star schema with facts and dimensions.
+Business-ready aggregated tables (star schema with 8 agg models), Python analytics layer, and FastAPI API with 10 endpoints.
 
 ---
 
@@ -170,7 +163,7 @@ Production-ready MVP with comprehensive test coverage.
 - [x] Docker environment running (PostgreSQL + app + pgAdmin)
 - [x] dbt project configured with bronze source
 - [x] Silver layer: cleaned data with dbt model passing (30 columns, derived fields)
-- [ ] Gold layer: aggregated tables with star schema
+- [x] Gold layer: aggregated tables with star schema
 - [ ] Dashboard: interactive charts with filters
 - [ ] Test coverage: 80%+ on Python modules
 - [ ] All dbt tests passing

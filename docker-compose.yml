@@ -24,6 +24,21 @@ services:
       - ./migrations:/app/migrations
       - "E:/Data Analysis/sales/RAW FULL:/app/data/raw/sales"
 
+  api:
+    build: .
+    container_name: datapulse-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-datapulse}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-datapulse}
+    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
+    volumes:
+      - ./src:/app/src
+
   postgres:
     image: postgres:16-alpine
     container_name: datapulse-db

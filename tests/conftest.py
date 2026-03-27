@@ -52,3 +52,62 @@ def _patch_get_settings_globally():
                     yield
 
     get_settings.cache_clear()
+
+
+from unittest.mock import MagicMock, create_autospec
+from decimal import Decimal
+
+# --- Analytics fixtures ---
+
+
+@pytest.fixture()
+def mock_session():
+    """Mock SQLAlchemy Session for repository tests."""
+    session = MagicMock()
+    return session
+
+
+@pytest.fixture()
+def analytics_repo(mock_session):
+    """AnalyticsRepository with mocked session."""
+    from datapulse.analytics.repository import AnalyticsRepository
+    return AnalyticsRepository(mock_session)
+
+
+@pytest.fixture()
+def mock_repo():
+    """Fully mocked AnalyticsRepository for service tests."""
+    from datapulse.analytics.repository import AnalyticsRepository
+    return create_autospec(AnalyticsRepository, instance=True)
+
+
+@pytest.fixture()
+def analytics_service(mock_repo):
+    """AnalyticsService with mocked repository."""
+    from datapulse.analytics.service import AnalyticsService
+    return AnalyticsService(mock_repo)
+
+
+@pytest.fixture()
+def api_client():
+    """FastAPI TestClient with mocked dependencies."""
+    from unittest.mock import patch as _patch
+    from fastapi.testclient import TestClient
+    from datapulse.analytics.service import AnalyticsService
+    from datapulse.analytics.repository import AnalyticsRepository
+
+    mock_session = MagicMock()
+    mock_repo = create_autospec(AnalyticsRepository, instance=True)
+    mock_svc = AnalyticsService(mock_repo)
+
+    from datapulse.api.app import create_app
+    from datapulse.api import deps
+
+    app = create_app()
+    app.dependency_overrides[deps.get_db_session] = lambda: mock_session
+    app.dependency_overrides[deps.get_analytics_service] = lambda: mock_svc
+
+    client = TestClient(app)
+    yield client, mock_repo
+
+    app.dependency_overrides.clear()
