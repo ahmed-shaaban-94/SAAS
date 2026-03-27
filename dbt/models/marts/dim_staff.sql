@@ -7,6 +7,7 @@
 
 -- Staff/personnel dimension
 -- SCD Type 1: latest attribute wins
+-- key = -1 reserved for Unknown/Unassigned
 
 WITH ranked AS (
     SELECT
@@ -28,3 +29,11 @@ SELECT
     staff_position
 FROM ranked
 WHERE rn = 1
+
+UNION ALL
+
+SELECT
+    -1                 AS staff_key,
+    '__UNKNOWN__'      AS staff_id,
+    'Unknown'          AS staff_name,
+    'Unknown'          AS staff_position

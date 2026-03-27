@@ -8,6 +8,7 @@
 -- Product dimension from drug_code
 -- SCD Type 1: latest attribute wins (by most recent invoice_date)
 -- Includes buyer (business owner of the product relationship)
+-- key = -1 reserved for Unknown/Unassigned
 
 WITH ranked AS (
     SELECT
@@ -45,3 +46,19 @@ SELECT
     buyer
 FROM ranked
 WHERE rn = 1
+
+UNION ALL
+
+SELECT
+    -1                  AS product_key,
+    '__UNKNOWN__'       AS drug_code,
+    'Unknown'           AS drug_name,
+    'Unknown'           AS drug_brand,
+    'Unknown'           AS drug_cluster,
+    'Unknown'           AS drug_status,
+    FALSE               AS is_temporary,
+    'Unknown'           AS drug_category,
+    'Unknown'           AS drug_subcategory,
+    'Unknown'           AS drug_division,
+    'Unknown'           AS drug_segment,
+    'Unknown'           AS buyer

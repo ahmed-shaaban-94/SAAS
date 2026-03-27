@@ -7,6 +7,7 @@
 
 -- Customer dimension
 -- SCD Type 1: latest attribute wins
+-- key = -1 reserved for Unknown/Unassigned
 
 WITH ranked AS (
     SELECT
@@ -26,3 +27,10 @@ SELECT
     customer_name
 FROM ranked
 WHERE rn = 1
+
+UNION ALL
+
+SELECT
+    -1                 AS customer_key,
+    '__UNKNOWN__'      AS customer_id,
+    'Unknown'          AS customer_name
