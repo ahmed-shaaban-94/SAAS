@@ -111,9 +111,24 @@ frontend/                            # Next.js 14 dashboard (Phase 1.5)
 │   ├── app/
 │   │   ├── layout.tsx               # Root layout: sidebar + providers
 │   │   ├── page.tsx                 # Redirect to /dashboard
-│   │   └── dashboard/
-│   │       ├── page.tsx             # Executive overview: KPI grid + trend charts
-│   │       └── loading.tsx          # Skeleton loading state
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx             # Executive overview: KPI grid + trend charts
+│   │   │   └── loading.tsx          # Skeleton loading state
+│   │   ├── products/
+│   │   │   ├── page.tsx             # Product analytics page
+│   │   │   └── loading.tsx
+│   │   ├── customers/
+│   │   │   ├── page.tsx             # Customer intelligence page
+│   │   │   └── loading.tsx
+│   │   ├── staff/
+│   │   │   ├── page.tsx             # Staff performance page
+│   │   │   └── loading.tsx
+│   │   ├── sites/
+│   │   │   ├── page.tsx             # Site comparison page
+│   │   │   └── loading.tsx
+│   │   └── returns/
+│   │       ├── page.tsx             # Returns analysis page
+│   │       └── loading.tsx
 │   ├── components/
 │   │   ├── layout/sidebar.tsx       # Nav sidebar (6 pages)
 │   │   ├── layout/header.tsx        # Page header
@@ -126,6 +141,14 @@ frontend/                            # Next.js 14 dashboard (Phase 1.5)
 │   │   ├── shared/ranking-chart.tsx # Horizontal bar chart
 │   │   ├── shared/summary-stats.tsx # Stat cards grid
 │   │   ├── shared/progress-bar.tsx  # Progress bar
+│   │   ├── products/product-overview.tsx   # Product analytics (chart + table)
+│   │   ├── customers/customer-overview.tsx # Customer intelligence (chart + table)
+│   │   ├── staff/staff-overview.tsx        # Staff performance rankings
+│   │   ├── sites/site-overview.tsx         # Site comparison orchestrator
+│   │   ├── sites/site-comparison-cards.tsx # Side-by-side site cards (2 sites)
+│   │   ├── returns/returns-overview.tsx    # Returns analysis orchestrator
+│   │   ├── returns/returns-table.tsx       # Custom returns table (5 cols)
+│   │   ├── returns/returns-chart.tsx       # Top returns horizontal bar chart
 │   │   ├── providers.tsx            # SWR + Filter context wrapper
 │   │   ├── error-boundary.tsx       # React error boundary
 │   │   ├── empty-state.tsx          # Empty data placeholder
@@ -275,7 +298,8 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 1.4**: Data Analysis (analytics module, aggregations, FastAPI API, Power BI 99 measures + calc group) [DONE]
 - **Phase 1.4.1**: Schema fixes, dbt agg models built, migrations applied, RLS active, API live [DONE]
 - **Phase 1.5.1-1.5.3**: Next.js scaffold, API client, executive overview page [DONE]
-- **Phase 1.5.4-1.5.7**: Analytics pages, polish, E2E tests
+- **Phase 1.5.4-1.5.6**: All 5 analytics pages (products, customers, staff, sites, returns) [DONE]
+- **Phase 1.5.7**: Polish, E2E tests, Docker finalization
 - **Phase 2**: Automation via n8n workflows
 - **Phase 3**: AI-powered analysis via LangGraph
 - **Phase 4**: Public website / landing page
