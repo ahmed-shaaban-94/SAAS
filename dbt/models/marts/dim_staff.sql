@@ -44,6 +44,7 @@ UNION ALL
 
 SELECT
     -1                 AS staff_key,
+    1                  AS tenant_id,
     '__UNKNOWN__'      AS staff_id,
     'Unknown'          AS staff_name,
     'Unknown'          AS staff_position

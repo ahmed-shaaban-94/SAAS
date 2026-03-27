@@ -80,8 +80,15 @@ class AnalyticsRepository:
                 clauses.append(
                     f"{date_column} BETWEEN :start_date AND :end_date"
                 )
-                params["start_date"] = filters.date_range.start_date
-                params["end_date"] = filters.date_range.end_date
+                sd = filters.date_range.start_date
+                ed = filters.date_range.end_date
+                # date_key columns are stored as YYYYMMDD integers
+                params["start_date"] = (
+                    sd.year * 10000 + sd.month * 100 + sd.day
+                )
+                params["end_date"] = (
+                    ed.year * 10000 + ed.month * 100 + ed.day
+                )
 
         if filters.site_key is not None:
             clauses.append("site_key = :site_key")
@@ -181,7 +188,7 @@ class AnalyticsRepository:
     def get_kpi_summary(self, target_date: date) -> KPISummary:
         """Return executive KPI snapshot for *target_date*.
 
-        Queries ``marts.metrics_summary`` for daily totals and computes
+        Queries ``public_marts.metrics_summary`` for daily totals and computes
         MTD / YTD aggregates plus month-over-month and year-over-year growth.
         """
         log.info("get_kpi_summary", target_date=str(target_date))
@@ -190,7 +197,7 @@ class AnalyticsRepository:
         daily_stmt = text("""
             SELECT daily_net_amount, mtd_net_amount, ytd_net_amount,
                    daily_transactions, daily_unique_customers
-            FROM marts.metrics_summary
+            FROM public_marts.metrics_summary
             WHERE full_date = :target_date
         """)
         row = self._session.execute(
@@ -218,10 +225,10 @@ class AnalyticsRepository:
         # --- MoM growth -------------------------------------------------
         prev_month_stmt = text("""
             SELECT mtd_net_amount
-            FROM marts.metrics_summary
-            WHERE full_date = (
-                :target_date::date - INTERVAL '1 month'
-            )::date
+            FROM public_marts.metrics_summary
+            WHERE full_date = CAST(
+                CAST(:target_date AS date) - INTERVAL '1 month'
+            AS date)
         """)
         prev_month_row = self._session.execute(
             prev_month_stmt, {"target_date": target_date}
@@ -236,10 +243,10 @@ class AnalyticsRepository:
         # --- YoY growth -------------------------------------------------
         prev_year_stmt = text("""
             SELECT ytd_net_amount
-            FROM marts.metrics_summary
-            WHERE full_date = (
-                :target_date::date - INTERVAL '1 year'
-            )::date
+            FROM public_marts.metrics_summary
+            WHERE full_date = CAST(
+                CAST(:target_date AS date) - INTERVAL '1 year'
+            AS date)
         """)
         prev_year_row = self._session.execute(
             prev_year_stmt, {"target_date": target_date}
@@ -269,7 +276,7 @@ class AnalyticsRepository:
         stmt = text(f"""
             SELECT date_key AS period,
                    SUM(total_net_amount) AS value
-            FROM marts.agg_sales_daily
+            FROM public_marts.agg_sales_daily
             WHERE {where}
             GROUP BY date_key
             ORDER BY date_key
@@ -288,7 +295,7 @@ class AnalyticsRepository:
             SELECT LPAD(year::text, 4, '0') || '-'
                    || LPAD(month::text, 2, '0') AS period,
                    SUM(total_net_amount) AS value
-            FROM marts.agg_sales_monthly
+            FROM public_marts.agg_sales_monthly
             WHERE {where}
             GROUP BY year, month
             ORDER BY year, month
@@ -304,7 +311,7 @@ class AnalyticsRepository:
 
         stmt = text(f"""
             SELECT product_key, drug_name, SUM(total_net_amount) AS value
-            FROM marts.agg_sales_by_product
+            FROM public_marts.agg_sales_by_product
             WHERE {where}
             GROUP BY product_key, drug_name
             ORDER BY value DESC
@@ -322,7 +329,7 @@ class AnalyticsRepository:
         stmt = text(f"""
             SELECT customer_key, customer_name,
                    SUM(total_net_amount) AS value
-            FROM marts.agg_sales_by_customer
+            FROM public_marts.agg_sales_by_customer
             WHERE {where}
             GROUP BY customer_key, customer_name
             ORDER BY value DESC
@@ -340,7 +347,7 @@ class AnalyticsRepository:
         stmt = text(f"""
             SELECT staff_key, staff_name,
                    SUM(total_net_amount) AS value
-            FROM marts.agg_sales_by_staff
+            FROM public_marts.agg_sales_by_staff
             WHERE {where}
             GROUP BY staff_key, staff_name
             ORDER BY value DESC
@@ -358,7 +365,7 @@ class AnalyticsRepository:
         stmt = text(f"""
             SELECT site_key, site_name,
                    SUM(total_net_amount) AS value
-            FROM marts.agg_sales_by_site
+            FROM public_marts.agg_sales_by_site
             WHERE {where}
             GROUP BY site_key, site_name
             ORDER BY value DESC
@@ -379,7 +386,7 @@ class AnalyticsRepository:
             SELECT drug_name, customer_name,
                    return_quantity, return_amount,
                    return_count
-            FROM marts.agg_returns
+            FROM public_marts.agg_returns
             WHERE {where}
             ORDER BY return_amount DESC
             LIMIT :limit

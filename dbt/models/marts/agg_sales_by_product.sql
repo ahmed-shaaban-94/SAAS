@@ -15,7 +15,7 @@ WITH product_monthly AS (
         d.month,
         d.month_name,
         SUM(f.quantity)::NUMERIC(18,4)                                          AS total_quantity,
-        SUM(f.quantity) FILTER (WHERE f.is_return)::NUMERIC(18,4)               AS return_quantity,
+        COALESCE(SUM(f.quantity) FILTER (WHERE f.is_return), 0)::NUMERIC(18,4)  AS return_quantity,
         ROUND(SUM(f.sales), 2)                                                  AS total_sales,
         ROUND(SUM(f.discount), 2)                                               AS total_discount,
         ROUND(SUM(f.net_amount), 2)                                             AS total_net_amount,

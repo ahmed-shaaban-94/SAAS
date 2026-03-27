@@ -43,5 +43,6 @@ UNION ALL
 
 SELECT
     -1                 AS customer_key,
+    1                  AS tenant_id,
     '__UNKNOWN__'      AS customer_id,
     'Unknown'          AS customer_name
