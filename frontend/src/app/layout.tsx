@@ -18,7 +18,7 @@ export default function RootLayout({
       <body className="bg-page text-text-primary antialiased">
         <Providers>
           <Sidebar />
-          <main className="ml-60 min-h-screen p-6">{children}</main>
+          <main className="min-h-screen p-4 lg:ml-60 lg:p-6">{children}</main>
         </Providers>
       </body>
     </html>

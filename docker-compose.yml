@@ -77,6 +77,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: datapulse-frontend
     restart: unless-stopped
     ports:
@@ -92,6 +93,12 @@ services:
     depends_on:
       api:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   pgdata:

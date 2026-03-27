@@ -104,13 +104,23 @@ migrations/                      # SQL migrations (tracked via schema_migrations
 └── 003_add_tenant_id.sql            # Tenant-scoped RLS (tenant_id col, bronze.tenants table)
 
 frontend/                            # Next.js 14 dashboard (Phase 1.5)
-├── Dockerfile                       # node:20-alpine dev container
-├── package.json                     # Next.js 14, SWR, Recharts, Tailwind, date-fns
-├── tailwind.config.ts               # midnight-pharma color tokens
+├── Dockerfile                       # Multi-stage: dev + builder + production
+├── .dockerignore                    # Excludes node_modules, .next, e2e, etc.
+├── package.json                     # Next.js 14, SWR, Recharts, Tailwind, Playwright
+├── playwright.config.ts             # Playwright E2E config (Chromium)
+├── tailwind.config.ts               # midnight-pharma color tokens + animations
+├── e2e/                             # Playwright E2E tests (14 specs)
+│   ├── dashboard.spec.ts            # KPI cards, trend charts, filter bar
+│   ├── navigation.spec.ts           # Sidebar nav, active highlight, root redirect
+│   ├── filters.spec.ts              # Date preset clicks
+│   ├── pages.spec.ts                # All 5 analytics pages load
+│   └── health.spec.ts               # API health indicator
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx               # Root layout: sidebar + providers
+│   │   ├── layout.tsx               # Root layout: responsive sidebar + providers
 │   │   ├── page.tsx                 # Redirect to /dashboard
+│   │   ├── not-found.tsx            # 404 page
+│   │   ├── error.tsx                # Error boundary page
 │   │   ├── dashboard/
 │   │   │   ├── page.tsx             # Executive overview: KPI grid + trend charts
 │   │   │   └── loading.tsx          # Skeleton loading state
@@ -130,8 +140,9 @@ frontend/                            # Next.js 14 dashboard (Phase 1.5)
 │   │       ├── page.tsx             # Returns analysis page
 │   │       └── loading.tsx
 │   ├── components/
-│   │   ├── layout/sidebar.tsx       # Nav sidebar (6 pages)
+│   │   ├── layout/sidebar.tsx       # Nav sidebar (6 pages, responsive lg:flex)
 │   │   ├── layout/header.tsx        # Page header
+│   │   ├── layout/health-indicator.tsx # API health dot (green/amber/red)
 │   │   ├── dashboard/kpi-card.tsx   # KPI card with trend indicator
 │   │   ├── dashboard/kpi-grid.tsx   # 7 KPI cards grid
 │   │   ├── dashboard/daily-trend-chart.tsx   # Recharts area chart
@@ -289,6 +300,8 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - pytest + pytest-cov
 - Current coverage: 95%+ on `src/datapulse/`
 - Target: 80%+ minimum
+- Playwright E2E tests: 14 specs across 5 files (`frontend/e2e/`)
+- Run E2E: `docker compose exec frontend npx playwright test`
 
 ## Future Phases
 
@@ -299,7 +312,7 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 1.4.1**: Schema fixes, dbt agg models built, migrations applied, RLS active, API live [DONE]
 - **Phase 1.5.1-1.5.3**: Next.js scaffold, API client, executive overview page [DONE]
 - **Phase 1.5.4-1.5.6**: All 5 analytics pages (products, customers, staff, sites, returns) [DONE]
-- **Phase 1.5.7**: Polish, E2E tests, Docker finalization
+- **Phase 1.5.7**: Polish, E2E tests, Docker finalization [DONE]
 - **Phase 2**: Automation via n8n workflows
 - **Phase 3**: AI-powered analysis via LangGraph
 - **Phase 4**: Public website / landing page

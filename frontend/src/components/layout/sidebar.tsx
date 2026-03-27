@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
+import { HealthIndicator } from "./health-indicator";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -27,7 +28,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-60 flex-col border-r border-border bg-card">
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-card lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2 px-6">
         <Activity className="h-6 w-6 text-accent" />
@@ -58,7 +59,8 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border px-6 py-4">
+      <div className="border-t border-border px-6 py-4 space-y-2">
+        <HealthIndicator />
         <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
       </div>
     </aside>
