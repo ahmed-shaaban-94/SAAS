@@ -7,7 +7,7 @@
 
 -- Silver layer: cleaned sales data
 -- Drops 19 columns from bronze, deduplicates, trims text, renames for clarity
--- Cleans NULLs and masked values (#) per column type
+-- Cleans NULLs, masked values (#), normalizes drug_status, standardizes billing
 --
 -- Dropped from bronze (16):
 --   billing_document, fi_document_no, crm_order, knumv, item_no,
@@ -60,7 +60,18 @@ SELECT
     COALESCE(NULLIF(TRIM(material_desc), ''), 'Unknown')  AS drug_name,
     COALESCE(NULLIF(TRIM(brand), ''), 'Unknown')          AS drug_brand,
     COALESCE(NULLIF(TRIM(item_cluster), ''), 'Uncategorized')  AS drug_cluster,
-    COALESCE(NULLIF(TRIM(item_status), ''), 'Unknown')    AS drug_status,
+
+    -- Drug status: normalize variants (strip NBSP + whitespace, unify spelling, extract -T flag)
+    -- Note: bronze data contains \u00A0 (non-breaking space) — must strip before matching
+    CASE
+        WHEN UPPER(REGEXP_REPLACE(REGEXP_REPLACE(item_status, '[\s\u00A0]+', '', 'g'), '[-_]?T$', '')) IN ('ACTIVE')    THEN 'Active'
+        WHEN UPPER(REGEXP_REPLACE(REGEXP_REPLACE(item_status, '[\s\u00A0]+', '', 'g'), '[-_]?T$', '')) IN ('CANCELLED', 'CANCELED') THEN 'Cancelled'
+        WHEN UPPER(REGEXP_REPLACE(REGEXP_REPLACE(item_status, '[\s\u00A0]+', '', 'g'), '[-_]?T$', '')) IN ('DELISTED')  THEN 'Delisted'
+        WHEN UPPER(REGEXP_REPLACE(REGEXP_REPLACE(item_status, '[\s\u00A0]+', '', 'g'), '[-_]?T$', '')) IN ('NEW')       THEN 'New'
+        WHEN item_status IS NULL OR TRIM(item_status) = '' THEN 'Unknown'
+        ELSE TRIM(item_status)
+    END                                 AS drug_status,
+    item_status ~ '[-_\s]T$'           AS is_temporary,
 
     -- Classification (Uncategorized for NULLs)
     COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized')       AS drug_category,
@@ -101,9 +112,13 @@ SELECT
     CASE
         WHEN billing_type IN ('مرتجع توصيل', 'مرتجع اجل', 'مرتجع فورى',
                               'Pick-Up Order Return', 'مرتجع توصيل - اجل')
-        THEN TRUE ELSE FALSE
+        THEN TRUE
+        WHEN COALESCE(quantity, 0) < 0 THEN TRUE
+        ELSE FALSE
     END                                 AS is_return,
     (insurance_no IS NOT NULL AND TRIM(insurance_no) <> '')  AS has_insurance,
+    (NULLIF(TRIM(customer), '') = NULLIF(TRIM(site), ''))    AS is_walk_in,
+    (personel_number IS NOT NULL AND TRIM(personel_number) <> '')  AS has_staff,
 
     -- Insurance (keep NULL — optional fields)
     NULLIF(TRIM(insurance_tel), '')     AS insurance_tel,

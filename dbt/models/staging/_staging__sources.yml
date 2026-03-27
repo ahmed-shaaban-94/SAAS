@@ -4,8 +4,9 @@ models:
   - name: stg_sales
     description: >
       Silver layer: cleaned sales data.
-      Drops 19 columns from bronze (16 initial + sale_id, sales_not_tax, paid, net_sales),
-      deduplicates rows, trims text, renames columns for business clarity.
+      Drops 19 columns from bronze, deduplicates rows, trims text,
+      normalizes drug_status, standardizes billing (AR->EN),
+      flags returns/walk-ins/insurance/staff presence.
     columns:
       # -- Metadata --
       - name: source_file
@@ -18,16 +19,36 @@ models:
       # -- Transaction --
       - name: invoice_id
         description: "Sales invoice reference number (from reference_no)"
+        tests:
+          - not_null
       - name: invoice_date
         description: "Invoice date"
+        tests:
+          - not_null
       - name: billing_way
-        description: "Billing method/type"
+        description: "Billing method (Arabic standardized to English)"
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - Credit
+                - Cash
+                - Delivery
+                - Delivery Return
+                - Credit Return
+                - Cash Return
+                - Pick-Up
+                - Pick-Up Return
+                - Delivery Credit
+                - Delivery Credit Return
       - name: billing_id
         description: "Secondary billing identifier"
 
       # -- Product --
       - name: drug_code
         description: "Drug/material code"
+        tests:
+          - not_null
       - name: drug_name
         description: "Drug/material description"
       - name: drug_brand
@@ -35,7 +56,17 @@ models:
       - name: drug_cluster
         description: "Drug item cluster"
       - name: drug_status
-        description: "Drug item status"
+        description: "Normalized drug status (Active, Cancelled, Delisted, New)"
+        tests:
+          - accepted_values:
+              values:
+                - Active
+                - Cancelled
+                - Delisted
+                - New
+                - Unknown
+      - name: is_temporary
+        description: "True if drug had -T suffix in original status (temporary listing)"
 
       # -- Classification --
       - name: drug_category
@@ -51,7 +82,7 @@ models:
       - name: customer_id
         description: "Customer code"
       - name: customer_name
-        description: "Customer name"
+        description: "Customer name (# patterns cleaned to Unknown)"
       - name: site_code
         description: "Site code"
       - name: site_name
@@ -71,9 +102,9 @@ models:
 
       # -- Financial --
       - name: quantity
-        description: "Quantity sold"
+        description: "Quantity sold (negative for returns)"
       - name: sales
-        description: "Gross sales amount"
+        description: "Gross sales amount (negative for returns)"
       - name: discount
         description: "Discount amount (subtotal5)"
       - name: net_amount
@@ -87,9 +118,13 @@ models:
       - name: invoice_quarter
         description: "Quarter extracted from invoice_date"
       - name: is_return
-        description: "True if this is a return transaction"
+        description: "True if return (by billing_way OR negative quantity)"
       - name: has_insurance
         description: "True if insurance_no is present"
+      - name: is_walk_in
+        description: "True if customer_id = site_code (counter/walk-in sale)"
+      - name: has_staff
+        description: "True if staff personnel number is present"
 
       # -- Insurance --
       - name: insurance_tel
