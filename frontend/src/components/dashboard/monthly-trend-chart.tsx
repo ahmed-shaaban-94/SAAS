@@ -14,6 +14,7 @@ import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
+import { CHART_THEME } from "@/lib/constants";
 
 export function MonthlyTrendChart() {
   const { filters } = useFilters();
@@ -52,25 +53,25 @@ export function MonthlyTrendChart() {
       </div>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#21262D" />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_THEME.gridStroke} />
           <XAxis
             dataKey="month"
-            tick={{ fill: "#A8B3BD", fontSize: 12 }}
+            tick={{ fill: CHART_THEME.tickFill, fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "#30363D" }}
+            axisLine={{ stroke: CHART_THEME.axisStroke }}
           />
           <YAxis
-            tick={{ fill: "#A8B3BD", fontSize: 12 }}
+            tick={{ fill: CHART_THEME.tickFill, fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "#30363D" }}
+            axisLine={{ stroke: CHART_THEME.axisStroke }}
             tickFormatter={(v) => formatCompact(v)}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#161B22",
-              border: "1px solid #30363D",
+              backgroundColor: CHART_THEME.tooltipBg,
+              border: `1px solid ${CHART_THEME.tooltipBorder}`,
               borderRadius: "8px",
-              color: "#E6EDF3",
+              color: CHART_THEME.tooltipColor,
             }}
             formatter={(value: number) => [formatCurrency(value), "Net Sales"]}
           />

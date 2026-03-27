@@ -22,7 +22,7 @@ services:
       - ./notebooks:/app/notebooks
       - ./dbt:/app/dbt
       - ./migrations:/app/migrations
-      - "E:/Data Analysis/sales/RAW FULL:/app/data/raw/sales"
+      - "${RAW_SALES_PATH:-./data/raw/sales}:/app/data/raw/sales"
 
   api:
     build: .
@@ -38,6 +38,12 @@ services:
     command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
     volumes:
       - ./src:/app/src
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   postgres:
     image: postgres:16-alpine
@@ -92,9 +98,9 @@ services:
       - WATCHPACK_POLLING=true
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/', r => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))\""]
       interval: 30s
       timeout: 10s
       retries: 3

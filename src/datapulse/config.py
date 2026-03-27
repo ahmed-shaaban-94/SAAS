@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Bronze loader
     bronze_batch_size: int = 50_000
 
+    # CORS
+    cors_origins: list[str] = ["http://localhost:3000"]
+
     @property
     def max_file_size_bytes(self) -> int:
         return self.max_file_size_mb * 1024 * 1024

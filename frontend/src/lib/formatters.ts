@@ -18,7 +18,12 @@ export function formatNumber(value: number | null | undefined): string {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
-export function formatCompact(value: number): string {
+export function truncate(str: string, maxLen: number = 20): string {
+  return str.length > maxLen ? str.slice(0, maxLen) + "..." : str;
+}
+
+export function formatCompact(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "N/A";
   if (Math.abs(value) >= 1_000_000) {
     return `${(value / 1_000_000).toFixed(1)}M`;
   }

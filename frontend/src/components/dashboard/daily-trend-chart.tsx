@@ -15,6 +15,7 @@ import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
 import { parseDateKey } from "@/lib/date-utils";
+import { CHART_THEME } from "@/lib/constants";
 
 export function DailyTrendChart() {
   const { filters } = useFilters();
@@ -55,36 +56,36 @@ export function DailyTrendChart() {
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="dailyGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#00BFA5" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#00BFA5" stopOpacity={0} />
+              <stop offset="5%" stopColor={CHART_THEME.accentColor} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={CHART_THEME.accentColor} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#21262D" />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_THEME.gridStroke} />
           <XAxis
             dataKey="date"
-            tick={{ fill: "#A8B3BD", fontSize: 12 }}
+            tick={{ fill: CHART_THEME.tickFill, fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "#30363D" }}
+            axisLine={{ stroke: CHART_THEME.axisStroke }}
           />
           <YAxis
-            tick={{ fill: "#A8B3BD", fontSize: 12 }}
+            tick={{ fill: CHART_THEME.tickFill, fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "#30363D" }}
+            axisLine={{ stroke: CHART_THEME.axisStroke }}
             tickFormatter={(v) => formatCompact(v)}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#161B22",
-              border: "1px solid #30363D",
+              backgroundColor: CHART_THEME.tooltipBg,
+              border: `1px solid ${CHART_THEME.tooltipBorder}`,
               borderRadius: "8px",
-              color: "#E6EDF3",
+              color: CHART_THEME.tooltipColor,
             }}
             formatter={(value: number) => [formatCurrency(value), "Net Sales"]}
           />
           <Area
             type="monotone"
             dataKey="value"
-            stroke="#00BFA5"
+            stroke={CHART_THEME.accentColor}
             strokeWidth={2}
             fill="url(#dailyGradient)"
           />

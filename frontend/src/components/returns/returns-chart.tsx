@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -9,10 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ReturnAnalysis } from "@/types/api";
-import { formatCurrency } from "@/lib/formatters";
-import { CHART_COLORS } from "@/lib/constants";
-import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { formatCurrency, truncate } from "@/lib/formatters";
+import { CHART_COLORS, CHART_THEME, CHART_MAX_ITEMS } from "@/lib/constants";
 
 interface ReturnsChartProps {
   items: ReturnAnalysis[];
@@ -24,41 +23,38 @@ export function ReturnsChart({ items, className }: ReturnsChartProps) {
     const sorted = [...items].sort(
       (a, b) => b.return_amount - a.return_amount,
     );
-    return sorted.slice(0, 10).map((item, i) => ({
-      name:
-        item.drug_name.length > 20
-          ? item.drug_name.slice(0, 20) + "..."
-          : item.drug_name,
+    return sorted.slice(0, CHART_MAX_ITEMS).map((item, i) => ({
+      name: truncate(item.drug_name),
       value: item.return_amount,
       fill: CHART_COLORS[i % CHART_COLORS.length],
     }));
   }, [items]);
 
   return (
-    <div className={cn("", className)}>
+    <div className={className}>
       <ResponsiveContainer width="100%" height={chartData.length * 40 + 20}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
           <XAxis
             type="number"
-            tick={{ fill: "#A8B3BD", fontSize: 11 }}
+            tick={{ fill: CHART_THEME.tickFill, fontSize: CHART_THEME.tickFontSize }}
             tickLine={false}
-            axisLine={{ stroke: "#30363D" }}
+            axisLine={{ stroke: CHART_THEME.axisStroke }}
             tickFormatter={(v) => formatCurrency(v)}
           />
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fill: "#A8B3BD", fontSize: 11 }}
+            tick={{ fill: CHART_THEME.tickFill, fontSize: CHART_THEME.tickFontSize }}
             tickLine={false}
             axisLine={false}
             width={150}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#161B22",
-              border: "1px solid #30363D",
+              backgroundColor: CHART_THEME.tooltipBg,
+              border: `1px solid ${CHART_THEME.tooltipBorder}`,
               borderRadius: "8px",
-              color: "#E6EDF3",
+              color: CHART_THEME.tooltipColor,
             }}
             formatter={(value: number) => [
               formatCurrency(value),

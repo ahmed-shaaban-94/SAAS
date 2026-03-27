@@ -8,8 +8,12 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+
+# Decimal that serializes as a JSON number (float) instead of a string.
+JsonDecimal = Annotated[Decimal, PlainSerializer(float, return_type=float)]
 
 
 class DateRange(BaseModel):
@@ -40,7 +44,7 @@ class TimeSeriesPoint(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     period: str  # "2024-01" or "2024-01-15"
-    value: Decimal
+    value: JsonDecimal
 
 
 class TrendResult(BaseModel):
@@ -49,11 +53,11 @@ class TrendResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     points: list[TimeSeriesPoint]
-    total: Decimal
-    average: Decimal
-    minimum: Decimal
-    maximum: Decimal
-    growth_pct: Decimal | None = None
+    total: JsonDecimal
+    average: JsonDecimal
+    minimum: JsonDecimal
+    maximum: JsonDecimal
+    growth_pct: JsonDecimal | None = None
 
 
 class RankingItem(BaseModel):
@@ -64,8 +68,8 @@ class RankingItem(BaseModel):
     rank: int
     key: int
     name: str
-    value: Decimal
-    pct_of_total: Decimal
+    value: JsonDecimal
+    pct_of_total: JsonDecimal
 
 
 class RankingResult(BaseModel):
@@ -74,7 +78,7 @@ class RankingResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     items: list[RankingItem]
-    total: Decimal
+    total: JsonDecimal
 
 
 class KPISummary(BaseModel):
@@ -82,11 +86,11 @@ class KPISummary(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    today_net: Decimal
-    mtd_net: Decimal
-    ytd_net: Decimal
-    mom_growth_pct: Decimal | None = None
-    yoy_growth_pct: Decimal | None = None
+    today_net: JsonDecimal
+    mtd_net: JsonDecimal
+    ytd_net: JsonDecimal
+    mom_growth_pct: JsonDecimal | None = None
+    yoy_growth_pct: JsonDecimal | None = None
     daily_transactions: int
     daily_customers: int
 
@@ -101,10 +105,10 @@ class ProductPerformance(BaseModel):
     drug_name: str
     drug_brand: str
     drug_category: str
-    total_quantity: Decimal
-    total_sales: Decimal
-    total_net_amount: Decimal
-    return_rate: Decimal
+    total_quantity: JsonDecimal
+    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
+    return_rate: JsonDecimal
     unique_customers: int
 
 
@@ -116,8 +120,8 @@ class CustomerAnalytics(BaseModel):
     customer_key: int
     customer_id: str
     customer_name: str
-    total_quantity: Decimal
-    total_net_amount: Decimal
+    total_quantity: JsonDecimal
+    total_net_amount: JsonDecimal
     transaction_count: int
     unique_products: int
     return_count: int
@@ -132,9 +136,9 @@ class StaffPerformance(BaseModel):
     staff_id: str
     staff_name: str
     staff_position: str
-    total_net_amount: Decimal
+    total_net_amount: JsonDecimal
     transaction_count: int
-    avg_transaction_value: Decimal
+    avg_transaction_value: JsonDecimal
     unique_customers: int
 
 
@@ -145,6 +149,6 @@ class ReturnAnalysis(BaseModel):
 
     drug_name: str
     customer_name: str
-    return_quantity: Decimal
-    return_amount: Decimal
+    return_quantity: JsonDecimal
+    return_amount: JsonDecimal
     return_count: int

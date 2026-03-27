@@ -261,6 +261,8 @@ All settings via environment variables or `.env` file (Pydantic Settings):
 | `MAX_ROWS` | 10,000,000 | Max rows per dataset |
 | `MAX_COLUMNS` | 200 | Max columns per dataset |
 | `BRONZE_BATCH_SIZE` | 50,000 | Rows per insert batch |
+| `CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed CORS origins (JSON list) |
+| `RAW_SALES_PATH` | `./data/raw/sales` | Host path to raw sales data (Docker volume mount) |
 
 ## Running the Bronze Pipeline
 
@@ -295,12 +297,19 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - `FORCE ROW LEVEL SECURITY` on all RLS-enabled tables (owner bypass prevented)
 - SQL column whitelist before INSERT (prevents injection)
 - Financial columns use `NUMERIC(18,4)` (not floating-point)
+- CORS origins configurable via `CORS_ORIGINS` env var (default: `["http://localhost:3000"]`)
+- Global exception handler catches unhandled errors, logs traceback, returns generic 500
+- Health endpoint returns 503 when DB is unreachable (not 200)
+- Request logging includes `duration_ms` and `user_agent`
+- `JsonDecimal` type alias: Decimal precision internally, float serialization in JSON
+- ErrorBoundary wraps layout to catch React component crashes
+- `parseDecimals` has `MAX_SAFE_INTEGER` guard for large numbers
 
 ### Testing
 - pytest + pytest-cov
 - Current coverage: 95%+ on `src/datapulse/`
 - Target: 80%+ minimum
-- Playwright E2E tests: 14 specs across 5 files (`frontend/e2e/`)
+- Playwright E2E tests: 17 specs across 5 files (`frontend/e2e/`)
 - Run E2E: `docker compose exec frontend npx playwright test`
 
 ## Future Phases
@@ -313,6 +322,7 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 1.5.1-1.5.3**: Next.js scaffold, API client, executive overview page [DONE]
 - **Phase 1.5.4-1.5.6**: All 5 analytics pages (products, customers, staff, sites, returns) [DONE]
 - **Phase 1.5.7**: Polish, E2E tests, Docker finalization [DONE]
+- **Phase 1.5.8**: Audit & debug — security, correctness, quality fixes (21 files, CORS, exception handler, health 503, JsonDecimal, ErrorBoundary, chart theming, E2E hardening) [DONE]
 - **Phase 2**: Automation via n8n workflows
 - **Phase 3**: AI-powered analysis via LangGraph
 - **Phase 4**: Public website / landing page

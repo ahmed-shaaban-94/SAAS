@@ -6,7 +6,7 @@ export function useHealth() {
   const { data, error } = useSWR(
     "/health",
     () => fetchAPI<HealthStatus>("/health"),
-    { refreshInterval: 30000 },
+    { refreshInterval: 30000, refreshWhenHidden: false },
   );
   return { data, error, isLoading: !data && !error };
 }

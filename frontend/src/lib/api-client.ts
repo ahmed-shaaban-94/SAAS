@@ -16,7 +16,9 @@ function parseDecimals(obj: unknown): unknown {
   if (typeof obj === "string") {
     // Check if string looks like a decimal number
     if (/^-?\d+(\.\d+)?$/.test(obj)) {
-      return Number(obj);
+      const n = Number(obj);
+      if (Number.isSafeInteger(Math.trunc(n))) return n;
+      return obj;
     }
     return obj;
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -11,7 +12,7 @@ import {
 import type { RankingItem } from "@/types/api";
 import { ProgressBar } from "@/components/shared/progress-bar";
 import { formatCurrency } from "@/lib/formatters";
-import { CHART_COLORS } from "@/lib/constants";
+import { CHART_COLORS, CHART_THEME } from "@/lib/constants";
 
 interface SiteComparisonCardsProps {
   items: RankingItem[];
@@ -33,11 +34,15 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) {
-  const chartData = items.map((item, i) => ({
-    name: item.name,
-    value: item.value,
-    fill: CHART_COLORS[i % CHART_COLORS.length],
-  }));
+  const chartData = useMemo(
+    () =>
+      items.map((item, i) => ({
+        name: item.name,
+        value: item.value,
+        fill: CHART_COLORS[i % CHART_COLORS.length],
+      })),
+    [items],
+  );
 
   return (
     <div>
@@ -80,25 +85,25 @@ export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) 
           <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
             <XAxis
               type="number"
-              tick={{ fill: "#A8B3BD", fontSize: 11 }}
+              tick={{ fill: CHART_THEME.tickFill, fontSize: CHART_THEME.tickFontSize }}
               tickLine={false}
-              axisLine={{ stroke: "#30363D" }}
+              axisLine={{ stroke: CHART_THEME.axisStroke }}
               tickFormatter={(v) => formatCurrency(v)}
             />
             <YAxis
               type="category"
               dataKey="name"
-              tick={{ fill: "#A8B3BD", fontSize: 11 }}
+              tick={{ fill: CHART_THEME.tickFill, fontSize: CHART_THEME.tickFontSize }}
               tickLine={false}
               axisLine={false}
               width={150}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#161B22",
-                border: "1px solid #30363D",
+                backgroundColor: CHART_THEME.tooltipBg,
+                border: `1px solid ${CHART_THEME.tooltipBorder}`,
                 borderRadius: "8px",
-                color: "#E6EDF3",
+                color: CHART_THEME.tooltipColor,
               }}
               formatter={(value: number) => [formatCurrency(value), "Revenue"]}
             />

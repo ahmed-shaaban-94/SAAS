@@ -29,10 +29,11 @@ export function SiteOverview() {
   }
 
   if (error) {
+    console.error("Failed to load site data:", error.message);
     return (
       <EmptyState
         title="Failed to load site data"
-        description="An error occurred while fetching site performance data."
+        description={error.message || "An error occurred while fetching site performance data."}
       />
     );
   }
