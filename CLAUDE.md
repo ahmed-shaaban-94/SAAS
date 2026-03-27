@@ -41,6 +41,7 @@ Excel/CSV files
 | Frontend (planned) | Next.js 14 + TypeScript + Tailwind + shadcn/ui |
 | Charts (planned) | Recharts |
 | Dashboard (planned) | react-grid-layout |
+| BI / Analytics | Power BI Desktop (Import mode, 99 DAX measures) |
 
 ## Project Structure
 
@@ -74,13 +75,14 @@ dbt/
     │   ├── _staging__sources.yml
     │   └── stg_sales.sql        # Cleaned: 30 cols, dedup, billing EN, derived fields
     └── marts/                   # Gold layer (dimension + fact tables)
-        ├── _marts__models.yml   # Schema, docs, 29 dbt tests
-        ├── dim_date.sql         # Calendar dimension (2023-2025)
-        ├── dim_customer.sql     # Customer dimension
-        ├── dim_product.sql      # Product/drug dimension
-        ├── dim_site.sql         # Site/location dimension
-        ├── dim_staff.sql        # Staff/personnel dimension
-        └── fct_sales.sql        # Sales fact table (joins all dims)
+        ├── _marts__models.yml   # Schema, docs, 57 dbt tests
+        ├── dim_date.sql         # Calendar dimension (2023-2025, week/quarter columns)
+        ├── dim_billing.sql      # Billing dimension (10 types, 5 groups)
+        ├── dim_customer.sql     # Customer dimension (unknown member at key=-1)
+        ├── dim_product.sql      # Product/drug dimension (unknown member at key=-1)
+        ├── dim_site.sql         # Site/location dimension (unknown member at key=-1)
+        ├── dim_staff.sql        # Staff/personnel dimension (unknown member at key=-1)
+        └── fct_sales.sql        # Sales fact table (6 FK joins, COALESCE to -1)
 
 migrations/                      # SQL migrations (tracked via schema_migrations)
 ├── 000_create_schema_migrations.sql  # Migration tracking bootstrap
@@ -117,7 +119,7 @@ docker compose up -d --build
 |--------|---------|-------------|
 | `bronze` | Raw data, as-is from source | Python bronze loader |
 | `public_staging` / `silver` | Cleaned, transformed | dbt staging models |
-| `marts` / `gold` | Aggregated, business-ready | dbt marts models (5 dims + 1 fact) |
+| `marts` / `gold` | Aggregated, business-ready | dbt marts models (6 dims + 1 fact) |
 
 ### Current Tables/Views
 
@@ -125,12 +127,13 @@ docker compose up -d --build
 |-------|--------|------|---------|
 | `bronze.sales` | bronze | 1,134,799 | Raw sales data (Q1.2023–Q4.2025, 46 columns) |
 | `public_staging.stg_sales` | staging | ~1.1M (deduped) | Cleaned sales (35 cols, EN billing, normalized status, flags, 7 dbt tests) |
-| `marts.dim_date` | marts | ~1,096 | Calendar dimension (2023-01-01 to 2025-12-31) |
-| `marts.dim_customer` | marts | distinct | Customer dimension (name, latest site) |
-| `marts.dim_product` | marts | distinct | Product dimension (drug_code, brand, category) |
-| `marts.dim_site` | marts | distinct | Site dimension (name, area_manager) |
-| `marts.dim_staff` | marts | distinct | Staff dimension (name, position) |
-| `marts.fct_sales` | marts | ~1.1M | Fact table (FK to all dims, 4 financial measures) |
+| `marts.dim_date` | marts | ~1,096 | Calendar dimension (2023-2025, week/quarter columns) |
+| `marts.dim_billing` | marts | 11 | Billing dimension (10 types + Unknown, 5 groups) |
+| `marts.dim_customer` | marts | distinct+1 | Customer dimension (name, unknown member at -1) |
+| `marts.dim_product` | marts | distinct+1 | Product dimension (drug_code, brand, category, unknown at -1) |
+| `marts.dim_site` | marts | distinct+1 | Site dimension (name, area_manager, unknown at -1) |
+| `marts.dim_staff` | marts | distinct+1 | Staff dimension (name, position, unknown at -1) |
+| `marts.fct_sales` | marts | ~1.1M | Fact table (6 FKs COALESCE to -1, 4 financial measures) |
 
 ### Bronze Sales Columns (Key)
 
@@ -193,7 +196,7 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 
 - **Phase 1.3**: Data Cleaning (silver layer via dbt) [DONE]
 - **Phase 1.3.5**: Security hardening, gold layer recovery, QC [DONE]
-- **Phase 1.4**: Data Analysis (gold layer aggregations, statistics)
+- **Phase 1.4**: Data Analysis — Power BI semantic model (99 measures + calc group) [DONE]
 - **Phase 1.5**: Dashboard & Visualization (Next.js frontend)
 - **Phase 2**: Automation via n8n workflows
 - **Phase 3**: AI-powered analysis via LangGraph
