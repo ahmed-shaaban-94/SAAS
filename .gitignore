@@ -50,3 +50,8 @@ dbt/logs/
 dbt/target/
 dbt/.user.yml
 dbt/dbt_packages/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env*.local

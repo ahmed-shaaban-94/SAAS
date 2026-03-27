@@ -73,6 +73,26 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: datapulse-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - WATCHPACK_POLLING=true
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   pgdata:
   pgadmin_data:

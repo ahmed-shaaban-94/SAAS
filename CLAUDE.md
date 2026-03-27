@@ -38,9 +38,9 @@ Excel/CSV files
 | Containers | Docker Compose |
 | DB Admin | pgAdmin 4 |
 | Notebooks | JupyterLab |
-| Frontend (planned) | Next.js 14 + TypeScript + Tailwind + shadcn/ui |
-| Charts (planned) | Recharts |
-| Dashboard (planned) | react-grid-layout |
+| Frontend | Next.js 14 + TypeScript + Tailwind CSS |
+| Charts | Recharts |
+| Data Fetching | SWR |
 | BI / Analytics | Power BI Desktop (Import mode, 99 DAX measures) |
 
 ## Project Structure
@@ -103,6 +103,54 @@ migrations/                      # SQL migrations (tracked via schema_migrations
 ├── 002_add_rls_and_roles.sql         # RLS + read-only role
 └── 003_add_tenant_id.sql            # Tenant-scoped RLS (tenant_id col, bronze.tenants table)
 
+frontend/                            # Next.js 14 dashboard (Phase 1.5)
+├── Dockerfile                       # node:20-alpine dev container
+├── package.json                     # Next.js 14, SWR, Recharts, Tailwind, date-fns
+├── tailwind.config.ts               # midnight-pharma color tokens
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx               # Root layout: sidebar + providers
+│   │   ├── page.tsx                 # Redirect to /dashboard
+│   │   └── dashboard/
+│   │       ├── page.tsx             # Executive overview: KPI grid + trend charts
+│   │       └── loading.tsx          # Skeleton loading state
+│   ├── components/
+│   │   ├── layout/sidebar.tsx       # Nav sidebar (6 pages)
+│   │   ├── layout/header.tsx        # Page header
+│   │   ├── dashboard/kpi-card.tsx   # KPI card with trend indicator
+│   │   ├── dashboard/kpi-grid.tsx   # 7 KPI cards grid
+│   │   ├── dashboard/daily-trend-chart.tsx   # Recharts area chart
+│   │   ├── dashboard/monthly-trend-chart.tsx # Recharts bar chart
+│   │   ├── filters/filter-bar.tsx   # Date preset filter bar
+│   │   ├── shared/ranking-table.tsx # Generic ranking table
+│   │   ├── shared/ranking-chart.tsx # Horizontal bar chart
+│   │   ├── shared/summary-stats.tsx # Stat cards grid
+│   │   ├── shared/progress-bar.tsx  # Progress bar
+│   │   ├── providers.tsx            # SWR + Filter context wrapper
+│   │   ├── error-boundary.tsx       # React error boundary
+│   │   ├── empty-state.tsx          # Empty data placeholder
+│   │   └── loading-card.tsx         # Skeleton loading card
+│   ├── hooks/                       # 9 SWR hooks (1 per API endpoint)
+│   │   ├── use-summary.ts           # GET /api/v1/analytics/summary
+│   │   ├── use-daily-trend.ts       # GET /api/v1/analytics/trends/daily
+│   │   ├── use-monthly-trend.ts     # GET /api/v1/analytics/trends/monthly
+│   │   ├── use-top-products.ts      # GET /api/v1/analytics/products/top
+│   │   ├── use-top-customers.ts     # GET /api/v1/analytics/customers/top
+│   │   ├── use-top-staff.ts         # GET /api/v1/analytics/staff/top
+│   │   ├── use-sites.ts             # GET /api/v1/analytics/sites
+│   │   ├── use-returns.ts           # GET /api/v1/analytics/returns
+│   │   └── use-health.ts            # GET /health
+│   ├── contexts/filter-context.tsx  # Global filters synced to URL params
+│   ├── types/api.ts                 # TS interfaces matching Pydantic models
+│   ├── types/filters.ts             # FilterParams interface
+│   └── lib/
+│       ├── api-client.ts            # fetchAPI<T> with Decimal parsing
+│       ├── swr-config.ts            # SWR global config
+│       ├── formatters.ts            # Currency (EGP), percent, compact
+│       ├── date-utils.ts            # parseDateKey, date presets
+│       ├── constants.ts             # Chart colors, nav items, API URL
+│       └── utils.ts                 # cn() helper
+
 tests/
 ├── conftest.py
 ├── test_reader.py
@@ -121,6 +169,7 @@ tests/
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
 | `pgadmin` | datapulse-pgadmin | 5050 | Database admin UI |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
+| `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 
 ```bash
 docker compose up -d --build
@@ -225,7 +274,8 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 1.5 prep**: Tenant-scoped RLS across all layers [DONE]
 - **Phase 1.4**: Data Analysis (analytics module, aggregations, FastAPI API, Power BI 99 measures + calc group) [DONE]
 - **Phase 1.4.1**: Schema fixes, dbt agg models built, migrations applied, RLS active, API live [DONE]
-- **Phase 1.5**: Dashboard & Visualization (Next.js frontend)
+- **Phase 1.5.1-1.5.3**: Next.js scaffold, API client, executive overview page [DONE]
+- **Phase 1.5.4-1.5.7**: Analytics pages, polish, E2E tests
 - **Phase 2**: Automation via n8n workflows
 - **Phase 3**: AI-powered analysis via LangGraph
 - **Phase 4**: Public website / landing page
