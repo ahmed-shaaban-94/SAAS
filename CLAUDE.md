@@ -110,7 +110,7 @@ docker compose up -d --build
 | Table/View | Schema | Rows | Purpose |
 |-------|--------|------|---------|
 | `bronze.sales` | bronze | 1,134,799 | Raw sales data (Q1.2023–Q4.2025, 46 columns) |
-| `public_staging.stg_sales` | staging | ~1.1M (deduped) | Cleaned sales (30 cols, EN billing, derived fields) |
+| `public_staging.stg_sales` | staging | ~1.1M (deduped) | Cleaned sales (35 cols, EN billing, normalized status, flags, 7 dbt tests) |
 
 ### Bronze Sales Columns (Key)
 

@@ -97,7 +97,7 @@ datapulse/
 |-- dbt/
 |   +-- models/
 |       |-- bronze/          # Source definitions
-|       |-- staging/         # Silver layer (planned)
+|       |-- staging/         # Silver layer (stg_sales — cleaned, 35 cols, 7 tests)
 |       +-- marts/           # Gold layer (planned)
 |-- migrations/              # SQL schema migrations
 |-- tests/                   # pytest test suite
@@ -112,8 +112,8 @@ datapulse/
 |-------|--------|-------------|
 | 1.1 Foundation | Done | Docker, Python env, import pipeline |
 | 1.2 Bronze Layer | Done | 1.1M rows loaded into PostgreSQL |
-| 1.3 Silver Layer | Next | Data cleaning via dbt |
-| 1.4 Gold Layer | Planned | Aggregations, star schema |
+| 1.3 Silver Layer | Done | Cleaned data, normalized status, EN billing, flags, 7 dbt tests |
+| 1.4 Gold Layer | Next | Aggregations, star schema |
 | 1.5 Dashboard | Planned | Next.js interactive charts |
 | 1.6 Testing | Planned | 80%+ coverage |
 

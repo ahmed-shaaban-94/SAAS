@@ -61,9 +61,16 @@ All sales data loaded in `bronze.sales` typed table. Parquet archive saved for b
 - [x] Billing type standardization: Arabic -> English (Credit, Cash, Delivery, etc.)
 - [x] Derived columns: net_amount, invoice_year/month/quarter, is_return, has_insurance
 - [x] dbt build passing — view created in public_staging schema
+- [x] Normalized drug_status: 12 dirty variants (CANCELLED, CANCELED, trailing NBSP) -> 5 clean values
+- [x] Extracted is_temporary flag from -T suffix in drug_status
+- [x] Fixed is_return: now catches billing_way returns + negative quantity rows
+- [x] Added is_walk_in flag: customer_id = site_code (26% = counter sales)
+- [x] Added has_staff flag: 21% rows without staff identified
+- [x] Added 6 dbt tests: not_null (invoice_id, invoice_date, billing_way, drug_code), accepted_values (billing_way, drug_status)
+- [x] All 7/7 dbt tests passing
 
 ### Deliverable
-Clean, validated data in silver schema (30 columns from 46). dbt model passing.
+Clean, validated data in silver schema (35 columns from 46, 7 dbt tests passing).
 
 ---
 
