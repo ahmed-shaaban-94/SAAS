@@ -22,7 +22,7 @@ from datapulse.analytics.models import (
     TimeSeriesPoint,
     TrendResult,
 )
-from datapulse.utils.logging import get_logger
+from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 

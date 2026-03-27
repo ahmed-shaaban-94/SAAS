@@ -73,9 +73,8 @@ src/datapulse/
 │       ├── __init__.py
 │       ├── health.py            # GET /health
 │       └── analytics.py         # 10 analytics endpoints under /api/v1/analytics/
-└── utils/
-    ├── __init__.py
-    └── logging.py               # structlog configuration
+├── logging.py                   # structlog configuration
+└── py.typed                     # PEP 561 typed package marker
 
 dbt/
 ├── dbt_project.yml
@@ -87,15 +86,28 @@ dbt/
     ├── staging/                 # Silver layer (cleaning + renaming)
     │   ├── _staging__sources.yml
     │   └── stg_sales.sql        # Cleaned: 30 cols, dedup, billing EN, derived fields
-    └── marts/                   # Gold layer (dimension + fact tables)
-        ├── _marts__models.yml   # Schema, docs, 57 dbt tests
-        ├── dim_date.sql         # Calendar dimension (2023-2025, week/quarter columns)
-        ├── dim_billing.sql      # Billing dimension (10 types, 5 groups)
-        ├── dim_customer.sql     # Customer dimension (unknown member at key=-1)
-        ├── dim_product.sql      # Product/drug dimension (unknown member at key=-1)
-        ├── dim_site.sql         # Site/location dimension (unknown member at key=-1)
-        ├── dim_staff.sql        # Staff/personnel dimension (unknown member at key=-1)
-        └── fct_sales.sql        # Sales fact table (6 FK joins, COALESCE to -1)
+    └── marts/                   # Gold layer (dimension + fact + aggregation tables)
+        ├── dims/                # Dimension tables
+        │   ├── _dims__models.yml    # Dimension schema, docs, dbt tests
+        │   ├── dim_date.sql         # Calendar dimension (2023-2025, week/quarter columns)
+        │   ├── dim_billing.sql      # Billing dimension (10 types, 5 groups)
+        │   ├── dim_customer.sql     # Customer dimension (unknown member at key=-1)
+        │   ├── dim_product.sql      # Product/drug dimension (unknown member at key=-1)
+        │   ├── dim_site.sql         # Site/location dimension (unknown member at key=-1)
+        │   └── dim_staff.sql        # Staff/personnel dimension (unknown member at key=-1)
+        ├── facts/               # Fact tables
+        │   ├── _facts__models.yml   # Fact schema, docs, dbt tests
+        │   └── fct_sales.sql        # Sales fact table (6 FK joins, COALESCE to -1)
+        └── aggs/                # Aggregation tables
+            ├── _aggs__models.yml    # Aggregation schema, docs, dbt tests
+            ├── agg_sales_daily.sql  # Daily sales aggregation
+            ├── agg_sales_monthly.sql # Monthly sales with MoM/YoY growth
+            ├── agg_sales_by_product.sql  # Product performance by month
+            ├── agg_sales_by_customer.sql # Customer analytics by month
+            ├── agg_sales_by_site.sql     # Site performance by month
+            ├── agg_sales_by_staff.sql    # Staff performance by month
+            ├── agg_returns.sql           # Return analysis by product/customer
+            └── metrics_summary.sql       # Daily KPI with MTD/YTD running totals
 
 migrations/                      # SQL migrations (tracked via schema_migrations)
 ├── 000_create_schema_migrations.sql  # Migration tracking bootstrap

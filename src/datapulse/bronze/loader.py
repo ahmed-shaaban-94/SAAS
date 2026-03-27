@@ -18,7 +18,7 @@ from sqlalchemy import Engine, create_engine, text
 
 from datapulse.bronze.column_map import COLUMN_MAP
 from datapulse.config import get_settings
-from datapulse.utils.logging import get_logger
+from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 
