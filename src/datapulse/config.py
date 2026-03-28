@@ -28,11 +28,22 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    # n8n
+    n8n_webhook_url: str = "http://n8n:5678/webhook/"
+
+    # OpenRouter (AI-Light)
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openrouter/free"
+
+    # Notifications
+    slack_webhook_url: str = ""
+    notification_email: str = ""
+
     @property
     def max_file_size_bytes(self) -> int:
         return self.max_file_size_mb * 1024 * 1024
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 @lru_cache(maxsize=1)
