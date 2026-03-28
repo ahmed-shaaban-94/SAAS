@@ -57,23 +57,13 @@ These are already in `.env` and passed via docker-compose:
 
 ---
 
-## Frontend Build Fix Needed
+## Frontend Build Fix [FIXED]
 
-The frontend Docker container failed to build (`npm ci` error). To fix:
+**Root cause**: `package-lock.json` was missing. `npm ci` requires it for reproducible builds.
 
-```bash
-cd /mnt/c/Users/user/Documents/GitHub/SAAS
-docker compose up -d frontend --build
-```
-
-If it fails again, check the full error:
-```bash
-docker compose logs frontend --tail 50
-```
-
-Common fixes:
-- Delete `frontend/node_modules` and rebuild
-- Check Node version in Dockerfile matches `package.json` engine requirement
+**Fix applied**:
+- Generated `package-lock.json` via `npm install --package-lock-only`
+- Fixed Dockerfile: removed wildcard from `COPY package.json package-lock.json* ./` → `COPY package.json package-lock.json ./`
 
 ---
 
