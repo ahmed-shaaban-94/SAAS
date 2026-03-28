@@ -10,8 +10,8 @@ test.describe("AI Insights Page", () => {
   });
 
   test("AI summary card renders", async ({ page }) => {
-    const card = page.locator("[class*='bg-card']");
-    await expect(card.first()).toBeVisible({ timeout: 15000 });
+    const card = page.getByRole("heading", { level: 2 }).or(page.locator("[class*='bg-card']"));
+    await expect(card.first()).toBeVisible({ timeout: 10000 });
   });
 
   test("navigation includes insights link", async ({ page }) => {

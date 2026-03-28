@@ -6,7 +6,7 @@ import { format, subDays, startOfMonth, startOfYear, parse } from "date-fns";
 export function parseDateKey(key: string): string {
   // Handle "YYYY-MM-DD" format
   if (key.includes("-") && key.length === 10) {
-    const d = new Date(key + "T00:00:00");
+    const d = new Date(key + "T00:00:00Z");
     return format(d, "MMM dd");
   }
   // Handle integer key like "20240115"
@@ -14,7 +14,7 @@ export function parseDateKey(key: string): string {
     const year = key.slice(0, 4);
     const month = key.slice(4, 6);
     const day = key.slice(6, 8);
-    const d = new Date(`${year}-${month}-${day}T00:00:00`);
+    const d = new Date(`${year}-${month}-${day}T00:00:00Z`);
     return format(d, "MMM dd");
   }
   return key;

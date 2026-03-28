@@ -12,6 +12,16 @@ from datapulse.watcher.handler import VALID_EXTENSIONS, DEFAULT_DEBOUNCE_SECONDS
 from datapulse.watcher.service import FileWatcherService
 
 
+def _wait_for_callback(callback: MagicMock, *, expected_calls: int = 1, timeout: float = 2.0) -> None:
+    """Poll until callback reaches expected call count (avoids flaky sleeps)."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if callback.call_count >= expected_calls:
+            return
+        time.sleep(0.01)
+    # Let the assertion happen in the test (will fail with proper message).
+
+
 @pytest.fixture(autouse=True)
 def _silence_structlog():
     """Patch structlog loggers to avoid 'event' kwarg collision in handler.py."""
@@ -171,8 +181,7 @@ class TestDataFileHandlerDebounce:
         event = FileCreatedEvent("/data/raw/a.csv")
         event.is_directory = False
         handler.on_created(event)
-        # Wait for debounce to fire
-        time.sleep(0.15)
+        _wait_for_callback(callback)
         callback.assert_called_once()
         files_arg = callback.call_args[0][0]
         assert "/data/raw/a.csv" in files_arg
@@ -186,8 +195,7 @@ class TestDataFileHandlerDebounce:
             handler.on_created(event)
             time.sleep(0.02)  # small gap, well within debounce window
 
-        # Wait for debounce to fire
-        time.sleep(0.3)
+        _wait_for_callback(callback)
         callback.assert_called_once()
         files_arg = callback.call_args[0][0]
         assert len(files_arg) == 3
@@ -200,13 +208,13 @@ class TestDataFileHandlerDebounce:
         event1 = FileCreatedEvent("/data/raw/a.csv")
         event1.is_directory = False
         handler.on_created(event1)
-        time.sleep(0.15)  # wait for first debounce to fire
+        _wait_for_callback(callback, expected_calls=1)
 
         # Second batch
         event2 = FileCreatedEvent("/data/raw/b.xlsx")
         event2.is_directory = False
         handler.on_created(event2)
-        time.sleep(0.15)  # wait for second debounce to fire
+        _wait_for_callback(callback, expected_calls=2)
 
         assert callback.call_count == 2
         handler.stop()
@@ -216,7 +224,7 @@ class TestDataFileHandlerDebounce:
         event = FileCreatedEvent("/data/raw/a.csv")
         event.is_directory = False
         handler.on_created(event)
-        time.sleep(0.15)
+        _wait_for_callback(callback)
 
         assert len(handler._pending_files) == 0
         handler.stop()
@@ -238,7 +246,7 @@ class TestDataFileHandlerDebounce:
         event = FileCreatedEvent("/data/raw/a.csv")
         event.is_directory = False
         handler.on_created(event)
-        time.sleep(0.15)
+        _wait_for_callback(callback)
         # Should not raise — error is logged
         callback.assert_called_once()
         handler.stop()

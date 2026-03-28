@@ -11,6 +11,7 @@ export function TriggerButton() {
   const { mutate } = usePipelineRuns({ limit: 50 });
 
   async function handleTrigger() {
+    if (loading) return;
     setLoading(true);
     setFeedback(null);
 

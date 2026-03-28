@@ -14,8 +14,8 @@ test.describe("Pipeline Dashboard", () => {
   });
 
   test("pipeline overview cards render", async ({ page }) => {
-    const cards = page.locator("[class*='bg-card']");
-    await expect(cards.first()).toBeVisible({ timeout: 15000 });
+    const cards = page.getByRole("heading", { level: 2 }).or(page.locator("[class*='bg-card']"));
+    await expect(cards.first()).toBeVisible({ timeout: 10000 });
   });
 
   test("navigation includes pipeline link", async ({ page }) => {

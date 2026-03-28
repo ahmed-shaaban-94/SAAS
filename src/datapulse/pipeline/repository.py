@@ -44,9 +44,12 @@ class PipelineRepository:
 
     @staticmethod
     def _row_to_response(row) -> PipelineRunResponse:
-        meta = row._mapping["metadata"]
+        meta = row._mapping.get("metadata") or {}
         if isinstance(meta, str):
-            meta = json.loads(meta)
+            try:
+                meta = json.loads(meta)
+            except json.JSONDecodeError:
+                meta = {}
         return PipelineRunResponse(
             id=row._mapping["id"],
             tenant_id=row._mapping["tenant_id"],

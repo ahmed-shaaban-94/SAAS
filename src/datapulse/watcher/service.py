@@ -94,7 +94,10 @@ class FileWatcherService:
         if self._observer:
             self._observer.stop()
             self._observer.join(timeout=5)
-            log.info("watcher_stopped")
+            if self._observer.is_alive():
+                log.warning("observer_thread_did_not_stop", timeout=5)
+            else:
+                log.info("watcher_stopped")
 
     @property
     def is_running(self) -> bool:
