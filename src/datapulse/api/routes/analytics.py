@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 
 from datapulse.analytics.models import (
@@ -177,7 +177,7 @@ def get_returns(
 
 @router.get("/products/{product_key}", response_model=ProductPerformance)
 def get_product_detail(
-    product_key: int,
+    product_key: Annotated[int, Path(ge=1, description="Product surrogate key")],
     service: ServiceDep,
 ) -> ProductPerformance:
     """Detailed product performance metrics."""
@@ -189,7 +189,7 @@ def get_product_detail(
 
 @router.get("/customers/{customer_key}", response_model=CustomerAnalytics)
 def get_customer_detail(
-    customer_key: int,
+    customer_key: Annotated[int, Path(ge=1, description="Customer surrogate key")],
     service: ServiceDep,
 ) -> CustomerAnalytics:
     """Detailed customer analytics."""
