@@ -11,8 +11,9 @@ from typing import Annotated
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from datapulse.api.limiter import limiter
 from datapulse.api.deps import get_pipeline_executor, get_pipeline_service, get_quality_service, verify_api_key
 from datapulse.config import get_settings
 from datapulse.logging import get_logger
@@ -47,7 +48,9 @@ QualityServiceDep = Annotated[QualityService, Depends(get_quality_service)]
 
 
 @router.get("/runs", response_model=PipelineRunList)
+@limiter.limit("100/minute")
 def list_runs(
+    request: Request,
     service: ServiceDep,
     status: Annotated[str | None, Query(description="Filter by status")] = None,
     started_after: Annotated[
@@ -75,7 +78,9 @@ def list_runs(
 
 
 @router.get("/runs/latest", response_model=PipelineRunResponse)
+@limiter.limit("100/minute")
 def get_latest_run(
+    request: Request,
     service: ServiceDep,
     run_type: Annotated[str | None, Query(description="Filter by run type")] = None,
 ) -> PipelineRunResponse:
@@ -87,7 +92,8 @@ def get_latest_run(
 
 
 @router.get("/runs/{run_id}", response_model=PipelineRunResponse)
-def get_run(service: ServiceDep, run_id: UUID) -> PipelineRunResponse:
+@limiter.limit("100/minute")
+def get_run(request: Request, service: ServiceDep, run_id: UUID) -> PipelineRunResponse:
     """Return a single pipeline run by ID."""
     result = service.get_run(run_id)
     if result is None:
@@ -96,16 +102,18 @@ def get_run(service: ServiceDep, run_id: UUID) -> PipelineRunResponse:
 
 
 @router.post("/runs", response_model=PipelineRunResponse, status_code=201)
+@limiter.limit("100/minute")
 def create_run(
-    service: ServiceDep, body: PipelineRunCreate,
+    request: Request, service: ServiceDep, body: PipelineRunCreate,
 ) -> PipelineRunResponse:
     """Create a new pipeline run record."""
     return service.start_run(body)
 
 
 @router.patch("/runs/{run_id}", response_model=PipelineRunResponse)
+@limiter.limit("100/minute")
 def update_run(
-    service: ServiceDep, run_id: UUID, body: PipelineRunUpdate,
+    request: Request, service: ServiceDep, run_id: UUID, body: PipelineRunUpdate,
 ) -> PipelineRunResponse:
     """Update an existing pipeline run (status, metrics, error)."""
     try:
@@ -118,7 +126,9 @@ def update_run(
 
 
 @router.post("/trigger", response_model=TriggerResponse, status_code=202)
+@limiter.limit("10/minute")
 def trigger_pipeline(
+    request: Request,
     service: ServiceDep,
     body: TriggerRequest | None = None,
 ) -> TriggerResponse:
@@ -168,7 +178,9 @@ def trigger_pipeline(
 
 
 @router.post("/execute/bronze", response_model=ExecutionResult)
+@limiter.limit("10/minute")
 def execute_bronze(
+    request: Request,
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
@@ -180,7 +192,9 @@ def execute_bronze(
 
 
 @router.post("/execute/dbt-staging", response_model=ExecutionResult)
+@limiter.limit("10/minute")
 def execute_dbt_staging(
+    request: Request,
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
@@ -189,7 +203,9 @@ def execute_dbt_staging(
 
 
 @router.post("/execute/dbt-marts", response_model=ExecutionResult)
+@limiter.limit("10/minute")
 def execute_dbt_marts(
+    request: Request,
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
@@ -198,7 +214,9 @@ def execute_dbt_marts(
 
 
 @router.get("/runs/{run_id}/quality", response_model=QualityCheckList)
+@limiter.limit("100/minute")
 def get_quality_checks(
+    request: Request,
     service: ServiceDep,
     quality_service: QualityServiceDep,
     run_id: UUID,
@@ -216,7 +234,9 @@ def get_quality_checks(
 
 
 @router.post("/execute/quality-check", response_model=QualityReport)
+@limiter.limit("10/minute")
 def execute_quality_check(
+    request: Request,
     quality_service: QualityServiceDep,
     body: QualityCheckRequest,
 ) -> QualityReport:

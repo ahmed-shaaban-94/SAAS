@@ -12,10 +12,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative
 from datapulse.ai_light.service import AILightService
+from datapulse.api.limiter import limiter
 from datapulse.api.deps import get_ai_light_service, verify_api_key
 from datapulse.logging import get_logger
 
@@ -26,13 +27,16 @@ ServiceDep = Annotated[AILightService, Depends(get_ai_light_service)]
 
 
 @router.get("/status")
-def get_status(service: ServiceDep) -> dict:
+@limiter.limit("20/minute")
+def get_status(request: Request, service: ServiceDep) -> dict:
     """Check if AI-Light is available (OpenRouter configured)."""
     return {"available": service.is_available}
 
 
 @router.get("/summary", response_model=AISummary)
+@limiter.limit("20/minute")
 def get_summary(
+    request: Request,
     service: ServiceDep,
     target_date: Annotated[date | None, Query()] = None,
 ) -> AISummary:
@@ -47,7 +51,9 @@ def get_summary(
 
 
 @router.get("/anomalies", response_model=AnomalyReport)
+@limiter.limit("20/minute")
 def get_anomalies(
+    request: Request,
     service: ServiceDep,
     start_date: Annotated[date | None, Query()] = None,
     end_date: Annotated[date | None, Query()] = None,
@@ -61,7 +67,9 @@ def get_anomalies(
 
 
 @router.get("/changes", response_model=ChangeNarrative)
+@limiter.limit("20/minute")
 def get_changes(
+    request: Request,
     service: ServiceDep,
     current_date: Annotated[date | None, Query()] = None,
     previous_date: Annotated[date | None, Query()] = None,

@@ -10,8 +10,10 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
+
+from datapulse.api.limiter import limiter
 
 from datapulse.analytics.models import (
     AnalyticsFilter,
@@ -102,7 +104,9 @@ ServiceDep = Annotated[AnalyticsService, Depends(get_analytics_service)]
 
 
 @router.get("/summary", response_model=KPISummary)
+@limiter.limit("100/minute")
 def get_summary(
+    request: Request,
     service: ServiceDep,
     target_date: Annotated[date | None, Query()] = None,
 ) -> KPISummary:
@@ -111,7 +115,9 @@ def get_summary(
 
 
 @router.get("/trends/daily", response_model=TrendResult)
+@limiter.limit("100/minute")
 def get_daily_trend(
+    request: Request,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
@@ -121,7 +127,9 @@ def get_daily_trend(
 
 
 @router.get("/trends/monthly", response_model=TrendResult)
+@limiter.limit("100/minute")
 def get_monthly_trend(
+    request: Request,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
@@ -131,7 +139,9 @@ def get_monthly_trend(
 
 
 @router.get("/products/top", response_model=RankingResult)
+@limiter.limit("100/minute")
 def get_top_products(
+    request: Request,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
@@ -140,7 +150,9 @@ def get_top_products(
 
 
 @router.get("/customers/top", response_model=RankingResult)
+@limiter.limit("100/minute")
 def get_top_customers(
+    request: Request,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
@@ -149,7 +161,9 @@ def get_top_customers(
 
 
 @router.get("/staff/top", response_model=RankingResult)
+@limiter.limit("100/minute")
 def get_top_staff(
+    request: Request,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
@@ -158,7 +172,9 @@ def get_top_staff(
 
 
 @router.get("/sites", response_model=RankingResult)
+@limiter.limit("100/minute")
 def get_sites(
+    request: Request,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
@@ -167,7 +183,9 @@ def get_sites(
 
 
 @router.get("/returns", response_model=list[ReturnAnalysis])
+@limiter.limit("100/minute")
 def get_returns(
+    request: Request,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> list[ReturnAnalysis]:
@@ -176,7 +194,9 @@ def get_returns(
 
 
 @router.get("/products/{product_key}", response_model=ProductPerformance)
+@limiter.limit("100/minute")
 def get_product_detail(
+    request: Request,
     product_key: Annotated[int, Path(ge=1, description="Product surrogate key")],
     service: ServiceDep,
 ) -> ProductPerformance:
@@ -188,7 +208,9 @@ def get_product_detail(
 
 
 @router.get("/customers/{customer_key}", response_model=CustomerAnalytics)
+@limiter.limit("100/minute")
 def get_customer_detail(
+    request: Request,
     customer_key: Annotated[int, Path(ge=1, description="Customer surrogate key")],
     service: ServiceDep,
 ) -> CustomerAnalytics:

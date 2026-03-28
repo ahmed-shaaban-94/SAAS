@@ -14,7 +14,16 @@ from unittest.mock import patch
 
 import pytest
 
+from datapulse.api.limiter import limiter
 from datapulse.config import Settings, get_settings
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _disable_rate_limiting():
+    """Disable rate limiting for all tests."""
+    limiter.enabled = False
+    yield
+    limiter.enabled = True
 
 
 @pytest.fixture(autouse=True, scope="session")

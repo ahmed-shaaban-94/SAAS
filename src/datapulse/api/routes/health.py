@@ -1,10 +1,11 @@
 """Health check endpoint."""
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from datapulse.api.limiter import limiter
 from datapulse.api.deps import _get_engine
 
 router = APIRouter(tags=["health"])
@@ -12,7 +13,8 @@ logger = structlog.get_logger()
 
 
 @router.get("/health")
-def health_check() -> JSONResponse:
+@limiter.limit("200/minute")
+def health_check(request: Request) -> JSONResponse:
     try:
         with _get_engine().connect() as conn:
             conn.execute(text("SELECT 1"))

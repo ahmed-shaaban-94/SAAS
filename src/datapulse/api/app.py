@@ -9,7 +9,9 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
+from datapulse.api.limiter import limiter
 from datapulse.api.routes import ai_light, analytics, health, pipeline
 from datapulse.config import get_settings
 
@@ -21,6 +23,16 @@ def create_app() -> FastAPI:
         title="DataPulse API",
         description="Sales analytics API for DataPulse",
         version="0.1.0",
+    )
+
+    # Rate limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(
+        RateLimitExceeded,
+        lambda request, exc: JSONResponse(
+            status_code=429,
+            content={"detail": f"Rate limit exceeded: {exc.detail}"},
+        ),
     )
 
     # CORS for Next.js dev server
