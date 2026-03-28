@@ -11,6 +11,7 @@ import {
   Building2,
   RotateCcw,
   GitBranch,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
@@ -24,6 +25,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Building2,
   RotateCcw,
   GitBranch,
+  Sparkles,
 };
 
 export function Sidebar() {

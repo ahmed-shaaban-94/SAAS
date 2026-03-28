@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
 
+    # File watcher
+    watcher_debounce_seconds: float = 10.0
+
     # Notifications
     slack_webhook_url: str = ""
     notification_email: str = ""

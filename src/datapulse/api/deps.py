@@ -18,6 +18,7 @@ from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
 from datapulse.pipeline.repository import PipelineRepository
 from datapulse.pipeline.service import PipelineService
+from datapulse.ai_light.service import AILightService
 
 logger = structlog.get_logger()
 
@@ -76,3 +77,10 @@ def get_quality_service(
     repo = QualityRepository(session)
     settings = get_settings()
     return QualityService(repo, session, settings)
+
+
+def get_ai_light_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> AILightService:
+    settings = get_settings()
+    return AILightService(settings, session)

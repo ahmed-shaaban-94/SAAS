@@ -93,3 +93,46 @@ export interface TriggerResponse {
   run_id: string;
   status: string;
 }
+
+// --- AI-Light types (Phase 2.8) ---
+
+export interface AISummary {
+  narrative: string;
+  highlights: string[];
+  period: string;
+}
+
+export interface Anomaly {
+  date: string;
+  metric: string;
+  actual_value: number;
+  expected_range_low: number;
+  expected_range_high: number;
+  severity: string;
+  description: string;
+}
+
+export interface AnomalyReport {
+  anomalies: Anomaly[];
+  period: string;
+  total_checked: number;
+}
+
+export interface ChangeDelta {
+  metric: string;
+  previous_value: number;
+  current_value: number;
+  change_pct: number;
+  direction: string;
+}
+
+export interface ChangeNarrative {
+  narrative: string;
+  deltas: ChangeDelta[];
+  current_period: string;
+  previous_period: string;
+}
+
+export interface AIStatus {
+  available: boolean;
+}

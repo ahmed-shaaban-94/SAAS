@@ -115,6 +115,22 @@ services:
       retries: 3
       start_period: 40s
 
+  watcher:
+    build: .
+    container_name: datapulse-watcher
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-datapulse}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-datapulse}
+      PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:-}
+    command: ["python", "-m", "datapulse.watcher", "--debounce", "10"]
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - "${RAW_SALES_PATH:-./data/raw/sales}:/app/data/raw/sales"
+
   redis:
     image: redis:7-alpine
     container_name: datapulse-redis

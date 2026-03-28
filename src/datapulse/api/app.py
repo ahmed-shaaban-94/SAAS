@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from datapulse.api.routes import analytics, health, pipeline
+from datapulse.api.routes import ai_light, analytics, health, pipeline
 from datapulse.config import get_settings
 
 logger = structlog.get_logger()
@@ -72,5 +72,6 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(analytics.router, prefix="/api/v1")
     app.include_router(pipeline.router, prefix="/api/v1")
+    app.include_router(ai_light.router, prefix="/api/v1")
 
     return app
