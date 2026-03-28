@@ -45,8 +45,8 @@ def test_build_where_date_range_date_key():
         f, use_year_month=False
     )
     assert "date_key BETWEEN :start_date AND :end_date" in clause
-    assert params["start_date"] == date(2024, 1, 1)
-    assert params["end_date"] == date(2024, 12, 31)
+    assert params["start_date"] == 20240101
+    assert params["end_date"] == 20241231
 
 
 def test_build_where_multiple_filters():

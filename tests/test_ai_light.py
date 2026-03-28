@@ -193,6 +193,11 @@ def _mock_trend(values=None):
         TimeSeriesPoint(period=f"2025-01-{i + 1:02d}", value=Decimal(str(v)))
         for i, v in enumerate(values)
     ]
+    if not values:
+        return TrendResult(
+            points=[], total=Decimal("0"), average=Decimal("0"),
+            minimum=Decimal("0"), maximum=Decimal("0"), growth_pct=None,
+        )
     total = sum(values)
     return TrendResult(
         points=points,
@@ -332,56 +337,47 @@ class TestAILightService:
 
 class TestAILightEndpoints:
     @pytest.fixture
-    def client(self):
+    def mock_svc(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def client(self, mock_svc):
         from fastapi.testclient import TestClient
 
         from datapulse.api.app import create_app
+        from datapulse.api.deps import get_ai_light_service
 
         app = create_app()
-        return TestClient(app)
+        app.dependency_overrides[get_ai_light_service] = lambda: mock_svc
+        yield TestClient(app)
+        app.dependency_overrides.clear()
 
-    @patch("datapulse.api.deps.get_ai_light_service")
-    def test_status_endpoint(self, mock_dep, client):
-        mock_svc = MagicMock()
+    def test_status_endpoint(self, mock_svc, client):
         mock_svc.is_available = True
-        mock_dep.return_value = mock_svc
-
         resp = client.get("/api/v1/ai-light/status")
         assert resp.status_code == 200
         assert resp.json()["available"] is True
 
-    @patch("datapulse.api.deps.get_ai_light_service")
-    def test_summary_returns_503_when_unavailable(self, mock_dep, client):
-        mock_svc = MagicMock()
+    def test_summary_returns_503_when_unavailable(self, mock_svc, client):
         mock_svc.is_available = False
-        mock_dep.return_value = mock_svc
-
         resp = client.get("/api/v1/ai-light/summary")
         assert resp.status_code == 503
 
-    @patch("datapulse.api.deps.get_ai_light_service")
-    def test_anomalies_endpoint(self, mock_dep, client):
-        mock_svc = MagicMock()
+    def test_anomalies_endpoint(self, mock_svc, client):
         mock_svc.detect_anomalies.return_value = AnomalyReport(
             anomalies=[], period="2025-01", total_checked=30
         )
-        mock_dep.return_value = mock_svc
-
         resp = client.get("/api/v1/ai-light/anomalies")
         assert resp.status_code == 200
         assert resp.json()["total_checked"] == 30
 
-    @patch("datapulse.api.deps.get_ai_light_service")
-    def test_changes_endpoint(self, mock_dep, client):
-        mock_svc = MagicMock()
+    def test_changes_endpoint(self, mock_svc, client):
         mock_svc.explain_changes.return_value = ChangeNarrative(
             narrative="Test",
             deltas=[],
             current_period="2025-02",
             previous_period="2025-01",
         )
-        mock_dep.return_value = mock_svc
-
         resp = client.get("/api/v1/ai-light/changes")
         assert resp.status_code == 200
         assert resp.json()["narrative"] == "Test"
