@@ -35,8 +35,10 @@ test.describe("Navigation", () => {
     await expect(overviewLink).toHaveClass(/text-accent/);
   });
 
-  test("root redirects to dashboard", async ({ page }) => {
+  test("root shows landing page", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator("h1")).toContainText(/Revenue Intelligence/i, {
+      timeout: 15000,
+    });
   });
 });

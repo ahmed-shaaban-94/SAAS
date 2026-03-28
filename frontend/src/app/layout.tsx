@@ -1,12 +1,25 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Providers } from "@/components/providers";
-import { ErrorBoundary } from "@/components/error-boundary";
 
 export const metadata: Metadata = {
-  title: "DataPulse",
-  description: "Sales analytics dashboard",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://datapulse.dev"),
+  title: {
+    default: "DataPulse - Turn Raw Sales Data into Revenue Intelligence",
+    template: "%s | DataPulse",
+  },
+  description:
+    "Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. AI-powered insights, real-time dashboards, and enterprise-grade quality gates.",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "DataPulse",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -16,14 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-page text-text-primary antialiased">
-        <Providers>
-          <ErrorBoundary>
-            <Sidebar />
-            <main className="min-h-screen p-4 lg:ml-60 lg:p-6">{children}</main>
-          </ErrorBoundary>
-        </Providers>
-      </body>
+      <body className="bg-page text-text-primary antialiased">{children}</body>
     </html>
   );
 }
