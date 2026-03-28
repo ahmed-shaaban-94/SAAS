@@ -113,7 +113,12 @@ migrations/                      # SQL migrations (tracked via schema_migrations
 ├── 000_create_schema_migrations.sql  # Migration tracking bootstrap
 ├── 001_create_bronze_schema.sql      # Bronze schema + tables
 ├── 002_add_rls_and_roles.sql         # RLS + read-only role
-└── 003_add_tenant_id.sql            # Tenant-scoped RLS (tenant_id col, bronze.tenants table)
+├── 003_add_tenant_id.sql            # Tenant-scoped RLS (tenant_id col, bronze.tenants table)
+└── 004_create_n8n_schema.sql        # n8n workflow engine schema + grants
+
+n8n/                                 # n8n workflow automation (Phase 2)
+└── workflows/
+    └── 2.1.1_health_check.json      # API health check every 5 min
 
 frontend/                            # Next.js 14 dashboard (Phase 1.5)
 ├── Dockerfile                       # Multi-stage: dev + builder + production
@@ -216,6 +221,8 @@ tests/
 | `pgadmin` | datapulse-pgadmin | 5050 | Database admin UI |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
+| `redis` | datapulse-redis | (internal) | Redis cache for n8n |
+| `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
 
 ```bash
 docker compose up -d --build
@@ -335,6 +342,8 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 1.5.4-1.5.6**: All 5 analytics pages (products, customers, staff, sites, returns) [DONE]
 - **Phase 1.5.7**: Polish, E2E tests, Docker finalization [DONE]
 - **Phase 1.5.8**: Audit & debug — security, correctness, quality fixes (21 files, CORS, exception handler, health 503, JsonDecimal, ErrorBoundary, chart theming, E2E hardening) [DONE]
-- **Phase 2**: Automation via n8n workflows
+- **Phase 2.0**: Infra prep — api volumes, deps, config, CORS [DONE]
+- **Phase 2.1**: n8n + Redis Docker infrastructure, health check workflow [DONE]
+- **Phase 2.2-2.8**: Pipeline tracking, webhooks, file watcher, quality gates, notifications, scheduling, AI-Light
 - **Phase 3**: AI-powered analysis via LangGraph
 - **Phase 4**: Public website / landing page
