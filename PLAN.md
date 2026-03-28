@@ -167,3 +167,93 @@ Production-ready MVP with 95%+ test coverage and comprehensive security audit.
 - [x] Dashboard: interactive charts with filters (6 pages, Recharts, date presets)
 - [x] Test coverage: 95%+ on Python modules
 - [x] All dbt tests passing (~40 tests)
+
+---
+
+## Phase 2: Automation & AI [DONE]
+
+**Goal**: Pipeline automation, quality gates, notifications, file watcher, AI insights.
+
+### Completed
+- [x] **2.0**: Infra prep — api volumes, deps, config, CORS
+- [x] **2.1**: n8n + Redis Docker infrastructure, health check workflow
+- [x] **2.2**: Pipeline status tracking — pipeline_runs table + RLS, pipeline module (models/repo/service), 5 API endpoints, 53 tests
+- [x] **2.3**: Webhook trigger & pipeline execution — executor module, 4 API endpoints, n8n workflow, 15 tests
+- [x] **2.5**: Data quality gates — quality_checks table + RLS, quality module, 2 API endpoints, 7 check functions, 79 tests
+- [x] **2.6**: Notifications — 4 n8n sub-workflows (success/failure/digest/global error), Slack webhook
+- [x] **2.7**: Pipeline dashboard — /pipeline page, 5 components, 3 SWR hooks, E2E tests
+- [x] **2.4**: File watcher — watchdog-based directory monitor, debounce logic, auto-triggers pipeline, Docker service
+- [x] **2.8**: AI-Light — OpenRouter client, AILightService, 4 API endpoints, statistical anomaly detection + AI, /insights page, n8n daily digest
+
+### Deliverable
+Fully automated pipeline with quality gates, Slack notifications, file watcher, and AI-powered insights.
+
+---
+
+## Phase 4: Public Website & Landing Page
+
+**Goal**: Modern, conversion-optimized landing page for DataPulse SaaS platform.
+**Detailed plan**: See [PHASE4_PLAN.md](./PHASE4_PLAN.md)
+
+### Phase 4.1 — Project Setup & Landing Hero
+- [ ] Route group restructure: `(marketing)` + `(app)` separation
+- [ ] Marketing layout (navbar + footer, no sidebar)
+- [ ] Responsive navbar with anchor scroll links + mobile hamburger
+- [ ] Hero section: headline, CTAs, CSS-only dashboard mockup
+- [ ] Footer: 4 columns + copyright
+- [ ] Extended Tailwind tokens (gradients, glow effects)
+- [ ] Move all dashboard routes under `(app)/`
+
+### Phase 4.2 — Features & How It Works
+- [ ] Features grid: 6 cards with icons (Import, Cleaning, Quality, Analytics, AI, Automation)
+- [ ] Pipeline visualization: 4 connected steps (Import → Clean → Analyze → Visualize)
+- [ ] Intersection observer hook for scroll animations
+- [ ] Responsive: 1→2→3 column grid
+
+### Phase 4.3 — Social Proof & Pricing
+- [ ] Stats banner: 4 animated count-up metrics
+- [ ] 3 pricing cards (Starter/Pro/Enterprise), Pro highlighted
+- [ ] FAQ accordion (6-8 questions)
+- [ ] Tech stack badges (Next.js, PostgreSQL, dbt, Polars, FastAPI, Docker)
+
+### Phase 4.4 — Auth & Waitlist
+- [ ] Waitlist email form (idle → loading → success → error states)
+- [ ] Next.js API route for email collection
+- [ ] Privacy policy page
+- [ ] Terms of service page
+- [ ] CTA section before footer
+
+### Phase 4.5 — SEO, Performance & Analytics
+- [ ] Meta tags + Open Graph + Twitter cards
+- [ ] JSON-LD structured data (Organization, FAQPage)
+- [ ] Sitemap.xml + robots.txt
+- [ ] OG image generation
+- [ ] Performance: Server Components first, system fonts, zero images
+
+### Phase 4.6 — Polish, Testing & Deploy
+- [ ] Playwright E2E tests (12-15 marketing specs + SEO specs)
+- [ ] Accessibility audit (WCAG AA, ARIA, keyboard nav, reduced motion)
+- [ ] Mobile responsiveness (320px → 1280px+)
+- [ ] Update existing E2E tests for route group changes
+
+### Architecture
+```
+src/app/
+  layout.tsx              ← Minimal: html + body + metadata only
+  (marketing)/            ← Public: navbar + footer
+    layout.tsx
+    page.tsx              ← Landing page (/)
+    privacy/page.tsx
+    terms/page.tsx
+  (app)/                  ← Dashboard: sidebar layout
+    layout.tsx
+    dashboard/page.tsx
+    products/page.tsx
+    ...8 route directories
+```
+
+### Key Numbers
+- 31 new files, 9 modified files, 8 moved directories
+- 0 new npm dependencies
+- 0 images (CSS-only visuals)
+- 12-15 E2E test specs
