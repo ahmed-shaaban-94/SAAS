@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.analytics.service import AnalyticsService
 from datapulse.config import get_settings
+from datapulse.pipeline.executor import PipelineExecutor
 from datapulse.pipeline.repository import PipelineRepository
 from datapulse.pipeline.service import PipelineService
 
@@ -41,6 +42,9 @@ def get_db_session() -> Generator[Session, None, None]:
     session = _get_session_factory()()
     try:
         yield session
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()
 
@@ -57,3 +61,8 @@ def get_pipeline_service(
 ) -> PipelineService:
     repo = PipelineRepository(session)
     return PipelineService(repo)
+
+
+def get_pipeline_executor() -> PipelineExecutor:
+    settings = get_settings()
+    return PipelineExecutor(settings=settings)

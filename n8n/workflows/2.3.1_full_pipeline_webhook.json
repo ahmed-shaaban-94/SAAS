@@ -1,0 +1,293 @@
+{
+  "name": "2.3.1 DataPulse Full Pipeline (Webhook)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pipeline-trigger",
+        "responseMode": "immediately",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Pipeline Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "pipeline-trigger"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://api:8000/api/v1/pipeline/runs/{{ $json.body.run_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"running\" }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "set-status-running",
+      "name": "Set Status Running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/pipeline/execute/bronze",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"run_id\": \"{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}\", \"source_dir\": \"{{ $('Webhook Pipeline Trigger').item.json.body.source_dir }}\", \"tenant_id\": {{ $('Webhook Pipeline Trigger').item.json.body.tenant_id }} }",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "execute-bronze",
+      "name": "Execute Bronze",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://api:8000/api/v1/pipeline/runs/{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"bronze_complete\" }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "set-status-bronze-complete",
+      "name": "Set Status Bronze Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/pipeline/execute/dbt-staging",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"run_id\": \"{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}\", \"source_dir\": \"{{ $('Webhook Pipeline Trigger').item.json.body.source_dir }}\", \"tenant_id\": {{ $('Webhook Pipeline Trigger').item.json.body.tenant_id }} }",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "execute-dbt-staging",
+      "name": "Execute dbt Staging",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://api:8000/api/v1/pipeline/runs/{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"silver_complete\" }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "set-status-silver-complete",
+      "name": "Set Status Silver Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/pipeline/execute/dbt-marts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"run_id\": \"{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}\", \"source_dir\": \"{{ $('Webhook Pipeline Trigger').item.json.body.source_dir }}\", \"tenant_id\": {{ $('Webhook Pipeline Trigger').item.json.body.tenant_id }} }",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "execute-dbt-marts",
+      "name": "Execute dbt Marts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1680, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://api:8000/api/v1/pipeline/runs/{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"gold_complete\" }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "set-status-gold-complete",
+      "name": "Set Status Gold Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://api:8000/api/v1/pipeline/runs/{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"success\" }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "set-status-success",
+      "name": "Set Status Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2160, 300]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [1200, 560]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://api:8000/api/v1/pipeline/runs/{{ $('Webhook Pipeline Trigger').item.json.body.run_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"failed\", \"error_message\": \"{{ $json.execution.error.message }}\" }",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "set-status-failed",
+      "name": "Set Status Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 560]
+    }
+  ],
+  "connections": {
+    "Webhook Pipeline Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Status Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Running": {
+      "main": [
+        [
+          {
+            "node": "Execute Bronze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Bronze": {
+      "main": [
+        [
+          {
+            "node": "Set Status Bronze Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Bronze Complete": {
+      "main": [
+        [
+          {
+            "node": "Execute dbt Staging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute dbt Staging": {
+      "main": [
+        [
+          {
+            "node": "Set Status Silver Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Silver Complete": {
+      "main": [
+        [
+          {
+            "node": "Execute dbt Marts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute dbt Marts": {
+      "main": [
+        [
+          {
+            "node": "Set Status Gold Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Gold Complete": {
+      "main": [
+        [
+          {
+            "node": "Set Status Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Status Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "datapulse-local"
+  },
+  "tags": [
+    {
+      "name": "phase-2.3"
+    }
+  ],
+  "active": false
+}

@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
 
 JsonDecimal = Annotated[Decimal, PlainSerializer(float, return_type=float)]
 
@@ -75,3 +75,70 @@ class PipelineRunList(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+class TriggerRequest(BaseModel):
+    """Request body for triggering a full pipeline run."""
+
+    model_config = ConfigDict(frozen=True)
+
+    source_dir: str = "/app/data/raw/sales"
+    tenant_id: int = 1
+
+    @field_validator("source_dir")
+    @classmethod
+    def _jail_source_dir(cls, v: str) -> str:
+        """Prevent path traversal — source_dir must be inside /app/data."""
+        from pathlib import PurePosixPath
+
+        normalized = PurePosixPath(v)
+        if ".." in normalized.parts:
+            raise ValueError("source_dir must not contain '..'")
+        allowed_root = PurePosixPath("/app/data")
+        if not str(normalized).startswith(str(allowed_root)):
+            raise ValueError(f"source_dir must be inside {allowed_root}")
+        return str(normalized)
+
+
+class TriggerResponse(BaseModel):
+    """Response from the trigger endpoint."""
+
+    model_config = ConfigDict(frozen=True)
+
+    run_id: UUID
+    status: str
+
+
+class ExecuteRequest(BaseModel):
+    """Request body for individual pipeline stage execution."""
+
+    model_config = ConfigDict(frozen=True)
+
+    run_id: UUID
+    source_dir: str = "/app/data/raw/sales"
+    tenant_id: int = 1
+
+    @field_validator("source_dir")
+    @classmethod
+    def _jail_source_dir(cls, v: str) -> str:
+        """Prevent path traversal — source_dir must be inside /app/data."""
+        from pathlib import PurePosixPath
+
+        normalized = PurePosixPath(v)
+        if ".." in normalized.parts:
+            raise ValueError("source_dir must not contain '..'")
+        allowed_root = PurePosixPath("/app/data")
+        if not str(normalized).startswith(str(allowed_root)):
+            raise ValueError(f"source_dir must be inside {allowed_root}")
+        return str(normalized)
+
+
+class ExecutionResult(BaseModel):
+    """Result from a pipeline stage execution."""
+
+    model_config = ConfigDict(frozen=True)
+
+    success: bool
+    rows_loaded: int | None = None
+    error: str | None = None
+    duration_seconds: float

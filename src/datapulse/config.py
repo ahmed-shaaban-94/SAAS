@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    # Pipeline execution
+    dbt_project_dir: str = "/app/dbt"
+    dbt_profiles_dir: str = "/app/dbt"
+    raw_sales_path: str = "/app/data/raw/sales"
+    pipeline_bronze_timeout: int = 600   # seconds
+    pipeline_dbt_timeout: int = 300      # seconds
+
     # n8n
     n8n_webhook_url: str = "http://n8n:5678/webhook/"
 

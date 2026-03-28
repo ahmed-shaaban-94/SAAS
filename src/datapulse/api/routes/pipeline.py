@@ -10,21 +10,32 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from datapulse.api.deps import get_pipeline_service
+from datapulse.api.deps import get_pipeline_executor, get_pipeline_service
+from datapulse.config import get_settings
+from datapulse.logging import get_logger
+from datapulse.pipeline.executor import PipelineExecutor
 from datapulse.pipeline.models import (
     VALID_STATUSES,
+    ExecuteRequest,
+    ExecutionResult,
     PipelineRunCreate,
     PipelineRunList,
     PipelineRunResponse,
     PipelineRunUpdate,
+    TriggerRequest,
+    TriggerResponse,
 )
 from datapulse.pipeline.service import PipelineService
+
+log = get_logger(__name__)
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 ServiceDep = Annotated[PipelineService, Depends(get_pipeline_service)]
+ExecutorDep = Annotated[PipelineExecutor, Depends(get_pipeline_executor)]
 
 
 @router.get("/runs", response_model=PipelineRunList)
@@ -96,3 +107,79 @@ def update_run(
     if result is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     return result
+
+
+@router.post("/trigger", response_model=TriggerResponse, status_code=202)
+def trigger_pipeline(
+    service: ServiceDep,
+    body: TriggerRequest | None = None,
+) -> TriggerResponse:
+    """Trigger a full pipeline run.
+
+    Creates a pipeline_run record (pending), then notifies n8n
+    via webhook to begin orchestration. Returns immediately.
+    """
+    req = body or TriggerRequest()
+    settings = get_settings()
+
+    # 1. Create the run record
+    run = service.start_run(
+        PipelineRunCreate(
+            run_type="full",
+            trigger_source="api",
+            metadata={"source_dir": req.source_dir},
+        ),
+        tenant_id=req.tenant_id,
+    )
+
+    # 2. Notify n8n (best-effort — run exists even if n8n is down)
+    webhook_url = f"{settings.n8n_webhook_url}pipeline-trigger"
+    try:
+        httpx.post(
+            webhook_url,
+            json={
+                "run_id": str(run.id),
+                "source_dir": req.source_dir,
+                "tenant_id": req.tenant_id,
+            },
+            timeout=10.0,
+            follow_redirects=False,
+        )
+    except (httpx.HTTPError, httpx.TimeoutException, OSError) as exc:
+        log.warning(
+            "n8n_webhook_failed",
+            webhook_url=webhook_url,
+            error=str(exc),
+        )
+
+    return TriggerResponse(run_id=run.id, status=run.status)
+
+
+@router.post("/execute/bronze", response_model=ExecutionResult)
+def execute_bronze(
+    executor: ExecutorDep,
+    body: ExecuteRequest,
+) -> ExecutionResult:
+    """Run the bronze loader stage for a pipeline run."""
+    return executor.run_bronze(
+        run_id=body.run_id,
+        source_dir=body.source_dir,
+    )
+
+
+@router.post("/execute/dbt-staging", response_model=ExecutionResult)
+def execute_dbt_staging(
+    executor: ExecutorDep,
+    body: ExecuteRequest,
+) -> ExecutionResult:
+    """Run dbt staging models."""
+    return executor.run_dbt(run_id=body.run_id, selector="staging")
+
+
+@router.post("/execute/dbt-marts", response_model=ExecutionResult)
+def execute_dbt_marts(
+    executor: ExecutorDep,
+    body: ExecuteRequest,
+) -> ExecutionResult:
+    """Run dbt marts models."""
+    return executor.run_dbt(run_id=body.run_id, selector="marts")

@@ -65,11 +65,12 @@ src/datapulse/
 │   ├── models.py                # Pydantic models (KPISummary, TrendResult, RankingResult, etc.)
 │   ├── repository.py            # SQLAlchemy read-only queries against marts schema
 │   └── service.py               # Business logic layer with default filters
-├── pipeline/                    # Pipeline status tracking (Phase 2.2)
+├── pipeline/                    # Pipeline status tracking + execution (Phase 2.2-2.3)
 │   ├── __init__.py
-│   ├── models.py                # Pydantic models (PipelineRunCreate/Update/Response/List)
+│   ├── models.py                # Pydantic models (PipelineRunCreate/Update/Response/List, Trigger*, Execute*, ExecutionResult)
 │   ├── repository.py            # SQLAlchemy CRUD for pipeline_runs table
-│   └── service.py               # Business logic (start/complete/fail runs)
+│   ├── service.py               # Business logic (start/complete/fail runs)
+│   └── executor.py              # Pipeline stage execution (bronze loader, dbt subprocess)
 ├── api/                         # FastAPI REST API
 │   ├── __init__.py
 │   ├── app.py                   # App factory (CORS, logging, routers)
@@ -78,7 +79,7 @@ src/datapulse/
 │       ├── __init__.py
 │       ├── health.py            # GET /health
 │       ├── analytics.py         # 10 analytics endpoints under /api/v1/analytics/
-│       └── pipeline.py          # 5 pipeline endpoints under /api/v1/pipeline/
+│       └── pipeline.py          # 9 pipeline endpoints under /api/v1/pipeline/ (5 CRUD + trigger + 3 execute)
 ├── logging.py                   # structlog configuration
 └── py.typed                     # PEP 561 typed package marker
 
@@ -124,7 +125,8 @@ migrations/                      # SQL migrations (tracked via schema_migrations
 
 n8n/                                 # n8n workflow automation (Phase 2)
 └── workflows/
-    └── 2.1.1_health_check.json      # API health check every 5 min
+    ├── 2.1.1_health_check.json      # API health check every 5 min
+    └── 2.3.1_full_pipeline_webhook.json  # Webhook -> Bronze -> dbt Staging -> dbt Marts
 
 frontend/                            # Next.js 14 dashboard (Phase 1.5)
 ├── Dockerfile                       # Multi-stage: dev + builder + production
@@ -352,6 +354,7 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 2.0**: Infra prep — api volumes, deps, config, CORS [DONE]
 - **Phase 2.1**: n8n + Redis Docker infrastructure, health check workflow [DONE]
 - **Phase 2.2**: Pipeline status tracking — pipeline_runs table + RLS, pipeline module (models/repo/service), 5 API endpoints, 53 tests [DONE]
-- **Phase 2.3-2.8**: Webhooks, file watcher, quality gates, notifications, scheduling, AI-Light
+- **Phase 2.3**: Webhook trigger & pipeline execution — executor module, 4 API endpoints (trigger + execute/*), n8n workflow, 15 tests [DONE]
+- **Phase 2.4-2.8**: File watcher, quality gates, notifications, scheduling, AI-Light
 - **Phase 3**: AI-powered analysis via LangGraph
 - **Phase 4**: Public website / landing page
