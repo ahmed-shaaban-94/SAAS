@@ -150,48 +150,66 @@ n8n/                                 # n8n workflow automation (Phase 2)
     ├── 2.6.4_global_error_handler.json   # Global n8n error handler
 └── 2.8.1_ai_insights_digest.json    # Daily AI digest → Slack (summary + anomalies)
 
-frontend/                            # Next.js 14 dashboard (Phase 1.5)
+frontend/                            # Next.js 14 dashboard + landing page
 ├── Dockerfile                       # Multi-stage: dev + builder + production
 ├── .dockerignore                    # Excludes node_modules, .next, e2e, etc.
 ├── package.json                     # Next.js 14, SWR, Recharts, Tailwind, Playwright
-├── playwright.config.ts             # Playwright E2E config (Chromium)
-├── tailwind.config.ts               # midnight-pharma color tokens + animations
-├── e2e/                             # Playwright E2E tests (18 specs)
+├── playwright.config.ts             # Playwright E2E config (Chromium + iPhone 13)
+├── tailwind.config.ts               # midnight-pharma color tokens + marketing animations
+├── e2e/                             # Playwright E2E tests
 │   ├── dashboard.spec.ts            # KPI cards, trend charts, filter bar
-│   ├── navigation.spec.ts           # Sidebar nav, active highlight, root redirect
+│   ├── navigation.spec.ts           # Sidebar nav, active highlight, landing page root
 │   ├── filters.spec.ts              # Date preset clicks
 │   ├── pages.spec.ts                # All 5 analytics pages load
 │   ├── health.spec.ts               # API health indicator
-│   └── pipeline.spec.ts             # Pipeline dashboard: title, trigger, overview, nav
+│   ├── pipeline.spec.ts             # Pipeline dashboard: title, trigger, overview, nav
+│   ├── insights.spec.ts             # AI Insights page
+│   ├── marketing.spec.ts            # 12 landing page specs (hero, nav, features, pricing, FAQ, waitlist, legal)
+│   └── marketing-seo.spec.ts        # 6 SEO specs (meta, OG, JSON-LD, sitemap, robots)
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx               # Root layout: responsive sidebar + providers
-│   │   ├── page.tsx                 # Redirect to /dashboard
+│   │   ├── layout.tsx               # Minimal root: html + body + metadata only
 │   │   ├── not-found.tsx            # 404 page
 │   │   ├── error.tsx                # Error boundary page
-│   │   ├── dashboard/
-│   │   │   ├── page.tsx             # Executive overview: KPI grid + trend charts
-│   │   │   └── loading.tsx          # Skeleton loading state
-│   │   ├── products/
-│   │   │   ├── page.tsx             # Product analytics page
-│   │   │   └── loading.tsx
-│   │   ├── customers/
-│   │   │   ├── page.tsx             # Customer intelligence page
-│   │   │   └── loading.tsx
-│   │   ├── staff/
-│   │   │   ├── page.tsx             # Staff performance page
-│   │   │   └── loading.tsx
-│   │   ├── sites/
-│   │   │   ├── page.tsx             # Site comparison page
-│   │   │   └── loading.tsx
-│   │   ├── returns/
-│   │   │   ├── page.tsx             # Returns analysis page
-│   │   │   └── loading.tsx
-│   │   └── insights/
-│   │       ├── page.tsx             # AI Insights page (summary + anomalies)
-│   │       └── loading.tsx
+│   │   ├── sitemap.ts               # Next.js sitemap convention
+│   │   ├── robots.ts                # Robots.txt (allow marketing, disallow dashboard)
+│   │   ├── opengraph-image.tsx      # Dynamic OG image generation (edge runtime)
+│   │   ├── (marketing)/             # Public pages — navbar + footer layout
+│   │   │   ├── layout.tsx           # Navbar + Footer + skip-to-content
+│   │   │   ├── page.tsx             # Landing page (/) — all sections assembled
+│   │   │   ├── privacy/page.tsx     # Privacy policy
+│   │   │   └── terms/page.tsx       # Terms of service
+│   │   ├── (app)/                   # Dashboard — sidebar layout
+│   │   │   ├── layout.tsx           # Sidebar + Providers + ErrorBoundary
+│   │   │   ├── dashboard/           # Executive overview
+│   │   │   ├── products/            # Product analytics
+│   │   │   ├── customers/           # Customer intelligence
+│   │   │   ├── staff/               # Staff performance
+│   │   │   ├── sites/               # Site comparison
+│   │   │   ├── returns/             # Returns analysis
+│   │   │   ├── pipeline/            # Pipeline dashboard
+│   │   │   └── insights/            # AI Insights
+│   │   └── api/waitlist/route.ts    # POST email waitlist with rate limiting
 │   ├── components/
-│   │   ├── layout/sidebar.tsx       # Nav sidebar (6 pages, responsive lg:flex)
+│   │   ├── marketing/               # Landing page components (Phase 4)
+│   │   │   ├── navbar.tsx           # Responsive top nav + mobile hamburger
+│   │   │   ├── footer.tsx           # 4-column footer + copyright
+│   │   │   ├── hero-section.tsx     # Headline + CTAs + CSS dashboard mockup
+│   │   │   ├── section-wrapper.tsx  # Reusable section with anchors + variants
+│   │   │   ├── features-grid.tsx    # 6 feature cards with scroll animation
+│   │   │   ├── feature-card.tsx     # Single feature card with icon
+│   │   │   ├── how-it-works.tsx     # 4-step pipeline visualization
+│   │   │   ├── pipeline-step.tsx    # Single pipeline step card
+│   │   │   ├── stats-banner.tsx     # 4 animated stat metrics
+│   │   │   ├── pricing-section.tsx  # 3 pricing tier cards
+│   │   │   ├── pricing-card.tsx     # Single pricing card
+│   │   │   ├── faq-section.tsx      # FAQ accordion (8 items)
+│   │   │   ├── faq-item.tsx         # Single FAQ accordion item
+│   │   │   ├── tech-badges.tsx      # Tech stack pill badges
+│   │   │   ├── waitlist-form.tsx    # Email form (idle/loading/success/error)
+│   │   │   ├── cta-section.tsx      # Full-width CTA with waitlist form
+│   │   │   └── json-ld.tsx          # JSON-LD structured data (Organization, WebSite, FAQPage)
+│   │   ├── layout/sidebar.tsx       # Nav sidebar (8 pages, responsive lg:flex)
 │   │   ├── layout/header.tsx        # Page header
 │   │   ├── layout/health-indicator.tsx # API health dot (green/amber/red)
 │   │   ├── dashboard/kpi-card.tsx   # KPI card with trend indicator
@@ -217,7 +235,7 @@ frontend/                            # Next.js 14 dashboard (Phase 1.5)
 │   │   ├── error-boundary.tsx       # React error boundary
 │   │   ├── empty-state.tsx          # Empty data placeholder
 │   │   └── loading-card.tsx         # Skeleton loading card
-│   ├── hooks/                       # 9 SWR hooks (1 per API endpoint)
+│   ├── hooks/                       # SWR hooks + utility hooks
 │   │   ├── use-summary.ts           # GET /api/v1/analytics/summary
 │   │   ├── use-daily-trend.ts       # GET /api/v1/analytics/trends/daily
 │   │   ├── use-monthly-trend.ts     # GET /api/v1/analytics/trends/monthly
@@ -229,7 +247,8 @@ frontend/                            # Next.js 14 dashboard (Phase 1.5)
 │   │   ├── use-health.ts            # GET /health
 │   │   ├── use-ai-summary.ts       # GET /api/v1/ai-light/summary
 │   │   ├── use-ai-anomalies.ts     # GET /api/v1/ai-light/anomalies
-│   │   └── use-ai-status.ts        # GET /api/v1/ai-light/status
+│   │   ├── use-ai-status.ts        # GET /api/v1/ai-light/status
+│   │   └── use-intersection-observer.ts # Scroll-triggered animation hook
 │   ├── contexts/filter-context.tsx  # Global filters synced to URL params
 │   ├── types/api.ts                 # TS interfaces matching Pydantic models
 │   ├── types/filters.ts             # FilterParams interface
@@ -239,6 +258,7 @@ frontend/                            # Next.js 14 dashboard (Phase 1.5)
 │       ├── formatters.ts            # Currency (EGP), percent, compact
 │       ├── date-utils.ts            # parseDateKey, date presets
 │       ├── constants.ts             # Chart colors, nav items, API URL
+│       ├── marketing-constants.ts   # All marketing copy (features, pricing, FAQ, stats)
 │       └── utils.ts                 # cn() helper
 
 tests/
@@ -396,4 +416,4 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 2.4**: File watcher — watchdog-based directory monitor, debounce logic, auto-triggers pipeline via API, Docker service, tests [DONE]
 - **Phase 2.8**: AI-Light — OpenRouter client, AILightService (summaries/anomalies/changes), 4 API endpoints, statistical anomaly detection + AI enhancement, frontend /insights page (summary card + anomaly list), 3 SWR hooks, n8n daily digest workflow, tests [DONE]
 - **Phase 3**: ~~AI-powered analysis via LangGraph~~ **CANCELLED** — replaced by Phase 2.8 AI-Light. LangGraph/Agent SDK not needed: OpenRouter free tier can't support agent loops reliably, and n8n + pre-computed dbt aggregations + simple LLM narration covers 80% of AI value at $0 cost. Conversational analytics deferred until paid API budget is available.
-- **Phase 4**: Public website / landing page
+- **Phase 4**: Public website & landing page — route groups `(marketing)`/`(app)`, hero, features, pricing, FAQ, waitlist API, privacy/terms, SEO (sitemap, robots, OG image, JSON-LD), 18 E2E tests [DONE]

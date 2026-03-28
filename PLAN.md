@@ -190,51 +190,44 @@ Fully automated pipeline with quality gates, Slack notifications, file watcher, 
 
 ---
 
-## Phase 4: Public Website & Landing Page
+## Phase 4: Public Website & Landing Page [DONE]
 
 **Goal**: Modern, conversion-optimized landing page for DataPulse SaaS platform.
 **Detailed plan**: See [PHASE4_PLAN.md](./PHASE4_PLAN.md)
 
-### Phase 4.1 — Project Setup & Landing Hero
-- [ ] Route group restructure: `(marketing)` + `(app)` separation
-- [ ] Marketing layout (navbar + footer, no sidebar)
-- [ ] Responsive navbar with anchor scroll links + mobile hamburger
-- [ ] Hero section: headline, CTAs, CSS-only dashboard mockup
-- [ ] Footer: 4 columns + copyright
-- [ ] Extended Tailwind tokens (gradients, glow effects)
-- [ ] Move all dashboard routes under `(app)/`
+### Completed
+- [x] Route group restructure: `(marketing)` + `(app)` separation
+- [x] Marketing layout (navbar + footer, no sidebar)
+- [x] Responsive navbar with anchor scroll links + mobile hamburger
+- [x] Hero section: headline, CTAs, CSS-only dashboard mockup
+- [x] Footer: 4 columns + copyright
+- [x] Extended Tailwind tokens (gradients, glow effects)
+- [x] Move all dashboard routes under `(app)/`
+- [x] Features grid: 6 cards with icons (Import, Cleaning, Quality, Analytics, AI, Automation)
+- [x] Pipeline visualization: 4 connected steps (Import -> Clean -> Analyze -> Visualize)
+- [x] Intersection observer hook for scroll animations
+- [x] Responsive: 1->2->3 column grid
+- [x] Stats banner: 4 animated count-up metrics
+- [x] 3 pricing cards (Starter/Pro/Enterprise), Pro highlighted
+- [x] FAQ accordion (8 questions)
+- [x] Tech stack badges (Next.js, PostgreSQL, dbt, Polars, FastAPI, Docker, n8n, Recharts)
+- [x] Waitlist email form (idle -> loading -> success -> error states)
+- [x] Next.js API route for email collection with rate limiting
+- [x] Privacy policy page
+- [x] Terms of service page
+- [x] CTA section before footer
+- [x] Meta tags + Open Graph + Twitter cards
+- [x] JSON-LD structured data (Organization, WebSite, FAQPage)
+- [x] Sitemap.xml + robots.txt
+- [x] OG image generation (edge runtime)
+- [x] Performance: Server Components first, system fonts, zero images
+- [x] Playwright E2E tests (12 marketing specs + 6 SEO specs)
+- [x] Accessibility: skip-to-content link, ARIA attributes, keyboard nav, reduced motion
+- [x] Mobile viewport project in Playwright (iPhone 13)
+- [x] Updated existing E2E tests for route group changes
 
-### Phase 4.2 — Features & How It Works
-- [ ] Features grid: 6 cards with icons (Import, Cleaning, Quality, Analytics, AI, Automation)
-- [ ] Pipeline visualization: 4 connected steps (Import → Clean → Analyze → Visualize)
-- [ ] Intersection observer hook for scroll animations
-- [ ] Responsive: 1→2→3 column grid
-
-### Phase 4.3 — Social Proof & Pricing
-- [ ] Stats banner: 4 animated count-up metrics
-- [ ] 3 pricing cards (Starter/Pro/Enterprise), Pro highlighted
-- [ ] FAQ accordion (6-8 questions)
-- [ ] Tech stack badges (Next.js, PostgreSQL, dbt, Polars, FastAPI, Docker)
-
-### Phase 4.4 — Auth & Waitlist
-- [ ] Waitlist email form (idle → loading → success → error states)
-- [ ] Next.js API route for email collection
-- [ ] Privacy policy page
-- [ ] Terms of service page
-- [ ] CTA section before footer
-
-### Phase 4.5 — SEO, Performance & Analytics
-- [ ] Meta tags + Open Graph + Twitter cards
-- [ ] JSON-LD structured data (Organization, FAQPage)
-- [ ] Sitemap.xml + robots.txt
-- [ ] OG image generation
-- [ ] Performance: Server Components first, system fonts, zero images
-
-### Phase 4.6 — Polish, Testing & Deploy
-- [ ] Playwright E2E tests (12-15 marketing specs + SEO specs)
-- [ ] Accessibility audit (WCAG AA, ARIA, keyboard nav, reduced motion)
-- [ ] Mobile responsiveness (320px → 1280px+)
-- [ ] Update existing E2E tests for route group changes
+### Deliverable
+Modern landing page with hero, features, pricing, FAQ, waitlist, legal pages, full SEO, and 18 E2E tests. Zero new dependencies, zero images (CSS-only visuals).
 
 ### Architecture
 ```
