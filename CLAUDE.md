@@ -65,6 +65,11 @@ src/datapulse/
 │   ├── models.py                # Pydantic models (KPISummary, TrendResult, RankingResult, etc.)
 │   ├── repository.py            # SQLAlchemy read-only queries against marts schema
 │   └── service.py               # Business logic layer with default filters
+├── pipeline/                    # Pipeline status tracking (Phase 2.2)
+│   ├── __init__.py
+│   ├── models.py                # Pydantic models (PipelineRunCreate/Update/Response/List)
+│   ├── repository.py            # SQLAlchemy CRUD for pipeline_runs table
+│   └── service.py               # Business logic (start/complete/fail runs)
 ├── api/                         # FastAPI REST API
 │   ├── __init__.py
 │   ├── app.py                   # App factory (CORS, logging, routers)
@@ -72,7 +77,8 @@ src/datapulse/
 │   └── routes/
 │       ├── __init__.py
 │       ├── health.py            # GET /health
-│       └── analytics.py         # 10 analytics endpoints under /api/v1/analytics/
+│       ├── analytics.py         # 10 analytics endpoints under /api/v1/analytics/
+│       └── pipeline.py          # 5 pipeline endpoints under /api/v1/pipeline/
 ├── logging.py                   # structlog configuration
 └── py.typed                     # PEP 561 typed package marker
 
@@ -260,6 +266,7 @@ docker compose up -d --build
 | `public_marts.agg_sales_by_staff` | marts | 3,123 | Staff performance by month |
 | `public_marts.agg_returns` | marts | 91,536 | Return analysis by product/customer |
 | `public_marts.metrics_summary` | marts | 1,094 | Daily KPI with MTD/YTD running totals |
+| `public.pipeline_runs` | public | — | Pipeline execution tracking (UUID PK, RLS, JSONB metadata) |
 
 ### Bronze Sales Columns (Key)
 
@@ -344,6 +351,7 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 1.5.8**: Audit & debug — security, correctness, quality fixes (21 files, CORS, exception handler, health 503, JsonDecimal, ErrorBoundary, chart theming, E2E hardening) [DONE]
 - **Phase 2.0**: Infra prep — api volumes, deps, config, CORS [DONE]
 - **Phase 2.1**: n8n + Redis Docker infrastructure, health check workflow [DONE]
-- **Phase 2.2-2.8**: Pipeline tracking, webhooks, file watcher, quality gates, notifications, scheduling, AI-Light
+- **Phase 2.2**: Pipeline status tracking — pipeline_runs table + RLS, pipeline module (models/repo/service), 5 API endpoints, 53 tests [DONE]
+- **Phase 2.3-2.8**: Webhooks, file watcher, quality gates, notifications, scheduling, AI-Light
 - **Phase 3**: AI-powered analysis via LangGraph
 - **Phase 4**: Public website / landing page

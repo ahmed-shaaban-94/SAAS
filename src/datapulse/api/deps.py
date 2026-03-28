@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.analytics.service import AnalyticsService
 from datapulse.config import get_settings
+from datapulse.pipeline.repository import PipelineRepository
+from datapulse.pipeline.service import PipelineService
 
 logger = structlog.get_logger()
 
@@ -48,3 +50,10 @@ def get_analytics_service(
 ) -> AnalyticsService:
     repo = AnalyticsRepository(session)
     return AnalyticsService(repo)
+
+
+def get_pipeline_service(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> PipelineService:
+    repo = PipelineRepository(session)
+    return PipelineService(repo)

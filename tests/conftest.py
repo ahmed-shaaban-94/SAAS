@@ -111,3 +111,51 @@ def api_client():
     yield client, mock_repo
 
     app.dependency_overrides.clear()
+
+
+# --- Pipeline fixtures ---
+
+
+@pytest.fixture()
+def pipeline_repo(mock_session):
+    """PipelineRepository with mocked session."""
+    from datapulse.pipeline.repository import PipelineRepository
+    return PipelineRepository(mock_session)
+
+
+@pytest.fixture()
+def mock_pipeline_repo():
+    """Fully mocked PipelineRepository for service tests."""
+    from datapulse.pipeline.repository import PipelineRepository
+    return create_autospec(PipelineRepository, instance=True)
+
+
+@pytest.fixture()
+def pipeline_service(mock_pipeline_repo):
+    """PipelineService with mocked repository."""
+    from datapulse.pipeline.service import PipelineService
+    return PipelineService(mock_pipeline_repo)
+
+
+@pytest.fixture()
+def pipeline_api_client():
+    """FastAPI TestClient with mocked pipeline dependencies."""
+    from fastapi.testclient import TestClient
+    from datapulse.pipeline.service import PipelineService
+    from datapulse.pipeline.repository import PipelineRepository
+
+    mock_session = MagicMock()
+    mock_pl_repo = create_autospec(PipelineRepository, instance=True)
+    mock_pl_svc = PipelineService(mock_pl_repo)
+
+    from datapulse.api.app import create_app
+    from datapulse.api import deps
+
+    app = create_app()
+    app.dependency_overrides[deps.get_db_session] = lambda: mock_session
+    app.dependency_overrides[deps.get_pipeline_service] = lambda: mock_pl_svc
+
+    client = TestClient(app)
+    yield client, mock_pl_repo
+
+    app.dependency_overrides.clear()
