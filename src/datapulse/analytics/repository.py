@@ -476,6 +476,10 @@ class AnalyticsRepository:
                     SUM(a.return_count)::NUMERIC
                     / NULLIF(SUM(a.transaction_count), 0), 0
                 )                            AS return_rate,
+                -- NOTE: SUM(unique_customers) across monthly aggregates is an
+                -- approximation — customers active in multiple months are counted
+                -- multiple times. A precise COUNT(DISTINCT) is not possible from
+                -- pre-aggregated data without access to the fact table.
                 SUM(a.unique_customers)      AS unique_customers
             FROM public_marts.agg_sales_by_product a
             INNER JOIN public_marts.dim_product p
@@ -513,6 +517,8 @@ class AnalyticsRepository:
                 SUM(a.total_quantity)        AS total_quantity,
                 SUM(a.total_net_amount)      AS total_net_amount,
                 SUM(a.transaction_count)     AS transaction_count,
+                -- NOTE: SUM of unique counts across months is an approximation;
+                -- entities active in multiple months are counted more than once.
                 SUM(a.unique_products)       AS unique_products,
                 SUM(a.return_count)          AS return_count
             FROM public_marts.agg_sales_by_customer a
@@ -551,6 +557,9 @@ class AnalyticsRepository:
                 SUM(a.total_net_amount)
                     / NULLIF(SUM(a.transaction_count), 0)
                                              AS avg_transaction_value,
+                -- NOTE: SUM(unique_customers) across monthly aggregates is an
+                -- approximation — customers active in multiple months are counted
+                -- multiple times. Precise COUNT(DISTINCT) requires the fact table.
                 SUM(a.unique_customers)      AS unique_customers
             FROM public_marts.agg_sales_by_staff a
             INNER JOIN public_marts.dim_staff s

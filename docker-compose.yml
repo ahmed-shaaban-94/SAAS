@@ -23,6 +23,8 @@ services:
       - ./dbt:/app/dbt
       - ./migrations:/app/migrations
       - "${RAW_SALES_PATH:-./data/raw/sales}:/app/data/raw/sales"
+    networks:
+      - backend
 
   api:
     build: .
@@ -43,6 +45,11 @@ services:
       PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:-}
       API_KEY: ${API_KEY:?API_KEY must be set}
     command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
     volumes:
       - ./src:/app/src
       - ./dbt:/app/dbt
@@ -54,6 +61,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    networks:
+      - frontend
+      - backend
 
   postgres:
     image: postgres:16-alpine
@@ -67,11 +77,18 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-datapulse}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U datapulse"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - backend
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -88,6 +105,8 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - backend
 
   frontend:
     build:
@@ -105,8 +124,16 @@ services:
       - /app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # WARNING: NEXT_PUBLIC_API_KEY is exposed to browsers (client-side JS).
+      # Replace with server-side-only auth (SERVER_API_KEY) when possible.
       - NEXT_PUBLIC_API_KEY=${API_KEY:?API_KEY must be set}
+      - SERVER_API_KEY=${API_KEY:?API_KEY must be set}
       - WATCHPACK_POLLING=true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
     depends_on:
       api:
         condition: service_healthy
@@ -116,6 +143,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - frontend
 
   watcher:
     build: .
@@ -140,6 +169,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - backend
 
   redis:
     image: redis:7-alpine
@@ -148,11 +179,18 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     volumes:
       - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=${REDIS_PASSWORD} redis-cli ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - backend
 
   n8n:
     image: n8nio/n8n:2.13.4
@@ -174,6 +212,11 @@ services:
       EXECUTIONS_MODE: regular
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:-}
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
@@ -185,6 +228,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    networks:
+      - backend
+
+networks:
+  frontend:
+  backend:
 
 volumes:
   pgdata:

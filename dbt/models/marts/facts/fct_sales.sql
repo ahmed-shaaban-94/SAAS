@@ -24,19 +24,19 @@ WITH stg AS (
 ),
 
 dim_product AS (
-    SELECT product_key, drug_code FROM {{ ref('dim_product') }}
+    SELECT product_key, tenant_id, drug_code FROM {{ ref('dim_product') }}
 ),
 
 dim_customer AS (
-    SELECT customer_key, customer_id FROM {{ ref('dim_customer') }}
+    SELECT customer_key, tenant_id, customer_id FROM {{ ref('dim_customer') }}
 ),
 
 dim_site AS (
-    SELECT site_key, site_code FROM {{ ref('dim_site') }}
+    SELECT site_key, tenant_id, site_code FROM {{ ref('dim_site') }}
 ),
 
 dim_staff AS (
-    SELECT staff_key, staff_id FROM {{ ref('dim_staff') }}
+    SELECT staff_key, tenant_id, staff_id FROM {{ ref('dim_staff') }}
 ),
 
 dim_billing AS (
@@ -73,8 +73,8 @@ SELECT
     s.has_insurance
 
 FROM stg s
-LEFT JOIN dim_product  p  ON s.drug_code   = p.drug_code
-LEFT JOIN dim_customer c  ON s.customer_id = c.customer_id
-LEFT JOIN dim_site     si ON s.site_code   = si.site_code
-LEFT JOIN dim_staff    st ON s.staff_id    = st.staff_id
+LEFT JOIN dim_product  p  ON s.drug_code   = p.drug_code   AND (s.tenant_id = p.tenant_id OR p.tenant_id IS NULL)
+LEFT JOIN dim_customer c  ON s.customer_id = c.customer_id AND (s.tenant_id = c.tenant_id OR c.tenant_id IS NULL)
+LEFT JOIN dim_site     si ON s.site_code   = si.site_code  AND (s.tenant_id = si.tenant_id OR si.tenant_id IS NULL)
+LEFT JOIN dim_staff    st ON s.staff_id    = st.staff_id   AND (s.tenant_id = st.tenant_id OR st.tenant_id IS NULL)
 LEFT JOIN dim_billing  b  ON s.billing_way = b.billing_way

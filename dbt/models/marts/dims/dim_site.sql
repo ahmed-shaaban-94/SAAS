@@ -212,7 +212,7 @@ UNION ALL
 
 SELECT
     -1                 AS site_key,
-    1                  AS tenant_id,
+    NULL::INT          AS tenant_id,
     '__UNKNOWN__'      AS site_code,
     'Unknown'          AS site_name,
     'Unknown'          AS area_manager,

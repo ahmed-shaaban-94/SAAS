@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import threading
 from queue import Empty, Queue
 
@@ -94,7 +95,6 @@ def _writer_loop(database_url: str) -> None:
             session = session_factory()
             try:
                 for record in batch:
-                    import json
                     record["request_params"] = json.dumps(record["request_params"])
                     session.execute(insert_sql, record)
                 session.commit()

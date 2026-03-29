@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useCustomerDetail } from "@/hooks/use-customer-detail";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -15,6 +15,9 @@ import { formatCurrency, formatNumber } from "@/lib/formatters";
 export default function CustomerDetailPage() {
   const params = useParams<{ key: string }>();
   const customerKey = Number(params.key);
+  if (isNaN(customerKey)) {
+    notFound();
+  }
   const { data, error, isLoading, mutate } = useCustomerDetail(customerKey);
 
   if (isLoading) {

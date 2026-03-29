@@ -19,9 +19,10 @@ import { CHART_THEME } from "@/lib/constants";
 
 export function DailyTrendChart() {
   const { filters } = useFilters();
-  const { data, isLoading } = useDailyTrend(filters);
+  const { data, error, isLoading } = useDailyTrend(filters);
 
   if (isLoading) return <LoadingCard lines={8} className="h-80" />;
+  if (error) return <div className="text-red-400 p-4">Failed to load daily trend data. Please try again.</div>;
   if (!data || data.points.length === 0)
     return <EmptyState title="No daily trend data" />;
 

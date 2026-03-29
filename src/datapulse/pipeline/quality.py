@@ -221,20 +221,24 @@ def check_null_rate(
     schema, table = _STAGE_TABLE[stage]
 
     threshold = 5.0
-    null_pcts: dict[str, float] = {}
 
+    # Validate all column names against the allowlist
     for col in CRITICAL_COLUMNS:
         if col not in _COLUMN_ALLOWLIST or not _SAFE_IDENTIFIER_RE.match(col):
             raise ValueError(f"Unsafe column name: {col!r}")
-        # schema, table, col are all resolved from trusted module-level constants
-        stmt = text(f"""
-            SELECT
-                (COUNT(*) FILTER (WHERE {col} IS NULL)) * 100.0
-                / NULLIF(COUNT(*), 0) AS null_pct
-            FROM {schema}.{table}
-        """)
-        result = session.execute(stmt).scalar_one()
-        null_pcts[col] = round(float(result or 0.0), 4)
+
+    # Single query to check all critical columns at once (avoids N full-table scans)
+    null_exprs = ", ".join(
+        f"(COUNT(*) FILTER (WHERE {col} IS NULL)) * 100.0"
+        f" / NULLIF(COUNT(*), 0) AS {col}_null_pct"
+        for col in CRITICAL_COLUMNS
+    )
+    stmt = text(f"SELECT {null_exprs} FROM {schema}.{table}")
+    row = session.execute(stmt).fetchone()
+
+    null_pcts: dict[str, float] = {}
+    for i, col in enumerate(CRITICAL_COLUMNS):
+        null_pcts[col] = round(float(row[i] or 0.0), 4)
 
     failing = {col: pct for col, pct in null_pcts.items() if pct >= threshold}
     passed = len(failing) == 0

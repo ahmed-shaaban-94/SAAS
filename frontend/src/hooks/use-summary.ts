@@ -3,6 +3,7 @@ import { fetchAPI } from "@/lib/api-client";
 import type { KPISummary } from "@/types/api";
 
 export function useSummary(targetDate?: string) {
+  // Query params are embedded in the path so SWR uses the full URL (with params) as cache key
   const key = targetDate
     ? `/api/v1/analytics/summary?target_date=${targetDate}`
     : "/api/v1/analytics/summary";

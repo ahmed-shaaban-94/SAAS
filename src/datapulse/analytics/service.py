@@ -62,6 +62,22 @@ class AnalyticsService:
             "monthly": self._repo.get_monthly_trend(f),
         }
 
+    def get_daily_trend(
+        self, filters: AnalyticsFilter | None = None
+    ) -> TrendResult:
+        """Daily revenue trend only (avoids fetching monthly data)."""
+        f = self._default_filter(filters)
+        log.info("daily_trend", filters=f.model_dump())
+        return self._repo.get_daily_trend(f)
+
+    def get_monthly_trend(
+        self, filters: AnalyticsFilter | None = None
+    ) -> TrendResult:
+        """Monthly revenue trend only (avoids fetching daily data)."""
+        f = self._default_filter(filters)
+        log.info("monthly_trend", filters=f.model_dump())
+        return self._repo.get_monthly_trend(f)
+
     def get_product_insights(
         self, filters: AnalyticsFilter | None = None
     ) -> RankingResult:

@@ -18,9 +18,10 @@ import { CHART_THEME } from "@/lib/constants";
 
 export function MonthlyTrendChart() {
   const { filters } = useFilters();
-  const { data, isLoading } = useMonthlyTrend(filters);
+  const { data, error, isLoading } = useMonthlyTrend(filters);
 
   if (isLoading) return <LoadingCard lines={8} className="h-80" />;
+  if (error) return <div className="text-red-400 p-4">Failed to load monthly trend data. Please try again.</div>;
   if (!data || data.points.length === 0)
     return <EmptyState title="No monthly trend data" />;
 

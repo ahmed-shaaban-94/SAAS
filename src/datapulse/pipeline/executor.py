@@ -6,6 +6,7 @@ No HTTP awareness, no status tracking — pure execution logic.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -17,6 +18,27 @@ from datapulse.logging import get_logger
 from datapulse.pipeline.models import ExecutionResult
 
 log = get_logger(__name__)
+
+# Patterns that may contain credentials in dbt/subprocess output
+_CREDENTIAL_PATTERNS = re.compile(
+    r"(password|passwd|secret|token|DATABASE_URL|postgresql://|postgres://)",
+    re.IGNORECASE,
+)
+_MAX_ERROR_LENGTH = 500
+
+
+def _sanitize_error(msg: str) -> str:
+    """Strip lines that may contain credentials and truncate to a safe length."""
+    lines = msg.splitlines()
+    safe_lines = [
+        line for line in lines if not _CREDENTIAL_PATTERNS.search(line)
+    ]
+    sanitized = "\n".join(safe_lines).strip()
+    if not sanitized:
+        sanitized = "Error details redacted (may contain credentials)"
+    if len(sanitized) > _MAX_ERROR_LENGTH:
+        sanitized = sanitized[:_MAX_ERROR_LENGTH] + "... (truncated)"
+    return sanitized
 
 
 class PipelineExecutor:
@@ -150,11 +172,12 @@ class PipelineExecutor:
             elapsed = round(time.perf_counter() - t0, 2)
 
             if proc.returncode != 0:
-                error_msg = (
+                raw_error = (
                     proc.stderr.strip()
                     or proc.stdout.strip()
                     or f"dbt exited with code {proc.returncode}"
                 )
+                error_msg = _sanitize_error(raw_error)
                 log.error("executor_dbt_failed", run_id=str(run_id), error=error_msg)
                 return ExecutionResult(
                     success=False,

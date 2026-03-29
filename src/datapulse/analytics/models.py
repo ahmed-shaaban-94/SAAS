@@ -13,6 +13,9 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
 # Decimal that serializes as a JSON number (float) instead of a string.
+# WARNING: Decimal->float conversion may lose precision for values exceeding
+# Number.MAX_SAFE_INTEGER (2^53). Financial totals in the billions are safe,
+# but if values reach ~9 quadrillion the least-significant digits will be lost.
 JsonDecimal = Annotated[Decimal, PlainSerializer(float, return_type=float)]
 
 

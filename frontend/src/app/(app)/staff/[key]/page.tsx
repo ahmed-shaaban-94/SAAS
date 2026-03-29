@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useStaffDetail } from "@/hooks/use-staff-detail";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -15,6 +15,9 @@ import { formatCurrency, formatNumber } from "@/lib/formatters";
 export default function StaffDetailPage() {
   const params = useParams<{ key: string }>();
   const staffKey = Number(params.key);
+  if (isNaN(staffKey)) {
+    notFound();
+  }
   const { data, error, isLoading, mutate } = useStaffDetail(staffKey);
 
   if (isLoading) {

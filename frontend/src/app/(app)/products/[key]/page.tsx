@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useProductDetail } from "@/hooks/use-product-detail";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -15,6 +15,9 @@ import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
 export default function ProductDetailPage() {
   const params = useParams<{ key: string }>();
   const productKey = Number(params.key);
+  if (isNaN(productKey)) {
+    notFound();
+  }
   const { data, error, isLoading, mutate } = useProductDetail(productKey);
 
   if (isLoading) {

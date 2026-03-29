@@ -11,6 +11,7 @@
 
 SELECT
     id,
+    tenant_id,
     source_file,
     source_quarter,
     loaded_at,
@@ -59,6 +60,10 @@ SELECT
     paid,
     kzwi1,
     subtotal5_discount,
-    add_dis
+    add_dis,
+
+    -- Insurance
+    insurance_tel,
+    insurance_no
 
 FROM {{ source('bronze', 'sales') }}

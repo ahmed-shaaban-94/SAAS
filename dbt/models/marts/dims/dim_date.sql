@@ -5,7 +5,7 @@
     )
 }}
 
--- Calendar dimension (2023-2025)
+-- Calendar dimension (2023-2030)
 -- Egypt weekend: Friday & Saturday
 -- month (INT) doubles as month_sort, day_of_week (INT) doubles as day_name sort
 -- Includes ISO week number, week_start_date, year_week, quarter_label, year_month
@@ -14,7 +14,7 @@ WITH date_spine AS (
     SELECT
         generate_series(
             '2023-01-01'::date,
-            '2025-12-31'::date,
+            '2030-12-31'::date,
             '1 day'::interval
         )::date AS full_date
 )

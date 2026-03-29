@@ -124,7 +124,7 @@ def get_daily_trend(
 ) -> TrendResult:
     """Daily net-sales trend line."""
     filters = _to_filter(params)
-    return service.get_revenue_trends(filters)["daily"]
+    return service.get_daily_trend(filters)
 
 
 @router.get("/trends/monthly", response_model=TrendResult)
@@ -136,7 +136,7 @@ def get_monthly_trend(
 ) -> TrendResult:
     """Monthly net-sales trend line."""
     filters = _to_filter(params)
-    return service.get_revenue_trends(filters)["monthly"]
+    return service.get_monthly_trend(filters)
 
 
 @router.get("/products/top", response_model=RankingResult)

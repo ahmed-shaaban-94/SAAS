@@ -13,7 +13,10 @@ import type { FilterParams } from "@/types/filters";
 interface FilterContextValue {
   filters: FilterParams;
   setFilters: (filters: FilterParams) => void;
-  updateFilter: (key: keyof FilterParams, value: string | number | undefined) => void;
+  updateFilter: {
+    (updates: Partial<FilterParams>): void;
+    (key: keyof FilterParams, value: string | number | undefined): void;
+  };
   clearFilters: () => void;
 }
 
@@ -59,16 +62,33 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   );
 
   const updateFilter = useCallback(
-    (key: keyof FilterParams, value: string | number | undefined) => {
-      const newFilters = { ...filters };
-      if (value === undefined) {
-        delete newFilters[key];
+    (
+      keyOrUpdates: keyof FilterParams | Partial<FilterParams>,
+      value?: string | number | undefined,
+    ) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      // Overload: single key-value pair (backward compatible)
+      if (typeof keyOrUpdates === "string") {
+        if (value === undefined) {
+          params.delete(keyOrUpdates);
+        } else {
+          params.set(keyOrUpdates, String(value));
+        }
       } else {
-        (newFilters as Record<string, unknown>)[key] = value;
+        // Overload: partial object — batch multiple updates in one navigation
+        Object.entries(keyOrUpdates).forEach(([k, v]) => {
+          if (v === undefined || v === null || v === "") {
+            params.delete(k);
+          } else {
+            params.set(k, String(v));
+          }
+        });
       }
-      setFilters(newFilters);
+
+      router.push(`${pathname}?${params.toString()}`);
     },
-    [filters, setFilters],
+    [searchParams, router, pathname],
   );
 
   const clearFilters = useCallback(() => {

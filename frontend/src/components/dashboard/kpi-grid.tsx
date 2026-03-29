@@ -6,7 +6,7 @@ import { useSummary } from "@/hooks/use-summary";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export function KPIGrid() {
-  const { data, isLoading } = useSummary();
+  const { data, error, isLoading } = useSummary();
 
   if (isLoading) {
     return (
@@ -17,6 +17,8 @@ export function KPIGrid() {
       </div>
     );
   }
+
+  if (error) return <div className="text-red-400 p-4">Failed to load KPI data. Please try again.</div>;
 
   if (!data) return null;
 

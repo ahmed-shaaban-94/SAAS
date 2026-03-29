@@ -32,6 +32,8 @@ class FileWatcherService:
             "tenant_id": 1,
         }
         headers = {}
+        if self._settings.api_key:
+            headers["X-API-Key"] = self._settings.api_key
         if self._settings.pipeline_webhook_secret:
             headers["X-Webhook-Secret"] = self._settings.pipeline_webhook_secret
 

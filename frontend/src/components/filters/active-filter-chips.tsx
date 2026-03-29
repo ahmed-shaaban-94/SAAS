@@ -13,8 +13,7 @@ export function ActiveFilterChips() {
       key: "date",
       label: `${filters.start_date} — ${filters.end_date}`,
       onRemove: () => {
-        updateFilter("start_date", undefined);
-        updateFilter("end_date", undefined);
+        updateFilter({ start_date: undefined, end_date: undefined });
       },
     });
   }
@@ -35,14 +34,14 @@ export function ActiveFilterChips() {
   if (filters.site_key !== undefined) {
     chips.push({
       key: "site",
-      label: `Site: ${filters.site_key}`,
+      label: `Site ID: ${filters.site_key}`,
       onRemove: () => updateFilter("site_key", undefined),
     });
   }
   if (filters.staff_key !== undefined) {
     chips.push({
       key: "staff",
-      label: `Staff: ${filters.staff_key}`,
+      label: `Staff ID: ${filters.staff_key}`,
       onRemove: () => updateFilter("staff_key", undefined),
     });
   }

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hmac
 from collections.abc import Generator
+from contextvars import ContextVar
 from typing import Annotated
 
 import structlog
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,11 +24,20 @@ from datapulse.pipeline.service import PipelineService
 
 logger = structlog.get_logger()
 
+# ContextVar to pass tenant_id from the dependency chain into get_db_session
+_current_tenant_id: ContextVar[str] = ContextVar("_current_tenant_id", default="1")
+
+
+async def get_tenant_id(x_tenant_id: str = Header(default="1")) -> str:
+    """Extract tenant ID from X-Tenant-ID header (defaults to '1')."""
+    _current_tenant_id.set(x_tenant_id)
+    return x_tenant_id
+
 
 async def verify_api_key(x_api_key: str = Header(...)) -> None:
     """Validate the X-API-Key header against the configured API key."""
     settings = get_settings()
-    if not settings.api_key or x_api_key != settings.api_key:
+    if not settings.api_key or not hmac.compare_digest(x_api_key, settings.api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
@@ -63,8 +74,10 @@ def get_db_session() -> Generator[Session, None, None]:
     session = _get_session_factory()()
     try:
         # Set RLS tenant context for row-level security
-        session.execute(text("SET LOCAL app.tenant_id = '1'"))
+        tenant_id = _current_tenant_id.get("1")
+        session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
         yield session
+        session.commit()
     except Exception:
         session.rollback()
         raise
@@ -74,6 +87,7 @@ def get_db_session() -> Generator[Session, None, None]:
 
 def get_analytics_service(
     session: Annotated[Session, Depends(get_db_session)],
+    _tenant_id: Annotated[str, Depends(get_tenant_id)] = "1",
 ) -> AnalyticsService:
     repo = AnalyticsRepository(session)
     return AnalyticsService(repo)
@@ -81,6 +95,7 @@ def get_analytics_service(
 
 def get_pipeline_service(
     session: Annotated[Session, Depends(get_db_session)],
+    _tenant_id: Annotated[str, Depends(get_tenant_id)] = "1",
 ) -> PipelineService:
     repo = PipelineRepository(session)
     return PipelineService(repo)
@@ -93,6 +108,7 @@ def get_pipeline_executor() -> PipelineExecutor:
 
 def get_quality_service(
     session: Annotated[Session, Depends(get_db_session)],
+    _tenant_id: Annotated[str, Depends(get_tenant_id)] = "1",
 ) -> QualityService:
     repo = QualityRepository(session)
     settings = get_settings()
@@ -101,6 +117,7 @@ def get_quality_service(
 
 def get_ai_light_service(
     session: Annotated[Session, Depends(get_db_session)],
+    _tenant_id: Annotated[str, Depends(get_tenant_id)] = "1",
 ) -> AILightService:
     settings = get_settings()
     return AILightService(settings, session)

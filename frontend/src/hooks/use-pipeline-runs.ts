@@ -15,6 +15,7 @@ export function usePipelineRuns(params?: PipelineRunsParams) {
   if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
 
   const qs = searchParams.toString();
+  // Query params are embedded in the path so SWR uses the full URL (with params) as cache key
   const key = `/api/v1/pipeline/runs${qs ? `?${qs}` : ""}`;
 
   const { data, error, isLoading, mutate } = useSWR(key, () =>

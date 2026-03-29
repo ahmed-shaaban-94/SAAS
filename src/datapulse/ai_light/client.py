@@ -50,7 +50,12 @@ class OpenRouterClient:
         log.info("openrouter_request", model=self._model)
 
         # Retry with exponential backoff for transient failures
+        # NOTE: time.sleep() blocks the current threadpool worker. In a
+        # high-concurrency deployment this should be replaced with an async
+        # client (httpx.AsyncClient) and asyncio.sleep(). Acceptable for now
+        # given low expected request volume to the AI-Light endpoints.
         max_retries = 3
+        resp = None
         for attempt in range(max_retries):
             try:
                 resp = httpx.post(
@@ -72,6 +77,9 @@ class OpenRouterClient:
                     error=str(exc),
                 )
                 time.sleep(wait)
+
+        if resp is None:
+            raise RuntimeError("OpenRouter request failed: no response after retries")
 
         data = resp.json()
 

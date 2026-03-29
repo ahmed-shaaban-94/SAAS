@@ -61,7 +61,7 @@ UNION ALL
 
 SELECT
     -1                  AS product_key,
-    1                   AS tenant_id,
+    NULL::INT           AS tenant_id,
     '__UNKNOWN__'       AS drug_code,
     'Unknown'           AS drug_name,
     'Unknown'           AS drug_brand,

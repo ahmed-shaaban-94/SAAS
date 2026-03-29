@@ -60,7 +60,7 @@ WITH source AS (
         -- Insurance
         insurance_tel,
         insurance_no
-    FROM {{ source('bronze', 'sales') }}
+    FROM {{ ref('bronze_sales') }}
 ),
 
 deduplicated AS (
@@ -112,7 +112,7 @@ SELECT
         WHEN UPPER(REGEXP_REPLACE(REGEXP_REPLACE(item_status, '[\s\u00A0]+', '', 'g'), '[-_]?T$', '')) IN ('DELISTED')  THEN 'Delisted'
         WHEN UPPER(REGEXP_REPLACE(REGEXP_REPLACE(item_status, '[\s\u00A0]+', '', 'g'), '[-_]?T$', '')) IN ('NEW')       THEN 'New'
         WHEN item_status IS NULL OR TRIM(item_status) = '' THEN 'Unknown'
-        ELSE TRIM(item_status)
+        ELSE 'Unknown'
     END                                 AS drug_status,
     item_status ~ '[-_\s]T$'           AS is_temporary,
 
