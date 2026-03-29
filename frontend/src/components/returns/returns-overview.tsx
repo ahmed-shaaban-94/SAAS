@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { LoadingCard } from "@/components/loading-card";
 import { ReturnsChart } from "@/components/returns/returns-chart";
 import { ReturnsTable } from "@/components/returns/returns-table";
+import CsvExportButton from "@/components/shared/csv-export-button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { useMemo } from "react";
 
@@ -76,9 +77,21 @@ export function ReturnsOverview() {
           <ReturnsChart items={data} />
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
-            Return Details
-          </h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-text-secondary">
+              Return Details
+            </h3>
+            <CsvExportButton
+              data={data.map((r) => ({
+                Product: r.drug_name,
+                Customer: r.customer_name,
+                Quantity: r.return_quantity,
+                Amount: r.return_amount,
+                Count: r.return_count,
+              }))}
+              filename="returns"
+            />
+          </div>
           <ReturnsTable items={data} />
         </div>
       </div>

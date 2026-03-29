@@ -16,11 +16,14 @@ from sqlalchemy.orm import Session
 from datapulse.analytics.models import (
     AnalyticsFilter,
     CustomerAnalytics,
+    FilterOption,
+    FilterOptions,
     KPISummary,
     ProductPerformance,
     RankingItem,
     RankingResult,
     ReturnAnalysis,
+    StaffPerformance,
     TimeSeriesPoint,
     TrendResult,
 )
@@ -186,6 +189,51 @@ class AnalyticsRepository:
     # ------------------------------------------------------------------
     # Public query methods
     # ------------------------------------------------------------------
+
+    def get_filter_options(self) -> FilterOptions:
+        """Return distinct values for all slicer/dropdown filters."""
+        log.info("get_filter_options")
+
+        cat_rows = self._session.execute(
+            text(
+                "SELECT DISTINCT drug_category FROM public_marts.agg_sales_by_product "
+                "WHERE drug_category IS NOT NULL ORDER BY drug_category"
+            )
+        ).fetchall()
+
+        brand_rows = self._session.execute(
+            text(
+                "SELECT DISTINCT drug_brand FROM public_marts.agg_sales_by_product "
+                "WHERE drug_brand IS NOT NULL ORDER BY drug_brand"
+            )
+        ).fetchall()
+
+        site_rows = self._session.execute(
+            text(
+                "SELECT DISTINCT site_key, site_name "
+                "FROM public_marts.agg_sales_by_site "
+                "WHERE site_key > 0 ORDER BY site_name"
+            )
+        ).fetchall()
+
+        staff_rows = self._session.execute(
+            text(
+                "SELECT DISTINCT staff_key, staff_name "
+                "FROM public_marts.agg_sales_by_staff "
+                "WHERE staff_key > 0 ORDER BY staff_name"
+            )
+        ).fetchall()
+
+        return FilterOptions(
+            categories=[str(r[0]) for r in cat_rows],
+            brands=[str(r[0]) for r in brand_rows],
+            sites=[
+                FilterOption(key=int(r[0]), label=str(r[1])) for r in site_rows
+            ],
+            staff=[
+                FilterOption(key=int(r[0]), label=str(r[1])) for r in staff_rows
+            ],
+        )
 
     def get_kpi_summary(self, target_date: date) -> KPISummary:
         """Return executive KPI snapshot for *target_date*.
@@ -486,4 +534,41 @@ class AnalyticsRepository:
             transaction_count=int(row[5]),
             unique_products=int(row[6]),
             return_count=int(row[7]),
+        )
+
+    def get_staff_detail(self, staff_key: int) -> StaffPerformance | None:
+        """Return detailed performance for a single staff member."""
+        log.info("get_staff_detail", staff_key=staff_key)
+
+        stmt = text("""
+            SELECT
+                a.staff_key,
+                s.staff_id,
+                s.staff_name,
+                s.position,
+                SUM(a.total_net_amount)      AS total_net_amount,
+                SUM(a.transaction_count)     AS transaction_count,
+                SUM(a.total_net_amount)
+                    / NULLIF(SUM(a.transaction_count), 0)
+                                             AS avg_transaction_value,
+                SUM(a.unique_customers)      AS unique_customers
+            FROM public_marts.agg_sales_by_staff a
+            INNER JOIN public_marts.dim_staff s
+                ON a.staff_key = s.staff_key
+            WHERE a.staff_key = :staff_key
+            GROUP BY a.staff_key, s.staff_id, s.staff_name, s.position
+        """)
+        row = self._session.execute(stmt, {"staff_key": staff_key}).fetchone()
+        if row is None:
+            return None
+
+        return StaffPerformance(
+            staff_key=int(row[0]),
+            staff_id=str(row[1]),
+            staff_name=str(row[2]),
+            staff_position=str(row[3]),
+            total_net_amount=Decimal(str(row[4])),
+            transaction_count=int(row[5]),
+            avg_transaction_value=Decimal(str(row[6])) if row[6] is not None else Decimal("0"),
+            unique_customers=int(row[7]),
         )

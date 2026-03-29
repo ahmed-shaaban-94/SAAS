@@ -307,10 +307,27 @@ def check_financial_signs(session: Session, run_id: UUID) -> QualityCheckResult:
     )
 
 
+_ALLOWED_DBT_TEST_SELECTORS: frozenset[str] = frozenset({
+    "staging", "marts", "bronze",
+    "tag:staging", "tag:marts", "tag:bronze",
+})
+
+
 def run_dbt_tests(
     run_id: UUID, selector: str, settings: Settings,
 ) -> QualityCheckResult:
     """Run dbt test for the given selector and return a QualityCheckResult."""
+    clean = selector.lstrip("+")
+    if clean not in _ALLOWED_DBT_TEST_SELECTORS:
+        return QualityCheckResult(
+            check_name=f"dbt_test_{selector}",
+            stage="gold",
+            severity="error",
+            passed=False,
+            message=f"dbt test selector '{selector}' is not in the allowed list",
+            details={},
+        )
+
     cmd = [
         "dbt", "test",
         "--project-dir", settings.dbt_project_dir,

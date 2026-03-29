@@ -17,10 +17,12 @@ from datapulse.analytics.models import (
     AnalyticsFilter,
     CustomerAnalytics,
     DateRange,
+    FilterOptions,
     KPISummary,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
+    StaffPerformance,
     TrendResult,
 )
 from datapulse.analytics.service import AnalyticsService
@@ -181,6 +183,16 @@ def get_sites(
     return service.get_site_comparison(_to_filter(params))
 
 
+@router.get("/filters/options", response_model=FilterOptions)
+@limiter.limit("100/minute")
+def get_filter_options(
+    request: Request,
+    service: ServiceDep,
+) -> FilterOptions:
+    """Return available filter values for slicer/dropdown population."""
+    return service.get_filter_options()
+
+
 @router.get("/returns", response_model=list[ReturnAnalysis])
 @limiter.limit("100/minute")
 def get_returns(
@@ -217,4 +229,18 @@ def get_customer_detail(
     result = service.get_customer_detail(customer_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Customer not found")
+    return result
+
+
+@router.get("/staff/{staff_key}", response_model=StaffPerformance)
+@limiter.limit("100/minute")
+def get_staff_detail(
+    request: Request,
+    staff_key: Annotated[int, Path(ge=1, description="Staff surrogate key")],
+    service: ServiceDep,
+) -> StaffPerformance:
+    """Detailed staff performance metrics."""
+    result = service.get_staff_detail(staff_key)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Staff member not found")
     return result

@@ -136,3 +136,40 @@ export interface ChangeNarrative {
 export interface AIStatus {
   available: boolean;
 }
+
+// --- Detail types (Product & Customer) ---
+
+export interface ProductPerformance {
+  product_key: number;
+  drug_code: string;
+  drug_name: string;
+  drug_brand: string;
+  drug_category: string;
+  total_quantity: number;
+  total_sales: number;
+  total_net_amount: number;
+  return_rate: number;
+  unique_customers: number;
+}
+
+export interface CustomerAnalytics {
+  customer_key: number;
+  customer_id: string;
+  customer_name: string;
+  total_quantity: number;
+  total_net_amount: number;
+  transaction_count: number;
+  unique_products: number;
+  return_count: number;
+}
+
+export interface StaffPerformance {
+  staff_key: number;
+  staff_id: string;
+  staff_name: string;
+  staff_position: string;
+  total_net_amount: number;
+  transaction_count: number;
+  avg_transaction_value: number;
+  unique_customers: number;
+}

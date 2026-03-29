@@ -17,9 +17,9 @@ export function usePipelineRuns(params?: PipelineRunsParams) {
   const qs = searchParams.toString();
   const key = `/api/v1/pipeline/runs${qs ? `?${qs}` : ""}`;
 
-  const { data, error, mutate } = useSWR(key, () =>
+  const { data, error, isLoading, mutate } = useSWR(key, () =>
     fetchAPI<PipelineRunList>(key),
   );
 
-  return { data, error, isLoading: !data && !error, mutate };
+  return { data, error, isLoading, mutate };
 }

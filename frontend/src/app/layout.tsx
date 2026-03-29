@@ -29,7 +29,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-page text-text-primary antialiased">{children}</body>
+      <body className="bg-page text-text-primary antialiased">
+        <a href="#main-content" className="skip-to-content">
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

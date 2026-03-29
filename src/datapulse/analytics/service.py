@@ -8,10 +8,12 @@ from datapulse.analytics.models import (
     AnalyticsFilter,
     CustomerAnalytics,
     DateRange,
+    FilterOptions,
     KPISummary,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
+    StaffPerformance,
     TrendResult,
 )
 from datapulse.analytics.repository import AnalyticsRepository
@@ -100,6 +102,11 @@ class AnalyticsService:
         log.info("return_report", filters=f.model_dump())
         return self._repo.get_return_analysis(f)
 
+    def get_filter_options(self) -> FilterOptions:
+        """Return available filter values for slicers/dropdowns."""
+        log.info("filter_options")
+        return self._repo.get_filter_options()
+
     def get_product_detail(self, product_key: int) -> ProductPerformance | None:
         """Detailed performance for a single product."""
         log.info("product_detail", product_key=product_key)
@@ -109,3 +116,8 @@ class AnalyticsService:
         """Detailed analytics for a single customer."""
         log.info("customer_detail", customer_key=customer_key)
         return self._repo.get_customer_detail(customer_key)
+
+    def get_staff_detail(self, staff_key: int) -> StaffPerformance | None:
+        """Detailed performance for a single staff member."""
+        log.info("staff_detail", staff_key=staff_key)
+        return self._repo.get_staff_detail(staff_key)

@@ -12,7 +12,7 @@ interface ReturnsTableProps {
 export function ReturnsTable({ items, className }: ReturnsTableProps) {
   return (
     <div className={cn("max-h-[28rem] overflow-auto", className)}>
-      <table className="w-full text-left text-sm">
+      <table className="w-full min-w-[540px] text-left text-sm">
         <thead className="sticky top-0 bg-card">
           <tr className="border-b border-border text-text-secondary">
             <th className="pb-3 pr-4 font-medium">Drug Name</th>

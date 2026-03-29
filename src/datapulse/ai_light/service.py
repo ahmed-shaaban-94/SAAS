@@ -30,9 +30,21 @@ from datapulse.logging import get_logger
 log = get_logger(__name__)
 
 
+import re as _re
+
+_CONTROL_CHARS_RE = _re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_INJECTION_DELIMITERS_RE = _re.compile(r"[<>\[\]{}|\\`]")
+_INJECTION_PREFIXES_RE = _re.compile(
+    r"(?i)(ignore\s+(previous|above)|system\s*:|<\s*/?\s*system|you\s+are\s+now)"
+)
+
+
 def _sanitize_for_prompt(text: str, max_len: int = 100) -> str:
-    """Strip control chars and truncate user-controlled text for LLM prompts."""
-    return text.replace("\n", " ").replace("\r", "")[:max_len]
+    """Strip control chars, prompt injection markers, and truncate user-controlled text."""
+    cleaned = _CONTROL_CHARS_RE.sub(" ", text)
+    cleaned = _INJECTION_DELIMITERS_RE.sub("", cleaned)
+    cleaned = _INJECTION_PREFIXES_RE.sub("", cleaned)
+    return cleaned.strip()[:max_len]
 
 
 class AILightService:

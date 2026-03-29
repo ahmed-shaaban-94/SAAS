@@ -7,7 +7,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import Depends, Header, HTTPException
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from datapulse.ai_light.service import AILightService
@@ -32,26 +32,38 @@ async def verify_api_key(x_api_key: str = Header(...)) -> None:
 
 _engine = None
 _session_factory = None
+_init_lock = __import__("threading").Lock()
 
 
 def _get_engine():
     global _engine
     if _engine is None:
-        settings = get_settings()
-        _engine = create_engine(settings.database_url, pool_pre_ping=True)
+        with _init_lock:
+            if _engine is None:
+                settings = get_settings()
+                _engine = create_engine(
+                    settings.database_url,
+                    pool_pre_ping=True,
+                    pool_size=10,
+                    max_overflow=20,
+                )
     return _engine
 
 
 def _get_session_factory():
     global _session_factory
     if _session_factory is None:
-        _session_factory = sessionmaker(bind=_get_engine())
+        with _init_lock:
+            if _session_factory is None:
+                _session_factory = sessionmaker(bind=_get_engine())
     return _session_factory
 
 
 def get_db_session() -> Generator[Session, None, None]:
     session = _get_session_factory()()
     try:
+        # Set RLS tenant context for row-level security
+        session.execute(text("SET LOCAL app.tenant_id = '1'"))
         yield session
     except Exception:
         session.rollback()

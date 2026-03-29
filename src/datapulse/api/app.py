@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
-from datapulse.api.audit import enqueue_audit, start_audit_writer
+from datapulse.api.audit import enqueue_audit, start_audit_writer, stop_audit_writer
 from datapulse.api.limiter import limiter
 from datapulse.api.routes import ai_light, analytics, health, pipeline
 from datapulse.config import get_settings
@@ -80,26 +80,44 @@ def create_app() -> FastAPI:
             user_agent=request.headers.get("user-agent", ""),
         )
 
-        # Async audit log (non-blocking)
+        # Async audit log (non-blocking) — redact sensitive query params
+        safe_params = {
+            k: v for k, v in request.query_params.items()
+            if k.lower() not in ("api_key", "token", "secret", "password")
+        }
         enqueue_audit(
             method=request.method,
             path=request.url.path,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
-            query_params=dict(request.query_params),
+            query_params=safe_params,
             response_status=response.status_code,
             duration_ms=duration_ms,
         )
 
         return response
 
-    # Start audit writer (best-effort — no crash if DB not ready)
+    # Startup warnings
     settings = get_settings()
+    if not settings.api_key:
+        logger.warning(
+            "api_key_not_configured",
+            msg="API_KEY is empty — all authenticated endpoints will reject requests. "
+                "Set API_KEY in your .env file.",
+        )
+
+    # Start audit writer (best-effort — no crash if DB not ready)
     if settings.database_url:
         try:
             start_audit_writer(settings.database_url)
         except Exception as exc:
             logger.warning("audit_writer_start_failed", error=str(exc))
+
+    # Graceful shutdown: flush remaining audit records
+    @app.on_event("shutdown")
+    def shutdown_audit_writer() -> None:
+        logger.info("shutting_down_audit_writer")
+        stop_audit_writer()
 
     # Register routers
     app.include_router(health.router)

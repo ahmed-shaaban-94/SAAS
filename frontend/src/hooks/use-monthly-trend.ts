@@ -8,8 +8,8 @@ export function useMonthlyTrend(filters?: FilterParams) {
     ? ["/api/v1/analytics/trends/monthly", JSON.stringify(filters)]
     : "/api/v1/analytics/trends/monthly";
 
-  const { data, error } = useSWR(key, () =>
+  const { data, error, isLoading } = useSWR(key, () =>
     fetchAPI<TrendResult>("/api/v1/analytics/trends/monthly", filters),
   );
-  return { data, error, isLoading: !data && !error };
+  return { data, error, isLoading };
 }

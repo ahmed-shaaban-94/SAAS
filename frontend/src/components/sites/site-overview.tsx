@@ -4,6 +4,7 @@ import { useSites } from "@/hooks/use-sites";
 import { useFilters } from "@/contexts/filter-context";
 import { SummaryStats } from "@/components/shared/summary-stats";
 import { SiteComparisonCards } from "@/components/sites/site-comparison-cards";
+import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
 import { LoadingCard } from "@/components/loading-card";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
@@ -52,9 +53,19 @@ export function SiteOverview() {
     { label: "Site Count", value: formatNumber(data.items.length) },
   ];
 
+  const exportData = data.items.map((item) => ({
+    Rank: item.rank,
+    Site: item.name,
+    Revenue: item.value,
+    "% of Total": item.pct_of_total,
+  }));
+
   return (
     <div>
       <SummaryStats stats={stats} className="mb-6" />
+      <div className="mb-4 flex justify-end">
+        <CsvExportButton data={exportData} filename="sites" />
+      </div>
       <SiteComparisonCards items={data.items} total={data.total} />
     </div>
   );

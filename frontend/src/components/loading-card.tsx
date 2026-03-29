@@ -9,15 +9,15 @@ export function LoadingCard({ className, lines = 3 }: LoadingCardProps) {
   return (
     <div
       className={cn(
-        "animate-pulse rounded-lg border border-border bg-card p-6",
+        "rounded-lg border border-border bg-card p-6",
         className,
       )}
     >
-      <div className="mb-4 h-4 w-1/3 rounded bg-divider" />
+      <div className="shimmer-line mb-4 h-4 w-1/3 rounded bg-divider" />
       {Array.from({ length: lines }).map((_, i) => (
         <div
           key={i}
-          className="mb-2 h-3 rounded bg-divider"
+          className="shimmer-line mb-2 h-3 rounded bg-divider"
           style={{ width: `${85 - i * 15}%` }}
         />
       ))}

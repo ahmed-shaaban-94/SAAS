@@ -60,28 +60,41 @@ export async function fetchAPI<T>(
   params?: FilterParams,
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}${buildQueryString(params)}`;
-  const res = await fetch(url, { headers: authHeaders() });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "Unknown error");
-    throw new ApiError(res.status, `API error ${res.status}: ${body}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const res = await fetch(url, { headers: authHeaders(), signal: controller.signal });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "Unknown error");
+      throw new ApiError(res.status, `API error ${res.status}: ${body}`);
+    }
+    const json = await res.json();
+    return parseDecimals(json) as T;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  const json = await res.json();
-  return parseDecimals(json) as T;
 }
 
 export async function postAPI<T>(path: string, body?: unknown): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "Unknown error");
-    throw new ApiError(res.status, `API error ${res.status}: ${text}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "Unknown error");
+      throw new ApiError(res.status, `API error ${res.status}: ${errText}`);
+    }
+    const json = await res.json();
+    return parseDecimals(json) as T;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  const json = await res.json();
-  return parseDecimals(json) as T;
 }
 
 export { ApiError };

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import httpx
 
@@ -47,13 +48,31 @@ class OpenRouterClient:
         }
 
         log.info("openrouter_request", model=self._model)
-        resp = httpx.post(
-            OPENROUTER_API_URL,
-            json=payload,
-            headers=headers,
-            timeout=60,
-        )
-        resp.raise_for_status()
+
+        # Retry with exponential backoff for transient failures
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                resp = httpx.post(
+                    OPENROUTER_API_URL,
+                    json=payload,
+                    headers=headers,
+                    timeout=60,
+                )
+                resp.raise_for_status()
+                break
+            except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+                if attempt == max_retries - 1:
+                    raise
+                wait = 2 ** attempt
+                log.warning(
+                    "openrouter_retry",
+                    attempt=attempt + 1,
+                    wait_seconds=wait,
+                    error=str(exc),
+                )
+                time.sleep(wait)
+
         data = resp.json()
 
         try:

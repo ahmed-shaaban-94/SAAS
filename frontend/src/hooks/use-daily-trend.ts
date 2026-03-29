@@ -8,8 +8,8 @@ export function useDailyTrend(filters?: FilterParams) {
     ? ["/api/v1/analytics/trends/daily", JSON.stringify(filters)]
     : "/api/v1/analytics/trends/daily";
 
-  const { data, error } = useSWR(key, () =>
+  const { data, error, isLoading } = useSWR(key, () =>
     fetchAPI<TrendResult>("/api/v1/analytics/trends/daily", filters),
   );
-  return { data, error, isLoading: !data && !error };
+  return { data, error, isLoading };
 }

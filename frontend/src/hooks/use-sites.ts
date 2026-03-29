@@ -8,8 +8,8 @@ export function useSites(filters?: FilterParams) {
     ? ["/api/v1/analytics/sites", JSON.stringify(filters)]
     : "/api/v1/analytics/sites";
 
-  const { data, error } = useSWR(key, () =>
+  const { data, error, isLoading } = useSWR(key, () =>
     fetchAPI<RankingResult>("/api/v1/analytics/sites", filters),
   );
-  return { data, error, isLoading: !data && !error };
+  return { data, error, isLoading };
 }

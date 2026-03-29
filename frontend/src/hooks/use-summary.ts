@@ -7,10 +7,10 @@ export function useSummary(targetDate?: string) {
     ? `/api/v1/analytics/summary?target_date=${targetDate}`
     : "/api/v1/analytics/summary";
 
-  const { data, error } = useSWR(key, () =>
+  const { data, error, isLoading } = useSWR(key, () =>
     fetchAPI<KPISummary>(
       `/api/v1/analytics/summary${targetDate ? `?target_date=${targetDate}` : ""}`,
     ),
   );
-  return { data, error, isLoading: !data && !error };
+  return { data, error, isLoading };
 }

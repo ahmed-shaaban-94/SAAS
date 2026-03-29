@@ -5,9 +5,9 @@ import type { PipelineRun } from "@/types/api";
 export function usePipelineRun(runId: string | null) {
   const key = runId ? `/api/v1/pipeline/runs/${runId}` : null;
 
-  const { data, error, mutate } = useSWR(key, () =>
+  const { data, error, isLoading, mutate } = useSWR(key, () =>
     key ? fetchAPI<PipelineRun>(key) : null,
   );
 
-  return { data, error, isLoading: key !== null && !data && !error, mutate };
+  return { data, error, isLoading, mutate };
 }

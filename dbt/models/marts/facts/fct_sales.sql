@@ -44,7 +44,7 @@ dim_billing AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY s.invoice_date, s.invoice_id, s.drug_code)::INT AS sales_key,
+    ROW_NUMBER() OVER (ORDER BY s.tenant_id, s.invoice_date, s.invoice_id, s.drug_code)::INT AS sales_key,
 
     -- Tenant
     s.tenant_id,

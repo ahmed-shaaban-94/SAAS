@@ -38,9 +38,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     if (endDate) params.end_date = endDate;
     if (category) params.category = category;
     if (brand) params.brand = brand;
-    if (siteKey) params.site_key = Number(siteKey);
-    if (staffKey) params.staff_key = Number(staffKey);
-    if (limit) params.limit = Number(limit);
+    if (siteKey && !isNaN(Number(siteKey))) params.site_key = Number(siteKey);
+    if (staffKey && !isNaN(Number(staffKey))) params.staff_key = Number(staffKey);
+    if (limit && !isNaN(Number(limit))) params.limit = Number(limit);
 
     return params;
   }, [searchParams]);

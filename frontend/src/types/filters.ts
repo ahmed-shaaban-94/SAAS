@@ -7,3 +7,15 @@ export interface FilterParams {
   staff_key?: number;
   limit?: number;
 }
+
+export interface FilterOption {
+  key: number;
+  label: string;
+}
+
+export interface FilterOptions {
+  categories: string[];
+  brands: string[];
+  sites: FilterOption[];
+  staff: FilterOption[];
+}

@@ -142,6 +142,26 @@ class StaffPerformance(BaseModel):
     unique_customers: int
 
 
+class FilterOption(BaseModel):
+    """A single selectable filter option (e.g. a site or staff member)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: int
+    label: str
+
+
+class FilterOptions(BaseModel):
+    """Available filter values for slicer/dropdown population."""
+
+    model_config = ConfigDict(frozen=True)
+
+    categories: list[str]
+    brands: list[str]
+    sites: list[FilterOption]
+    staff: list[FilterOption]
+
+
 class ReturnAnalysis(BaseModel):
     """Return/credit note analysis per product-customer pair."""
 
