@@ -31,8 +31,19 @@ log = get_logger(__name__)
 
 
 def _sanitize_for_prompt(text: str, max_len: int = 100) -> str:
-    """Strip control chars and truncate user-controlled text for LLM prompts."""
-    return text.replace("\n", " ").replace("\r", "")[:max_len]
+    """Strip control chars, prompt injection markers, and truncate user-controlled text."""
+    import re
+    # Remove control characters (except space)
+    cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", text)
+    # Collapse common prompt injection delimiters
+    cleaned = re.sub(r"[<>\[\]{}|\\`]", "", cleaned)
+    # Strip instruction-like prefixes that could override system prompt
+    cleaned = re.sub(
+        r"(?i)(ignore\s+(previous|above)|system\s*:|<\s*/?\s*system|you\s+are\s+now)",
+        "",
+        cleaned,
+    )
+    return cleaned.strip()[:max_len]
 
 
 class AILightService:

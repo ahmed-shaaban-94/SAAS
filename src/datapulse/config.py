@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     watcher_debounce_seconds: float = 10.0
     api_base_url: str = "http://localhost:8000"
 
-    # API Authentication
+    # API Authentication (REQUIRED — all requests rejected if unset)
     api_key: str = ""
 
     # Notifications

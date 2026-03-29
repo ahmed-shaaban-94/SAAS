@@ -37,9 +37,12 @@ async function writeWaitlist(emails: string[]): Promise<void> {
 
 export async function POST(request: Request) {
   try {
-    // Rate limiting
+    // Rate limiting — use rightmost X-Forwarded-For entry (closest trusted proxy)
+    // to prevent spoofing via client-injected headers.
+    // Falls back to "unknown" if no proxy header is present.
     const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded?.split(",")[0]?.trim() || "unknown";
+    const forwardedParts = forwarded?.split(",").map((s) => s.trim()).filter(Boolean);
+    const ip = forwardedParts?.at(-1) || "unknown";
 
     if (isRateLimited(ip)) {
       return NextResponse.json(

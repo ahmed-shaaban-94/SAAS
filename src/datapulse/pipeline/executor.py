@@ -22,8 +22,57 @@ log = get_logger(__name__)
 class PipelineExecutor:
     """Executes individual pipeline stages."""
 
+    # Allowed dbt selectors (prevents arbitrary dbt command injection)
+    ALLOWED_DBT_SELECTORS: frozenset[str] = frozenset({
+        "staging",
+        "marts",
+        "bronze",
+        "tag:staging",
+        "tag:marts",
+        "tag:bronze",
+        "stg_sales",
+        "dim_date",
+        "dim_billing",
+        "dim_customer",
+        "dim_product",
+        "dim_site",
+        "dim_staff",
+        "fct_sales",
+        "agg_sales_daily",
+        "agg_sales_monthly",
+        "agg_sales_by_product",
+        "agg_sales_by_customer",
+        "agg_sales_by_site",
+        "agg_sales_by_staff",
+        "agg_returns",
+        "metrics_summary",
+    })
+
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+
+    def _validate_source_dir(self, source_dir: str) -> Path:
+        """Validate source_dir is within the allowed raw_sales_path.
+
+        Prevents path traversal attacks (e.g. "../../etc/passwd").
+        """
+        allowed_root = Path(self._settings.raw_sales_path).resolve()
+        resolved = Path(source_dir).resolve()
+        if not (resolved == allowed_root or str(resolved).startswith(str(allowed_root) + "/")):
+            raise ValueError(
+                f"source_dir '{source_dir}' resolves outside allowed path '{allowed_root}'"
+            )
+        return resolved
+
+    def _validate_selector(self, selector: str) -> str:
+        """Validate dbt selector is in the allowlist."""
+        # Support "+" prefix for dbt graph operators
+        clean = selector.lstrip("+")
+        if clean not in self.ALLOWED_DBT_SELECTORS:
+            raise ValueError(
+                f"dbt selector '{selector}' is not in the allowed list"
+            )
+        return selector
 
     def run_bronze(
         self,
@@ -38,8 +87,14 @@ class PipelineExecutor:
         t0 = time.perf_counter()
 
         try:
+            validated_dir = self._validate_source_dir(source_dir)
+        except ValueError as exc:
+            log.error("executor_bronze_invalid_path", run_id=str(run_id), error=str(exc))
+            return ExecutionResult(success=False, error=str(exc), duration_seconds=0.0)
+
+        try:
             df = bronze_loader.run(
-                source_dir=Path(source_dir),
+                source_dir=validated_dir,
                 database_url=self._settings.database_url,
                 parquet_path=self._settings.parquet_dir / "bronze_sales.parquet",
                 batch_size=self._settings.bronze_batch_size,
@@ -70,6 +125,12 @@ class PipelineExecutor:
 
         Uses subprocess since dbt has no stable Python API.
         """
+        try:
+            selector = self._validate_selector(selector)
+        except ValueError as exc:
+            log.error("executor_dbt_invalid_selector", run_id=str(run_id), error=str(exc))
+            return ExecutionResult(success=False, error=str(exc), duration_seconds=0.0)
+
         cmd = [
             "dbt", "run",
             "--project-dir", self._settings.dbt_project_dir,

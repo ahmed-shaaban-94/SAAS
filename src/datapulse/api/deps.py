@@ -7,7 +7,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import Depends, Header, HTTPException
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from datapulse.ai_light.service import AILightService
@@ -52,6 +52,8 @@ def _get_session_factory():
 def get_db_session() -> Generator[Session, None, None]:
     session = _get_session_factory()()
     try:
+        # Set RLS tenant context for row-level security
+        session.execute(text("SET LOCAL app.tenant_id = '1'"))
         yield session
     except Exception:
         session.rollback()

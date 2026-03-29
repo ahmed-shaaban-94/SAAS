@@ -9,6 +9,14 @@ interface CsvExportButtonProps {
   className?: string;
 }
 
+/** Prevent CSV formula injection by prefixing dangerous characters with a single quote. */
+function sanitizeCell(value: string): string {
+  if (/^[=+\-@|\t\r]/.test(value)) {
+    return "'" + value;
+  }
+  return value;
+}
+
 function toCsvString(data: Record<string, unknown>[]): string {
   if (data.length === 0) return "";
 
@@ -17,7 +25,7 @@ function toCsvString(data: Record<string, unknown>[]): string {
     headers
       .map((h) => {
         const val = row[h];
-        const str = val == null ? "" : String(val);
+        const str = val == null ? "" : sanitizeCell(String(val));
         // Escape quotes and wrap in quotes if it contains comma, quote, or newline
         if (str.includes(",") || str.includes('"') || str.includes("\n")) {
           return `"${str.replace(/"/g, '""')}"`;
