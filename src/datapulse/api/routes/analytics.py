@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from datapulse.analytics.models import (
     AnalyticsFilter,
     CustomerAnalytics,
+    DataDateRange,
     DateRange,
     FilterOptions,
     KPISummary,
@@ -102,6 +103,16 @@ ServiceDep = Annotated[AnalyticsService, Depends(get_analytics_service)]
 # ------------------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------------------
+
+
+@router.get("/date-range", response_model=DataDateRange)
+@limiter.limit("100/minute")
+def get_date_range(
+    request: Request,
+    service: ServiceDep,
+) -> DataDateRange:
+    """Return the min/max dates of available data for frontend preset calculation."""
+    return service.get_date_range()
 
 
 @router.get("/summary", response_model=KPISummary)

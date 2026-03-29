@@ -1,5 +1,6 @@
 """Structured logging setup using structlog."""
 
+import logging
 import structlog
 
 _SENSITIVE_KEYS = frozenset({
@@ -40,7 +41,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "console") -> None:
             renderer,
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
-            structlog.get_level_from_name(log_level)
+            logging.getLevelName(log_level)
         ),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),

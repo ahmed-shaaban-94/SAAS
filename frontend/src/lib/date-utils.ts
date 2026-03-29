@@ -30,13 +30,13 @@ export interface DatePreset {
   endDate: Date;
 }
 
-export function getDatePresets(): DatePreset[] {
-  const today = new Date();
+export function getDatePresets(referenceDate?: Date): DatePreset[] {
+  const anchor = referenceDate ?? new Date();
   return [
-    { label: "Last 7 days", startDate: subDays(today, 7), endDate: today },
-    { label: "Last 30 days", startDate: subDays(today, 30), endDate: today },
-    { label: "Last 90 days", startDate: subDays(today, 90), endDate: today },
-    { label: "Month to date", startDate: startOfMonth(today), endDate: today },
-    { label: "Year to date", startDate: startOfYear(today), endDate: today },
+    { label: "Last 7 days", startDate: subDays(anchor, 7), endDate: anchor },
+    { label: "Last 30 days", startDate: subDays(anchor, 30), endDate: anchor },
+    { label: "Last 90 days", startDate: subDays(anchor, 90), endDate: anchor },
+    { label: "Month to date", startDate: startOfMonth(anchor), endDate: anchor },
+    { label: "Year to date", startDate: startOfYear(anchor), endDate: anchor },
   ];
 }
