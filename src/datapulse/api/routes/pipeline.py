@@ -165,7 +165,7 @@ def trigger_pipeline(
             },
             headers=headers,
             timeout=10.0,
-            follow_redirects=False,
+            follow_redirects=True,
         )
     except (httpx.HTTPError, httpx.TimeoutException, OSError) as exc:
         log.warning(

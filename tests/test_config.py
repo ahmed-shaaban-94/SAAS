@@ -13,13 +13,16 @@ from datapulse.config import Settings, get_settings
 # ---------------------------------------------------------------------------
 
 def _settings(**overrides) -> Settings:
+    # database_url is required (no default) — provide empty string for tests
+    overrides.setdefault("database_url", "")
     return Settings(_env_file=None, **overrides)
 
 
 class TestSettings:
     """Unit tests for the Settings model itself."""
 
-    def test_default_database_url_is_empty(self):
+    def test_database_url_is_required(self):
+        """database_url has no default — it must be explicitly provided."""
         s = _settings()
         assert s.database_url == ""
 

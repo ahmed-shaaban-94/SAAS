@@ -84,4 +84,4 @@ SELECT
     s.walk_in_ratio,
     s.insurance_ratio
 FROM site_monthly s
-INNER JOIN {{ ref('dim_site') }} si ON s.site_key = si.site_key
+INNER JOIN {{ ref('dim_site') }} si ON s.site_key = si.site_key AND s.tenant_id = si.tenant_id

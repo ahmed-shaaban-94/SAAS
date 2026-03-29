@@ -6,7 +6,7 @@ export function HeroSection() {
       {/* Background glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/5 blur-3xl" />
-        <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-blue/5 blur-3xl" />
+        <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-chart-blue/5 blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-6xl">
@@ -53,7 +53,7 @@ export function HeroSection() {
             {/* Title bar */}
             <div className="mb-4 flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-growth-red/60" />
-              <div className="h-3 w-3 rounded-full bg-amber/60" />
+              <div className="h-3 w-3 rounded-full bg-chart-amber/60" />
               <div className="h-3 w-3 rounded-full bg-growth-green/60" />
               <span className="ml-2 text-xs text-text-secondary">
                 DataPulse Dashboard
