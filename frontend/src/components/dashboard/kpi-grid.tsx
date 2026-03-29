@@ -3,10 +3,12 @@
 import { KPICard } from "./kpi-card";
 import { LoadingCard } from "@/components/loading-card";
 import { useSummary } from "@/hooks/use-summary";
+import { useFilters } from "@/contexts/filter-context";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export function KPIGrid() {
-  const { data, error, isLoading } = useSummary();
+  const { filters } = useFilters();
+  const { data, isLoading } = useSummary(filters);
 
   if (isLoading) {
     return (
@@ -17,8 +19,6 @@ export function KPIGrid() {
       </div>
     );
   }
-
-  if (error) return <div className="text-red-400 p-4">Failed to load KPI data. Please try again.</div>;
 
   if (!data) return null;
 

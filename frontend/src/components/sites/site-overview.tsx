@@ -30,11 +30,10 @@ export function SiteOverview() {
   }
 
   if (error) {
-    console.error("Failed to load site data:", error.message);
     return (
       <EmptyState
         title="Failed to load site data"
-        description={error.message || "An error occurred while fetching site performance data."}
+        description="Failed to load data. Please try again."
       />
     );
   }

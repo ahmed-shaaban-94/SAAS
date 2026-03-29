@@ -93,7 +93,7 @@ class QualityService:
                     stage=stage,
                     severity="error",
                     passed=False,
-                    message=f"Check raised an unexpected exception: {exc}",
+                    message="Check raised an unexpected exception",
                     details={},
                 )
 

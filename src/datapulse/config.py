@@ -9,8 +9,14 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """DataPulse configuration — reads from .env file."""
 
-    # Database (must be set via DATABASE_URL env var)
-    database_url: str = ""
+    # Database — no default; MUST be set via env / .env
+    database_url: str
+
+    # Database connection pool
+    db_pool_size: int = 10
+    db_pool_max_overflow: int = 20
+    db_pool_timeout: int = 30
+    db_pool_recycle: int = 1800
 
     # Paths
     raw_data_dir: Path = Path("data/raw")
@@ -39,16 +45,15 @@ class Settings(BaseSettings):
     n8n_webhook_url: str = "http://n8n:5678/webhook/"
     pipeline_webhook_secret: str = ""
 
+    # API security
+    api_key: str = ""
+
+    # Logging
+    log_format: str = "console"
+
     # OpenRouter (AI-Light)
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
-
-    # File watcher
-    watcher_debounce_seconds: float = 10.0
-    api_base_url: str = "http://localhost:8000"
-
-    # API Authentication (REQUIRED — all requests rejected if unset)
-    api_key: str = ""
 
     # Notifications
     slack_webhook_url: str = ""

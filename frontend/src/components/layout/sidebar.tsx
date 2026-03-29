@@ -1,19 +1,18 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
   LayoutDashboard,
+  Menu,
   Package,
   Users,
   UserCog,
   Building2,
   RotateCcw,
   GitBranch,
-  Sparkles,
-  Menu,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,74 +27,95 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Building2,
   RotateCcw,
   GitBranch,
-  Sparkles,
 };
 
-interface SidebarProps {
-  anomalyCount?: number;
-}
-
-function AnomalyBadge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  return (
-    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold leading-none text-white">
-      {count > 99 ? "99+" : count}
-    </span>
-  );
-}
-
-function NavLink({
-  item,
-  isActive,
-  anomalyCount,
-  onClick,
+function NavLinks({
+  pathname,
+  onNavigate,
 }: {
-  item: (typeof NAV_ITEMS)[number];
-  isActive: boolean;
-  anomalyCount?: number;
-  onClick?: () => void;
+  pathname: string;
+  onNavigate?: () => void;
 }) {
-  const Icon = iconMap[item.icon];
-  const showBadge = item.label === "Insights" && anomalyCount && anomalyCount > 0;
-
   return (
-    <Link
-      href={item.href}
-      onClick={onClick}
-      aria-current={isActive ? "page" : undefined}
-      className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-        isActive
-          ? "bg-accent/10 text-accent"
-          : "text-text-secondary hover:bg-divider hover:text-text-primary"
-      )}
-    >
-      {Icon && <Icon className="h-5 w-5" />}
-      <span>{item.label}</span>
-      {showBadge && <AnomalyBadge count={anomalyCount} />}
-    </Link>
+    <>
+      {NAV_ITEMS.map((item) => {
+        const Icon = iconMap[item.icon];
+        const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-accent/10 text-accent"
+                : "text-text-secondary hover:bg-divider hover:text-text-primary"
+            )}
+          >
+            {Icon && <Icon className="h-5 w-5" />}
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </>
   );
 }
 
-export function Sidebar({ anomalyCount }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const closeMobile = useCallback(() => setMobileOpen(false), []);
-
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [mobileOpen]);
-
   return (
     <>
+      {/* Mobile hamburger button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-4 z-50 rounded-lg bg-card p-2 text-text-primary shadow-lg border border-border lg:hidden"
+        aria-label="Open navigation"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Mobile overlay + drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setMobileOpen(false)}
+          />
+          {/* Drawer */}
+          <aside className="absolute left-0 top-0 flex h-screen w-60 flex-col border-r border-border bg-card shadow-xl animate-slide-in-left">
+            {/* Logo + close */}
+            <div className="flex h-16 items-center justify-between px-6">
+              <div className="flex items-center gap-2">
+                <Activity className="h-6 w-6 text-accent" />
+                <span className="text-xl font-bold text-accent">DataPulse</span>
+              </div>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="rounded-md p-1 text-text-secondary hover:text-text-primary"
+                aria-label="Close navigation"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 space-y-1 px-3 py-4">
+              <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            </nav>
+
+            {/* Footer */}
+            <div className="border-t border-border px-6 py-4 space-y-2">
+              <HealthIndicator />
+              <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* Desktop sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-card lg:flex">
         {/* Logo */}
@@ -105,96 +125,11 @@ export function Sidebar({ anomalyCount }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav aria-label="Main navigation" className="flex-1 space-y-1 px-3 py-4">
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-            return (
-              <NavLink
-                key={item.href}
-                item={item}
-                isActive={isActive}
-                anomalyCount={anomalyCount}
-              />
-            );
-          })}
+        <nav className="flex-1 space-y-1 px-3 py-4">
+          <NavLinks pathname={pathname} />
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border px-6 py-4 space-y-2">
-          <HealthIndicator />
-          <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
-        </div>
-      </aside>
-
-      {/* Mobile top bar */}
-      <div className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
-        <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-accent" />
-          <span className="text-lg font-bold text-accent">DataPulse</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          className="relative inline-flex items-center justify-center rounded-md p-2 text-text-secondary hover:bg-divider hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="h-6 w-6" />
-          {anomalyCount && anomalyCount > 0 ? (
-            <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
-          ) : null}
-        </button>
-      </div>
-
-      {/* Mobile drawer backdrop */}
-      <div
-        className={cn(
-          "fixed inset-0 z-50 bg-black/60 transition-opacity duration-300 lg:hidden",
-          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        )}
-        onClick={closeMobile}
-        aria-hidden="true"
-      />
-
-      {/* Mobile drawer */}
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-border bg-card transition-transform duration-300 ease-in-out lg:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        {/* Drawer header */}
-        <div className="flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-accent" />
-            <span className="text-lg font-bold text-accent">DataPulse</span>
-          </div>
-          <button
-            type="button"
-            onClick={closeMobile}
-            className="inline-flex items-center justify-center rounded-md p-2 text-text-secondary hover:bg-divider hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-            aria-label="Close navigation menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Drawer navigation */}
-        <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-            return (
-              <NavLink
-                key={item.href}
-                item={item}
-                isActive={isActive}
-                anomalyCount={anomalyCount}
-                onClick={closeMobile}
-              />
-            );
-          })}
-        </nav>
-
-        {/* Drawer footer */}
         <div className="border-t border-border px-6 py-4 space-y-2">
           <HealthIndicator />
           <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>

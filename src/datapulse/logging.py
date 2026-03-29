@@ -1,7 +1,5 @@
 """Structured logging setup using structlog."""
 
-import os
-
 import structlog
 
 _SENSITIVE_KEYS = frozenset({
@@ -20,11 +18,16 @@ def _mask_sensitive_fields(
     return event_dict
 
 
-def setup_logging(log_level: str = "INFO") -> None:
-    """Configure structlog for the application."""
+def setup_logging(log_level: str = "INFO", log_format: str = "console") -> None:
+    """Configure structlog for the application.
+
+    Args:
+        log_level: Minimum log level (e.g. "INFO", "DEBUG").
+        log_format: Output format — "console" for human-readable, "json" for structured.
+    """
     renderer = (
         structlog.dev.ConsoleRenderer()
-        if os.getenv("LOG_FORMAT", "console") == "console"
+        if log_format == "console"
         else structlog.processors.JSONRenderer()
     )
 

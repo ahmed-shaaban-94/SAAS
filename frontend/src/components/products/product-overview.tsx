@@ -32,11 +32,10 @@ export function ProductOverview() {
   }
 
   if (error) {
-    console.error("Failed to load product data:", error.message);
     return (
       <EmptyState
         title="Failed to load product data"
-        description={error.message || "An error occurred while fetching product analytics. Please try again."}
+        description="Failed to load data. Please try again."
       />
     );
   }

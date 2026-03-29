@@ -68,6 +68,10 @@ class AnalyticsRepository:
         clauses: list[str] = []
         params: dict = {}
 
+        # Validate date_column against whitelist to prevent injection
+        if date_column not in AnalyticsRepository._ALLOWED_DATE_COLUMNS:
+            raise ValueError(f"Invalid date_column: {date_column}")
+
         if filters.date_range is not None:
             if use_year_month:
                 clauses.append(
@@ -185,6 +189,37 @@ class AnalyticsRepository:
             for idx, (key, name, value) in enumerate(raw_items, start=1)
         ]
         return RankingResult(items=items, total=total)
+
+    # Whitelist of valid date columns to prevent SQL injection via dynamic column names
+    _ALLOWED_DATE_COLUMNS = frozenset({"date_key", "full_date"})
+
+    def _get_ranking(
+        self,
+        table: str,
+        key_col: str,
+        name_col: str,
+        filters: AnalyticsFilter,
+        *,
+        use_year_month: bool = True,
+    ) -> RankingResult:
+        """Generic top-N ranking query against an aggregation table.
+
+        Consolidates the common pattern used by get_top_products,
+        get_top_customers, get_top_staff, and get_site_performance.
+        """
+        where, params = self._build_where(filters, use_year_month=use_year_month)
+        params["limit"] = filters.limit
+
+        stmt = text(f"""
+            SELECT {key_col}, {name_col}, SUM(total_net_amount) AS value
+            FROM {table}
+            WHERE {where}
+            GROUP BY {key_col}, {name_col}
+            ORDER BY value DESC
+            LIMIT :limit
+        """)
+        rows = self._session.execute(stmt, params).fetchall()
+        return self._build_ranking(rows)
 
     # ------------------------------------------------------------------
     # Public query methods
@@ -356,73 +391,30 @@ class AnalyticsRepository:
     def get_top_products(self, filters: AnalyticsFilter) -> RankingResult:
         """Return top-N products by net sales."""
         log.info("get_top_products", filters=filters.model_dump())
-        where, params = self._build_where(filters, use_year_month=True)
-        params["limit"] = filters.limit
-
-        stmt = text(f"""
-            SELECT product_key, drug_name, SUM(total_net_amount) AS value
-            FROM public_marts.agg_sales_by_product
-            WHERE {where}
-            GROUP BY product_key, drug_name
-            ORDER BY value DESC
-            LIMIT :limit
-        """)
-        rows = self._session.execute(stmt, params).fetchall()
-        return self._build_ranking(rows)
+        return self._get_ranking(
+            "public_marts.agg_sales_by_product", "product_key", "drug_name", filters,
+        )
 
     def get_top_customers(self, filters: AnalyticsFilter) -> RankingResult:
         """Return top-N customers by net sales."""
         log.info("get_top_customers", filters=filters.model_dump())
-        where, params = self._build_where(filters, use_year_month=True)
-        params["limit"] = filters.limit
-
-        stmt = text(f"""
-            SELECT customer_key, customer_name,
-                   SUM(total_net_amount) AS value
-            FROM public_marts.agg_sales_by_customer
-            WHERE {where}
-            GROUP BY customer_key, customer_name
-            ORDER BY value DESC
-            LIMIT :limit
-        """)
-        rows = self._session.execute(stmt, params).fetchall()
-        return self._build_ranking(rows)
+        return self._get_ranking(
+            "public_marts.agg_sales_by_customer", "customer_key", "customer_name", filters,
+        )
 
     def get_top_staff(self, filters: AnalyticsFilter) -> RankingResult:
         """Return top-N staff members by net sales."""
         log.info("get_top_staff", filters=filters.model_dump())
-        where, params = self._build_where(filters, use_year_month=True)
-        params["limit"] = filters.limit
-
-        stmt = text(f"""
-            SELECT staff_key, staff_name,
-                   SUM(total_net_amount) AS value
-            FROM public_marts.agg_sales_by_staff
-            WHERE {where}
-            GROUP BY staff_key, staff_name
-            ORDER BY value DESC
-            LIMIT :limit
-        """)
-        rows = self._session.execute(stmt, params).fetchall()
-        return self._build_ranking(rows)
+        return self._get_ranking(
+            "public_marts.agg_sales_by_staff", "staff_key", "staff_name", filters,
+        )
 
     def get_site_performance(self, filters: AnalyticsFilter) -> RankingResult:
         """Return site ranking by net sales."""
         log.info("get_site_performance", filters=filters.model_dump())
-        where, params = self._build_where(filters, use_year_month=True)
-        params["limit"] = filters.limit
-
-        stmt = text(f"""
-            SELECT site_key, site_name,
-                   SUM(total_net_amount) AS value
-            FROM public_marts.agg_sales_by_site
-            WHERE {where}
-            GROUP BY site_key, site_name
-            ORDER BY value DESC
-            LIMIT :limit
-        """)
-        rows = self._session.execute(stmt, params).fetchall()
-        return self._build_ranking(rows)
+        return self._get_ranking(
+            "public_marts.agg_sales_by_site", "site_key", "site_name", filters,
+        )
 
     def get_return_analysis(
         self, filters: AnalyticsFilter

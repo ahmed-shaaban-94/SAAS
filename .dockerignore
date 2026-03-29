@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+data/
+notebooks/
+frontend/
+htmlcov/
+.coverage
+.pytest_cache/
+__pycache__
+*.pyc
+docs/
+n8n/

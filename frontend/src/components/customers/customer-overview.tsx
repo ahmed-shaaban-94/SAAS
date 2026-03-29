@@ -32,11 +32,10 @@ export function CustomerOverview() {
   }
 
   if (error) {
-    console.error("Failed to load customer data:", error.message);
     return (
       <EmptyState
         title="Failed to load customer data"
-        description={error.message || "An error occurred while fetching customer analytics. Please try again."}
+        description="Failed to load data. Please try again."
       />
     );
   }

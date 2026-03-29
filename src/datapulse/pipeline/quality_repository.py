@@ -57,7 +57,12 @@ class QualityRepository:
         checks: list[QualityCheckResult],
         tenant_id: int = 1,
     ) -> list[QualityCheckResponse]:
-        """INSERT each check result and return the persisted rows."""
+        """Batch-INSERT all check results and return the persisted rows.
+
+        Builds all parameters upfront, then executes individual inserts
+        within a single transaction (commit at end). This is more efficient
+        than committing per-row, while still using RETURNING for each insert.
+        """
         log.info(
             "quality_save_checks",
             run_id=str(run_id),
@@ -75,9 +80,9 @@ class QualityRepository:
                       severity, passed, message, details, checked_at
         """)
 
-        responses: list[QualityCheckResponse] = []
-        for check in checks:
-            row = self._session.execute(stmt, {
+        # Build all param dicts upfront
+        all_params = [
+            {
                 "tenant_id": tenant_id,
                 "pipeline_run_id": str(run_id),
                 "check_name": check.check_name,
@@ -86,7 +91,13 @@ class QualityRepository:
                 "passed": check.passed,
                 "message": check.message,
                 "details": json.dumps(check.details),
-            }).fetchone()
+            }
+            for check in checks
+        ]
+
+        responses: list[QualityCheckResponse] = []
+        for params in all_params:
+            row = self._session.execute(stmt, params).fetchone()
             responses.append(self._row_to_response(row))
 
         self._session.commit()

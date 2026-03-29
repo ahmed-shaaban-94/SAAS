@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)"
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))"
         ]
     )
 }}
@@ -212,7 +212,7 @@ UNION ALL
 
 SELECT
     -1                 AS site_key,
-    NULL::INT          AS tenant_id,
+    1                  AS tenant_id,
     '__UNKNOWN__'      AS site_code,
     'Unknown'          AS site_name,
     'Unknown'          AS area_manager,

@@ -1,17 +1,24 @@
 import useSWR from "swr";
 import { fetchAPI } from "@/lib/api-client";
 import type { KPISummary } from "@/types/api";
+import type { FilterParams } from "@/types/filters";
 
-export function useSummary(targetDate?: string) {
-  // Query params are embedded in the path so SWR uses the full URL (with params) as cache key
-  const key = targetDate
-    ? `/api/v1/analytics/summary?target_date=${targetDate}`
+export function useSummary(filters?: FilterParams) {
+  const params = new URLSearchParams();
+  if (filters) {
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null) {
+        params.set(key, String(value));
+      }
+    }
+  }
+  const qs = params.toString();
+  const key = qs
+    ? `/api/v1/analytics/summary?${qs}`
     : "/api/v1/analytics/summary";
 
-  const { data, error, isLoading } = useSWR(key, () =>
-    fetchAPI<KPISummary>(
-      `/api/v1/analytics/summary${targetDate ? `?target_date=${targetDate}` : ""}`,
-    ),
+  const { data, error } = useSWR(key, () =>
+    fetchAPI<KPISummary>("/api/v1/analytics/summary", filters),
   );
-  return { data, error, isLoading };
+  return { data, error, isLoading: !data && !error };
 }

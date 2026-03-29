@@ -2,6 +2,7 @@
 
 import { usePipelineRuns } from "@/hooks/use-pipeline-runs";
 import { RunStatusBadge } from "./run-status-badge";
+import { formatDuration } from "@/lib/formatters";
 
 function formatDatetime(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-GB", {
@@ -11,14 +12,6 @@ function formatDatetime(dateStr: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return "—";
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return `${mins}m ${secs}s`;
 }
 
 function formatRows(rows: number | null): string {

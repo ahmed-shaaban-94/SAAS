@@ -8,7 +8,11 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)"
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_date_key ON {{ this }} (date_key)",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_tenant_id ON {{ this }} (tenant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_product_key ON {{ this }} (product_key)",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_customer_key ON {{ this }} (customer_key)"
         ]
     )
 }}
@@ -44,7 +48,7 @@ dim_billing AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY s.tenant_id, s.invoice_date, s.invoice_id, s.drug_code)::INT AS sales_key,
+    ROW_NUMBER() OVER (ORDER BY s.invoice_date, s.invoice_id, s.drug_code)::INT AS sales_key,
 
     -- Tenant
     s.tenant_id,
@@ -73,8 +77,8 @@ SELECT
     s.has_insurance
 
 FROM stg s
-LEFT JOIN dim_product  p  ON s.drug_code   = p.drug_code   AND (s.tenant_id = p.tenant_id OR p.tenant_id IS NULL)
-LEFT JOIN dim_customer c  ON s.customer_id = c.customer_id AND (s.tenant_id = c.tenant_id OR c.tenant_id IS NULL)
-LEFT JOIN dim_site     si ON s.site_code   = si.site_code  AND (s.tenant_id = si.tenant_id OR si.tenant_id IS NULL)
-LEFT JOIN dim_staff    st ON s.staff_id    = st.staff_id   AND (s.tenant_id = st.tenant_id OR st.tenant_id IS NULL)
+LEFT JOIN dim_product  p  ON s.drug_code   = p.drug_code   AND s.tenant_id = p.tenant_id
+LEFT JOIN dim_customer c  ON s.customer_id = c.customer_id AND s.tenant_id = c.tenant_id
+LEFT JOIN dim_site     si ON s.site_code   = si.site_code  AND s.tenant_id = si.tenant_id
+LEFT JOIN dim_staff    st ON s.staff_id    = st.staff_id   AND s.tenant_id = st.tenant_id
 LEFT JOIN dim_billing  b  ON s.billing_way = b.billing_way

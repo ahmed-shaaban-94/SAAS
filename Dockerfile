@@ -1,4 +1,5 @@
-FROM python:3.12-slim-bookworm
+# ── Base stage: system deps + Python packages ──────────────────────
+FROM python:3.12-slim-bookworm AS base
 
 WORKDIR /app
 
@@ -9,11 +10,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 # Upgrade pip to fix known CVEs
 RUN pip install --no-cache-dir --upgrade pip
 
-# Copy project files and install (runtime deps only, no dev tools)
+# Copy project metadata and source
 COPY pyproject.toml .
 COPY src/ src/
+COPY dbt/ dbt/
+COPY migrations/ migrations/
 
-RUN pip install --no-cache-dir -e "." jupyterlab
+# ── API stage: lightweight, no jupyterlab ──────────────────────────
+FROM base AS api
+
+RUN pip install --no-cache-dir "."
+
+RUN useradd -m -u 1000 appuser
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
+
+# ── App stage: full tooling with jupyterlab ────────────────────────
+FROM base AS app
+
+RUN pip install --no-cache-dir "." jupyterlab
 
 RUN useradd -m -u 1000 appuser
 USER appuser

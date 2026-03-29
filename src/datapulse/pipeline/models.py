@@ -6,13 +6,12 @@ All models are frozen (immutable) to prevent accidental mutation.
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
-from typing import Annotated, Any
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-JsonDecimal = Annotated[Decimal, PlainSerializer(float, return_type=float)]
+from datapulse.types import JsonDecimal, validate_source_dir
 
 VALID_STATUSES = frozenset({
     "pending",
@@ -25,6 +24,9 @@ VALID_STATUSES = frozenset({
 })
 
 
+VALID_RUN_TYPES = frozenset({"full", "bronze", "staging", "marts"})
+
+
 class PipelineRunCreate(BaseModel):
     """Request body for creating a new pipeline run."""
 
@@ -33,6 +35,15 @@ class PipelineRunCreate(BaseModel):
     run_type: str
     trigger_source: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("run_type")
+    @classmethod
+    def _validate_run_type(cls, v: str) -> str:
+        if v not in VALID_RUN_TYPES:
+            raise ValueError(
+                f"Invalid run_type '{v}'. Must be one of: {', '.join(sorted(VALID_RUN_TYPES))}"
+            )
+        return v
 
 
 class PipelineRunUpdate(BaseModel):
@@ -46,6 +57,15 @@ class PipelineRunUpdate(BaseModel):
     rows_loaded: int | None = None
     error_message: str | None = None
     metadata: dict[str, Any] | None = None
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, v: str | None) -> str | None:
+        if v is not None and v not in VALID_STATUSES:
+            raise ValueError(
+                f"Invalid status '{v}'. Must be one of: {', '.join(sorted(VALID_STATUSES))}"
+            )
+        return v
 
 
 class PipelineRunResponse(BaseModel):
@@ -89,15 +109,7 @@ class TriggerRequest(BaseModel):
     @classmethod
     def _jail_source_dir(cls, v: str) -> str:
         """Prevent path traversal — source_dir must be inside /app/data."""
-        from pathlib import Path as _Path
-
-        try:
-            resolved = _Path(v).resolve()
-            allowed_root = _Path("/app/data").resolve()
-            resolved.relative_to(allowed_root)
-        except ValueError as exc:
-            raise ValueError("source_dir must be inside /app/data") from exc
-        return str(resolved)
+        return validate_source_dir(v)
 
 
 class TriggerResponse(BaseModel):
@@ -122,15 +134,7 @@ class ExecuteRequest(BaseModel):
     @classmethod
     def _jail_source_dir(cls, v: str) -> str:
         """Prevent path traversal — source_dir must be inside /app/data."""
-        from pathlib import Path as _Path
-
-        try:
-            resolved = _Path(v).resolve()
-            allowed_root = _Path("/app/data").resolve()
-            resolved.relative_to(allowed_root)
-        except ValueError as exc:
-            raise ValueError("source_dir must be inside /app/data") from exc
-        return str(resolved)
+        return validate_source_dir(v)
 
 
 class ExecutionResult(BaseModel):

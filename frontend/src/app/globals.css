@@ -10,8 +10,8 @@
   --text-primary: #E6EDF3;
   --text-secondary: #A8B3BD;
   --accent: #00BFA5;
-  --blue: #2196F3;
-  --amber: #FFB300;
+  --chart-blue: #2196F3;
+  --chart-amber: #FFB300;
   --growth-green: #2E7D32;
   --growth-red: #C62828;
 }
@@ -39,25 +39,6 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
-}
-
-/* Page transition animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.5s ease-out forwards;
 }
 
 /* Staggered animation delays for grid items */

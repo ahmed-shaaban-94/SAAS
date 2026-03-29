@@ -7,16 +7,10 @@ Financial values use Decimal for precision.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
-from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field
 
-# Decimal that serializes as a JSON number (float) instead of a string.
-# WARNING: Decimal->float conversion may lose precision for values exceeding
-# Number.MAX_SAFE_INTEGER (2^53). Financial totals in the billions are safe,
-# but if values reach ~9 quadrillion the least-significant digits will be lost.
-JsonDecimal = Annotated[Decimal, PlainSerializer(float, return_type=float)]
+from datapulse.types import JsonDecimal
 
 
 class DateRange(BaseModel):
@@ -143,26 +137,6 @@ class StaffPerformance(BaseModel):
     transaction_count: int
     avg_transaction_value: JsonDecimal
     unique_customers: int
-
-
-class FilterOption(BaseModel):
-    """A single selectable filter option (e.g. a site or staff member)."""
-
-    model_config = ConfigDict(frozen=True)
-
-    key: int
-    label: str
-
-
-class FilterOptions(BaseModel):
-    """Available filter values for slicer/dropdown population."""
-
-    model_config = ConfigDict(frozen=True)
-
-    categories: list[str]
-    brands: list[str]
-    sites: list[FilterOption]
-    staff: list[FilterOption]
 
 
 class ReturnAnalysis(BaseModel):

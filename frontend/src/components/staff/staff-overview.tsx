@@ -32,11 +32,10 @@ export function StaffOverview() {
   }
 
   if (error) {
-    console.error("Failed to load staff data:", error.message);
     return (
       <EmptyState
         title="Failed to load staff data"
-        description={error.message || "An error occurred while fetching staff performance data."}
+        description="Failed to load data. Please try again."
       />
     );
   }

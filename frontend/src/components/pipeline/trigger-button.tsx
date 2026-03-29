@@ -1,41 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { postAPI } from "@/lib/api-client";
 import { usePipelineRuns } from "@/hooks/use-pipeline-runs";
-import { useToast } from "@/components/ui/toast";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { TriggerResponse } from "@/types/api";
 
 export function TriggerButton() {
   const [loading, setLoading] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const { mutate } = usePipelineRuns({ limit: 50 });
-  const toast = useToast();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  async function executeTrigger() {
-    if (loading) return;
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  async function handleTrigger() {
     setLoading(true);
-    setConfirmOpen(false);
+    setFeedback(null);
 
     try {
       const res = await postAPI<TriggerResponse>("/api/v1/pipeline/trigger");
-      toast.success(`Pipeline run started: ${res.run_id.slice(0, 8)}...`);
+      setFeedback(`Run started: ${res.run_id.slice(0, 8)}...`);
       await mutate();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Trigger failed";
-      toast.error(`Pipeline trigger failed: ${message}`);
+      setFeedback(`Error: ${message}`);
     } finally {
       setLoading(false);
+      // Clear feedback after 4 seconds
+      timeoutRef.current = setTimeout(() => setFeedback(null), 4000);
     }
   }
 
   return (
-    <>
+    <div className="flex flex-col items-end gap-1">
       <button
-        onClick={() => setConfirmOpen(true)}
+        onClick={handleTrigger}
         disabled={loading}
-        aria-label="Trigger data pipeline"
         className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-page transition-colors hover:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? (
@@ -48,15 +52,9 @@ export function TriggerButton() {
         )}
       </button>
 
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Trigger Pipeline"
-        description="This will start a full data pipeline run (Bronze → Silver → Gold). Are you sure?"
-        confirmLabel="Start Pipeline"
-        cancelLabel="Cancel"
-        onConfirm={executeTrigger}
-        onCancel={() => setConfirmOpen(false)}
-      />
-    </>
+      {feedback && (
+        <p className="text-xs text-text-secondary">{feedback}</p>
+      )}
+    </div>
   );
 }

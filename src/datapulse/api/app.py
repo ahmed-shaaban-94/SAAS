@@ -9,41 +9,49 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
-from datapulse.api.audit import enqueue_audit, start_audit_writer, stop_audit_writer
-from datapulse.api.limiter import limiter
-from datapulse.api.routes import ai_light, analytics, health, pipeline
+from datapulse.api.routes import analytics, health, pipeline
 from datapulse.config import get_settings
+from datapulse.logging import setup_logging
 
 logger = structlog.get_logger()
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
+    setup_logging(log_format=settings.log_format)
+
+    # Rate limiter — keyed by remote address
+    limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
     app = FastAPI(
         title="DataPulse API",
         description="Sales analytics API for DataPulse",
         version="0.1.0",
     )
-
-    # Rate limiting
     app.state.limiter = limiter
-    app.add_exception_handler(
-        RateLimitExceeded,
-        lambda request, exc: JSONResponse(
-            status_code=429,
-            content={"detail": f"Rate limit exceeded: {exc.detail}"},
-        ),
-    )
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # CORS for Next.js dev server
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=get_settings().cors_origins,
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH"],
-        allow_headers=["Content-Type", "Authorization", "X-Webhook-Secret", "X-API-Key"],
+        allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Pipeline-Token"],
     )
+
+    # Security headers middleware
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
 
     # Global exception handler
     @app.exception_handler(Exception)
@@ -79,50 +87,11 @@ def create_app() -> FastAPI:
             duration_ms=duration_ms,
             user_agent=request.headers.get("user-agent", ""),
         )
-
-        # Async audit log (non-blocking) — redact sensitive query params
-        safe_params = {
-            k: v for k, v in request.query_params.items()
-            if k.lower() not in ("api_key", "token", "secret", "password")
-        }
-        enqueue_audit(
-            method=request.method,
-            path=request.url.path,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-            query_params=safe_params,
-            response_status=response.status_code,
-            duration_ms=duration_ms,
-        )
-
         return response
-
-    # Startup warnings
-    settings = get_settings()
-    if not settings.api_key:
-        logger.warning(
-            "api_key_not_configured",
-            msg="API_KEY is empty — all authenticated endpoints will reject requests. "
-                "Set API_KEY in your .env file.",
-        )
-
-    # Start audit writer (best-effort — no crash if DB not ready)
-    if settings.database_url:
-        try:
-            start_audit_writer(settings.database_url)
-        except Exception as exc:
-            logger.warning("audit_writer_start_failed", error=str(exc))
-
-    # Graceful shutdown: flush remaining audit records
-    @app.on_event("shutdown")
-    def shutdown_audit_writer() -> None:
-        logger.info("shutting_down_audit_writer")
-        stop_audit_writer()
 
     # Register routers
     app.include_router(health.router)
     app.include_router(analytics.router, prefix="/api/v1")
     app.include_router(pipeline.router, prefix="/api/v1")
-    app.include_router(ai_light.router, prefix="/api/v1")
 
     return app

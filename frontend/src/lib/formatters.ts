@@ -32,3 +32,11 @@ export function formatCompact(value: number | null | undefined): string {
   }
   return value.toFixed(0);
 }
+
+export function formatDuration(seconds: number | null): string {
+  if (seconds == null) return "-";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}

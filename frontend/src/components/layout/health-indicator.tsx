@@ -18,7 +18,7 @@ export function HealthIndicator() {
       <span
         className={cn(
           "h-2 w-2 rounded-full",
-          isLoading && "bg-amber animate-pulse",
+          isLoading && "bg-chart-amber animate-pulse",
           !isLoading && isHealthy && "bg-accent",
           !isLoading && !isHealthy && "bg-growth-red",
         )}
