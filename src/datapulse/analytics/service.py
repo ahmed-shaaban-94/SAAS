@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from datapulse.analytics.models import (
     AnalyticsFilter,
     CustomerAnalytics,
+    DataDateRange,
     DateRange,
     FilterOptions,
     KPISummary,
@@ -28,18 +29,27 @@ class AnalyticsService:
     def __init__(self, repo: AnalyticsRepository) -> None:
         self._repo = repo
 
-    @staticmethod
+    def get_date_range(self) -> DataDateRange:
+        """Return the min/max dates of available data."""
+        min_date, max_date = self._repo.get_data_date_range()
+        if min_date is None or max_date is None:
+            today = date.today()
+            return DataDateRange(min_date=today - timedelta(days=365), max_date=today)
+        return DataDateRange(min_date=min_date, max_date=max_date)
+
     def _default_filter(
+        self,
         filters: AnalyticsFilter | None = None,
     ) -> AnalyticsFilter:
         """Return filters with a default 30-day date range if none provided."""
         if filters is not None:
             return filters
-        today = date.today()
+        _, max_date = self._repo.get_data_date_range()
+        end = max_date or date.today()
         return AnalyticsFilter(
             date_range=DateRange(
-                start_date=today - timedelta(days=30),
-                end_date=today,
+                start_date=end - timedelta(days=30),
+                end_date=end,
             )
         )
 
@@ -47,7 +57,11 @@ class AnalyticsService:
         self, target_date: date | None = None
     ) -> KPISummary:
         """KPI cards for dashboard header."""
-        target = target_date or date.today()
+        if target_date is None:
+            _, max_date = self._repo.get_data_date_range()
+            target = max_date or date.today()
+        else:
+            target = target_date
         log.info("dashboard_summary", target_date=str(target))
         return self._repo.get_kpi_summary(target)
 

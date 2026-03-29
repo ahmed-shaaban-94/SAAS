@@ -13,6 +13,15 @@ from pydantic import BaseModel, ConfigDict, Field
 from datapulse.types import JsonDecimal
 
 
+class DataDateRange(BaseModel):
+    """Min/max dates of available data."""
+
+    model_config = ConfigDict(frozen=True)
+
+    min_date: date
+    max_date: date
+
+
 class DateRange(BaseModel):
     """Inclusive date range for filtering queries."""
 

@@ -246,6 +246,17 @@ class AnalyticsRepository:
     # Public query methods
     # ------------------------------------------------------------------
 
+    def get_data_date_range(self) -> tuple[date | None, date | None]:
+        """Return (min_date, max_date) from metrics_summary."""
+        stmt = text("""
+            SELECT MIN(full_date), MAX(full_date)
+            FROM public_marts.metrics_summary
+        """)
+        row = self._session.execute(stmt).fetchone()
+        if row is None or row[0] is None:
+            return None, None
+        return row[0], row[1]
+
     def get_filter_options(self) -> FilterOptions:
         """Return distinct values for all slicer/dropdown filters."""
         log.info("get_filter_options")

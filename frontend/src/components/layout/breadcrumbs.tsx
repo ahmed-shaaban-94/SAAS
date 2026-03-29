@@ -34,6 +34,9 @@ export function Breadcrumbs() {
       pathLabels[segment] ??
       (index > 0 ? "Detail" : segment.charAt(0).toUpperCase() + segment.slice(1));
 
+    // Skip if this crumb's href matches the Home crumb (avoids duplicate key on /dashboard)
+    if (href === "/dashboard") return;
+
     // For dynamic segments after a known parent, use "Parent > ... Detail"
     if (index > 0 && !pathLabels[segment]) {
       const parentLabel = pathLabels[segments[index - 1]];

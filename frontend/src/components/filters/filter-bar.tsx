@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFilters } from "@/contexts/filter-context";
 import { useToast } from "@/components/ui/toast";
+import { useDateRange } from "@/hooks/use-date-range";
 import { getDatePresets, formatDateParam } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
@@ -12,7 +13,14 @@ import { ActiveFilterChips } from "./active-filter-chips";
 export function FilterBar() {
   const { filters, setFilters, updateFilter, clearFilters } = useFilters();
   const { info } = useToast();
-  const presets = getDatePresets();
+  const { data: dateRange } = useDateRange();
+
+  const presets = useMemo(() => {
+    if (dateRange?.max_date) {
+      return getDatePresets(new Date(dateRange.max_date + "T00:00:00"));
+    }
+    return getDatePresets();
+  }, [dateRange?.max_date]);
 
   const [expanded, setExpanded] = useState(false);
 
