@@ -193,6 +193,20 @@ class AnalyticsRepository:
     # Whitelist of valid date columns to prevent SQL injection via dynamic column names
     _ALLOWED_DATE_COLUMNS = frozenset({"date_key", "full_date"})
 
+    # Whitelist of valid ranking table/column identifiers
+    _ALLOWED_RANKING_TABLES = frozenset({
+        "public_marts.agg_sales_by_product",
+        "public_marts.agg_sales_by_customer",
+        "public_marts.agg_sales_by_staff",
+        "public_marts.agg_sales_by_site",
+    })
+    _ALLOWED_RANKING_COLUMNS = frozenset({
+        "product_key", "drug_name",
+        "customer_key", "customer_name",
+        "staff_key", "staff_name",
+        "site_key", "site_name",
+    })
+
     def _get_ranking(
         self,
         table: str,
@@ -207,6 +221,13 @@ class AnalyticsRepository:
         Consolidates the common pattern used by get_top_products,
         get_top_customers, get_top_staff, and get_site_performance.
         """
+        if table not in self._ALLOWED_RANKING_TABLES:
+            raise ValueError(f"Invalid ranking table: {table}")
+        if key_col not in self._ALLOWED_RANKING_COLUMNS:
+            raise ValueError(f"Invalid ranking key column: {key_col}")
+        if name_col not in self._ALLOWED_RANKING_COLUMNS:
+            raise ValueError(f"Invalid ranking name column: {name_col}")
+
         where, params = self._build_where(filters, use_year_month=use_year_month)
         params["limit"] = filters.limit
 

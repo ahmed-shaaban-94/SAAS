@@ -52,7 +52,7 @@ export function MonthlyTrendChart() {
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={280} role="img" aria-label="Monthly net sales trend chart">
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_THEME.gridStroke} />
           <XAxis

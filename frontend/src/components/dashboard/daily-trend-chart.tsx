@@ -53,7 +53,7 @@ export function DailyTrendChart() {
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={280} role="img" aria-label="Daily net sales trend chart">
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="dailyGradient" x1="0" y1="0" x2="0" y2="1">

@@ -19,15 +19,20 @@ from datapulse.pipeline.models import ExecutionResult
 log = get_logger(__name__)
 
 
+import re as _re
+
+_PATH_RE = _re.compile(r"(/[\w./-]+)+")
+_CONN_STR_RE = _re.compile(r"postgresql://[^\s]+")
+
+
 def _sanitize_error(error: str, max_length: int = 200) -> str:
-    """Strip internal paths and truncate error messages for API responses.
+    """Strip internal paths, connection strings, and truncate error messages.
 
     Prevents leaking server filesystem paths, stack traces, and database
     connection strings to external callers.
     """
-    # Remove common internal path prefixes
-    sanitized = error.replace("/app/", "").replace("/usr/local/", "")
-    # Truncate overly long messages
+    sanitized = _CONN_STR_RE.sub("[redacted]", error)
+    sanitized = _PATH_RE.sub("[path]", sanitized)
     if len(sanitized) > max_length:
         sanitized = sanitized[:max_length] + "..."
     return sanitized
