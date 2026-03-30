@@ -44,7 +44,7 @@ class DataFileHandler(FileSystemEventHandler):
             return True
         try:
             resolved = Path(path).resolve()
-            return str(resolved).startswith(str(self._watch_root))
+            return resolved.is_relative_to(self._watch_root)
         except (OSError, ValueError):
             return False
 

@@ -48,7 +48,17 @@ dim_billing AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY s.invoice_date, s.invoice_id, s.drug_code)::INT AS sales_key,
+    -- Deterministic surrogate key: MD5 hash of natural key columns
+    ('x' || LEFT(MD5(
+        COALESCE(s.tenant_id::TEXT, '') || '|' ||
+        COALESCE(s.invoice_id, '') || '|' ||
+        COALESCE(s.invoice_date::TEXT, '') || '|' ||
+        COALESCE(s.drug_code, '') || '|' ||
+        COALESCE(s.customer_id, '') || '|' ||
+        COALESCE(s.site_code, '') || '|' ||
+        COALESCE(s.quantity::TEXT, '') || '|' ||
+        COALESCE(s.billing_way, '')
+    ), 8))::BIT(32)::INT AS sales_key,
 
     -- Tenant
     s.tenant_id,

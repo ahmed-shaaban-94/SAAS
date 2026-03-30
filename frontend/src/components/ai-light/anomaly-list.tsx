@@ -41,7 +41,7 @@ export function AnomalyList() {
   return (
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="mb-4 flex items-center gap-2">
-        <AlertTriangle className="h-5 w-5 text-accent" />
+        <AlertTriangle className="h-5 w-5 text-amber-500" />
         <h3 className="text-lg font-semibold text-text-primary">Anomalies</h3>
         <span className="ml-auto text-xs text-text-secondary">
           {data.anomalies.length} of {data.total_checked} checked &middot; {data.period}

@@ -47,6 +47,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -57,6 +59,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-datapulse}
       PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:-}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-datapulse}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-datapulse-frontend}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
+      API_KEY: ${API_KEY:-}
     command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
     volumes:
       - ./src:/app/src
@@ -140,6 +147,11 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - WATCHPACK_POLLING=true
+      - KEYCLOAK_CLIENT_ID=datapulse-frontend
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-}
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/datapulse
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-to-a-random-secret}
     depends_on:
       api:
         condition: service_healthy
@@ -215,7 +227,7 @@ services:
 
   # ---------- Metabase (Self-hosted BI) ----------
   metabase:
-    image: metabase/metabase:latest
+    image: metabase/metabase:v0.50.0
     container_name: datapulse-metabase
     restart: unless-stopped
     ports:
@@ -225,8 +237,12 @@ services:
       MB_DB_HOST: postgres
       MB_DB_PORT: 5432
       MB_DB_DBNAME: ${POSTGRES_DB:-datapulse}
-      MB_DB_USER: ${POSTGRES_USER:-datapulse}
-      MB_DB_PASS: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      # Use a read-only role for Metabase. Create the metabase_reader role
+      # in a migration: CREATE ROLE metabase_reader LOGIN PASSWORD '...'
+      # GRANT USAGE ON SCHEMA public_marts TO metabase_reader;
+      # GRANT SELECT ON ALL TABLES IN SCHEMA public_marts TO metabase_reader;
+      MB_DB_USER: ${METABASE_DB_USER:-metabase_reader}
+      MB_DB_PASS: ${METABASE_DB_PASS:?METABASE_DB_PASS must be set}
     depends_on:
       postgres:
         condition: service_healthy
@@ -248,7 +264,7 @@ services:
     image: quay.io/keycloak/keycloak:26.0
     container_name: datapulse-keycloak
     restart: unless-stopped
-    command: start-dev
+    command: start --import-realm --hostname-strict=false --http-enabled=true
     ports:
       - "127.0.0.1:8080:8080"
     environment:
@@ -260,6 +276,11 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD must be set}
       KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_HTTP_PORT: "8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
     depends_on:
       postgres:
         condition: service_healthy

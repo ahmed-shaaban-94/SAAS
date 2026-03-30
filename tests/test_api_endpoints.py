@@ -55,7 +55,7 @@ def _make_kpi_summary() -> KPISummary:
 
 def test_health_endpoint(api_client):
     """GET /health returns 200 with status info."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     with patch("datapulse.api.routes.health._get_engine") as mock_engine:
         mock_conn = MagicMock()
         mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
@@ -67,7 +67,7 @@ def test_health_endpoint(api_client):
 
 def test_summary_endpoint(api_client):
     """GET /api/v1/analytics/summary returns 200 with KPI data."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     mock_repo.get_kpi_summary.return_value = _make_kpi_summary()
 
     resp = client.get("/api/v1/analytics/summary")
@@ -81,7 +81,7 @@ def test_summary_endpoint(api_client):
 
 def test_daily_trend_endpoint(api_client):
     """GET /api/v1/analytics/trends/daily returns 200."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     trend = _make_trend_result()
     mock_repo.get_daily_trend.return_value = trend
     mock_repo.get_monthly_trend.return_value = trend
@@ -96,7 +96,7 @@ def test_daily_trend_endpoint(api_client):
 
 def test_monthly_trend_endpoint(api_client):
     """GET /api/v1/analytics/trends/monthly returns 200."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     trend = _make_trend_result()
     mock_repo.get_daily_trend.return_value = trend
     mock_repo.get_monthly_trend.return_value = trend
@@ -111,7 +111,7 @@ def test_monthly_trend_endpoint(api_client):
 
 def test_top_products_endpoint(api_client):
     """GET /api/v1/analytics/products/top returns 200."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     mock_repo.get_top_products.return_value = _make_ranking_result()
 
     resp = client.get("/api/v1/analytics/products/top")
@@ -124,7 +124,7 @@ def test_top_products_endpoint(api_client):
 
 def test_top_customers_endpoint(api_client):
     """GET /api/v1/analytics/customers/top returns 200."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     mock_repo.get_top_customers.return_value = _make_ranking_result()
 
     resp = client.get("/api/v1/analytics/customers/top")
@@ -136,7 +136,7 @@ def test_top_customers_endpoint(api_client):
 
 def test_top_staff_endpoint(api_client):
     """GET /api/v1/analytics/staff/top returns 200."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     mock_repo.get_top_staff.return_value = _make_ranking_result()
 
     resp = client.get("/api/v1/analytics/staff/top")
@@ -148,7 +148,7 @@ def test_top_staff_endpoint(api_client):
 
 def test_sites_endpoint(api_client):
     """GET /api/v1/analytics/sites returns 200."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     mock_repo.get_site_performance.return_value = _make_ranking_result()
 
     resp = client.get("/api/v1/analytics/sites")
@@ -160,7 +160,7 @@ def test_sites_endpoint(api_client):
 
 def test_returns_endpoint(api_client):
     """GET /api/v1/analytics/returns returns 200."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
     mock_repo.get_return_analysis.return_value = [
         ReturnAnalysis(
             drug_name="Drug X",
@@ -181,8 +181,8 @@ def test_returns_endpoint(api_client):
 
 def test_product_detail_found(api_client):
     """GET /api/v1/analytics/products/1 returns product detail."""
-    client, mock_repo = api_client
-    mock_repo.get_product_detail.return_value = ProductPerformance(
+    client, mock_repo, mock_detail_repo = api_client
+    mock_detail_repo.get_product_detail.return_value = ProductPerformance(
         product_key=1, drug_code="D001", drug_name="Aspirin",
         drug_brand="BrandA", drug_category="Analgesic",
         total_quantity=Decimal("500"), total_sales=Decimal("10000"),
@@ -197,8 +197,8 @@ def test_product_detail_found(api_client):
 
 def test_product_detail_not_found(api_client):
     """GET /api/v1/analytics/products/999 returns 404."""
-    client, mock_repo = api_client
-    mock_repo.get_product_detail.return_value = None
+    client, mock_repo, mock_detail_repo = api_client
+    mock_detail_repo.get_product_detail.return_value = None
 
     resp = client.get("/api/v1/analytics/products/999")
     assert resp.status_code == 404
@@ -206,8 +206,8 @@ def test_product_detail_not_found(api_client):
 
 def test_customer_detail_found(api_client):
     """GET /api/v1/analytics/customers/1 returns customer detail."""
-    client, mock_repo = api_client
-    mock_repo.get_customer_detail.return_value = CustomerAnalytics(
+    client, mock_repo, mock_detail_repo = api_client
+    mock_detail_repo.get_customer_detail.return_value = CustomerAnalytics(
         customer_key=1, customer_id="C001", customer_name="Pharmacy X",
         total_quantity=Decimal("1000"), total_net_amount=Decimal("50000"),
         transaction_count=200, unique_products=30, return_count=5,
@@ -220,8 +220,8 @@ def test_customer_detail_found(api_client):
 
 def test_customer_detail_not_found(api_client):
     """GET /api/v1/analytics/customers/999 returns 404."""
-    client, mock_repo = api_client
-    mock_repo.get_customer_detail.return_value = None
+    client, mock_repo, mock_detail_repo = api_client
+    mock_detail_repo.get_customer_detail.return_value = None
 
     resp = client.get("/api/v1/analytics/customers/999")
     assert resp.status_code == 404
@@ -229,7 +229,7 @@ def test_customer_detail_not_found(api_client):
 
 def test_invalid_date_range_one_date(api_client):
     """Passing only start_date without end_date returns 422."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
 
     resp = client.get(
         "/api/v1/analytics/trends/daily",
@@ -241,7 +241,7 @@ def test_invalid_date_range_one_date(api_client):
 
 def test_limit_validation(api_client):
     """Passing limit=0 returns 422 (minimum is 1)."""
-    client, mock_repo = api_client
+    client, mock_repo, mock_detail_repo = api_client
 
     resp = client.get(
         "/api/v1/analytics/products/top",

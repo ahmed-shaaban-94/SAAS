@@ -17,6 +17,7 @@ from datapulse.analytics.models import (
     StaffPerformance,
     TrendResult,
 )
+from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.logging import get_logger
 
@@ -26,8 +27,9 @@ log = get_logger(__name__)
 class AnalyticsService:
     """Orchestrates analytics queries with sensible defaults."""
 
-    def __init__(self, repo: AnalyticsRepository) -> None:
+    def __init__(self, repo: AnalyticsRepository, detail_repo: DetailRepository | None = None) -> None:
         self._repo = repo
+        self._detail_repo = detail_repo
 
     def get_date_range(self) -> DataDateRange:
         """Return the min/max dates of available data."""
@@ -140,14 +142,20 @@ class AnalyticsService:
     def get_product_detail(self, product_key: int) -> ProductPerformance | None:
         """Detailed performance for a single product."""
         log.info("product_detail", product_key=product_key)
-        return self._repo.get_product_detail(product_key)
+        if self._detail_repo is None:
+            raise RuntimeError("DetailRepository not configured")
+        return self._detail_repo.get_product_detail(product_key)
 
     def get_customer_detail(self, customer_key: int) -> CustomerAnalytics | None:
         """Detailed analytics for a single customer."""
         log.info("customer_detail", customer_key=customer_key)
-        return self._repo.get_customer_detail(customer_key)
+        if self._detail_repo is None:
+            raise RuntimeError("DetailRepository not configured")
+        return self._detail_repo.get_customer_detail(customer_key)
 
     def get_staff_detail(self, staff_key: int) -> StaffPerformance | None:
         """Detailed performance for a single staff member."""
         log.info("staff_detail", staff_key=staff_key)
-        return self._repo.get_staff_detail(staff_key)
+        if self._detail_repo is None:
+            raise RuntimeError("DetailRepository not configured")
+        return self._detail_repo.get_staff_detail(staff_key)

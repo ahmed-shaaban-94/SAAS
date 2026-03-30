@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -102,6 +102,15 @@ class QualityCheckRequest(BaseModel):
     run_id: UUID
     stage: str
     tenant_id: int = 1
+
+    @field_validator("stage")
+    @classmethod
+    def _validate_stage(cls, v: str) -> str:
+        if v not in VALID_STAGES:
+            raise ValueError(
+                f"Invalid stage '{v}'. Must be one of: {', '.join(sorted(VALID_STAGES))}"
+            )
+        return v
 
 
 # ---------------------------------------------------------------------------

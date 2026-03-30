@@ -114,10 +114,11 @@ export function FilterBar() {
           {/* Custom date range */}
           <div className="flex flex-wrap items-end gap-3 border-t border-divider pt-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+              <label htmlFor="filter-date-from" className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
                 From
               </label>
               <input
+                id="filter-date-from"
                 type="date"
                 value={filters.start_date ?? ""}
                 onChange={(e) =>
@@ -127,10 +128,11 @@ export function FilterBar() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+              <label htmlFor="filter-date-to" className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
                 To
               </label>
               <input
+                id="filter-date-to"
                 type="date"
                 value={filters.end_date ?? ""}
                 onChange={(e) =>

@@ -60,7 +60,7 @@ export function RunHistoryTable() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[640px] text-sm" aria-label="Pipeline run history">
             <thead>
               <tr className="border-b border-border">
                 <th className="px-5 py-3 text-left text-xs font-semibold text-text-primary">

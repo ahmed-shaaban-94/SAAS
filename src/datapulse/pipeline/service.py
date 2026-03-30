@@ -13,7 +13,6 @@ from uuid import UUID
 
 from datapulse.logging import get_logger
 from datapulse.pipeline.models import (
-    VALID_STATUSES,
     PipelineRunCreate,
     PipelineRunList,
     PipelineRunResponse,
@@ -30,6 +29,18 @@ class PipelineService:
     def __init__(self, repo: PipelineRepository) -> None:
         self._repo = repo
 
+    @staticmethod
+    def _compute_duration(started_at: datetime) -> tuple[datetime, Decimal]:
+        """Return (now_utc, duration_seconds) from a started_at timestamp."""
+        now = datetime.now(UTC)
+        started = started_at
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=UTC)
+        duration = Decimal(str((now - started).total_seconds())).quantize(
+            Decimal("0.01")
+        )
+        return now, duration
+
     def start_run(
         self, data: PipelineRunCreate, tenant_id: int = 1,
     ) -> PipelineRunResponse:
@@ -39,11 +50,7 @@ class PipelineService:
     def update_status(
         self, run_id: UUID, data: PipelineRunUpdate,
     ) -> PipelineRunResponse | None:
-        if data.status is not None and data.status not in VALID_STATUSES:
-            raise ValueError(
-                f"Invalid status '{data.status}'. "
-                f"Must be one of: {', '.join(sorted(VALID_STATUSES))}"
-            )
+        # Status validation is handled by PipelineRunUpdate's Pydantic field_validator
         return self._repo.update_run(run_id, data)
 
     def complete_run(
@@ -56,13 +63,7 @@ class PipelineService:
         if existing is None:
             return None
 
-        now = datetime.now(UTC)
-        started = existing.started_at
-        if started.tzinfo is None:
-            started = started.replace(tzinfo=UTC)
-        duration = Decimal(str((now - started).total_seconds())).quantize(
-            Decimal("0.01")
-        )
+        now, duration = self._compute_duration(existing.started_at)
 
         update = PipelineRunUpdate(
             status="success",
@@ -81,13 +82,7 @@ class PipelineService:
         if existing is None:
             return None
 
-        now = datetime.now(UTC)
-        started = existing.started_at
-        if started.tzinfo is None:
-            started = started.replace(tzinfo=UTC)
-        duration = Decimal(str((now - started).total_seconds())).quantize(
-            Decimal("0.01")
-        )
+        now, duration = self._compute_duration(existing.started_at)
 
         update = PipelineRunUpdate(
             status="failed",
@@ -110,11 +105,7 @@ class PipelineService:
         offset: int = 0,
         limit: int = 20,
     ) -> PipelineRunList:
-        if status is not None and status not in VALID_STATUSES:
-            raise ValueError(
-                f"Invalid status '{status}'. "
-                f"Must be one of: {', '.join(sorted(VALID_STATUSES))}"
-            )
+        # Status validation for query params is handled at the route layer
         return self._repo.list_runs(
             status=status,
             started_after=started_after,

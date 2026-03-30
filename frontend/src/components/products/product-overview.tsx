@@ -8,6 +8,7 @@ import { RankingTableLinked } from "@/components/shared/ranking-table-linked";
 import DistributionChart from "@/components/shared/distribution-chart";
 import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
@@ -33,7 +34,7 @@ export function ProductOverview() {
 
   if (error) {
     return (
-      <EmptyState
+      <ErrorRetry
         title="Failed to load product data"
         description="Failed to load data. Please try again."
       />

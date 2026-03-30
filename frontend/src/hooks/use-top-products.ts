@@ -1,12 +1,10 @@
 import useSWR from "swr";
-import { fetchAPI } from "@/lib/api-client";
+import { fetchAPI, swrKey } from "@/lib/api-client";
 import type { RankingResult } from "@/types/api";
 import type { FilterParams } from "@/types/filters";
 
 export function useTopProducts(filters?: FilterParams) {
-  const key = filters
-    ? ["/api/v1/analytics/products/top", JSON.stringify(filters)]
-    : "/api/v1/analytics/products/top";
+  const key = swrKey("/api/v1/analytics/products/top", filters);
 
   const { data, error, isLoading } = useSWR(key, () =>
     fetchAPI<RankingResult>("/api/v1/analytics/products/top", filters),

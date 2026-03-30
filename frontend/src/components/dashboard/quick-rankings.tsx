@@ -39,7 +39,7 @@ function RankingCard({
   return (
     <div className="rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h3 className="text-sm font-semibold text-text-accent">{title}</h3>
+        <h3 className="text-sm font-semibold text-accent">{title}</h3>
         <Link
           href={href}
           className="flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80 transition-colors"
@@ -59,11 +59,11 @@ function RankingCard({
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-semibold text-accent">
                   {item.rank}
                 </span>
-                <span className="truncate text-sm text-text-accent">
+                <span className="truncate text-sm text-accent">
                   {item.name}
                 </span>
               </div>
-              <span className="shrink-0 text-sm font-medium text-text-accent">
+              <span className="shrink-0 text-sm font-medium text-accent">
                 {formatCurrency(item.value)}
               </span>
             </div>

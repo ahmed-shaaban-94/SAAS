@@ -1,19 +1,28 @@
 """Authentication and authorization dependencies for the FastAPI API.
 
-Provides lightweight API-key and webhook-token guards.
+Provides:
+- ``get_current_user``: JWT Bearer token auth (primary) with API-key fallback.
+- ``get_optional_user``: Same as above but returns None instead of raising.
+- ``require_api_key``: Lightweight API-key guard (backwards compatibility).
+- ``require_pipeline_token``: Webhook token guard for pipeline endpoints.
+
 When the corresponding config value is empty, the guard is skipped (dev mode).
 """
 
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, Security
-from fastapi.security import APIKeyHeader
+from typing import Any
 
+from fastapi import Depends, HTTPException, Security
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+
+from datapulse.api.jwt import verify_jwt
 from datapulse.config import Settings, get_settings
 
 # Header schemes (auto_error=False so we control the error message)
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 _pipeline_token_header = APIKeyHeader(name="X-Pipeline-Token", auto_error=False)
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def require_api_key(
@@ -42,3 +51,82 @@ def require_pipeline_token(
         return  # dev mode — no token required
     if not token or token != settings.pipeline_webhook_secret:
         raise HTTPException(status_code=403, detail="Invalid or missing pipeline token")
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+    api_key: str | None = Security(_api_key_header),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Authenticate the current user via JWT Bearer token or API key fallback.
+
+    Priority:
+    1. Bearer token present -> verify JWT, return claims
+    2. No Bearer token but X-API-Key present -> verify API key, return stub claims
+    3. Both auth mechanisms are unconfigured (dev mode) -> return dev claims
+
+    Returns a dict of user claims with at least:
+    - ``sub``: user subject identifier
+    - ``tenant_id``: tenant identifier for RLS
+    - ``roles``: list of realm roles
+    """
+    # 1. Try JWT Bearer token first
+    if credentials is not None:
+        claims = verify_jwt(credentials.credentials, settings)
+        # Extract tenant_id from custom claim, fallback to "1"
+        tenant_id = claims.get("tenant_id") or claims.get("tid") or "1"
+        # Extract realm roles from Keycloak token structure
+        realm_access = claims.get("realm_access", {})
+        roles = realm_access.get("roles", [])
+        return {
+            "sub": claims.get("sub", ""),
+            "email": claims.get("email", ""),
+            "preferred_username": claims.get("preferred_username", ""),
+            "tenant_id": str(tenant_id),
+            "roles": roles,
+            "raw_claims": claims,
+        }
+
+    # 2. Fallback to API key
+    if api_key:
+        if settings.api_key and api_key == settings.api_key:
+            return {
+                "sub": "api-key-user",
+                "email": "",
+                "preferred_username": "api-key",
+                "tenant_id": "1",
+                "roles": ["admin"],
+                "raw_claims": {},
+            }
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+    # 3. Dev mode — both auth mechanisms unconfigured
+    if not settings.api_key and not settings.keycloak_client_id:
+        return {
+            "sub": "dev-user",
+            "email": "dev@datapulse.local",
+            "preferred_username": "dev",
+            "tenant_id": "1",
+            "roles": ["admin"],
+            "raw_claims": {},
+        }
+
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication required. Provide a Bearer token or X-API-Key header.",
+    )
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+    api_key: str | None = Security(_api_key_header),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any] | None:
+    """Same as get_current_user but returns None instead of raising on missing auth.
+
+    Useful for endpoints that behave differently for authenticated vs anonymous users.
+    """
+    try:
+        return get_current_user(credentials, api_key, settings)
+    except HTTPException:
+        return None

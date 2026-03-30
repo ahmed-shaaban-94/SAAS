@@ -13,15 +13,16 @@ import { useMonthlyTrend } from "@/hooks/use-monthly-trend";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
-import { CHART_THEME } from "@/lib/constants";
+import { CHART_COLORS, CHART_THEME } from "@/lib/constants";
 
 export function MonthlyTrendChart() {
   const { filters } = useFilters();
   const { data, error, isLoading } = useMonthlyTrend(filters);
 
   if (isLoading) return <LoadingCard lines={8} className="h-80" />;
-  if (error) return <div className="text-red-400 p-4">Failed to load monthly trend data. Please try again.</div>;
+  if (error) return <ErrorRetry title="Failed to load monthly trend data" description="Failed to load data. Please try again." />;
   if (!data || data.points.length === 0)
     return <EmptyState title="No monthly trend data" />;
 
@@ -76,7 +77,7 @@ export function MonthlyTrendChart() {
             }}
             formatter={(value: number) => [formatCurrency(value), "Net Sales"]}
           />
-          <Bar dataKey="value" fill="#2196F3" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="value" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

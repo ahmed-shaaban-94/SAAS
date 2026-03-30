@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import {
   Activity,
   LayoutDashboard,
@@ -14,6 +15,8 @@ import {
   RotateCcw,
   GitBranch,
   Sparkles,
+  LogOut,
+  User,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +37,48 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   GitBranch,
   Sparkles,
 };
+
+function UserInfo() {
+  const { data: session } = useSession();
+
+  if (!session?.user) return null;
+
+  const displayName = session.user.name || session.user.email || "User";
+  const initials = displayName
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        {/* Avatar */}
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-xs font-bold text-accent">
+          {initials || <User className="h-4 w-4" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-text-primary">
+            {displayName}
+          </p>
+          {session.user.email && session.user.name && (
+            <p className="truncate text-xs text-text-secondary">
+              {session.user.email}
+            </p>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-divider hover:text-text-primary"
+      >
+        <LogOut className="h-4 w-4" />
+        Sign Out
+      </button>
+    </div>
+  );
+}
 
 function NavLinks({
   pathname,
@@ -122,7 +167,8 @@ export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
             </nav>
 
             {/* Footer */}
-            <div className="border-t border-border px-6 py-4 space-y-2">
+            <div className="border-t border-border px-4 py-4 space-y-3">
+              <UserInfo />
               <HealthIndicator />
               <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
             </div>
@@ -144,7 +190,8 @@ export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-border px-6 py-4 space-y-2">
+        <div className="border-t border-border px-4 py-4 space-y-3">
+          <UserInfo />
           <HealthIndicator />
           <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
         </div>

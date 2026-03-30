@@ -13,7 +13,7 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from datapulse.api.auth import require_api_key, require_pipeline_token
+from datapulse.api.auth import get_current_user, require_pipeline_token
 from datapulse.api.deps import get_pipeline_executor, get_pipeline_service, get_quality_service
 from datapulse.config import get_settings
 from datapulse.logging import get_logger
@@ -40,7 +40,11 @@ from datapulse.pipeline.service import PipelineService
 
 log = get_logger(__name__)
 
-router = APIRouter(prefix="/pipeline", tags=["pipeline"])
+router = APIRouter(
+    prefix="/pipeline",
+    tags=["pipeline"],
+    dependencies=[Depends(get_current_user)],
+)
 
 ServiceDep = Annotated[PipelineService, Depends(get_pipeline_service)]
 ExecutorDep = Annotated[PipelineExecutor, Depends(get_pipeline_executor)]
@@ -98,7 +102,6 @@ def get_run(service: ServiceDep, run_id: UUID) -> PipelineRunResponse:
 
 @router.post(
     "/runs", response_model=PipelineRunResponse, status_code=201,
-    dependencies=[Depends(require_api_key)],
 )
 def create_run(
     service: ServiceDep, body: PipelineRunCreate,
@@ -109,16 +112,16 @@ def create_run(
 
 @router.patch(
     "/runs/{run_id}", response_model=PipelineRunResponse,
-    dependencies=[Depends(require_api_key)],
 )
 def update_run(
     service: ServiceDep, run_id: UUID, body: PipelineRunUpdate,
 ) -> PipelineRunResponse:
-    """Update an existing pipeline run (status, metrics, error)."""
-    try:
-        result = service.update_status(run_id, body)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    """Update an existing pipeline run (status, metrics, error).
+
+    Status validation is handled by PipelineRunUpdate's Pydantic field_validator;
+    invalid values are rejected with 422 before this handler runs.
+    """
+    result = service.update_status(run_id, body)
     if result is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     return result
@@ -126,7 +129,7 @@ def update_run(
 
 @router.post(
     "/trigger", response_model=TriggerResponse, status_code=202,
-    dependencies=[Depends(require_api_key), Depends(require_pipeline_token)],
+    dependencies=[Depends(require_pipeline_token)],
 )
 def trigger_pipeline(
     service: ServiceDep,
@@ -246,12 +249,10 @@ def execute_quality_check(
 
     Returns a QualityReport with gate_passed indicating whether
     the pipeline should continue (True) or halt (False).
+
+    Stage validation is handled by QualityCheckRequest's Pydantic field_validator;
+    invalid values are rejected with 422 before this handler runs.
     """
-    if body.stage not in VALID_STAGES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid stage '{body.stage}'. Must be one of: {', '.join(sorted(VALID_STAGES))}",
-        )
     return quality_service.run_checks_for_stage(
         run_id=body.run_id, stage=body.stage, tenant_id=body.tenant_id,
     )

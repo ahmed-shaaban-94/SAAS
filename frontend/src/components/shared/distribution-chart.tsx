@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { CHART_COLORS, CHART_THEME } from "@/lib/constants";
+import { formatCurrency } from "@/lib/formatters";
 
 interface DistributionChartProps {
   data: { name: string; value: number }[];
@@ -36,7 +37,7 @@ function CustomTooltip({
       }}
     >
       <p className="font-medium">{entry.payload.name}</p>
-      <p>{entry.value.toLocaleString()}</p>
+      <p>{formatCurrency(entry.value)}</p>
     </div>
   );
 }

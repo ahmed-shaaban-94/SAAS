@@ -31,7 +31,7 @@ export function RankingChart({ items, className }: RankingChartProps) {
 
   return (
     <div className={className}>
-      <ResponsiveContainer width="100%" height={items.length * 40 + 20}>
+      <ResponsiveContainer width="100%" height={items.length * 40 + 20} role="img" aria-label="Ranking chart">
         <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
           <XAxis
             type="number"

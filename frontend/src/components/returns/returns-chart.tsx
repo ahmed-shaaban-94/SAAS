@@ -32,7 +32,7 @@ export function ReturnsChart({ items, className }: ReturnsChartProps) {
 
   return (
     <div className={className}>
-      <ResponsiveContainer width="100%" height={chartData.length * 40 + 20}>
+      <ResponsiveContainer width="100%" height={chartData.length * 40 + 20} role="img" aria-label="Returns chart">
         <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
           <XAxis
             type="number"

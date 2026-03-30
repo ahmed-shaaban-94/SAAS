@@ -7,9 +7,6 @@ export function useSummary(filters?: FilterParams) {
   // The /summary endpoint accepts `target_date` (not start_date/end_date).
   // Map the filter's end_date to target_date so KPIs reflect the selected range.
   const targetDate = filters?.end_date;
-  const summaryParams: FilterParams | undefined = targetDate
-    ? { end_date: targetDate }
-    : undefined;
 
   const key = targetDate
     ? `/api/v1/analytics/summary?target_date=${targetDate}`

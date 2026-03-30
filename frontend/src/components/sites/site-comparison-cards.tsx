@@ -81,7 +81,7 @@ export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) 
         <h3 className="mb-4 text-sm font-medium text-text-secondary">
           Revenue Comparison
         </h3>
-        <ResponsiveContainer width="100%" height={120}>
+        <ResponsiveContainer width="100%" height={120} role="img" aria-label="Site comparison chart">
           <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
             <XAxis
               type="number"

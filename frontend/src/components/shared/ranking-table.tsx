@@ -11,7 +11,7 @@ interface RankingTableProps {
 export function RankingTable({ items, entityLabel, className }: RankingTableProps) {
   return (
     <div className={cn("overflow-x-auto", className)}>
-      <table className="w-full min-w-[500px] text-left text-sm">
+      <table className="w-full min-w-[500px] text-left text-sm" aria-label="Rankings data">
         <thead>
           <tr className="border-b border-border text-text-secondary">
             <th className="pb-3 pr-4 font-medium">#</th>

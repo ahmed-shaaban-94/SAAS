@@ -79,10 +79,17 @@ def mock_repo():
 
 
 @pytest.fixture()
-def analytics_service(mock_repo):
-    """AnalyticsService with mocked repository."""
+def mock_detail_repo():
+    """Fully mocked DetailRepository for detail query tests."""
+    from datapulse.analytics.detail_repository import DetailRepository
+    return create_autospec(DetailRepository, instance=True)
+
+
+@pytest.fixture()
+def analytics_service(mock_repo, mock_detail_repo):
+    """AnalyticsService with mocked repositories."""
     from datapulse.analytics.service import AnalyticsService
-    return AnalyticsService(mock_repo)
+    return AnalyticsService(mock_repo, mock_detail_repo)
 
 
 @pytest.fixture()
@@ -90,12 +97,14 @@ def api_client():
     """FastAPI TestClient with mocked dependencies."""
     from fastapi.testclient import TestClient
 
+    from datapulse.analytics.detail_repository import DetailRepository
     from datapulse.analytics.repository import AnalyticsRepository
     from datapulse.analytics.service import AnalyticsService
 
     mock_session = MagicMock()
     mock_repo = create_autospec(AnalyticsRepository, instance=True)
-    mock_svc = AnalyticsService(mock_repo)
+    mock_detail_repo = create_autospec(DetailRepository, instance=True)
+    mock_svc = AnalyticsService(mock_repo, mock_detail_repo)
 
     from datapulse.api import deps
     from datapulse.api.app import create_app
@@ -105,7 +114,7 @@ def api_client():
     app.dependency_overrides[deps.get_analytics_service] = lambda: mock_svc
 
     client = TestClient(app, headers={"X-API-Key": "test-api-key"})
-    yield client, mock_repo
+    yield client, mock_repo, mock_detail_repo
 
     app.dependency_overrides.clear()
 

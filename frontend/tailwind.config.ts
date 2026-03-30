@@ -19,8 +19,8 @@ const config: Config = {
         accent: "#00BFA5",
         "chart-blue": "#2196F3",
         "chart-amber": "#FFB300",
-        "growth-green": "#2E7D32",
-        "growth-red": "#C62828",
+        "growth-green": "#4CAF50",
+        "growth-red": "#EF5350",
       },
       fontFamily: {
         sans: ["Segoe UI", "system-ui", "sans-serif"],

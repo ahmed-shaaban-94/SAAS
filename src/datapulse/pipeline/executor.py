@@ -6,6 +6,7 @@ No HTTP awareness, no status tracking — pure execution logic.
 
 from __future__ import annotations
 
+import re as _re
 import subprocess
 import time
 from pathlib import Path
@@ -18,21 +19,26 @@ from datapulse.pipeline.models import ExecutionResult
 
 log = get_logger(__name__)
 
-
-import re as _re
-
 _PATH_RE = _re.compile(r"(/[\w./-]+)+")
 _CONN_STR_RE = _re.compile(r"postgresql://[^\s]+")
+_CLASS_NAME_RE = _re.compile(r"\b[\w.]+(?:Error|Exception|Warning)\b")
+_TRACEBACK_RE = _re.compile(
+    r"Traceback \(most recent call last\):.*?(?=\n\S|\Z)", _re.DOTALL
+)
+_FILE_LINE_RE = _re.compile(r'File "[^"]+", line \d+.*')
 
 
 def _sanitize_error(error: str, max_length: int = 200) -> str:
-    """Strip internal paths, connection strings, and truncate error messages.
+    """Strip internal paths, connection strings, class names, and tracebacks.
 
-    Prevents leaking server filesystem paths, stack traces, and database
-    connection strings to external callers.
+    Prevents leaking server filesystem paths, stack traces, Python class names,
+    and database connection strings to external callers.
     """
-    sanitized = _CONN_STR_RE.sub("[redacted]", error)
+    sanitized = _TRACEBACK_RE.sub("[traceback]", error)
+    sanitized = _FILE_LINE_RE.sub("[traceback]", sanitized)
+    sanitized = _CONN_STR_RE.sub("[redacted]", sanitized)
     sanitized = _PATH_RE.sub("[path]", sanitized)
+    sanitized = _CLASS_NAME_RE.sub("[error]", sanitized)
     if len(sanitized) > max_length:
         sanitized = sanitized[:max_length] + "..."
     return sanitized

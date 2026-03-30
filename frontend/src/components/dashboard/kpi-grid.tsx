@@ -12,7 +12,7 @@ export function KPIGrid() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7">
         {Array.from({ length: 7 }).map((_, i) => (
           <LoadingCard key={i} lines={2} />
         ))}
@@ -23,7 +23,7 @@ export function KPIGrid() {
   if (!data) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7">
       <KPICard
         label="Today Net Sales"
         value={formatCurrency(data.today_net)}

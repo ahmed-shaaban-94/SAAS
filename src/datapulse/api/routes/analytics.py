@@ -27,10 +27,13 @@ from datapulse.analytics.models import (
     TrendResult,
 )
 from datapulse.analytics.service import AnalyticsService
-from datapulse.api.deps import get_analytics_service, verify_api_key
+from datapulse.api.auth import get_current_user
+from datapulse.api.deps import get_analytics_service
 from datapulse.api.limiter import limiter
 
-router = APIRouter(prefix="/analytics", tags=["analytics"], dependencies=[Depends(verify_api_key)])
+router = APIRouter(
+    prefix="/analytics", tags=["analytics"], dependencies=[Depends(get_current_user)],
+)
 
 
 # ------------------------------------------------------------------

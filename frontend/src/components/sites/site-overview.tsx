@@ -6,6 +6,7 @@ import { SummaryStats } from "@/components/shared/summary-stats";
 import { SiteComparisonCards } from "@/components/sites/site-comparison-cards";
 import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
@@ -31,7 +32,7 @@ export function SiteOverview() {
 
   if (error) {
     return (
-      <EmptyState
+      <ErrorRetry
         title="Failed to load site data"
         description="Failed to load data. Please try again."
       />

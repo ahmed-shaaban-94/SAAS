@@ -13,6 +13,7 @@ import { useDailyTrend } from "@/hooks/use-daily-trend";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
 import { parseDateKey } from "@/lib/date-utils";
 import { CHART_THEME } from "@/lib/constants";
@@ -22,7 +23,7 @@ export function DailyTrendChart() {
   const { data, error, isLoading } = useDailyTrend(filters);
 
   if (isLoading) return <LoadingCard lines={8} className="h-80" />;
-  if (error) return <div className="text-red-400 p-4">Failed to load daily trend data. Please try again.</div>;
+  if (error) return <ErrorRetry title="Failed to load daily trend data" description="Failed to load data. Please try again." />;
   if (!data || data.points.length === 0)
     return <EmptyState title="No daily trend data" />;
 

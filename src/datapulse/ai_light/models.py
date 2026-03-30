@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
-from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field
 
-JsonDecimal = Annotated[Decimal, PlainSerializer(float, return_type=float)]
+from datapulse.types import JsonDecimal
 
 
 class InsightRequest(BaseModel):

@@ -4,6 +4,7 @@ import { useReturns } from "@/hooks/use-returns";
 import { useFilters } from "@/contexts/filter-context";
 import { SummaryStats } from "@/components/shared/summary-stats";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { ReturnsChart } from "@/components/returns/returns-chart";
 import { ReturnsTable } from "@/components/returns/returns-table";
@@ -49,11 +50,10 @@ export function ReturnsOverview() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 text-center">
-        <p className="text-text-secondary">
-          Failed to load returns data. Please try again later.
-        </p>
-      </div>
+      <ErrorRetry
+        title="Failed to load returns data"
+        description="Failed to load data. Please try again."
+      />
     );
   }
 
