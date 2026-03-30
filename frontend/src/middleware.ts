@@ -37,15 +37,14 @@ export async function middleware(request: NextRequest) {
 
   // --- Security headers ---
   const response = NextResponse.next();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const keycloakIssuer =
     process.env.KEYCLOAK_ISSUER || "http://localhost:8080/realms/datapulse";
-  // Extract origin from issuer (e.g. "http://localhost:8080")
   const keycloakOrigin = new URL(keycloakIssuer).origin;
   const isDev = process.env.NODE_ENV === "development";
 
   // Next.js requires 'unsafe-inline' for styles (CSS-in-JS / Tailwind injection).
   // Dev mode additionally needs 'unsafe-eval' for React Refresh / HMR.
+  // API calls now go through Traefik on same origin — no extra connect-src needed.
   const scriptSrc = isDev
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
     : "script-src 'self' 'unsafe-inline'";
@@ -58,7 +57,7 @@ export async function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self'",
-      `connect-src 'self' ${apiUrl} ${keycloakOrigin}`,
+      `connect-src 'self' ${keycloakOrigin}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       `form-action 'self' ${keycloakOrigin}`,

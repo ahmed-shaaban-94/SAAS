@@ -1,12 +1,16 @@
-"""Analytics business logic layer."""
+"""Analytics business logic layer with Redis caching."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import date, timedelta
+from typing import Any
 
 from datapulse.analytics.models import (
     AnalyticsFilter,
     CustomerAnalytics,
+    DashboardData,
     DataDateRange,
     DateRange,
     FilterOptions,
@@ -19,13 +23,26 @@ from datapulse.analytics.models import (
 )
 from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.repository import AnalyticsRepository
+from datapulse.cache import cache_get, cache_set
+from datapulse.config import get_settings
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 
+_CACHE_PREFIX = "datapulse:analytics"
+
+
+def _cache_key(method: str, params: dict[str, Any] | None = None) -> str:
+    """Build a deterministic cache key from method name and parameters."""
+    if params:
+        raw = json.dumps(params, sort_keys=True, default=str)
+        h = hashlib.md5(raw.encode()).hexdigest()[:12]
+        return f"{_CACHE_PREFIX}:{method}:{h}"
+    return f"{_CACHE_PREFIX}:{method}"
+
 
 class AnalyticsService:
-    """Orchestrates analytics queries with sensible defaults."""
+    """Orchestrates analytics queries with sensible defaults and caching."""
 
     def __init__(self, repo: AnalyticsRepository, detail_repo: DetailRepository | None = None) -> None:
         self._repo = repo
@@ -55,17 +72,72 @@ class AnalyticsService:
             )
         )
 
+    # ------------------------------------------------------------------
+    # Cached methods
+    # ------------------------------------------------------------------
+
     def get_dashboard_summary(
         self, target_date: date | None = None
     ) -> KPISummary:
-        """KPI cards for dashboard header."""
+        """KPI cards for dashboard header (cached 300s)."""
         if target_date is None:
             _, max_date = self._repo.get_data_date_range()
             target = max_date or date.today()
         else:
             target = target_date
+
+        key = _cache_key("summary", {"target_date": str(target)})
+        cached = cache_get(key)
+        if cached is not None:
+            log.debug("cache_hit", key=key)
+            return KPISummary(**cached)
+
         log.info("dashboard_summary", target_date=str(target))
-        return self._repo.get_kpi_summary(target)
+        result = self._repo.get_kpi_summary(target)
+        cache_set(key, result.model_dump(), ttl=get_settings().redis_default_ttl)
+        return result
+
+    def get_filter_options(self) -> FilterOptions:
+        """Return available filter values for slicers/dropdowns (cached 600s)."""
+        key = _cache_key("filter_options")
+        cached = cache_get(key)
+        if cached is not None:
+            log.debug("cache_hit", key=key)
+            return FilterOptions(**cached)
+
+        log.info("filter_options")
+        result = self._repo.get_filter_options()
+        cache_set(key, result.model_dump(), ttl=get_settings().redis_dashboard_ttl)
+        return result
+
+    def get_dashboard_data(
+        self, target_date: date | None = None
+    ) -> DashboardData:
+        """Composite dashboard payload — KPI + trends + rankings + filters (cached 600s)."""
+        key = _cache_key("dashboard", {"target_date": str(target_date)})
+        cached = cache_get(key)
+        if cached is not None:
+            log.debug("cache_hit", key=key)
+            return DashboardData(**cached)
+
+        log.info("dashboard_data", target_date=str(target_date))
+        kpi = self.get_dashboard_summary(target_date)
+        default_f = self._default_filter()
+        result = DashboardData(
+            kpi=kpi,
+            daily_trend=self._repo.get_daily_trend(default_f),
+            monthly_trend=self._repo.get_monthly_trend(default_f),
+            top_products=self._repo.get_top_products(default_f),
+            top_customers=self._repo.get_top_customers(default_f),
+            top_staff=self._repo.get_top_staff(default_f),
+            filter_options=self.get_filter_options(),
+        )
+        cache_set(key, result.model_dump(), ttl=get_settings().redis_dashboard_ttl)
+        return result
+
+    # ------------------------------------------------------------------
+    # Non-cached methods (filter-dependent, short-lived)
+    # ------------------------------------------------------------------
 
     def get_revenue_trends(
         self, filters: AnalyticsFilter | None = None
@@ -134,10 +206,9 @@ class AnalyticsService:
         log.info("return_report", filters=f.model_dump())
         return self._repo.get_return_analysis(f)
 
-    def get_filter_options(self) -> FilterOptions:
-        """Return available filter values for slicers/dropdowns."""
-        log.info("filter_options")
-        return self._repo.get_filter_options()
+    # ------------------------------------------------------------------
+    # Detail methods (uncached — low volume, entity-specific)
+    # ------------------------------------------------------------------
 
     def get_product_detail(self, product_key: int) -> ProductPerformance | None:
         """Detailed performance for a single product."""
