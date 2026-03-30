@@ -241,6 +241,7 @@ tests/
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache for n8n |
 | `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
+| `keycloak` | datapulse-keycloak | 8080 | Auth (OAuth2/OIDC) |
 
 ```bash
 docker compose up -d --build
@@ -329,20 +330,22 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - Inline comments: Arabic where helpful for clarity (mixed)
 
 ### Security
+- **Authentication**: Keycloak OIDC — backend JWT validation (`src/datapulse/api/jwt.py`), frontend NextAuth (`frontend/src/lib/auth.ts`)
+- **Auth users**: `demo-admin` (admin role) and `demo-viewer` (viewer role) via realm import
 - All credentials via `.env` file (never hardcoded in source)
 - Docker ports bound to `127.0.0.1` only
-- Tenant-scoped RLS on `bronze.sales`, all marts tables, and silver view (`security_invoker=on`)
-- Session variable pattern: `SET LOCAL app.tenant_id = '<id>'` — reader sees only their tenant's rows
+- Tenant-scoped RLS on `bronze.sales`, all marts tables, agg tables, and silver view (`security_invoker=on`)
+- Session variable pattern: `SET LOCAL app.tenant_id = '<id>'` — derived from JWT claims
 - `FORCE ROW LEVEL SECURITY` on all RLS-enabled tables (owner bypass prevented)
 - SQL column whitelist before INSERT (prevents injection)
 - Financial columns use `NUMERIC(18,4)` (not floating-point)
-- CORS origins configurable via `CORS_ORIGINS` env var (default: `["http://localhost:3000"]`)
+- CORS restricted to specific headers (Content-Type, Authorization, X-API-Key, X-Pipeline-Token)
+- Security headers: X-Content-Type-Options, X-Frame-Options, Referrer-Policy
+- Rate limiting: 60/min analytics, 5/min pipeline mutations
 - Global exception handler catches unhandled errors, logs traceback, returns generic 500
 - Health endpoint returns 503 when DB is unreachable (not 200)
-- Request logging includes `duration_ms` and `user_agent`
 - `JsonDecimal` type alias: Decimal precision internally, float serialization in JSON
 - ErrorBoundary wraps layout to catch React component crashes
-- `parseDecimals` has `MAX_SAFE_INTEGER` guard for large numbers
 
 ### Testing
 - pytest + pytest-cov
@@ -369,8 +372,8 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 2.5**: Data quality gates — quality_checks table + RLS, quality module (models/checks/repo/service), 2 API endpoints (GET quality + POST quality-check), 7 check functions, n8n quality gate nodes in pipeline workflow, 79 tests [DONE]
 - **Phase 2.6**: Notifications — 4 n8n sub-workflows (success/failure/digest/global error), Slack webhook integration, docker-compose SLACK_WEBHOOK_URL [DONE]
 - **Phase 2.7**: Pipeline dashboard — /pipeline page, 5 components (overview/history/status-badge/quality-details/trigger), 3 SWR hooks, postAPI function, E2E tests [DONE]
-- **The Great Fix**: Full project remediation — 6-phase plan addressing 10 CRITICAL + 29 HIGH findings (auth, RLS enforcement, dim_site bug, fetch timeout, Docker hardening, frontend bugs). See `docs/The Great Fix.md` for full plan. [PLANNED]
-- **Phase 2.4**: File watcher (directory watcher service)
-- **Phase 2.8**: AI-Light (OpenRouter free tier) — AI summaries, anomaly detection, change narratives via n8n + OpenRouter free models
-- **Phase 3**: ~~AI-powered analysis via LangGraph~~ **CANCELLED** — replaced by Phase 2.8 AI-Light. LangGraph/Agent SDK not needed: OpenRouter free tier can't support agent loops reliably, and n8n + pre-computed dbt aggregations + simple LLM narration covers 80% of AI value at $0 cost. Conversational analytics deferred until paid API budget is available.
-- **Phase 4**: Public website / landing page
+- **The Great Fix**: Full project remediation — 10 CRITICAL + 29 HIGH findings resolved across 5 PRs (#23-#25, #28-#29). Keycloak OIDC auth, RLS enforcement, dim_site bug, fetch timeout, Docker hardening, frontend fixes. See `docs/The Great Fix.md` for full report. [DONE]
+- **Phase 2.4**: File watcher (directory watcher service) [PLANNED]
+- **Phase 2.8**: AI-Light (OpenRouter free tier) — AI summaries, anomaly detection, change narratives via n8n + OpenRouter free models [PLANNED]
+- **Phase 3**: ~~AI-powered analysis via LangGraph~~ **CANCELLED** — replaced by Phase 2.8 AI-Light
+- **Phase 4**: Public website / landing page [PLANNED]
