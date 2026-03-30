@@ -1,0 +1,41 @@
+# Traefik v3 — Static Configuration
+# Used in production via docker-compose.prod.yml
+
+api:
+  dashboard: false          # Disable dashboard in prod (enable per-env if needed)
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "${ACME_EMAIL:-admin@datapulse.dev}"
+      storage: /letsencrypt/acme.json
+      tlsChallenge: {}        # TLS-ALPN-01: works on port 443 only, no port 80 dependency
+
+providers:
+  docker:
+    endpoint: "tcp://socket-proxy:2375"   # Via docker-socket-proxy (never raw socket)
+    exposedByDefault: false               # Only route services with traefik.enable=true
+    network: frontend-net
+
+log:
+  level: WARN
+
+accessLog:
+  filters:
+    statusCodes:
+      - "400-599"             # Only log errors, skip health check noise
