@@ -147,6 +147,11 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - WATCHPACK_POLLING=true
+      - KEYCLOAK_CLIENT_ID=datapulse-frontend
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-}
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/datapulse
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-to-a-random-secret}
     depends_on:
       api:
         condition: service_healthy
