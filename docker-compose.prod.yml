@@ -1,0 +1,140 @@
+# Production overlay — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Adds Traefik reverse proxy (via docker-socket-proxy for security),
+# removes direct port exposure, and switches frontend to production build.
+
+services:
+  # ---------- Docker Socket Proxy (secure alternative to raw socket mount) ----------
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.2
+    container_name: datapulse-socket-proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CONTAINERS: 1           # Traefik needs to list containers
+      NETWORKS: 1             # Traefik needs network info
+      SERVICES: 0
+      TASKS: 0
+      POST: 0                 # Block all write operations
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    networks:
+      - socket-proxy-net
+
+  # ---------- Traefik Reverse Proxy ----------
+  traefik:
+    image: traefik:v3.2
+    container_name: datapulse-traefik
+    restart: unless-stopped
+    depends_on:
+      - socket-proxy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "touch /letsencrypt/acme.json && chmod 600 /letsencrypt/acme.json && traefik"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - letsencrypt_data:/letsencrypt
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-admin@datapulse.dev}
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - socket-proxy-net
+      - frontend-net
+
+  # ---------- API: remove direct port, add Traefik labels ----------
+  api:
+    ports: !reset []
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.api.rule: "Host(`${DOMAIN:-datapulse.dev}`) && PathPrefix(`/api`, `/health`)"
+      traefik.http.routers.api.entrypoints: "websecure"
+      traefik.http.routers.api.tls.certresolver: "letsencrypt"
+      traefik.http.routers.api.middlewares: "security-headers@docker"
+      traefik.http.routers.api.priority: "10"
+      traefik.http.services.api.loadbalancer.server.port: "8000"
+      # Security headers middleware (defined once, referenced by all routers)
+      traefik.http.middlewares.security-headers.headers.stsSeconds: "31536000"
+      traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains: "true"
+      traefik.http.middlewares.security-headers.headers.stsPreload: "true"
+      traefik.http.middlewares.security-headers.headers.forceSTSHeader: "true"
+      traefik.http.middlewares.security-headers.headers.frameDeny: "true"
+      traefik.http.middlewares.security-headers.headers.contentTypeNosniff: "true"
+      traefik.http.middlewares.security-headers.headers.browserXssFilter: "true"
+      traefik.http.middlewares.security-headers.headers.referrerPolicy: "strict-origin-when-cross-origin"
+      traefik.http.middlewares.security-headers.headers.permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+    networks:
+      - backend
+      - frontend-net
+
+  # ---------- Frontend: production build, remove direct port ----------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    ports: !reset []
+    environment:
+      - NEXT_PUBLIC_API_URL=https://${DOMAIN:-datapulse.dev}
+      - NEXTAUTH_URL=https://${DOMAIN:-datapulse.dev}
+      - KEYCLOAK_ISSUER=https://${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}/realms/datapulse
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.frontend.rule: "Host(`${DOMAIN:-datapulse.dev}`)"
+      traefik.http.routers.frontend.entrypoints: "websecure"
+      traefik.http.routers.frontend.tls.certresolver: "letsencrypt"
+      traefik.http.routers.frontend.middlewares: "security-headers@docker"
+      traefik.http.routers.frontend.priority: "1"
+      traefik.http.services.frontend.loadbalancer.server.port: "3000"
+    networks:
+      - frontend-net
+
+  # ---------- Remove dev-only ports from internal services ----------
+  postgres:
+    ports: !reset []
+
+  pgadmin:
+    ports: !reset []
+    networks:
+      - backend              # Explicitly backend-only, no frontend-net exposure
+
+  n8n:
+    ports: !reset []
+
+  keycloak:
+    ports: !reset []
+    environment:
+      KC_HOSTNAME: "${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.keycloak.rule: "Host(`${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}`)"
+      traefik.http.routers.keycloak.entrypoints: "websecure"
+      traefik.http.routers.keycloak.tls.certresolver: "letsencrypt"
+      traefik.http.routers.keycloak.middlewares: "security-headers@docker"
+      traefik.http.services.keycloak.loadbalancer.server.port: "8080"
+    networks:
+      - backend
+      - frontend-net
+
+  app:
+    ports: !reset []
+    networks:
+      - backend              # Explicitly backend-only, no frontend-net exposure
+
+volumes:
+  letsencrypt_data:
+
+networks:
+  socket-proxy-net:
+    driver: bridge
+    internal: true           # No external access — only Traefik <-> socket-proxy
