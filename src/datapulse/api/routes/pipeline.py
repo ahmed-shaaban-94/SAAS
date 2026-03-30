@@ -6,12 +6,15 @@ used by n8n webhooks and the frontend dashboard.
 
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from datapulse.api.auth import get_current_user, require_pipeline_token
 from datapulse.api.deps import get_pipeline_executor, get_pipeline_service, get_quality_service
@@ -98,6 +101,79 @@ def get_run(service: ServiceDep, run_id: UUID) -> PipelineRunResponse:
     if result is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     return result
+
+
+@router.get("/runs/{run_id}/stream")
+async def stream_run_progress(
+    service: ServiceDep,
+    run_id: UUID,
+) -> StreamingResponse:
+    """SSE stream for real-time pipeline run progress.
+
+    Emits events:
+    - ``status_change``: when status differs from the previous poll
+    - ``complete``: when the run reaches a terminal state (success/failed/cancelled)
+
+    Polls every 2 seconds. Closes automatically on terminal state or after 10 minutes.
+    """
+    TERMINAL = {"success", "failed", "cancelled"}
+    POLL_INTERVAL = 2  # seconds
+    MAX_DURATION = 600  # 10 minutes
+
+    # Verify run exists before starting stream
+    run = service.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    async def event_generator():
+        last_status = None
+        elapsed = 0
+
+        while elapsed < MAX_DURATION:
+            current = service.get_run(run_id)
+            if current is None:
+                yield _sse_event("error", {"message": "Run not found"})
+                return
+
+            data = {
+                "run_id": str(current.id),
+                "status": current.status,
+                "started_at": str(current.started_at),
+                "finished_at": str(current.finished_at) if current.finished_at else None,
+                "duration_seconds": float(current.duration_seconds)
+                if current.duration_seconds
+                else None,
+                "rows_loaded": current.rows_loaded,
+                "error_message": current.error_message,
+            }
+
+            if current.status != last_status:
+                yield _sse_event("status_change", data)
+                last_status = current.status
+
+            if current.status in TERMINAL:
+                yield _sse_event("complete", data)
+                return
+
+            await asyncio.sleep(POLL_INTERVAL)
+            elapsed += POLL_INTERVAL
+
+        yield _sse_event("timeout", {"message": "Stream timeout after 10 minutes"})
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _sse_event(event_type: str, data: dict) -> str:
+    """Format a Server-Sent Event message."""
+    return f"event: {event_type}\ndata: {json.dumps(data, default=str)}\n\n"
 
 
 @router.post(

@@ -160,6 +160,20 @@ class ReturnAnalysis(BaseModel):
     return_count: int
 
 
+class DashboardData(BaseModel):
+    """Composite dashboard payload — single request for the executive overview."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kpi: KPISummary
+    daily_trend: TrendResult
+    monthly_trend: TrendResult
+    top_products: RankingResult
+    top_customers: RankingResult
+    top_staff: RankingResult
+    filter_options: FilterOptions
+
+
 class FilterOption(BaseModel):
     """Single key-label pair for dropdown/slicer population."""
 

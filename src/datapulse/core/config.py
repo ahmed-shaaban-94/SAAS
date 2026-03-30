@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     keycloak_client_id: str = "datapulse-frontend"
     keycloak_client_secret: str = ""
 
+    # Redis cache
+    redis_url: str = ""
+    redis_default_ttl: int = 300       # 5 minutes
+    redis_dashboard_ttl: int = 600     # 10 minutes
+
     # Logging
     log_format: str = "console"
 

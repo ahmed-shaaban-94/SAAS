@@ -17,7 +17,7 @@ export const CHART_THEME = {
 export const CHART_MAX_ITEMS = 10;
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_URL || "";
 
 export const NAV_ITEMS = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },

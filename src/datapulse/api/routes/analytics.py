@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from datapulse.analytics.models import (
     AnalyticsFilter,
     CustomerAnalytics,
+    DashboardData,
     DataDateRange,
     DateRange,
     FilterOptions,
@@ -106,6 +107,17 @@ ServiceDep = Annotated[AnalyticsService, Depends(get_analytics_service)]
 # ------------------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------------------
+
+
+@router.get("/dashboard", response_model=DashboardData)
+@limiter.limit("60/minute")
+def get_dashboard(
+    request: Request,
+    service: ServiceDep,
+    target_date: Annotated[date | None, Query()] = None,
+) -> DashboardData:
+    """Composite dashboard endpoint — KPI + trends + rankings + filters in one call."""
+    return service.get_dashboard_data(target_date)
 
 
 @router.get("/date-range", response_model=DataDateRange)
