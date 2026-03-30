@@ -9,7 +9,7 @@ description = "Business/Sales Analytics Pipeline — Import, Clean, Analyze, Das
 requires-python = ">=3.11"
 dependencies = [
     "polars>=1.0,<2",
-    "pyarrow>=15.0,<19",
+    "pyarrow>=15.0,<24",
     "fastexcel>=0.7,<2",
     "pydantic>=2.5,<3",
     "pydantic-settings>=2.1,<3",
