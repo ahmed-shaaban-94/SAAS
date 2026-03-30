@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "@/lib/constants";
+import { getSession } from "next-auth/react";
 
 export interface PipelineStreamEvent {
   run_id: string;
@@ -23,12 +24,13 @@ interface UsePipelineStreamResult {
 }
 
 /**
- * SSE hook for real-time pipeline run progress.
+ * SSE hook for real-time pipeline run progress using fetch + ReadableStream.
  *
- * Connects to GET /api/v1/pipeline/runs/{runId}/stream and receives
- * `status_change` and `complete` events. Auto-reconnects on failure
- * with exponential backoff (max 30s). Closes automatically on
- * terminal states (success/failed/cancelled).
+ * Uses fetch (not EventSource) so we can send Authorization headers.
+ * Connects to GET /api/v1/pipeline/runs/{runId}/stream and parses
+ * `status_change` and `complete` SSE events. Auto-reconnects on
+ * transient failures with exponential backoff (max 30s).
+ * Closes automatically on terminal states or auth errors.
  */
 export function usePipelineStream(
   runId: string | null,
@@ -36,7 +38,7 @@ export function usePipelineStream(
   const [event, setEvent] = useState<PipelineStreamEvent | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const sourceRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -45,9 +47,9 @@ export function usePipelineStream(
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = undefined;
     }
-    if (sourceRef.current) {
-      sourceRef.current.close();
-      sourceRef.current = null;
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
     }
     setConnected(false);
   }, []);
@@ -58,45 +60,102 @@ export function usePipelineStream(
       return;
     }
 
-    function connect() {
+    async function connect() {
       const url = `${API_BASE_URL}/api/v1/pipeline/runs/${runId}/stream`;
-      const es = new EventSource(url);
-      sourceRef.current = es;
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-      es.onopen = () => {
+      // Build auth headers
+      const headers: Record<string, string> = {};
+      try {
+        const session = await getSession();
+        if (session?.accessToken) {
+          headers["Authorization"] = `Bearer ${session.accessToken}`;
+        }
+      } catch {
+        // Fall through without auth
+      }
+
+      try {
+        const res = await fetch(url, {
+          headers,
+          signal: controller.signal,
+        });
+
+        // Permanent errors — don't retry
+        if (res.status === 401 || res.status === 403 || res.status === 404) {
+          setError(`HTTP ${res.status}: ${res.statusText}`);
+          setConnected(false);
+          return;
+        }
+
+        if (!res.ok || !res.body) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
         setConnected(true);
         setError(null);
         retryCountRef.current = 0;
-      };
 
-      const handleEvent = (e: MessageEvent) => {
-        try {
-          const data: PipelineStreamEvent = JSON.parse(e.data);
-          setEvent(data);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-          // Close on terminal events
-          if (e.type === "complete" || e.type === "timeout" || e.type === "error") {
-            close();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Parse SSE events from buffer
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for (const part of parts) {
+            const lines = part.split("\n");
+            let eventType = "";
+            let eventData = "";
+
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                eventType = line.slice(7);
+              } else if (line.startsWith("data: ")) {
+                eventData = line.slice(6);
+              }
+            }
+
+            if (eventData) {
+              try {
+                const data: PipelineStreamEvent = JSON.parse(eventData);
+                setEvent(data);
+
+                if (
+                  eventType === "complete" ||
+                  eventType === "timeout" ||
+                  eventType === "error"
+                ) {
+                  close();
+                  return;
+                }
+              } catch {
+                // Skip malformed events
+              }
+            }
           }
-        } catch {
-          // Ignore malformed events
         }
-      };
 
-      es.addEventListener("status_change", handleEvent);
-      es.addEventListener("complete", handleEvent);
-      es.addEventListener("timeout", handleEvent);
-      es.addEventListener("error", (e) => {
-        // EventSource fires 'error' on both connection loss and server errors
-        if (es.readyState === EventSource.CLOSED) {
-          setConnected(false);
-          // Reconnect with exponential backoff (max 30s)
-          const delay = Math.min(1000 * 2 ** retryCountRef.current, 30000);
-          retryCountRef.current += 1;
-          setError(`Connection lost. Retrying in ${delay / 1000}s...`);
-          retryTimerRef.current = setTimeout(connect, delay);
-        }
-      });
+        // Stream ended normally
+        setConnected(false);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+
+        // Transient error — reconnect with exponential backoff
+        setConnected(false);
+        const delay = Math.min(1000 * 2 ** retryCountRef.current, 30000);
+        retryCountRef.current += 1;
+        setError(`Connection lost. Retrying in ${delay / 1000}s...`);
+        retryTimerRef.current = setTimeout(connect, delay);
+      }
     }
 
     connect();

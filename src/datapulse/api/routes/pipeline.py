@@ -121,7 +121,8 @@ async def stream_run_progress(
     MAX_DURATION = 600  # 10 minutes
 
     # Verify run exists before starting stream
-    run = service.get_run(run_id)
+    loop = asyncio.get_event_loop()
+    run = await loop.run_in_executor(None, service.get_run, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
 
@@ -130,7 +131,7 @@ async def stream_run_progress(
         elapsed = 0
 
         while elapsed < MAX_DURATION:
-            current = service.get_run(run_id)
+            current = await loop.run_in_executor(None, service.get_run, run_id)
             if current is None:
                 yield _sse_event("error", {"message": "Run not found"})
                 return

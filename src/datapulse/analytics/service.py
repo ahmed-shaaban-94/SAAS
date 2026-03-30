@@ -36,7 +36,7 @@ def _cache_key(method: str, params: dict[str, Any] | None = None) -> str:
     """Build a deterministic cache key from method name and parameters."""
     if params:
         raw = json.dumps(params, sort_keys=True, default=str)
-        h = hashlib.md5(raw.encode()).hexdigest()[:12]
+        h = hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()[:12]
         return f"{_CACHE_PREFIX}:{method}:{h}"
     return f"{_CACHE_PREFIX}:{method}"
 
@@ -114,6 +114,9 @@ class AnalyticsService:
         self, target_date: date | None = None
     ) -> DashboardData:
         """Composite dashboard payload — KPI + trends + rankings + filters (cached 600s)."""
+        if target_date is None:
+            _, max_date = self._repo.get_data_date_range()
+            target_date = max_date or date.today()
         key = _cache_key("dashboard", {"target_date": str(target_date)})
         cached = cache_get(key)
         if cached is not None:

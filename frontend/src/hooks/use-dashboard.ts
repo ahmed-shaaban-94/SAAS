@@ -70,7 +70,9 @@ export interface DashboardData {
 }
 
 export function useDashboard(targetDate?: string) {
-  const params = targetDate ? `?target_date=${targetDate}` : "";
+  const params = targetDate
+    ? `?${new URLSearchParams({ target_date: targetDate }).toString()}`
+    : "";
   const key = `/api/v1/analytics/dashboard${params}`;
 
   const { data, error, isLoading, mutate } = useSWR(
