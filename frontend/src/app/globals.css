@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  /* DataPulse midnight-pharma tokens */
   --bg-page: #0D1117;
   --bg-card: #161B22;
   --border: #30363D;
@@ -14,6 +15,28 @@
   --chart-amber: #FFB300;
   --growth-green: #2E7D32;
   --growth-red: #C62828;
+
+  /* shadcn/ui CSS variables — mapped to midnight-pharma */
+  --background: 215 28% 7%;          /* #0D1117 */
+  --foreground: 210 25% 91%;         /* #E6EDF3 */
+  --card: 215 22% 11%;               /* #161B22 */
+  --card-foreground: 210 25% 91%;    /* #E6EDF3 */
+  --popover: 215 22% 11%;            /* #161B22 */
+  --popover-foreground: 210 25% 91%; /* #E6EDF3 */
+  --primary: 168 100% 37%;           /* #00BFA5 */
+  --primary-foreground: 215 28% 7%;  /* #0D1117 */
+  --secondary: 215 14% 16%;          /* #21262D */
+  --secondary-foreground: 210 25% 91%;
+  --muted: 215 14% 16%;              /* #21262D */
+  --muted-foreground: 210 10% 70%;   /* #A8B3BD */
+  --accent: 168 100% 37%;            /* #00BFA5 */
+  --accent-foreground: 215 28% 7%;
+  --destructive: 0 72% 47%;          /* #C62828 */
+  --destructive-foreground: 210 25% 91%;
+  --border: 215 14% 21%;             /* #30363D */
+  --input: 215 14% 21%;              /* #30363D */
+  --ring: 168 100% 37%;              /* #00BFA5 */
+  --radius: 0.5rem;
 }
 
 body {

@@ -20,9 +20,11 @@
     "react-grid-layout": "^1.5.0",
     "recharts": "^2.15.3",
     "swr": "^2.3.3",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "@radix-ui/react-slot": "^1.1.0"
   },
   "devDependencies": {
+    "tailwindcss-animate": "^1.0.7",
     "@playwright/test": "^1.52.0",
     "@types/node": "^20.17.46",
     "@types/react": "^18.3.18",

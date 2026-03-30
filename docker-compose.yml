@@ -213,11 +213,129 @@ services:
     networks:
       - backend
 
+  # ---------- Metabase (Self-hosted BI) ----------
+  metabase:
+    image: metabase/metabase:latest
+    container_name: datapulse-metabase
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: postgres
+      MB_DB_PORT: 5432
+      MB_DB_DBNAME: ${POSTGRES_DB:-datapulse}
+      MB_DB_USER: ${POSTGRES_USER:-datapulse}
+      MB_DB_PASS: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - backend
+
+  # ---------- Keycloak (Auth / OAuth2 / OIDC) ----------
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: datapulse-keycloak
+    restart: unless-stopped
+    command: start-dev
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-datapulse}
+      KC_DB_USERNAME: ${POSTGRES_USER:-datapulse}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      KC_DB_SCHEMA: keycloak
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD must be set}
+      KC_HEALTH_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - backend
+
+  # ---------- Prometheus (Metrics Collection) ----------
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: datapulse-prometheus
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - backend
+
+  # ---------- Grafana (Dashboards & Monitoring) ----------
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: datapulse-grafana
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - backend
+
 volumes:
   pgdata:
   pgadmin_data:
   n8n_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   backend:
