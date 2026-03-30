@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Printer } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -18,7 +20,16 @@ export default function DashboardPage() {
             title="Executive Overview"
             description="Sales performance at a glance"
           />
-          <LastUpdated />
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/report"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-text-secondary transition-colors hover:bg-divider hover:text-text-primary"
+            >
+              <Printer className="h-4 w-4" />
+              Print Report
+            </Link>
+            <LastUpdated />
+          </div>
         </div>
         <FilterBar />
         <KPIGrid />

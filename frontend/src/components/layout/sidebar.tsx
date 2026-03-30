@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { HealthIndicator } from "./health-indicator";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface SidebarProps {
   anomalyCount?: number;
@@ -124,6 +125,18 @@ function NavLinks({
 export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    if (deltaX < -60) setMobileOpen(false);
+    touchStartX.current = null;
+  };
 
   return (
     <>
@@ -145,7 +158,11 @@ export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
             onClick={() => setMobileOpen(false)}
           />
           {/* Drawer */}
-          <aside className="absolute left-0 top-0 flex h-screen w-60 flex-col border-r border-border bg-card shadow-xl animate-slide-in-left">
+          <aside
+            className="absolute left-0 top-0 flex h-screen w-60 flex-col border-r border-border bg-card shadow-xl animate-slide-in-left"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
             {/* Logo + close */}
             <div className="flex h-16 items-center justify-between px-6">
               <div className="flex items-center gap-2">
@@ -169,6 +186,7 @@ export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
             {/* Footer */}
             <div className="border-t border-border px-4 py-4 space-y-3">
               <UserInfo />
+              <ThemeToggle />
               <HealthIndicator />
               <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
             </div>
@@ -192,6 +210,7 @@ export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
         {/* Footer */}
         <div className="border-t border-border px-4 py-4 space-y-3">
           <UserInfo />
+          <ThemeToggle />
           <HealthIndicator />
           <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
         </div>

@@ -10,6 +10,7 @@ import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { EmptyState } from "@/components/empty-state";
 import { StatCard } from "@/components/shared/stat-card";
+import { MiniTrendChart } from "@/components/shared/mini-trend-chart";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export default function StaffDetailPage() {
@@ -76,6 +77,10 @@ export default function StaffDetailPage() {
           <StatCard label="Avg Transaction Value" value={formatCurrency(data.avg_transaction_value)} />
           <StatCard label="Unique Customers" value={formatNumber(data.unique_customers)} />
         </div>
+
+        {data.monthly_trend && data.monthly_trend.length > 0 && (
+          <MiniTrendChart data={data.monthly_trend} title="Monthly Revenue Trend" />
+        )}
 
         <Link
           href="/staff"

@@ -116,6 +116,7 @@ class ProductPerformance(BaseModel):
     total_net_amount: JsonDecimal
     return_rate: JsonDecimal
     unique_customers: int
+    monthly_trend: list[TimeSeriesPoint] = []
 
 
 class CustomerAnalytics(BaseModel):
@@ -131,6 +132,7 @@ class CustomerAnalytics(BaseModel):
     transaction_count: int
     unique_products: int
     return_count: int
+    monthly_trend: list[TimeSeriesPoint] = []
 
 
 class StaffPerformance(BaseModel):
@@ -146,6 +148,7 @@ class StaffPerformance(BaseModel):
     transaction_count: int
     avg_transaction_value: JsonDecimal
     unique_customers: int
+    monthly_trend: list[TimeSeriesPoint] = []
 
 
 class ReturnAnalysis(BaseModel):

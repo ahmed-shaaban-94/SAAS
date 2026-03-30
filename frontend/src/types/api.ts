@@ -150,6 +150,7 @@ export interface ProductPerformance {
   total_net_amount: number;
   return_rate: number;
   unique_customers: number;
+  monthly_trend?: TimeSeriesPoint[];
 }
 
 export interface CustomerAnalytics {
@@ -161,6 +162,7 @@ export interface CustomerAnalytics {
   transaction_count: number;
   unique_products: number;
   return_count: number;
+  monthly_trend?: TimeSeriesPoint[];
 }
 
 export interface StaffPerformance {
@@ -172,4 +174,5 @@ export interface StaffPerformance {
   transaction_count: number;
   avg_transaction_value: number;
   unique_customers: number;
+  monthly_trend?: TimeSeriesPoint[];
 }

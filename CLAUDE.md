@@ -351,8 +351,15 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - pytest + pytest-cov
 - Current coverage: 95%+ on `src/datapulse/`
 - Target: 80%+ minimum
-- Playwright E2E tests: 17 specs across 5 files (`frontend/e2e/`)
+- Playwright E2E tests: 18+ specs across 6+ files (`frontend/e2e/`)
 - Run E2E: `docker compose exec frontend npx playwright test`
+
+### Frontend Features
+- **Theming**: Dark/light mode via `next-themes` (attribute="class", defaultTheme="dark"). CSS variables in globals.css, `useChartTheme` hook for Recharts SVG compatibility. Toggle in sidebar footer.
+- **Date Range Picker**: `react-day-picker` + `@radix-ui/react-popover` in filter-bar alongside presets
+- **Detail Page Trends**: Monthly revenue trend charts on product/customer/staff detail pages via `monthly_trend` API field
+- **Print Report**: `/dashboard/report` page with print-optimized layout, `@media print` styles in globals.css
+- **Mobile**: Touch swipe-to-close on sidebar drawer (60px threshold)
 
 ## Future Phases
 
@@ -373,6 +380,7 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 2.6**: Notifications — 4 n8n sub-workflows (success/failure/digest/global error), Slack webhook integration, docker-compose SLACK_WEBHOOK_URL [DONE]
 - **Phase 2.7**: Pipeline dashboard — /pipeline page, 5 components (overview/history/status-badge/quality-details/trigger), 3 SWR hooks, postAPI function, E2E tests [DONE]
 - **The Great Fix**: Full project remediation — 10 CRITICAL + 29 HIGH findings resolved across 5 PRs (#23-#25, #28-#29). Keycloak OIDC auth, RLS enforcement, dim_site bug, fetch timeout, Docker hardening, frontend fixes. See `docs/The Great Fix.md` for full report. [DONE]
+- **Enhancement 2 — Full Stack Flex**: Dark/light theme, date range picker, detail page trend charts, print report page, mobile swipe-to-close, 14 backend tests, E2E theme tests [DONE]
 - **Phase 2.4**: File watcher (directory watcher service) [PLANNED]
 - **Phase 2.8**: AI-Light (OpenRouter free tier) — AI summaries, anomaly detection, change narratives via n8n + OpenRouter free models [PLANNED]
 - **Phase 3**: ~~AI-powered analysis via LangGraph~~ **CANCELLED** — replaced by Phase 2.8 AI-Light

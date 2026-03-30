@@ -8,8 +8,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { CHART_COLORS, CHART_THEME } from "@/lib/constants";
+import { CHART_COLORS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/formatters";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 
 interface DistributionChartProps {
   data: { name: string; value: number }[];
@@ -17,36 +18,12 @@ interface DistributionChartProps {
   className?: string;
 }
 
-function CustomTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean;
-  payload?: { name: string; value: number; payload: { name: string } }[];
-}) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  const entry = payload[0];
-  return (
-    <div
-      className="rounded-md border px-3 py-2 text-sm shadow-lg"
-      style={{
-        backgroundColor: CHART_THEME.tooltipBg,
-        borderColor: CHART_THEME.tooltipBorder,
-        color: CHART_THEME.tooltipColor,
-      }}
-    >
-      <p className="font-medium">{entry.payload.name}</p>
-      <p>{formatCurrency(entry.value)}</p>
-    </div>
-  );
-}
-
 export default function DistributionChart({
   data,
   title,
   className,
 }: DistributionChartProps) {
+  const CHART_THEME = useChartTheme();
   if (!data || data.length === 0) return null;
 
   return (
@@ -75,7 +52,15 @@ export default function DistributionChart({
               />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: CHART_THEME.tooltipBg,
+              border: `1px solid ${CHART_THEME.tooltipBorder}`,
+              borderRadius: "8px",
+              color: CHART_THEME.tooltipColor,
+            }}
+            formatter={(value: number) => [formatCurrency(value)]}
+          />
           <Legend
             verticalAlign="bottom"
             iconType="circle"

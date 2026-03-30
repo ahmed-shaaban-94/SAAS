@@ -27,4 +27,10 @@ test.describe("Dashboard - Executive Overview", () => {
   test("filter bar is present", async ({ page }) => {
     await expect(page.getByText("7D").or(page.getByText("30D")).first()).toBeVisible();
   });
+
+  test("Print Report link exists", async ({ page }) => {
+    const printLink = page.getByRole("link", { name: "Print Report" });
+    await expect(printLink).toBeVisible({ timeout: 10000 });
+    await expect(printLink).toHaveAttribute("href", "/dashboard/report");
+  });
 });

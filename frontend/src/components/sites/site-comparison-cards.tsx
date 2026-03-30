@@ -12,7 +12,8 @@ import {
 import type { RankingItem } from "@/types/api";
 import { ProgressBar } from "@/components/shared/progress-bar";
 import { formatCurrency } from "@/lib/formatters";
-import { CHART_COLORS, CHART_THEME } from "@/lib/constants";
+import { CHART_COLORS } from "@/lib/constants";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 
 interface SiteComparisonCardsProps {
   items: RankingItem[];
@@ -34,6 +35,7 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) {
+  const CHART_THEME = useChartTheme();
   const chartData = useMemo(
     () =>
       items.map((item, i) => ({
@@ -81,7 +83,7 @@ export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) 
         <h3 className="mb-4 text-sm font-medium text-text-secondary">
           Revenue Comparison
         </h3>
-        <ResponsiveContainer width="100%" height={120} role="img" aria-label="Site comparison chart">
+        <ResponsiveContainer width="100%" height={120}>
           <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
             <XAxis
               type="number"

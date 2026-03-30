@@ -10,6 +10,7 @@ import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { EmptyState } from "@/components/empty-state";
 import { StatCard } from "@/components/shared/stat-card";
+import { MiniTrendChart } from "@/components/shared/mini-trend-chart";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
 
 export default function ProductDetailPage() {
@@ -78,6 +79,10 @@ export default function ProductDetailPage() {
           <StatCard label="Return Rate" value={formatPercent(data.return_rate)} />
           <StatCard label="Unique Customers" value={formatNumber(data.unique_customers)} />
         </div>
+
+        {data.monthly_trend && data.monthly_trend.length > 0 && (
+          <MiniTrendChart data={data.monthly_trend} title="Monthly Revenue Trend" />
+        )}
 
         <Link
           href="/products"

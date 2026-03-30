@@ -3,17 +3,6 @@ export const CHART_COLORS = [
   "#9C27B0", "#FF5722", "#00ACC1", "#8BC34A",
 ] as const;
 
-export const CHART_THEME = {
-  tickFill: "#A8B3BD",
-  tickFontSize: 11,
-  gridStroke: "#21262D",
-  axisStroke: "#30363D",
-  tooltipBg: "#161B22",
-  tooltipBorder: "#30363D",
-  tooltipColor: "#E6EDF3",
-  accentColor: "#00BFA5",
-} as const;
-
 export const CHART_MAX_ITEMS = 10;
 
 export const API_BASE_URL =

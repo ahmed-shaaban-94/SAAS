@@ -16,6 +16,7 @@ from datapulse.analytics.models import (
     CustomerAnalytics,
     ProductPerformance,
     StaffPerformance,
+    TimeSeriesPoint,
 )
 from datapulse.logging import get_logger
 
@@ -27,6 +28,28 @@ class DetailRepository:
 
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def _get_monthly_trend(
+        self,
+        table: str,
+        key_col: str,
+        key_value: int,
+    ) -> list[TimeSeriesPoint]:
+        """Return monthly net_amount trend for a given entity."""
+        stmt = text(f"""
+            SELECT
+                TO_CHAR(a.month, 'YYYY-MM') AS period,
+                SUM(a.total_net_amount)      AS value
+            FROM {table} a
+            WHERE a.{key_col} = :key_value
+            GROUP BY a.month
+            ORDER BY a.month
+        """)
+        rows = self._session.execute(stmt, {"key_value": key_value}).fetchall()
+        return [
+            TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1])))
+            for r in rows
+        ]
 
     def get_product_detail(self, product_key: int) -> ProductPerformance | None:
         """Return detailed performance for a single product."""
@@ -62,6 +85,10 @@ class DetailRepository:
         if row is None:
             return None
 
+        trend = self._get_monthly_trend(
+            "public_marts.agg_sales_by_product", "product_key", product_key,
+        )
+
         return ProductPerformance(
             product_key=int(row[0]),
             drug_code=str(row[1]),
@@ -73,6 +100,7 @@ class DetailRepository:
             total_net_amount=Decimal(str(row[7])),
             return_rate=Decimal(str(row[8])),
             unique_customers=int(row[9]),
+            monthly_trend=trend,
         )
 
     def get_customer_detail(self, customer_key: int) -> CustomerAnalytics | None:
@@ -101,6 +129,10 @@ class DetailRepository:
         if row is None:
             return None
 
+        trend = self._get_monthly_trend(
+            "public_marts.agg_sales_by_customer", "customer_key", customer_key,
+        )
+
         return CustomerAnalytics(
             customer_key=int(row[0]),
             customer_id=str(row[1]),
@@ -110,6 +142,7 @@ class DetailRepository:
             transaction_count=int(row[5]),
             unique_products=int(row[6]),
             return_count=int(row[7]),
+            monthly_trend=trend,
         )
 
     def get_staff_detail(self, staff_key: int) -> StaffPerformance | None:
@@ -141,6 +174,10 @@ class DetailRepository:
         if row is None:
             return None
 
+        trend = self._get_monthly_trend(
+            "public_marts.agg_sales_by_staff", "staff_key", staff_key,
+        )
+
         return StaffPerformance(
             staff_key=int(row[0]),
             staff_id=str(row[1]),
@@ -150,4 +187,5 @@ class DetailRepository:
             transaction_count=int(row[5]),
             avg_transaction_value=Decimal(str(row[6])) if row[6] is not None else Decimal("0"),
             unique_customers=int(row[7]),
+            monthly_trend=trend,
         )

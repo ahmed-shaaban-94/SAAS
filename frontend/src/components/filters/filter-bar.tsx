@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { SlicerPanel } from "./slicer-panel";
 import { ActiveFilterChips } from "./active-filter-chips";
+import { DateRangePicker } from "./date-range-picker";
 
 export function FilterBar() {
   const { filters, setFilters, updateFilter, clearFilters } = useFilters();
@@ -60,6 +61,15 @@ export function FilterBar() {
             {preset.label}
           </button>
         ))}
+
+        {/* Calendar date range picker */}
+        <DateRangePicker
+          startDate={filters.start_date}
+          endDate={filters.end_date}
+          onRangeChange={(start, end) =>
+            setFilters({ ...filters, start_date: start, end_date: end })
+          }
+        />
 
         {/* More Filters toggle */}
         <button

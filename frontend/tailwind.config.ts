@@ -10,17 +10,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        page: "#0D1117",
-        card: "#161B22",
-        border: "#30363D",
-        divider: "#21262D",
-        "text-primary": "#E6EDF3",
-        "text-secondary": "#A8B3BD",
-        accent: "#00BFA5",
-        "chart-blue": "#2196F3",
-        "chart-amber": "#FFB300",
-        "growth-green": "#4CAF50",
-        "growth-red": "#EF5350",
+        page: "var(--bg-page)",
+        card: "var(--bg-card)",
+        border: "var(--border-color)",
+        divider: "var(--divider)",
+        "text-primary": "var(--text-primary)",
+        "text-secondary": "var(--text-secondary)",
+        accent: "var(--accent-color)",
+        "chart-blue": "var(--chart-blue)",
+        "chart-amber": "var(--chart-amber)",
+        "growth-green": "var(--growth-green)",
+        "growth-red": "var(--growth-red)",
       },
       fontFamily: {
         sans: ["Segoe UI", "system-ui", "sans-serif"],

@@ -11,7 +11,8 @@ import {
 } from "recharts";
 import type { RankingItem } from "@/types/api";
 import { formatCurrency, truncate } from "@/lib/formatters";
-import { CHART_COLORS, CHART_THEME } from "@/lib/constants";
+import { CHART_COLORS } from "@/lib/constants";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 
 interface RankingChartProps {
   items: RankingItem[];
@@ -19,6 +20,7 @@ interface RankingChartProps {
 }
 
 export function RankingChart({ items, className }: RankingChartProps) {
+  const CHART_THEME = useChartTheme();
   const chartData = useMemo(
     () =>
       items.map((item, i) => ({
@@ -31,7 +33,7 @@ export function RankingChart({ items, className }: RankingChartProps) {
 
   return (
     <div className={className}>
-      <ResponsiveContainer width="100%" height={items.length * 40 + 20} role="img" aria-label="Ranking chart">
+      <ResponsiveContainer width="100%" height={items.length * 40 + 20}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
           <XAxis
             type="number"

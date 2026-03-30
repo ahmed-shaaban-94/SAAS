@@ -15,11 +15,13 @@ import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorRetry } from "@/components/error-retry";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
-import { CHART_COLORS, CHART_THEME } from "@/lib/constants";
+import { CHART_COLORS } from "@/lib/constants";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 
 export function MonthlyTrendChart() {
   const { filters } = useFilters();
   const { data, error, isLoading } = useMonthlyTrend(filters);
+  const CHART_THEME = useChartTheme();
 
   if (isLoading) return <LoadingCard lines={8} className="h-80" />;
   if (error) return <ErrorRetry title="Failed to load monthly trend data" description="Failed to load data. Please try again." />;
@@ -53,7 +55,7 @@ export function MonthlyTrendChart() {
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={280} role="img" aria-label="Monthly net sales trend chart">
+      <ResponsiveContainer width="100%" height={280}>
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_THEME.gridStroke} />
           <XAxis

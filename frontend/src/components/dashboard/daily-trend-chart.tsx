@@ -16,11 +16,12 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorRetry } from "@/components/error-retry";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
 import { parseDateKey } from "@/lib/date-utils";
-import { CHART_THEME } from "@/lib/constants";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 
 export function DailyTrendChart() {
   const { filters } = useFilters();
   const { data, error, isLoading } = useDailyTrend(filters);
+  const CHART_THEME = useChartTheme();
 
   if (isLoading) return <LoadingCard lines={8} className="h-80" />;
   if (error) return <ErrorRetry title="Failed to load daily trend data" description="Failed to load data. Please try again." />;
@@ -54,7 +55,7 @@ export function DailyTrendChart() {
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={280} role="img" aria-label="Daily net sales trend chart">
+      <ResponsiveContainer width="100%" height={280}>
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="dailyGradient" x1="0" y1="0" x2="0" y2="1">

@@ -11,7 +11,8 @@ import {
 } from "recharts";
 import type { ReturnAnalysis } from "@/types/api";
 import { formatCurrency, truncate } from "@/lib/formatters";
-import { CHART_COLORS, CHART_THEME, CHART_MAX_ITEMS } from "@/lib/constants";
+import { CHART_COLORS, CHART_MAX_ITEMS } from "@/lib/constants";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 
 interface ReturnsChartProps {
   items: ReturnAnalysis[];
@@ -19,6 +20,7 @@ interface ReturnsChartProps {
 }
 
 export function ReturnsChart({ items, className }: ReturnsChartProps) {
+  const CHART_THEME = useChartTheme();
   const chartData = useMemo(() => {
     const sorted = [...items].sort(
       (a, b) => b.return_amount - a.return_amount,
@@ -32,7 +34,7 @@ export function ReturnsChart({ items, className }: ReturnsChartProps) {
 
   return (
     <div className={className}>
-      <ResponsiveContainer width="100%" height={chartData.length * 40 + 20} role="img" aria-label="Returns chart">
+      <ResponsiveContainer width="100%" height={chartData.length * 40 + 20}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
           <XAxis
             type="number"
