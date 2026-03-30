@@ -16,6 +16,17 @@ COPY src/ src/
 COPY dbt/ dbt/
 COPY migrations/ migrations/
 
+# -- Prestart stage: runs SQL migrations ──────────────────────────
+FROM base AS prestart
+
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/prestart.sh /app/scripts/prestart.sh
+RUN chmod +x /app/scripts/prestart.sh
+
+CMD ["/app/scripts/prestart.sh"]
+
 # ── API stage: lightweight, no jupyterlab ──────────────────────────
 FROM base AS api
 

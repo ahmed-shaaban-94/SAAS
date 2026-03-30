@@ -108,7 +108,7 @@ class TestGetSettings:
         get_settings.cache_clear()
 
     def test_returns_settings_instance(self):
-        with patch("datapulse.config.Settings", side_effect=lambda **kw: _settings(**kw)):
+        with patch("datapulse.core.config.Settings", side_effect=lambda **kw: _settings(**kw)):
             result = get_settings()
         assert isinstance(result, Settings)
 
@@ -128,27 +128,27 @@ class TestGetSettings:
 
     def test_cache_info_shows_hit_after_second_call(self):
         # Use a patched Settings so the .env file is not read
-        with patch("datapulse.config.Settings", return_value=_settings()):
+        with patch("datapulse.core.config.Settings", return_value=_settings()):
             get_settings()
             get_settings()
             info = get_settings.cache_info()
         assert info.hits >= 1
 
     def test_cache_clear_returns_fresh_instance(self):
-        with patch("datapulse.config.Settings", return_value=_settings()):
+        with patch("datapulse.core.config.Settings", return_value=_settings()):
             first = get_settings()
         get_settings.cache_clear()
-        with patch("datapulse.config.Settings", return_value=_settings()):
+        with patch("datapulse.core.config.Settings", return_value=_settings()):
             second = get_settings()
         assert first is not second
 
     def test_database_url_readable_from_cached_settings(self):
-        with patch("datapulse.config.Settings", return_value=_settings(database_url="postgresql://test:test@localhost/test")):
+        with patch("datapulse.core.config.Settings", return_value=_settings(database_url="postgresql://test:test@localhost/test")):
             s = get_settings()
         assert isinstance(s.database_url, str)
         assert len(s.database_url) > 0
 
     def test_max_file_size_bytes_computed_correctly(self):
-        with patch("datapulse.config.Settings", return_value=_settings(max_file_size_mb=200)):
+        with patch("datapulse.core.config.Settings", return_value=_settings(max_file_size_mb=200)):
             s = get_settings()
         assert s.max_file_size_bytes == 200 * 1024 * 1024

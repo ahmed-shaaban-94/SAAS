@@ -18,6 +18,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 
 from datapulse.api.jwt import verify_jwt
 from datapulse.config import Settings, get_settings
+from datapulse.core.security import compare_secrets
 
 # Header schemes (auto_error=False so we control the error message)
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -35,8 +36,8 @@ def require_api_key(
     """
     if not settings.api_key:
         return  # dev mode — no auth required
-    if not api_key or api_key != settings.api_key:
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    if not api_key or not compare_secrets(api_key, settings.api_key):
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 
 def require_pipeline_token(
@@ -49,8 +50,8 @@ def require_pipeline_token(
     """
     if not settings.pipeline_webhook_secret:
         return  # dev mode — no token required
-    if not token or token != settings.pipeline_webhook_secret:
-        raise HTTPException(status_code=403, detail="Invalid or missing pipeline token")
+    if not token or not compare_secrets(token, settings.pipeline_webhook_secret):
+        raise HTTPException(status_code=403, detail="Authentication failed")
 
 
 def get_current_user(
@@ -89,7 +90,7 @@ def get_current_user(
 
     # 2. Fallback to API key
     if api_key:
-        if settings.api_key and api_key == settings.api_key:
+        if settings.api_key and compare_secrets(api_key, settings.api_key):
             return {
                 "sub": "api-key-user",
                 "email": "",
@@ -98,7 +99,7 @@ def get_current_user(
                 "roles": ["admin"],
                 "raw_claims": {},
             }
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
     # 3. Dev mode — both auth mechanisms unconfigured
     if not settings.api_key and not settings.keycloak_client_id:
@@ -113,7 +114,7 @@ def get_current_user(
 
     raise HTTPException(
         status_code=401,
-        detail="Authentication required. Provide a Bearer token or X-API-Key header.",
+        detail="Authentication required",
     )
 
 

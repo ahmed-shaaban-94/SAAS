@@ -1,4 +1,21 @@
 services:
+  prestart:
+    build:
+      context: .
+      target: prestart
+    container_name: datapulse-prestart
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-datapulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-datapulse}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      DB_HOST: postgres
+    networks:
+      - backend
+
   app:
     build:
       context: .
@@ -8,6 +25,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8888:8888"
     environment:
@@ -18,12 +37,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-datapulse}
     volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./data:/app/data
-      - ./notebooks:/app/notebooks
-      - ./dbt:/app/dbt
-      - ./migrations:/app/migrations
       - "${RAW_SALES_PATH:-./data/raw/sales}:/app/data/raw/sales"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import sys; sys.exit(0)\""]
@@ -49,6 +62,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -65,11 +80,6 @@ services:
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
       API_KEY: ${API_KEY:-}
     command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
-    volumes:
-      - ./src:/app/src
-      - ./dbt:/app/dbt
-      - ./data:/app/data
-      - ./migrations:/app/migrations
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
       interval: 10s
@@ -134,19 +144,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: dev
+      target: production
     container_name: datapulse-frontend
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
-    volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-      - /app/node_modules
-      - /app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - WATCHPACK_POLLING=true
       - KEYCLOAK_CLIENT_ID=datapulse-frontend
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-}
       - KEYCLOAK_ISSUER=http://keycloak:8080/realms/datapulse

@@ -43,6 +43,7 @@ def _patch_get_settings_globally():
 
     # Also patch the imported references in each module that uses get_settings
     with (
+        patch("datapulse.core.config.get_settings", return_value=clean_settings),
         patch("datapulse.config.get_settings", return_value=clean_settings),
         patch("datapulse.import_pipeline.validator.get_settings", return_value=clean_settings),
         patch("datapulse.import_pipeline.reader.get_settings", return_value=clean_settings),
