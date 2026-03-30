@@ -12,6 +12,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <div className="ambient-bg" aria-hidden="true" />
       <Sidebar anomalyCount={anomalyCount} />
       <main id="main-content" className="min-h-screen p-4 pt-16 lg:ml-60 lg:p-6 lg:pt-6">
         {children}

@@ -1,9 +1,15 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { useCountUp } from "@/hooks/use-count-up";
 
 interface KPICardProps {
   label: string;
   value: string;
+  numericValue?: number;
+  isCurrency?: boolean;
+  isPercent?: boolean;
   trend?: number | null;
   trendLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -11,17 +17,31 @@ interface KPICardProps {
   accentGradient?: string;
 }
 
-export function KPICard({ label, value, trend, trendLabel, icon: Icon, className, accentGradient }: KPICardProps) {
+function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
+  value: string;
+  numericValue?: number;
+  isCurrency?: boolean;
+  isPercent?: boolean;
+}) {
+  const animated = useCountUp({
+    end: numericValue ?? 0,
+    duration: 1400,
+    decimals: isPercent ? 1 : 0,
+    prefix: isCurrency ? "EGP " : "",
+    suffix: isPercent ? "%" : "",
+    separator: ",",
+  });
+
+  if (numericValue === undefined || numericValue === null) {
+    return <>{value}</>;
+  }
+
+  return <>{animated}</>;
+}
+
+export function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, icon: Icon, className, accentGradient }: KPICardProps) {
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
-
-  const trendColor = isPositive
-    ? "text-growth-green"
-    : isNegative
-      ? "text-growth-red"
-      : "text-text-secondary";
-
-  const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus;
 
   const pillBg = isPositive
     ? "bg-growth-green/10 text-growth-green"
@@ -37,10 +57,14 @@ export function KPICard({ label, value, trend, trendLabel, icon: Icon, className
 
   const gradient = accentGradient || defaultGradient;
 
+  const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus;
+
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card p-5",
+        "group relative overflow-hidden rounded-xl border border-border p-5",
+        // Glass morphism
+        "bg-card/80 backdrop-blur-sm",
         "transition-all duration-300 hover:scale-[1.03] hover:shadow-lg",
         "hover:border-accent/40 hover:shadow-accent/5",
         className,
@@ -48,7 +72,7 @@ export function KPICard({ label, value, trend, trendLabel, icon: Icon, className
     >
       {/* Gradient accent strip at top */}
       <div className={cn(
-        "absolute inset-x-0 top-0 h-1 bg-gradient-to-r",
+        "absolute inset-x-0 top-0 h-1 bg-gradient-to-r transition-all duration-300 group-hover:h-1.5",
         isPositive ? "from-growth-green to-growth-green/50" :
         isNegative ? "from-growth-red to-growth-red/50" :
         "from-accent to-accent/50"
@@ -65,14 +89,19 @@ export function KPICard({ label, value, trend, trendLabel, icon: Icon, className
           {label}
         </p>
         {Icon && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 transition-all duration-300 group-hover:bg-accent/20 group-hover:scale-110">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 transition-all duration-300 group-hover:bg-accent/20 group-hover:scale-110 group-hover:rotate-3">
             <Icon className="h-5 w-5 text-accent" />
           </div>
         )}
       </div>
 
       <p className="relative mt-3 text-3xl font-bold tracking-tight text-text-primary">
-        {value}
+        <AnimatedValue
+          value={value}
+          numericValue={numericValue}
+          isCurrency={isCurrency}
+          isPercent={isPercent}
+        />
       </p>
 
       {trend !== undefined && (

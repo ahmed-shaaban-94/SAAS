@@ -19,14 +19,15 @@ import { parseDateKey } from "@/lib/date-utils";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function CustomTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
+function CustomTooltip(props: Record<string, unknown>) {
+  const { active, payload, label } = props;
+  const items = payload as Array<{ value: number }> | undefined;
+  if (!active || !items?.length) return null;
   return (
     <div className="rounded-xl border border-border bg-card/95 px-4 py-3 shadow-xl backdrop-blur-sm">
-      <p className="text-xs font-medium text-text-secondary">{label}</p>
+      <p className="text-xs font-medium text-text-secondary">{String(label)}</p>
       <p className="mt-1 text-lg font-bold text-accent">
-        {formatCurrency(payload[0].value)}
+        {formatCurrency(items[0].value)}
       </p>
     </div>
   );

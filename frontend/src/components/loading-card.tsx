@@ -9,18 +9,26 @@ export function LoadingCard({ className, lines = 3 }: LoadingCardProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-6",
+        "relative overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6",
+        "animate-fade-in",
         className,
       )}
     >
-      <div className="shimmer-line mb-4 h-4 w-1/3 rounded" />
+      {/* Subtle top accent shimmer */}
+      <div className="absolute inset-x-0 top-0 h-1 shimmer-accent" />
+
+      <div className="shimmer-line mb-4 h-4 w-1/3 rounded-md" />
+      <div className="shimmer-line mb-3 h-7 w-2/3 rounded-md" />
       {Array.from({ length: lines }).map((_, i) => (
         <div
           key={i}
-          className="shimmer-line mb-2.5 h-3 rounded"
+          className="shimmer-line mb-2.5 h-3 rounded-md"
           style={{ width: `${90 - i * 12}%` }}
         />
       ))}
+
+      {/* Pulse glow overlay */}
+      <div className="absolute inset-0 rounded-xl loading-pulse-glow" />
     </div>
   );
 }

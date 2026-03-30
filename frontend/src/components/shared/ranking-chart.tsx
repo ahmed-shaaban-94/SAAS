@@ -20,14 +20,15 @@ interface RankingChartProps {
   className?: string;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function CustomTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
+function CustomTooltip(props: Record<string, unknown>) {
+  const { active, payload } = props;
+  const items = payload as Array<{ value: number; payload: { name: string } }> | undefined;
+  if (!active || !items?.length) return null;
   return (
     <div className="rounded-xl border border-border bg-card/95 px-4 py-3 shadow-xl backdrop-blur-sm">
-      <p className="text-xs font-medium text-text-secondary">{payload[0].payload.name}</p>
+      <p className="text-xs font-medium text-text-secondary">{items[0].payload.name}</p>
       <p className="mt-1 text-lg font-bold text-text-primary">
-        {formatCurrency(payload[0].value)}
+        {formatCurrency(items[0].value)}
       </p>
     </div>
   );

@@ -31,54 +31,69 @@ export function KPIGrid() {
 
   if (!data) return null;
 
+  const cards = [
+    {
+      label: "Today Net Sales",
+      value: formatCurrency(data.today_net),
+      numericValue: data.today_net,
+      isCurrency: true,
+      icon: Zap,
+    },
+    {
+      label: "MTD Net Sales",
+      value: formatCurrency(data.mtd_net),
+      numericValue: data.mtd_net,
+      isCurrency: true,
+      icon: CalendarDays,
+    },
+    {
+      label: "YTD Net Sales",
+      value: formatCurrency(data.ytd_net),
+      numericValue: data.ytd_net,
+      isCurrency: true,
+      icon: Target,
+    },
+    {
+      label: "MoM Growth",
+      value: data.mom_growth_pct !== null ? `${data.mom_growth_pct.toFixed(1)}%` : "N/A",
+      numericValue: data.mom_growth_pct ?? undefined,
+      isPercent: true,
+      trend: data.mom_growth_pct,
+      trendLabel: "vs last month",
+      icon: TrendingUp,
+    },
+    {
+      label: "YoY Growth",
+      value: data.yoy_growth_pct !== null ? `${data.yoy_growth_pct.toFixed(1)}%` : "N/A",
+      numericValue: data.yoy_growth_pct ?? undefined,
+      isPercent: true,
+      trend: data.yoy_growth_pct,
+      trendLabel: "vs last year",
+      icon: BarChart3,
+    },
+    {
+      label: "Daily Transactions",
+      value: formatNumber(data.daily_transactions),
+      numericValue: data.daily_transactions,
+      icon: DollarSign,
+    },
+    {
+      label: "Daily Customers",
+      value: formatNumber(data.daily_customers),
+      numericValue: data.daily_customers,
+      icon: Users,
+    },
+  ];
+
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7">
-      <KPICard
-        label="Today Net Sales"
-        value={formatCurrency(data.today_net)}
-        icon={Zap}
-        className="stagger-1 animate-fade-in"
-      />
-      <KPICard
-        label="MTD Net Sales"
-        value={formatCurrency(data.mtd_net)}
-        icon={CalendarDays}
-        className="stagger-2 animate-fade-in"
-      />
-      <KPICard
-        label="YTD Net Sales"
-        value={formatCurrency(data.ytd_net)}
-        icon={Target}
-        className="stagger-3 animate-fade-in"
-      />
-      <KPICard
-        label="MoM Growth"
-        value={data.mom_growth_pct !== null ? `${data.mom_growth_pct.toFixed(1)}%` : "N/A"}
-        trend={data.mom_growth_pct}
-        trendLabel="vs last month"
-        icon={TrendingUp}
-        className="stagger-4 animate-fade-in"
-      />
-      <KPICard
-        label="YoY Growth"
-        value={data.yoy_growth_pct !== null ? `${data.yoy_growth_pct.toFixed(1)}%` : "N/A"}
-        trend={data.yoy_growth_pct}
-        trendLabel="vs last year"
-        icon={BarChart3}
-        className="stagger-5 animate-fade-in"
-      />
-      <KPICard
-        label="Daily Transactions"
-        value={formatNumber(data.daily_transactions)}
-        icon={DollarSign}
-        className="stagger-6 animate-fade-in"
-      />
-      <KPICard
-        label="Daily Customers"
-        value={formatNumber(data.daily_customers)}
-        icon={Users}
-        className="stagger-7 animate-fade-in"
-      />
+      {cards.map((card, i) => (
+        <KPICard
+          key={card.label}
+          {...card}
+          className={`stagger-${i + 1} animate-fade-in opacity-0`}
+        />
+      ))}
     </div>
   );
 }

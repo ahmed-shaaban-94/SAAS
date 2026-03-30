@@ -362,6 +362,103 @@ html {
 }
 
 /* ═══════════════════════════════════════════════
+   Loading card pulse glow overlay
+   ═══════════════════════════════════════════════ */
+@keyframes loadingPulseGlow {
+  0%, 100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.loading-pulse-glow {
+  background: radial-gradient(ellipse at 50% 0%, var(--accent-color) 0%, transparent 70%);
+  opacity: 0;
+  animation: loadingPulseGlow 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+:root .loading-pulse-glow {
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 137, 123, 0.04) 0%, transparent 70%);
+}
+
+.dark .loading-pulse-glow {
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 191, 165, 0.06) 0%, transparent 70%);
+}
+
+/* Shimmer accent bar for loading cards */
+.shimmer-accent {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent-color) 50%,
+    transparent 100%
+  );
+  opacity: 0.3;
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════
+   Ambient background gradient (app shell)
+   ═══════════════════════════════════════════════ */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ambient-bg::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: -10%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  filter: blur(120px);
+  animation: ambientFloat 25s ease-in-out infinite;
+}
+
+.ambient-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -20%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  filter: blur(120px);
+  animation: ambientFloat 25s ease-in-out infinite reverse;
+}
+
+:root .ambient-bg::before {
+  background: radial-gradient(ellipse, rgba(0, 137, 123, 0.04) 0%, transparent 70%);
+}
+
+:root .ambient-bg::after {
+  background: radial-gradient(ellipse, rgba(25, 118, 210, 0.03) 0%, transparent 70%);
+}
+
+.dark .ambient-bg::before {
+  background: radial-gradient(ellipse, rgba(0, 191, 165, 0.06) 0%, transparent 70%);
+}
+
+.dark .ambient-bg::after {
+  background: radial-gradient(ellipse, rgba(33, 150, 243, 0.04) 0%, transparent 70%);
+}
+
+@keyframes ambientFloat {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(30px, -20px); }
+  66% { transform: translate(-20px, 15px); }
+}
+
+/* ═══════════════════════════════════════════════
    Reduced motion
    ═══════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
