@@ -61,6 +61,7 @@ services:
       traefik.http.routers.api.entrypoints: "websecure"
       traefik.http.routers.api.tls.certresolver: "letsencrypt"
       traefik.http.routers.api.middlewares: "security-headers@docker"
+      traefik.http.routers.api.priority: "10"
       traefik.http.services.api.loadbalancer.server.port: "8000"
       # Security headers middleware (defined once, referenced by all routers)
       traefik.http.middlewares.security-headers.headers.stsSeconds: "31536000"
@@ -86,12 +87,14 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=https://${DOMAIN:-datapulse.dev}
       - NEXTAUTH_URL=https://${DOMAIN:-datapulse.dev}
+      - KEYCLOAK_ISSUER=https://${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}/realms/datapulse
     labels:
       traefik.enable: "true"
       traefik.http.routers.frontend.rule: "Host(`${DOMAIN:-datapulse.dev}`)"
       traefik.http.routers.frontend.entrypoints: "websecure"
       traefik.http.routers.frontend.tls.certresolver: "letsencrypt"
       traefik.http.routers.frontend.middlewares: "security-headers@docker"
+      traefik.http.routers.frontend.priority: "1"
       traefik.http.services.frontend.loadbalancer.server.port: "3000"
     networks:
       - frontend-net
@@ -111,7 +114,17 @@ services:
   keycloak:
     ports: !reset []
     environment:
-      KC_HOSTNAME: "https://${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}"
+      KC_HOSTNAME: "${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.keycloak.rule: "Host(`${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}`)"
+      traefik.http.routers.keycloak.entrypoints: "websecure"
+      traefik.http.routers.keycloak.tls.certresolver: "letsencrypt"
+      traefik.http.routers.keycloak.middlewares: "security-headers@docker"
+      traefik.http.services.keycloak.loadbalancer.server.port: "8080"
+    networks:
+      - backend
+      - frontend-net
 
   app:
     ports: !reset []
