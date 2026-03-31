@@ -4,6 +4,7 @@
 > **Date**: 2026-03-31
 > **Scope**: KPI sparklines, billing/customer type analysis, period comparison, top movers, site detail page, product hierarchy
 > **Model**: All agents and subagents use Opus
+> **Reviewed**: 2026-03-31 — 7 fixes applied (see Review Notes at bottom)
 
 ---
 
@@ -29,7 +30,8 @@ Enhancement 3 upgrades the DataPulse dashboard from a "data display" tool to a *
 | Layer | Changes |
 |-------|---------|
 | **Pydantic Models** | ~8 new models (BillingBreakdown, CustomerTypeBreakdown, TopMovers, SiteDetail, ProductHierarchy, etc.) |
-| **Repository** | 3 new repo files (`comparison_repository.py`, `hierarchy_repository.py`, `breakdown_repository.py` if needed) + methods in existing repos |
+| **Repository** | 3 new repo files (`comparison_repository.py`, `hierarchy_repository.py`, `breakdown_repository.py`) + sparkline method in existing repo |
+| **Shared Queries** | New `analytics/queries.py` — extracted `build_ranking` + `build_where` helpers shared across repos |
 | **Service** | ~6 new service methods |
 | **API Routes** | 5 new endpoints |
 | **Frontend Types** | ~10 new TypeScript interfaces |
@@ -55,7 +57,7 @@ Currently, the KPI grid shows 7 cards focused on net sales amounts. The `metrics
 Add 4 new fields to `KPISummary`:
 
 ```python
-avg_basket_size: JsonDecimal      # from agg_sales_daily AVG
+avg_basket_size: JsonDecimal      # computed from agg_sales_daily
 daily_returns: int                 # from metrics_summary
 mtd_transactions: int              # from metrics_summary
 ytd_transactions: int              # from metrics_summary
@@ -67,13 +69,18 @@ All fields have defaults (0) for backward compatibility.
 
 **File**: `src/datapulse/analytics/repository.py`
 
-Modify `get_kpi_summary()` SQL to also SELECT `daily_returns`, `mtd_transactions`, `ytd_transactions` from `metrics_summary`. Add a second query to get `avg_basket_size` from `agg_sales_daily` for the target date:
+Modify `get_kpi_summary()` SQL to also SELECT `daily_returns`, `mtd_transactions`, `ytd_transactions` from `metrics_summary`. Add a second query to compute `avg_basket_size` correctly from `agg_sales_daily` for the target date:
 
 ```sql
-SELECT AVG(avg_basket_size) AS avg_basket_size
+-- CORRECT: compute from totals to avoid average-of-averages error
+SELECT SUM(total_net_amount) / NULLIF(SUM(transaction_count), 0) AS avg_basket_size
 FROM public_marts.agg_sales_daily
 WHERE date_key = :date_key
 ```
+
+> **Note**: Do NOT use `AVG(avg_basket_size)` — that's an average-of-averages across
+> `(date_key, site_key, billing_way)` grain rows, which is statistically incorrect.
+> Always recompute from `SUM(amount) / SUM(count)`.
 
 #### 1.1c: Update TypeScript interface
 
@@ -109,11 +116,17 @@ def get_kpi_sparkline(self, target_date: date, days: int = 7) -> list[TimeSeries
 
 SQL:
 ```sql
+-- Compute start_date in Python: start_date = target_date - timedelta(days=days)
+-- Pass both as parameters to avoid INTERVAL parameterization issues
 SELECT full_date AS period, daily_net_amount AS value
 FROM public_marts.metrics_summary
-WHERE full_date BETWEEN (:target_date - INTERVAL ':days days') AND :target_date
+WHERE full_date BETWEEN :start_date AND :target_date
 ORDER BY full_date
 ```
+
+> **Note**: Do NOT use `(:target_date - INTERVAL ':days days')` — the `:days` inside
+> the INTERVAL string won't be parameterized by SQLAlchemy. Always compute the start
+> date in Python using `timedelta` and pass it as a separate `:start_date` parameter.
 
 #### 1.2b: Add sparkline field to KPISummary
 
@@ -191,6 +204,7 @@ Props: `description: string`
 - Test `get_kpi_sparkline` returns correct number of points (7)
 - Test expanded `KPISummary` model with new fields has correct defaults
 - Test backward compatibility (old responses still parse)
+- Test `avg_basket_size` uses SUM/NULLIF pattern (not AVG of AVG)
 
 **Frontend E2E** (`frontend/e2e/dashboard.spec.ts`):
 - Test tooltip appears on (i) icon hover
@@ -202,6 +216,18 @@ Props: `description: string`
 ## Phase 2: Billing & Customer Type Analysis
 
 > **Effort**: Medium | **Impact**: High | **Dependency**: None (independent of Phase 1)
+
+### Pre-requisite: Extract shared query helpers
+
+**`repository.py` is already 484 lines** — adding more methods would exceed the 400-line project limit. Before Phase 2 implementation:
+
+1. **Create `src/datapulse/analytics/queries.py`** — Extract `_build_where`, `_build_ranking`, `_get_ranking`, and `_safe_growth` from `repository.py` into standalone functions that accept a SQLAlchemy session.
+
+2. **Create `src/datapulse/analytics/breakdown_repository.py`** — All Phase 2 methods go here (not in `repository.py`).
+
+3. **Update `repository.py`** — Import shared helpers from `queries.py`, removing the private methods. This should bring `repository.py` back under 400 lines.
+
+This extraction also benefits Phase 3 (`comparison_repository.py` needs ranking logic) and Phase 4 (`hierarchy_repository.py`).
 
 ### 2.1 — Billing Method Breakdown
 
@@ -228,10 +254,14 @@ class BillingBreakdown(BaseModel):
 
 #### 2.1b: Add repository method
 
-**File**: `src/datapulse/analytics/repository.py`
+**File (NEW)**: `src/datapulse/analytics/breakdown_repository.py`
 
 ```python
-def get_billing_breakdown(self, filters: AnalyticsFilter) -> BillingBreakdown:
+class BreakdownRepository:
+    def __init__(self, session: Session):
+        self._session = session
+
+    def get_billing_breakdown(self, filters: AnalyticsFilter) -> BillingBreakdown:
 ```
 
 SQL against `agg_sales_daily` (grain: date_key, site_key, **billing_way**):
@@ -246,7 +276,7 @@ GROUP BY billing_way
 ORDER BY total_net_amount DESC
 ```
 
-Compute `pct_of_total` in Python (same pattern as `_build_ranking`).
+Compute `pct_of_total` in Python (same pattern as `build_ranking` from `queries.py`).
 
 #### 2.1c: Add service + route
 
@@ -297,7 +327,7 @@ class CustomerTypeBreakdownItem(BaseModel):
     period: str               # "2024-01"
     walk_in_count: int
     insurance_count: int
-    regular_count: int        # total - walk_in - insurance
+    other_count: int          # total - walk_in - insurance (non-classified)
     total_count: int
 
 class CustomerTypeBreakdown(BaseModel):
@@ -307,7 +337,13 @@ class CustomerTypeBreakdown(BaseModel):
 
 #### 2.2b: Add repository method
 
-**File**: `src/datapulse/analytics/repository.py`
+**File**: `src/datapulse/analytics/breakdown_repository.py`
+
+Add to `BreakdownRepository`:
+
+```python
+def get_customer_type_breakdown(self, filters: AnalyticsFilter) -> CustomerTypeBreakdown:
+```
 
 Query `agg_sales_monthly` which already has `walk_in_count`, `insurance_count`, `transaction_count`:
 
@@ -322,7 +358,11 @@ GROUP BY year, month
 ORDER BY year, month
 ```
 
-Compute `regular_count = total_count - walk_in_count - insurance_count` in Python.
+Compute `other_count = total_count - walk_in_count - insurance_count` in Python.
+
+> **Note**: The field is `other_count` (not `regular_count`). In pharmacy data, "regular"
+> implies a distinct customer type, but this is simply everything not classified as
+> walk-in or insurance. `other_count` avoids that ambiguity.
 
 #### 2.2c: Add service + route
 
@@ -341,7 +381,7 @@ Response: CustomerTypeBreakdown
 
 Recharts `<BarChart>` with stacked bars:
 - X-axis = month
-- Stacks: Walk-in (teal), Insurance (blue), Regular (gray)
+- Stacks: Walk-in (teal), Insurance (blue), Other (gray)
 - Responsive container
 
 #### 2.2e: Add to dashboard
@@ -353,7 +393,7 @@ Place alongside billing breakdown chart in a 2-column grid row under "Sales Dist
 **Backend**:
 - `test_billing_breakdown_empty`: returns zero totals for no data
 - `test_billing_breakdown_pct_of_total`: percentages sum to ~100
-- `test_customer_type_regular_count`: verify `regular = total - walk_in - insurance`
+- `test_customer_type_other_count`: verify `other = total - walk_in - insurance`
 - `test_customer_type_breakdown_ordering`: results ordered by year, month
 
 **Frontend E2E** (`frontend/e2e/dashboard.spec.ts`):
@@ -381,6 +421,16 @@ Custom hook that:
 4. Returns `{ current: TrendResult, previous: TrendResult | null, isLoading }`
 
 Uses `date-fns` (already in project via `date-utils.ts`) for reliable date arithmetic.
+
+**SWR caching for previous period**: Since historical data doesn't change, configure the previous-period SWR key with:
+```typescript
+{
+  revalidateOnFocus: false,
+  revalidateIfStale: false,
+  dedupingInterval: 600_000,  // 10 min — historical data won't change
+}
+```
+This avoids unnecessary refetches when the user tabs back to the dashboard.
 
 #### 3.1b: Enhance DailyTrendChart
 
@@ -429,6 +479,9 @@ class TopMovers(BaseModel):
 
 ```python
 class ComparisonRepository:
+    def __init__(self, session: Session):
+        self._session = session
+
     def get_top_movers(
         self,
         entity_type: str,
@@ -438,7 +491,7 @@ class ComparisonRepository:
     ) -> TopMovers:
 ```
 
-Runs two ranking queries (current + previous period) using the existing `_get_ranking` pattern, then computes deltas in Python.
+Uses the shared `build_ranking` helper from `analytics/queries.py` (extracted in Phase 2 pre-requisite) to run two ranking queries (current + previous period), then computes deltas in Python.
 
 Handles edge cases:
 - Entity in current but not previous = "new" (skip or show as +100%)
@@ -471,7 +524,7 @@ Two-column card:
 
 #### 3.2e: Add to dashboard
 
-Place "Top Movers" section after Rankings on the dashboard page.
+Place "Top Movers" section after Rankings on the dashboard page. Include a "See all insights →" link navigating to `/insights` for AI-powered analysis context.
 
 ### Phase 3 Testing
 
@@ -670,6 +723,8 @@ Tab or toggle to switch between current ranking view and hierarchy view.
 
 | File | Phase | Purpose |
 |------|-------|---------|
+| `src/datapulse/analytics/queries.py` | 2 (pre-req) | Shared query helpers (build_ranking, build_where, safe_growth) |
+| `src/datapulse/analytics/breakdown_repository.py` | 2 | Billing + customer type breakdown queries |
 | `frontend/src/components/shared/metric-tooltip.tsx` | 1 | Reusable (i) info popover |
 | `frontend/src/hooks/use-billing-breakdown.ts` | 2 | SWR hook for billing breakdown |
 | `frontend/src/components/dashboard/billing-breakdown-chart.tsx` | 2 | Donut chart for billing methods |
@@ -678,7 +733,7 @@ Tab or toggle to switch between current ranking view and hierarchy view.
 | `frontend/src/hooks/use-comparison-trend.ts` | 3 | Hook for two-period fetch |
 | `frontend/src/hooks/use-top-movers.ts` | 3 | SWR hook for top movers |
 | `frontend/src/components/dashboard/top-movers-card.tsx` | 3 | Gainers/losers card |
-| `src/datapulse/analytics/comparison_repository.py` | 3 | Top movers query logic |
+| `src/datapulse/analytics/comparison_repository.py` | 3 | Top movers query logic (uses shared queries.py) |
 | `frontend/src/hooks/use-site-detail.ts` | 4 | SWR hook for site detail |
 | `frontend/src/app/(app)/sites/[key]/page.tsx` | 4 | Site detail page |
 | `frontend/src/app/(app)/sites/[key]/loading.tsx` | 4 | Site detail loading skeleton |
@@ -692,11 +747,11 @@ Tab or toggle to switch between current ranking view and hierarchy view.
 | File | Phases | Changes |
 |------|--------|---------|
 | `src/datapulse/analytics/models.py` | 1,2,3,4 | ~8 new Pydantic models |
-| `src/datapulse/analytics/repository.py` | 1,2 | `get_kpi_sparkline`, `get_billing_breakdown`, `get_customer_type_breakdown` |
+| `src/datapulse/analytics/repository.py` | 1,2(refactor) | `get_kpi_sparkline`; extract private methods to `queries.py` |
 | `src/datapulse/analytics/detail_repository.py` | 4 | `get_site_detail`, expand whitelists |
 | `src/datapulse/analytics/service.py` | 1,2,3,4 | ~6 new service methods |
 | `src/datapulse/api/routes/analytics.py` | 2,3,4 | 5 new endpoints |
-| `src/datapulse/api/deps.py` | 4 | Wire `HierarchyRepository` |
+| `src/datapulse/api/deps.py` | 2,3,4 | Wire `BreakdownRepository`, `ComparisonRepository`, `HierarchyRepository` |
 | `frontend/src/types/api.ts` | 1,2,3,4 | ~10 new interfaces |
 | `frontend/src/components/dashboard/kpi-card.tsx` | 1 | Sparkline + tooltip props |
 | `frontend/src/components/dashboard/kpi-grid.tsx` | 1 | New cards, sparkline/tooltip data |
@@ -724,11 +779,13 @@ Tab or toggle to switch between current ranking view and hierarchy view.
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| `repository.py` exceeding 400-line limit | Medium | Extract to `breakdown_repository.py` if needed; Phase 3-4 already use separate repo files |
+| `repository.py` exceeding 400-line limit | ~~Medium~~ **Resolved** | Extract to `queries.py` + `breakdown_repository.py` as Phase 2 pre-requisite |
 | Product hierarchy query returning 17k+ rows | Medium | Use `ROW_NUMBER() OVER (PARTITION BY drug_brand)` to limit top 10 per brand |
 | Period comparison date edge cases (Feb 28, year boundary) | Medium | Use `date-fns` `subDays`/`subMonths` for reliable shifting; test edge cases |
 | Dashboard performance with many charts | Low | SWR deduplication + caching; new sections below fold (lazy render) |
-| Comparison toggle fetching duplicate data | Low | SWR built-in deduplication; separate cache keys |
+| Comparison toggle fetching duplicate data | Low | SWR built-in deduplication; separate cache keys; `revalidateIfStale: false` for historical periods |
+| Average-of-averages for avg_basket_size | ~~Medium~~ **Resolved** | Use `SUM(amount)/NULLIF(SUM(count),0)` instead of `AVG(avg_basket_size)` |
+| Sparkline SQL INTERVAL parameterization | ~~Medium~~ **Resolved** | Compute start_date in Python, pass as parameter |
 
 ---
 
@@ -747,6 +804,7 @@ Tab or toggle to switch between current ranking view and hierarchy view.
 - [ ] Backend test coverage remains 80%+
 - [ ] E2E tests pass for all new features
 - [ ] No existing tests broken
+- [ ] `repository.py` stays under 400 lines after refactoring
 
 ---
 
@@ -755,6 +813,8 @@ Tab or toggle to switch between current ranking view and hierarchy view.
 All 4 phases are **independently deployable**. Recommended order:
 
 ```
+Phase 2 pre-req (extract queries.py) ── FIRST (unblocks clean repos)
+     │
 Phase 1 (Quick Wins) ──────┐
 Phase 2 (Billing/CustType) ─┼── can run in parallel
 Phase 3 (Comparison) ───────┘
@@ -762,3 +822,24 @@ Phase 4 (Pages/Drill-down) ──── after Phase 1-3 merged (uses patterns es
 ```
 
 Each phase = 1 PR, reviewable and mergeable independently.
+
+---
+
+## Review Notes (2026-03-31)
+
+Changes applied during review against codebase state:
+
+| # | Issue | Fix Applied |
+|---|-------|-------------|
+| 1 | `repository.py` already 484 lines — adding Phase 2 methods would exceed 400-line limit | Added **Phase 2 pre-requisite** section: extract `queries.py` shared helpers + create `breakdown_repository.py` from the start |
+| 2 | Sparkline SQL `INTERVAL ':days days'` — parameter inside string literal won't bind | Rewrote 1.2a SQL to compute `start_date` in Python via `timedelta`, pass as `:start_date` param |
+| 3 | `AVG(avg_basket_size)` from `agg_sales_daily` is average-of-averages (statistically wrong) | Rewrote 1.1b to use `SUM(total_net_amount) / NULLIF(SUM(transaction_count), 0)` |
+| 4 | `_get_ranking` is private in `repository.py` — `ComparisonRepository` can't call it | Solved by #1: extract to `queries.py` as public `build_ranking()`, shared across all repos |
+| 5 | `regular_count` implies a distinct customer type — misleading for "everything else" | Renamed to `other_count` throughout (model, tests, chart legend label) |
+| 6 | Previous period SWR fetch re-validates on every focus — wasteful for historical data | Added SWR config note in 3.1a: `revalidateOnFocus: false`, `revalidateIfStale: false`, `dedupingInterval: 600_000` |
+| 7 | Top Movers conceptually overlaps with `/insights` AI page — no cross-link | Added "See all insights →" link in 3.2e connecting movers to AI analysis page |
+
+### Verified column availability (all confirmed in dbt models):
+- `agg_sales_daily`: `billing_way` column exists in grain
+- `agg_sales_monthly`: `walk_in_count`, `insurance_count` exist
+- `metrics_summary`: `daily_returns`, `mtd_transactions`, `ytd_transactions` exist
