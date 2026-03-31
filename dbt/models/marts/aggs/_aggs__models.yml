@@ -4,6 +4,8 @@ models:
   # ── agg_sales_daily ──────────────────────────────────────────────────
   - name: agg_sales_daily
     description: "Daily sales aggregation. Grain: (date_key, site_key, billing_way)"
+    meta:
+      label: "Daily Sales"
     columns:
       - name: date_key
         description: "Foreign key to dim_date"
@@ -19,42 +21,82 @@ models:
           - not_null
       - name: total_quantity
         description: "Sum of item quantities sold"
+        meta:
+          metrics:
+            daily_total_quantity:
+              type: sum
         tests:
           - not_null
       - name: total_sales
         description: "Sum of gross sales amount"
+        meta:
+          metrics:
+            daily_total_sales:
+              type: sum
         tests:
           - not_null
       - name: total_discount
         description: "Sum of discount amount"
+        meta:
+          metrics:
+            daily_total_discount:
+              type: sum
         tests:
           - not_null
       - name: total_net_amount
         description: "Sum of net sales amount (sales minus discount)"
+        meta:
+          metrics:
+            daily_total_net_amount:
+              type: sum
+            daily_avg_net_amount:
+              type: average
         tests:
           - not_null
       - name: transaction_count
         description: "Number of transactions"
+        meta:
+          metrics:
+            daily_total_transactions:
+              type: sum
         tests:
           - not_null
       - name: return_count
         description: "Number of return transactions"
+        meta:
+          metrics:
+            daily_total_returns:
+              type: sum
         tests:
           - not_null
       - name: unique_customers
         description: "Count of distinct customers"
+        meta:
+          metrics:
+            daily_total_unique_customers:
+              type: sum
         tests:
           - not_null
       - name: unique_products
         description: "Count of distinct products"
+        meta:
+          metrics:
+            daily_total_unique_products:
+              type: sum
         tests:
           - not_null
       - name: avg_basket_size
         description: "Average net amount per invoice"
+        meta:
+          metrics:
+            daily_avg_basket_size:
+              type: average
 
   # ── agg_sales_monthly ───────────────────────────────────────────────
   - name: agg_sales_monthly
     description: "Monthly sales aggregation with MoM and YoY growth. Grain: (year, month, site_key)"
+    meta:
+      label: "Monthly Sales"
     columns:
       - name: year
         description: "Calendar year"
@@ -132,6 +174,8 @@ models:
   # ── agg_sales_by_product ────────────────────────────────────────────
   - name: agg_sales_by_product
     description: "Product sales aggregation with denormalized product attributes. Grain: (product_key, year, month)"
+    meta:
+      label: "Sales by Product"
     columns:
       - name: product_key
         description: "Foreign key to dim_product"
@@ -201,6 +245,8 @@ models:
   # ── agg_sales_by_customer ───────────────────────────────────────────
   - name: agg_sales_by_customer
     description: "Customer sales aggregation with denormalized customer attributes. Grain: (customer_key, year, month)"
+    meta:
+      label: "Sales by Customer"
     columns:
       - name: customer_key
         description: "Foreign key to dim_customer"
@@ -262,6 +308,8 @@ models:
   # ── agg_sales_by_site ──────────────────────────────────────────────
   - name: agg_sales_by_site
     description: "Site performance aggregation with volume, diversity, and ratio metrics. Grain: (site_key, year, month)"
+    meta:
+      label: "Sales by Site"
     columns:
       - name: site_key
         description: "Foreign key to dim_site"
@@ -327,6 +375,8 @@ models:
   # ── agg_sales_by_staff ─────────────────────────────────────────────
   - name: agg_sales_by_staff
     description: "Staff performance aggregation with volume, diversity, and avg transaction value. Grain: (staff_key, year, month)"
+    meta:
+      label: "Sales by Staff"
     columns:
       - name: staff_key
         description: "Foreign key to dim_staff"
@@ -386,6 +436,8 @@ models:
   # ── agg_returns ────────────────────────────────────────────────────
   - name: agg_returns
     description: "Returns analysis aggregation (only return transactions). Grain: (product_key, customer_key, year, month, billing_way)"
+    meta:
+      label: "Returns"
     columns:
       - name: product_key
         description: "Foreign key to dim_product"
@@ -427,6 +479,8 @@ models:
   # ── metrics_summary ────────────────────────────────────────────────
   - name: metrics_summary
     description: "Daily metrics summary with MTD and YTD running totals. Grain: (date_key) — one row per day aggregated across all sites and billing ways"
+    meta:
+      label: "Metrics Summary"
     columns:
       - name: date_key
         description: "Foreign key to dim_date (unique per row)"
