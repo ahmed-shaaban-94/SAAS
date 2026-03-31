@@ -27,19 +27,23 @@ log = get_logger(__name__)
 class DetailRepository:
     """Detail queries for individual products, customers, staff, and sites."""
 
-    _ALLOWED_TABLES: frozenset[str] = frozenset({
-        "public_marts.agg_sales_by_product",
-        "public_marts.agg_sales_by_customer",
-        "public_marts.agg_sales_by_staff",
-        "public_marts.agg_sales_by_site",
-    })
+    _ALLOWED_TABLES: frozenset[str] = frozenset(
+        {
+            "public_marts.agg_sales_by_product",
+            "public_marts.agg_sales_by_customer",
+            "public_marts.agg_sales_by_staff",
+            "public_marts.agg_sales_by_site",
+        }
+    )
 
-    _ALLOWED_KEY_COLS: frozenset[str] = frozenset({
-        "product_key",
-        "customer_key",
-        "staff_key",
-        "site_key",
-    })
+    _ALLOWED_KEY_COLS: frozenset[str] = frozenset(
+        {
+            "product_key",
+            "customer_key",
+            "staff_key",
+            "site_key",
+        }
+    )
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -65,10 +69,7 @@ class DetailRepository:
             ORDER BY a.month
         """)
         rows = self._session.execute(stmt, {"key_value": key_value}).fetchall()
-        return [
-            TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1])))
-            for r in rows
-        ]
+        return [TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows]
 
     def get_product_detail(self, product_key: int) -> ProductPerformance | None:
         """Return detailed performance for a single product."""
@@ -105,7 +106,9 @@ class DetailRepository:
             return None
 
         trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_product", "product_key", product_key,
+            "public_marts.agg_sales_by_product",
+            "product_key",
+            product_key,
         )
 
         return ProductPerformance(
@@ -149,7 +152,9 @@ class DetailRepository:
             return None
 
         trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_customer", "customer_key", customer_key,
+            "public_marts.agg_sales_by_customer",
+            "customer_key",
+            customer_key,
         )
 
         return CustomerAnalytics(
@@ -194,7 +199,9 @@ class DetailRepository:
             return None
 
         trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_staff", "staff_key", staff_key,
+            "public_marts.agg_sales_by_staff",
+            "staff_key",
+            staff_key,
         )
 
         return StaffPerformance(
@@ -246,7 +253,9 @@ class DetailRepository:
             return None
 
         trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_site", "site_key", site_key,
+            "public_marts.agg_sales_by_site",
+            "site_key",
+            site_key,
         )
 
         return SiteDetail(

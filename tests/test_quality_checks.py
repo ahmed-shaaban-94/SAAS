@@ -7,6 +7,7 @@ Covers:
 - QualityCheckRequest defaults
 - VALID_STAGES constant
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -686,15 +687,24 @@ class TestQualityModels:
         """gate_passed=True when every error-severity check passes."""
         checks = [
             QualityCheckResult(
-                check_name="row_count", stage="bronze", severity="error",
-                passed=True, message=None, details={},
+                check_name="row_count",
+                stage="bronze",
+                severity="error",
+                passed=True,
+                message=None,
+                details={},
             ),
             QualityCheckResult(
-                check_name="row_delta", stage="bronze", severity="warn",
-                passed=True, message=None, details={},
+                check_name="row_delta",
+                stage="bronze",
+                severity="warn",
+                passed=True,
+                message=None,
+                details={},
             ),
         ]
         from datetime import datetime
+
         report = QualityReport(
             pipeline_run_id=uuid4(),
             stage="bronze",
@@ -711,15 +721,24 @@ class TestQualityModels:
         """gate_passed=False when an error-severity check fails."""
         checks = [
             QualityCheckResult(
-                check_name="row_count", stage="bronze", severity="error",
-                passed=False, message="No rows", details={},
+                check_name="row_count",
+                stage="bronze",
+                severity="error",
+                passed=False,
+                message="No rows",
+                details={},
             ),
             QualityCheckResult(
-                check_name="row_delta", stage="bronze", severity="warn",
-                passed=False, message="High delta", details={},
+                check_name="row_delta",
+                stage="bronze",
+                severity="warn",
+                passed=False,
+                message="High delta",
+                details={},
             ),
         ]
         from datetime import datetime
+
         report = QualityReport(
             pipeline_run_id=uuid4(),
             stage="bronze",
@@ -736,18 +755,24 @@ class TestQualityModels:
         """gate_passed can be True when only warn-severity checks fail."""
         checks = [
             QualityCheckResult(
-                check_name="row_count", stage="bronze", severity="error",
-                passed=True, message=None, details={},
+                check_name="row_count",
+                stage="bronze",
+                severity="error",
+                passed=True,
+                message=None,
+                details={},
             ),
             QualityCheckResult(
-                check_name="row_delta", stage="bronze", severity="warn",
-                passed=False, message="Large drop", details={},
+                check_name="row_delta",
+                stage="bronze",
+                severity="warn",
+                passed=False,
+                message="Large drop",
+                details={},
             ),
         ]
         # Simulate service logic: gate_passed because no error checks failed
-        error_checks_all_pass = all(
-            c.passed for c in checks if c.severity == "error"
-        )
+        error_checks_all_pass = all(c.passed for c in checks if c.severity == "error")
         all_pass = all(c.passed for c in checks)
 
         assert error_checks_all_pass is True
@@ -797,6 +822,7 @@ class TestQualityModels:
     def test_quality_report_frozen(self):
         """QualityReport is immutable — mutation must raise TypeError."""
         from datetime import datetime
+
         report = QualityReport(
             pipeline_run_id=uuid4(),
             stage="bronze",

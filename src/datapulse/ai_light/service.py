@@ -63,12 +63,8 @@ class AILightService:
         target = target_date or date.today()
 
         kpi = self._repo.get_kpi_summary(target)
-        top_products = self._repo.get_top_products(
-            AnalyticsFilter(limit=5)
-        )
-        top_customers = self._repo.get_top_customers(
-            AnalyticsFilter(limit=5)
-        )
+        top_products = self._repo.get_top_products(AnalyticsFilter(limit=5))
+        top_customers = self._repo.get_top_customers(AnalyticsFilter(limit=5))
 
         products_text = "\n".join(
             f"  {i.rank}. {_sanitize_for_prompt(i.name)}: "
@@ -150,9 +146,7 @@ class AILightService:
         # If OpenRouter is available, enhance with AI analysis
         if self._client.is_configured and values:
             try:
-                daily_text = "\n".join(
-                    f"  {p.period}: {p.value:,.0f} EGP" for p in trends.points
-                )
+                daily_text = "\n".join(f"  {p.period}: {p.value:,.0f} EGP" for p in trends.points)
                 prompt = ANOMALY_PROMPT.format(
                     daily_data=daily_text,
                     avg=f"{avg:,.0f}",

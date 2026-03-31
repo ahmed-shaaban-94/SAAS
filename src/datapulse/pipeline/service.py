@@ -37,19 +37,21 @@ class PipelineService:
         started = started_at
         if started.tzinfo is None:
             started = started.replace(tzinfo=UTC)
-        duration = Decimal(str((now - started).total_seconds())).quantize(
-            Decimal("0.01")
-        )
+        duration = Decimal(str((now - started).total_seconds())).quantize(Decimal("0.01"))
         return now, duration
 
     def start_run(
-        self, data: PipelineRunCreate, tenant_id: int = 1,
+        self,
+        data: PipelineRunCreate,
+        tenant_id: int = 1,
     ) -> PipelineRunResponse:
         log.info("pipeline_start_run", run_type=data.run_type)
         return self._repo.create_run(data, tenant_id)
 
     def update_status(
-        self, run_id: UUID, data: PipelineRunUpdate,
+        self,
+        run_id: UUID,
+        data: PipelineRunUpdate,
     ) -> PipelineRunResponse | None:
         # Status validation is handled by PipelineRunUpdate's Pydantic field_validator
         return self._repo.update_run(run_id, data)
@@ -79,7 +81,9 @@ class PipelineService:
         return result
 
     def fail_run(
-        self, run_id: UUID, error_message: str,
+        self,
+        run_id: UUID,
+        error_message: str,
     ) -> PipelineRunResponse | None:
         existing = self._repo.get_run(run_id)
         if existing is None:
@@ -120,6 +124,7 @@ class PipelineService:
         )
 
     def get_latest_run(
-        self, run_type: str | None = None,
+        self,
+        run_type: str | None = None,
     ) -> PipelineRunResponse | None:
         return self._repo.get_latest_run(run_type)

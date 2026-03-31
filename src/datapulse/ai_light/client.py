@@ -69,7 +69,7 @@ class OpenRouterClient:
             except (httpx.TransportError, httpx.HTTPStatusError) as exc:
                 if attempt == max_retries - 1:
                     raise
-                wait = 2 ** attempt
+                wait = 2**attempt
                 log.warning(
                     "openrouter_retry",
                     attempt=attempt + 1,

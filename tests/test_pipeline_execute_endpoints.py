@@ -1,4 +1,5 @@
 """Tests for POST /api/v1/pipeline/execute/* endpoints."""
+
 from __future__ import annotations
 
 from unittest.mock import ANY, MagicMock
@@ -26,7 +27,9 @@ class TestExecuteBronze:
     def test_bronze_success(self, mock_executor_and_client):
         mock_exec, client = mock_executor_and_client
         mock_exec.run_bronze.return_value = ExecutionResult(
-            success=True, rows_loaded=50000, duration_seconds=120.5,
+            success=True,
+            rows_loaded=50000,
+            duration_seconds=120.5,
         )
 
         resp = client.post(
@@ -41,7 +44,9 @@ class TestExecuteBronze:
     def test_bronze_failure(self, mock_executor_and_client):
         mock_exec, client = mock_executor_and_client
         mock_exec.run_bronze.return_value = ExecutionResult(
-            success=False, error="No .xlsx files found", duration_seconds=0.1,
+            success=False,
+            error="No .xlsx files found",
+            duration_seconds=0.1,
         )
 
         resp = client.post(
@@ -58,7 +63,8 @@ class TestExecuteDbtStaging:
     def test_staging_success(self, mock_executor_and_client):
         mock_exec, client = mock_executor_and_client
         mock_exec.run_dbt.return_value = ExecutionResult(
-            success=True, duration_seconds=45.0,
+            success=True,
+            duration_seconds=45.0,
         )
 
         resp = client.post(
@@ -72,7 +78,9 @@ class TestExecuteDbtStaging:
     def test_staging_failure(self, mock_executor_and_client):
         mock_exec, client = mock_executor_and_client
         mock_exec.run_dbt.return_value = ExecutionResult(
-            success=False, error="Compilation Error", duration_seconds=2.0,
+            success=False,
+            error="Compilation Error",
+            duration_seconds=2.0,
         )
 
         resp = client.post(
@@ -87,7 +95,8 @@ class TestExecuteDbtMarts:
     def test_marts_success(self, mock_executor_and_client):
         mock_exec, client = mock_executor_and_client
         mock_exec.run_dbt.return_value = ExecutionResult(
-            success=True, duration_seconds=90.0,
+            success=True,
+            duration_seconds=90.0,
         )
 
         resp = client.post(

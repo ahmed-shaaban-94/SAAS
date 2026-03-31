@@ -63,8 +63,8 @@ class QualityReport(BaseModel):
     pipeline_run_id: UUID
     stage: str
     checks: list[QualityCheckResult]
-    all_passed: bool      # True only when every check passed
-    gate_passed: bool     # True when every severity='error' check passed
+    all_passed: bool  # True only when every check passed
+    gate_passed: bool  # True when every severity='error' check passed
     checked_at: datetime
 
 
@@ -178,8 +178,7 @@ def check_row_delta(session: Session, run_id: UUID) -> QualityCheckResult:
         severity="warn",
         passed=passed,
         message=(
-            None if passed
-            else f"Row count dropped {delta_pct}% vs previous run (threshold 50%)"
+            None if passed else f"Row count dropped {delta_pct}% vs previous run (threshold 50%)"
         ),
         details={"current": current, "previous": previous, "delta_pct": delta_pct},
     )
@@ -214,7 +213,8 @@ def check_schema_drift(session: Session, run_id: UUID) -> QualityCheckResult:
         severity="error",
         passed=passed,
         message=(
-            None if passed
+            None
+            if passed
             else f"Schema drift detected — {len(missing)} expected column(s) missing: {missing}"
         ),
         details={"missing": missing, "extra": extra},
@@ -222,7 +222,9 @@ def check_schema_drift(session: Session, run_id: UUID) -> QualityCheckResult:
 
 
 def check_null_rate(
-    session: Session, run_id: UUID, stage: str = "bronze",
+    session: Session,
+    run_id: UUID,
+    stage: str = "bronze",
 ) -> QualityCheckResult:
     """Verify critical columns have fewer than 5% NULL values."""
     if stage not in _STAGE_TABLE:
@@ -238,8 +240,7 @@ def check_null_rate(
 
     # Single query to check all critical columns at once (avoids N full-table scans)
     null_exprs = ", ".join(
-        f"(COUNT(*) FILTER (WHERE {col} IS NULL)) * 100.0"
-        f" / NULLIF(COUNT(*), 0) AS {col}_null_pct"
+        f"(COUNT(*) FILTER (WHERE {col} IS NULL)) * 100.0 / NULLIF(COUNT(*), 0) AS {col}_null_pct"
         for col in CRITICAL_COLUMNS
     )
     stmt = text(f"SELECT {null_exprs} FROM {schema}.{table}")
@@ -257,7 +258,8 @@ def check_null_rate(
         severity="error",
         passed=passed,
         message=(
-            None if passed
+            None
+            if passed
             else f"High null rate in column(s): {list(failing.keys())} (threshold {threshold}%)"
         ),
         details={"columns": null_pcts, "threshold": threshold},
@@ -279,7 +281,8 @@ def check_dedup_effective(session: Session, run_id: UUID) -> QualityCheckResult:
         severity="warn",
         passed=passed,
         message=(
-            None if passed
+            None
+            if passed
             else (
                 f"Silver row count ({silver_count:,}) exceeds bronze "
                 f"({bronze_count:,}) — deduplication may have failed"
@@ -310,7 +313,8 @@ def check_financial_signs(session: Session, run_id: UUID) -> QualityCheckResult:
         severity="warn",
         passed=passed,
         message=(
-            None if passed
+            None
+            if passed
             else (
                 f"{inconsistent:,} rows ({pct}%) have mismatched "
                 f"net_sales/quantity signs (threshold 1%)"
@@ -320,14 +324,22 @@ def check_financial_signs(session: Session, run_id: UUID) -> QualityCheckResult:
     )
 
 
-_ALLOWED_DBT_TEST_SELECTORS: frozenset[str] = frozenset({
-    "staging", "marts", "bronze",
-    "tag:staging", "tag:marts", "tag:bronze",
-})
+_ALLOWED_DBT_TEST_SELECTORS: frozenset[str] = frozenset(
+    {
+        "staging",
+        "marts",
+        "bronze",
+        "tag:staging",
+        "tag:marts",
+        "tag:bronze",
+    }
+)
 
 
 def run_dbt_tests(
-    run_id: UUID, selector: str, settings: Settings,
+    run_id: UUID,
+    selector: str,
+    settings: Settings,
 ) -> QualityCheckResult:
     """Run dbt test for the given selector and return a QualityCheckResult."""
     clean = selector.lstrip("+")
@@ -342,10 +354,14 @@ def run_dbt_tests(
         )
 
     cmd = [
-        "dbt", "test",
-        "--project-dir", settings.dbt_project_dir,
-        "--profiles-dir", settings.dbt_profiles_dir,
-        "--select", selector,
+        "dbt",
+        "test",
+        "--project-dir",
+        settings.dbt_project_dir,
+        "--profiles-dir",
+        settings.dbt_profiles_dir,
+        "--select",
+        selector,
     ]
     log.info("quality_dbt_test_start", run_id=str(run_id), selector=selector)
 
@@ -363,7 +379,8 @@ def run_dbt_tests(
             severity="error",
             passed=passed,
             message=(
-                None if passed
+                None
+                if passed
                 else f"dbt test --select {selector} failed (exit code {proc.returncode})"
             ),
             details={

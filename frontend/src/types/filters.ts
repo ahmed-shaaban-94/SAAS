@@ -7,6 +7,7 @@ export interface FilterParams {
   site_key?: number;
   staff_key?: number;
   limit?: number;
+  entity_type?: string; // "product" | "customer" | "staff" — used by /top-movers
 }
 
 export interface FilterOption {

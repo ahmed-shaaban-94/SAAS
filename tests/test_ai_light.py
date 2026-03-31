@@ -193,8 +193,12 @@ def _mock_trend(values=None):
     ]
     if not values:
         return TrendResult(
-            points=[], total=Decimal("0"), average=Decimal("0"),
-            minimum=Decimal("0"), maximum=Decimal("0"), growth_pct=None,
+            points=[],
+            total=Decimal("0"),
+            average=Decimal("0"),
+            minimum=Decimal("0"),
+            maximum=Decimal("0"),
+            growth_pct=None,
         )
     total = sum(values)
     return TrendResult(

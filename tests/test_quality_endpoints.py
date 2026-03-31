@@ -7,6 +7,7 @@ Covers:
 Both endpoints use the quality_api_client fixture which swaps out the real
 QualityService with a MagicMock, preventing any real DB connections.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -231,8 +232,18 @@ class TestGetQualityChecks:
         response = client.get(self._url(run_id))
 
         item_data = response.json()["items"][0]
-        for field in ("id", "tenant_id", "pipeline_run_id", "check_name",
-                      "stage", "severity", "passed", "message", "details", "checked_at"):
+        for field in (
+            "id",
+            "tenant_id",
+            "pipeline_run_id",
+            "check_name",
+            "stage",
+            "severity",
+            "passed",
+            "message",
+            "details",
+            "checked_at",
+        ):
             assert field in item_data, f"Field '{field}' missing from response item"
 
     def test_invalid_run_id_format_returns_422(self, quality_api_client):
@@ -378,7 +389,9 @@ class TestExecuteQualityCheck:
         )
 
         mock_svc.run_checks_for_stage.assert_called_once_with(
-            run_id=run_id, stage="bronze", tenant_id=7,
+            run_id=run_id,
+            stage="bronze",
+            tenant_id=7,
         )
 
     def test_default_tenant_id_is_1(self, quality_api_client):
@@ -402,12 +415,20 @@ class TestExecuteQualityCheck:
         run_id = uuid4()
         checks = [
             QualityCheckResult(
-                check_name="row_count", stage="bronze", severity="error",
-                passed=True, message=None, details={"row_count": 1000},
+                check_name="row_count",
+                stage="bronze",
+                severity="error",
+                passed=True,
+                message=None,
+                details={"row_count": 1000},
             ),
             QualityCheckResult(
-                check_name="row_delta", stage="bronze", severity="warn",
-                passed=True, message="No previous run", details={},
+                check_name="row_delta",
+                stage="bronze",
+                severity="warn",
+                passed=True,
+                message="No previous run",
+                details={},
             ),
         ]
         report = _make_quality_report(run_id=run_id, stage="bronze", checks=checks)

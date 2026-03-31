@@ -24,9 +24,7 @@ def test_build_where_no_filters():
 
 def test_build_where_date_range_year_month():
     f = AnalyticsFilter(
-        date_range=DateRange(
-            start_date=date(2024, 3, 1), end_date=date(2024, 6, 30)
-        )
+        date_range=DateRange(start_date=date(2024, 3, 1), end_date=date(2024, 6, 30))
     )
     clause, params = build_where(f, use_year_month=True)
     assert "start_ym" in params
@@ -38,13 +36,9 @@ def test_build_where_date_range_year_month():
 
 def test_build_where_date_range_date_key():
     f = AnalyticsFilter(
-        date_range=DateRange(
-            start_date=date(2024, 1, 1), end_date=date(2024, 12, 31)
-        )
+        date_range=DateRange(start_date=date(2024, 1, 1), end_date=date(2024, 12, 31))
     )
-    clause, params = build_where(
-        f, use_year_month=False
-    )
+    clause, params = build_where(f, use_year_month=False)
     assert "date_key BETWEEN :start_date AND :end_date" in clause
     assert params["start_date"] == 20240101
     assert params["end_date"] == 20241231

@@ -17,10 +17,17 @@ from datapulse.pipeline.models import (
 
 def _make_response(**overrides):
     defaults = dict(
-        id=uuid4(), tenant_id=1, run_type="full_refresh", status="pending",
-        trigger_source=None, started_at=datetime.now(UTC),
-        finished_at=None, duration_seconds=None, rows_loaded=None,
-        error_message=None, metadata={},
+        id=uuid4(),
+        tenant_id=1,
+        run_type="full_refresh",
+        status="pending",
+        trigger_source=None,
+        started_at=datetime.now(UTC),
+        finished_at=None,
+        duration_seconds=None,
+        rows_loaded=None,
+        error_message=None,
+        metadata={},
     )
     defaults.update(overrides)
     return PipelineRunResponse(**defaults)
@@ -62,7 +69,8 @@ class TestCompleteRun:
     def test_completes(self, pipeline_service, mock_pipeline_repo):
         run_id = uuid4()
         existing = _make_response(
-            id=run_id, started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            id=run_id,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
         )
         mock_pipeline_repo.get_run.return_value = existing
         completed = _make_response(id=run_id, status="success")
@@ -83,7 +91,8 @@ class TestFailRun:
     def test_fails(self, pipeline_service, mock_pipeline_repo):
         run_id = uuid4()
         existing = _make_response(
-            id=run_id, started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            id=run_id,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
         )
         mock_pipeline_repo.get_run.return_value = existing
         failed = _make_response(id=run_id, status="failed")

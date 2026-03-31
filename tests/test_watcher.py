@@ -1,4 +1,5 @@
 """Tests for the file watcher module (handler + service)."""
+
 from __future__ import annotations
 
 import time
@@ -26,14 +27,17 @@ def _wait_for_callback(
 @pytest.fixture(autouse=True)
 def _silence_structlog():
     """Patch structlog loggers to avoid 'event' kwarg collision in handler.py."""
-    with patch("datapulse.watcher.handler.log", MagicMock()), \
-         patch("datapulse.watcher.service.log", MagicMock()):
+    with (
+        patch("datapulse.watcher.handler.log", MagicMock()),
+        patch("datapulse.watcher.service.log", MagicMock()),
+    ):
         yield
 
 
 # ---------------------------------------------------------------------------
 # VALID_EXTENSIONS constant
 # ---------------------------------------------------------------------------
+
 
 class TestValidExtensions:
     """Tests for the VALID_EXTENSIONS constant."""
@@ -61,6 +65,7 @@ class TestValidExtensions:
 # ---------------------------------------------------------------------------
 # DataFileHandler
 # ---------------------------------------------------------------------------
+
 
 class TestDataFileHandlerFileDetection:
     """Test that handler detects data files and ignores non-data files."""
@@ -265,18 +270,21 @@ class TestDataFileHandlerIsDataFile:
     def teardown_method(self):
         self.handler.stop()
 
-    @pytest.mark.parametrize("path,expected", [
-        ("/data/file.csv", True),
-        ("/data/file.xlsx", True),
-        ("/data/file.xls", True),
-        ("/data/file.CSV", True),
-        ("/data/file.XLSX", True),
-        ("/data/file.txt", False),
-        ("/data/file.json", False),
-        ("/data/file.parquet", False),
-        ("/data/file", False),
-        ("/data/.csv", False),  # dotfile — Path(".csv").suffix is ""
-    ])
+    @pytest.mark.parametrize(
+        "path,expected",
+        [
+            ("/data/file.csv", True),
+            ("/data/file.xlsx", True),
+            ("/data/file.xls", True),
+            ("/data/file.CSV", True),
+            ("/data/file.XLSX", True),
+            ("/data/file.txt", False),
+            ("/data/file.json", False),
+            ("/data/file.parquet", False),
+            ("/data/file", False),
+            ("/data/.csv", False),  # dotfile — Path(".csv").suffix is ""
+        ],
+    )
     def test_is_data_file(self, path: str, expected: bool):
         assert self.handler._is_data_file(path) is expected
 
@@ -284,6 +292,7 @@ class TestDataFileHandlerIsDataFile:
 # ---------------------------------------------------------------------------
 # FileWatcherService
 # ---------------------------------------------------------------------------
+
 
 class TestFileWatcherServiceLifecycle:
     """Test start/stop lifecycle."""
@@ -385,9 +394,9 @@ class TestFileWatcherServiceLifecycle:
         assert svc.watch_path == "/custom/path"
 
     def test_start_raises_on_missing_directory(self):
-        svc = FileWatcherService(settings=self._make_settings(
-            raw_sales_path="/nonexistent/dir/that/does/not/exist"
-        ))
+        svc = FileWatcherService(
+            settings=self._make_settings(raw_sales_path="/nonexistent/dir/that/does/not/exist")
+        )
         with pytest.raises(FileNotFoundError, match="does not exist"):
             svc.start()
 
@@ -440,9 +449,7 @@ class TestFileWatcherServiceTriggerPipeline:
         mock_resp.json.return_value = {"run_id": "x", "status": "running"}
         mock_httpx.post.return_value = mock_resp
 
-        svc = FileWatcherService(
-            settings=self._make_settings(pipeline_webhook_secret="s3cret")
-        )
+        svc = FileWatcherService(settings=self._make_settings(pipeline_webhook_secret="s3cret"))
         svc._trigger_pipeline(["/data/raw/a.csv"])
 
         call_args = mock_httpx.post.call_args
@@ -465,6 +472,7 @@ class TestFileWatcherServiceTriggerPipeline:
     @patch("datapulse.watcher.service.httpx")
     def test_trigger_http_error_does_not_raise(self, mock_httpx):
         import httpx as _httpx
+
         mock_httpx.post.side_effect = _httpx.HTTPError("Connection refused")
         mock_httpx.HTTPError = _httpx.HTTPError
 
@@ -475,6 +483,7 @@ class TestFileWatcherServiceTriggerPipeline:
     @patch("datapulse.watcher.service.httpx")
     def test_trigger_raise_for_status_error(self, mock_httpx):
         import httpx as _httpx
+
         mock_resp = MagicMock()
         mock_resp.raise_for_status.side_effect = _httpx.HTTPStatusError(
             "500 Server Error",

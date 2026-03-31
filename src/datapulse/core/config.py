@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     dbt_project_dir: str = "/app/dbt"
     dbt_profiles_dir: str = "/app/dbt"
     raw_sales_path: str = "/app/data/raw/sales"
-    pipeline_bronze_timeout: int = 600   # seconds
-    pipeline_dbt_timeout: int = 300      # seconds
+    pipeline_bronze_timeout: int = 600  # seconds
+    pipeline_dbt_timeout: int = 300  # seconds
 
     # API base URL (used by watcher and internal services)
     api_base_url: str = "http://localhost:8000"
@@ -67,14 +67,17 @@ class Settings(BaseSettings):
 
     # Redis cache
     redis_url: str = ""
-    redis_default_ttl: int = 300       # 5 minutes
-    redis_dashboard_ttl: int = 600     # 10 minutes
+    redis_default_ttl: int = 300  # 5 minutes
+    redis_dashboard_ttl: int = 600  # 10 minutes
 
     # Celery (async query execution)
-    celery_broker_db: int = 1          # Redis DB index for Celery broker
-    celery_result_db: int = 2          # Redis DB index for Celery results
+    celery_broker_db: int = 1  # Redis DB index for Celery broker
+    celery_result_db: int = 2  # Redis DB index for Celery results
     celery_worker_concurrency: int = 4
-    query_row_limit: int = 10_000      # Max rows for async queries
+    query_row_limit: int = 10_000  # Max rows for async queries
+
+    # Embed (iframe white-label)
+    embed_allowed_origins: list[str] = []  # Domains allowed to iframe embed
 
     # Logging
     log_format: str = "console"

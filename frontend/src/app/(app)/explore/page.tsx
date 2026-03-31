@@ -170,8 +170,8 @@ export default function ExplorePage() {
         <div>
           {!selectedModel && (
             <EmptyState
-              icon={<Database className="h-12 w-12" />}
-              message="Select a model to start exploring your data"
+              title="No model selected"
+              description="Select a model to start exploring your data"
             />
           )}
 

@@ -64,8 +64,7 @@ class QualityService:
         """
         if stage not in VALID_STAGES:
             raise ValueError(
-                f"Invalid stage '{stage}'. "
-                f"Must be one of: {', '.join(sorted(VALID_STAGES))}"
+                f"Invalid stage '{stage}'. Must be one of: {', '.join(sorted(VALID_STAGES))}"
             )
 
         log.info("quality_run_checks_start", run_id=str(run_id), stage=stage)

@@ -22,7 +22,9 @@ from datapulse.api.limiter import limiter
 from datapulse.logging import get_logger
 
 router = APIRouter(
-    prefix="/ai-light", tags=["ai-light"], dependencies=[Depends(get_current_user)],
+    prefix="/ai-light",
+    tags=["ai-light"],
+    dependencies=[Depends(get_current_user)],
 )
 log = get_logger(__name__)
 

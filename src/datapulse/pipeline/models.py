@@ -13,15 +13,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from datapulse.types import JsonDecimal, validate_source_dir
 
-VALID_STATUSES = frozenset({
-    "pending",
-    "running",
-    "bronze_complete",
-    "silver_complete",
-    "gold_complete",
-    "success",
-    "failed",
-})
+VALID_STATUSES = frozenset(
+    {
+        "pending",
+        "running",
+        "bronze_complete",
+        "silver_complete",
+        "gold_complete",
+        "success",
+        "failed",
+    }
+)
 
 
 VALID_RUN_TYPES = frozenset({"full", "bronze", "staging", "marts"})

@@ -183,10 +183,15 @@ def test_product_detail_found(api_client):
     """GET /api/v1/analytics/products/1 returns product detail."""
     client, mock_repo, mock_detail_repo = api_client
     mock_detail_repo.get_product_detail.return_value = ProductPerformance(
-        product_key=1, drug_code="D001", drug_name="Aspirin",
-        drug_brand="BrandA", drug_category="Analgesic",
-        total_quantity=Decimal("500"), total_sales=Decimal("10000"),
-        total_net_amount=Decimal("9000"), return_rate=Decimal("0.02"),
+        product_key=1,
+        drug_code="D001",
+        drug_name="Aspirin",
+        drug_brand="BrandA",
+        drug_category="Analgesic",
+        total_quantity=Decimal("500"),
+        total_sales=Decimal("10000"),
+        total_net_amount=Decimal("9000"),
+        return_rate=Decimal("0.02"),
         unique_customers=50,
     )
 
@@ -208,9 +213,14 @@ def test_customer_detail_found(api_client):
     """GET /api/v1/analytics/customers/1 returns customer detail."""
     client, mock_repo, mock_detail_repo = api_client
     mock_detail_repo.get_customer_detail.return_value = CustomerAnalytics(
-        customer_key=1, customer_id="C001", customer_name="Pharmacy X",
-        total_quantity=Decimal("1000"), total_net_amount=Decimal("50000"),
-        transaction_count=200, unique_products=30, return_count=5,
+        customer_key=1,
+        customer_id="C001",
+        customer_name="Pharmacy X",
+        total_quantity=Decimal("1000"),
+        total_net_amount=Decimal("50000"),
+        transaction_count=200,
+        unique_products=30,
+        return_count=5,
     )
 
     resp = client.get("/api/v1/analytics/customers/1")

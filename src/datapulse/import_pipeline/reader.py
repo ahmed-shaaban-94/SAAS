@@ -103,13 +103,9 @@ def read_file(
 
     # Enforce limits
     if df.shape[0] > get_settings().max_rows:
-        raise ValidationError(
-            f"Too many rows: {df.shape[0]:,} (max {get_settings().max_rows:,})"
-        )
+        raise ValidationError(f"Too many rows: {df.shape[0]:,} (max {get_settings().max_rows:,})")
     if df.shape[1] > get_settings().max_columns:
-        raise ValidationError(
-            f"Too many columns: {df.shape[1]} (max {get_settings().max_columns})"
-        )
+        raise ValidationError(f"Too many columns: {df.shape[1]} (max {get_settings().max_columns})")
 
     columns = detect_column_types(df, sample_size=config.sample_rows)
     file_size = path.stat().st_size

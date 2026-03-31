@@ -69,6 +69,7 @@ def mock_session():
 def analytics_repo(mock_session):
     """AnalyticsRepository with mocked session."""
     from datapulse.analytics.repository import AnalyticsRepository
+
     return AnalyticsRepository(mock_session)
 
 
@@ -76,6 +77,7 @@ def analytics_repo(mock_session):
 def mock_repo():
     """Fully mocked AnalyticsRepository for service tests."""
     from datapulse.analytics.repository import AnalyticsRepository
+
     return create_autospec(AnalyticsRepository, instance=True)
 
 
@@ -83,6 +85,7 @@ def mock_repo():
 def mock_detail_repo():
     """Fully mocked DetailRepository for detail query tests."""
     from datapulse.analytics.detail_repository import DetailRepository
+
     return create_autospec(DetailRepository, instance=True)
 
 
@@ -90,6 +93,7 @@ def mock_detail_repo():
 def mock_breakdown_repo():
     """Fully mocked BreakdownRepository for breakdown tests."""
     from datapulse.analytics.breakdown_repository import BreakdownRepository
+
     return create_autospec(BreakdownRepository, instance=True)
 
 
@@ -97,6 +101,7 @@ def mock_breakdown_repo():
 def mock_comparison_repo():
     """Fully mocked ComparisonRepository for comparison tests."""
     from datapulse.analytics.comparison_repository import ComparisonRepository
+
     return create_autospec(ComparisonRepository, instance=True)
 
 
@@ -104,14 +109,20 @@ def mock_comparison_repo():
 def mock_hierarchy_repo():
     """Fully mocked HierarchyRepository for hierarchy tests."""
     from datapulse.analytics.hierarchy_repository import HierarchyRepository
+
     return create_autospec(HierarchyRepository, instance=True)
 
 
 @pytest.fixture()
-def analytics_service(mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo):
+def analytics_service(
+    mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo
+):
     """AnalyticsService with mocked repositories."""
     from datapulse.analytics.service import AnalyticsService
-    return AnalyticsService(mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo)
+
+    return AnalyticsService(
+        mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo
+    )
 
 
 @pytest.fixture()
@@ -132,7 +143,9 @@ def api_client():
     mock_breakdown_repo = create_autospec(BreakdownRepository, instance=True)
     mock_comparison_repo = create_autospec(ComparisonRepository, instance=True)
     mock_hierarchy_repo = create_autospec(HierarchyRepository, instance=True)
-    mock_svc = AnalyticsService(mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo)
+    mock_svc = AnalyticsService(
+        mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo
+    )
 
     from datapulse.api import deps
     from datapulse.api.app import create_app
@@ -154,6 +167,7 @@ def api_client():
 def pipeline_repo(mock_session):
     """PipelineRepository with mocked session."""
     from datapulse.pipeline.repository import PipelineRepository
+
     return PipelineRepository(mock_session)
 
 
@@ -161,6 +175,7 @@ def pipeline_repo(mock_session):
 def mock_pipeline_repo():
     """Fully mocked PipelineRepository for service tests."""
     from datapulse.pipeline.repository import PipelineRepository
+
     return create_autospec(PipelineRepository, instance=True)
 
 
@@ -168,6 +183,7 @@ def mock_pipeline_repo():
 def pipeline_service(mock_pipeline_repo):
     """PipelineService with mocked repository."""
     from datapulse.pipeline.service import PipelineService
+
     return PipelineService(mock_pipeline_repo)
 
 

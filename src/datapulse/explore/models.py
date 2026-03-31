@@ -107,9 +107,7 @@ class ExploreFilter(BaseModel):
         "eq",
         description="Comparison operator: eq, neq, gt, gte, lt, lte, in, like",
     )
-    value: str | int | float | bool | list[str] = Field(
-        ..., description="Filter value(s)"
-    )
+    value: str | int | float | bool | list[str] = Field(..., description="Filter value(s)")
 
 
 class ExploreQuery(BaseModel):
@@ -119,12 +117,8 @@ class ExploreQuery(BaseModel):
     dimensions: list[str] = Field(
         default_factory=list, description="Dimension column names to GROUP BY"
     )
-    metrics: list[str] = Field(
-        default_factory=list, description="Metric names to aggregate"
-    )
-    filters: list[ExploreFilter] = Field(
-        default_factory=list, description="WHERE conditions"
-    )
+    metrics: list[str] = Field(default_factory=list, description="Metric names to aggregate")
+    filters: list[ExploreFilter] = Field(default_factory=list, description="WHERE conditions")
     sorts: list[SortSpec] = Field(default_factory=list, description="ORDER BY specs")
     limit: int = Field(500, ge=1, le=10_000, description="Max rows to return")
 

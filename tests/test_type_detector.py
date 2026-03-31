@@ -44,11 +44,13 @@ class TestDetectColumnTypes:
         assert cols[0].sample_values[0] == "Alice"
 
     def test_multiple_columns(self):
-        df = pl.DataFrame({
-            "id": [1, 2, 3],
-            "name": ["A", "B", "C"],
-            "score": [1.5, 2.5, 3.5],
-        })
+        df = pl.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "name": ["A", "B", "C"],
+                "score": [1.5, 2.5, 3.5],
+            }
+        )
         cols = detect_column_types(df)
         assert len(cols) == 3
         types = {c.name: c.detected_type for c in cols}

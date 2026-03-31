@@ -38,7 +38,9 @@ from datapulse.api.deps import get_analytics_service
 from datapulse.api.limiter import limiter
 
 router = APIRouter(
-    prefix="/analytics", tags=["analytics"], dependencies=[Depends(get_current_user)],
+    prefix="/analytics",
+    tags=["analytics"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
@@ -91,8 +93,7 @@ def _to_filter(params: AnalyticsQueryParams) -> AnalyticsFilter | None:
     elif params.start_date is not None or params.end_date is not None:
         raise HTTPException(
             status_code=422,
-            detail="Both start_date and end_date are required "
-            "when filtering by date range.",
+            detail="Both start_date and end_date are required when filtering by date range.",
         )
 
     return AnalyticsFilter(

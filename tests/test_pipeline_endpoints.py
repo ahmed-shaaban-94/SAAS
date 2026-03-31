@@ -10,10 +10,17 @@ from datapulse.pipeline.models import PipelineRunList, PipelineRunResponse
 
 def _make_response(**overrides):
     defaults = dict(
-        id=uuid4(), tenant_id=1, run_type="full_refresh", status="pending",
-        trigger_source=None, started_at=datetime.now(UTC),
-        finished_at=None, duration_seconds=None, rows_loaded=None,
-        error_message=None, metadata={},
+        id=uuid4(),
+        tenant_id=1,
+        run_type="full_refresh",
+        status="pending",
+        trigger_source=None,
+        started_at=datetime.now(UTC),
+        finished_at=None,
+        duration_seconds=None,
+        rows_loaded=None,
+        error_message=None,
+        metadata={},
     )
     defaults.update(overrides)
     return PipelineRunResponse(**defaults)
@@ -23,7 +30,10 @@ class TestListRuns:
     def test_empty(self, pipeline_api_client):
         client, mock_repo = pipeline_api_client
         mock_repo.list_runs.return_value = PipelineRunList(
-            items=[], total=0, offset=0, limit=20,
+            items=[],
+            total=0,
+            offset=0,
+            limit=20,
         )
         resp = client.get("/api/v1/pipeline/runs")
         assert resp.status_code == 200
@@ -34,7 +44,10 @@ class TestListRuns:
     def test_with_status_filter(self, pipeline_api_client):
         client, mock_repo = pipeline_api_client
         mock_repo.list_runs.return_value = PipelineRunList(
-            items=[], total=0, offset=0, limit=20,
+            items=[],
+            total=0,
+            offset=0,
+            limit=20,
         )
         resp = client.get("/api/v1/pipeline/runs?status=running")
         assert resp.status_code == 200
@@ -47,7 +60,10 @@ class TestListRuns:
     def test_pagination_params(self, pipeline_api_client):
         client, mock_repo = pipeline_api_client
         mock_repo.list_runs.return_value = PipelineRunList(
-            items=[], total=50, offset=10, limit=5,
+            items=[],
+            total=50,
+            offset=10,
+            limit=5,
         )
         resp = client.get("/api/v1/pipeline/runs?offset=10&limit=5")
         assert resp.status_code == 200

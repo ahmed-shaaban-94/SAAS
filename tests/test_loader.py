@@ -25,6 +25,7 @@ from datapulse.bronze.loader import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_engine() -> MagicMock:
     """Build a minimal SQLAlchemy engine mock with a context-manager conn."""
     engine = MagicMock()
@@ -61,6 +62,7 @@ def _sample_pipeline_df() -> pl.DataFrame:
 # ---------------------------------------------------------------------------
 # _validate_columns
 # ---------------------------------------------------------------------------
+
 
 class TestValidateColumns:
     def test_passes_with_a_sample_of_allowed_columns(self):
@@ -112,6 +114,7 @@ class TestValidateColumns:
 # extract_quarter
 # ---------------------------------------------------------------------------
 
+
 class TestExtractQuarter:
     def test_extracts_q1_2023(self):
         assert extract_quarter("Q1.2023.xlsx") == "Q1.2023"
@@ -138,6 +141,7 @@ class TestExtractQuarter:
 # ---------------------------------------------------------------------------
 # rename_columns
 # ---------------------------------------------------------------------------
+
 
 class TestRenameColumns:
     def test_renames_known_excel_columns(self):
@@ -167,6 +171,7 @@ class TestRenameColumns:
 # ---------------------------------------------------------------------------
 # discover_files
 # ---------------------------------------------------------------------------
+
 
 class TestDiscoverFiles:
     def test_returns_sorted_xlsx_files(self, tmp_path):
@@ -211,6 +216,7 @@ class TestDiscoverFiles:
 # ---------------------------------------------------------------------------
 # _create_engine
 # ---------------------------------------------------------------------------
+
 
 class TestCreateEngine:
     def test_passes_url_as_first_positional_arg(self):
@@ -260,6 +266,7 @@ class TestCreateEngine:
 # run_migrations
 # ---------------------------------------------------------------------------
 
+
 class TestRunMigrations:
     """Test run_migrations() — the multi-step migration orchestrator.
 
@@ -290,7 +297,7 @@ class TestRunMigrations:
 
         # Build per-file mocks
         file_mocks: list[MagicMock] = []
-        for name in (sql_files or []):
+        for name in sql_files or []:
             f = MagicMock(spec=Path)
             f.name = name
             f.exists.return_value = True
@@ -319,11 +326,7 @@ class TestRunMigrations:
     def _patch_path_to_dir(self, fake_dir):
         """Context manager: patch loader.Path so it resolves to fake_dir."""
         mock_path_instance = MagicMock()
-        (
-            mock_path_instance
-            .parent.parent.parent.parent
-            .__truediv__.return_value
-        ) = fake_dir
+        (mock_path_instance.parent.parent.parent.parent.__truediv__.return_value) = fake_dir
         return patch("datapulse.bronze.loader.Path", return_value=mock_path_instance)
 
     def _conn_with_no_prior_migrations(self, engine: MagicMock) -> MagicMock:
@@ -438,6 +441,7 @@ class TestRunMigrations:
 # load_to_postgres
 # ---------------------------------------------------------------------------
 
+
 class TestLoadToPostgres:
     def test_returns_total_row_count(self):
         df = _whitelisted_df(10)
@@ -472,7 +476,7 @@ class TestLoadToPostgres:
         load_to_postgres(df, engine, batch_size=100)
 
         executed_sql = str(conn.execute.call_args[0][0])
-        assert "\"id\"" not in executed_sql or ":id" not in executed_sql
+        assert '"id"' not in executed_sql or ":id" not in executed_sql
 
     def test_excludes_loaded_at_column_from_insert(self):
         df = _whitelisted_df(3).with_columns(pl.lit("2023-01-01").alias("loaded_at"))
@@ -515,6 +519,7 @@ class TestLoadToPostgres:
 # ---------------------------------------------------------------------------
 # run (full pipeline — all I/O mocked)
 # ---------------------------------------------------------------------------
+
 
 class TestRun:
     """Integration-level tests for the run() orchestration function.

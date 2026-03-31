@@ -33,9 +33,7 @@ class HierarchyRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_product_hierarchy(
-        self, filters: AnalyticsFilter
-    ) -> ProductHierarchy:
+    def get_product_hierarchy(self, filters: AnalyticsFilter) -> ProductHierarchy:
         """Return nested product hierarchy with top 10 products per brand."""
         log.info("get_product_hierarchy", filters=filters.model_dump())
         where, params = build_where(filters, use_year_month=True)
@@ -69,9 +67,7 @@ class HierarchyRepository:
             lambda: defaultdict(list)
         )
         cat_totals: dict[str, Decimal] = defaultdict(lambda: _ZERO)
-        brand_totals: dict[tuple[str, str], Decimal] = defaultdict(
-            lambda: _ZERO
-        )
+        brand_totals: dict[tuple[str, str], Decimal] = defaultdict(lambda: _ZERO)
 
         for r in rows:
             cat = str(r[0]) if r[0] else "Uncategorized"

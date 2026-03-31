@@ -25,7 +25,6 @@ from datapulse.analytics.models import (
     TopMovers,
 )
 
-
 # ------------------------------------------------------------------
 # KPISummary model defaults (backward compatibility)
 # ------------------------------------------------------------------
@@ -34,8 +33,11 @@ from datapulse.analytics.models import (
 def test_kpi_summary_backward_compat():
     """Old responses without new fields should parse with defaults."""
     kpi = KPISummary(
-        today_net=100, mtd_net=1000, ytd_net=10000,
-        daily_transactions=5, daily_customers=3,
+        today_net=100,
+        mtd_net=1000,
+        ytd_net=10000,
+        daily_transactions=5,
+        daily_customers=3,
     )
     assert kpi.avg_basket_size == 0
     assert kpi.daily_returns == 0
@@ -47,8 +49,11 @@ def test_kpi_summary_backward_compat():
 def test_kpi_summary_with_new_fields():
     """KPISummary correctly stores new Enhancement 3 fields."""
     kpi = KPISummary(
-        today_net=100, mtd_net=1000, ytd_net=10000,
-        daily_transactions=5, daily_customers=3,
+        today_net=100,
+        mtd_net=1000,
+        ytd_net=10000,
+        daily_transactions=5,
+        daily_customers=3,
         avg_basket_size=Decimal("50.25"),
         daily_returns=2,
         mtd_transactions=150,
@@ -140,7 +145,8 @@ def test_top_movers_both_periods(comparison_repo):
     current_rows = [(1, "Drug A", 5000), (2, "Drug B", 3000)]
     previous_rows = [(1, "Drug A", 4000), (2, "Drug B", 3500)]
     session.execute.return_value.fetchall.side_effect = [
-        current_rows, previous_rows,
+        current_rows,
+        previous_rows,
     ]
 
     current_f = AnalyticsFilter(
@@ -223,9 +229,17 @@ def test_get_site_detail_not_found(detail_repo):
 def test_get_site_detail_with_data(detail_repo):
     repo, session = detail_repo
     site_row = (
-        1, "S01", "Main Pharmacy", "John Manager",
-        Decimal("500000"), 2000, 800, 10,
-        Decimal("0.65"), Decimal("0.30"), Decimal("0.02"),
+        1,
+        "S01",
+        "Main Pharmacy",
+        "John Manager",
+        Decimal("500000"),
+        2000,
+        800,
+        10,
+        Decimal("0.65"),
+        Decimal("0.30"),
+        Decimal("0.02"),
     )
     trend_rows = [("2024-01", 40000), ("2024-02", 45000)]
 
@@ -249,8 +263,11 @@ def test_get_site_detail_with_data(detail_repo):
 
 def test_service_get_billing_breakdown(analytics_service, mock_breakdown_repo):
     from datapulse.analytics.models import BillingBreakdown
+
     mock_breakdown_repo.get_billing_breakdown.return_value = BillingBreakdown(
-        items=[], total_transactions=0, total_net_amount=Decimal("0"),
+        items=[],
+        total_transactions=0,
+        total_net_amount=Decimal("0"),
     )
     result = analytics_service.get_billing_breakdown()
     assert isinstance(result, BillingBreakdown)

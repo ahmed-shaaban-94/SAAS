@@ -19,7 +19,10 @@ from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.analytics.service import AnalyticsService
 from datapulse.api.auth import get_current_user, require_api_key
 from datapulse.config import get_settings
-from datapulse.core.db import get_engine, get_session_factory  # noqa: F401 (get_engine re-exported for health.py)
+from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
+    get_engine,
+    get_session_factory,
+)
 from datapulse.pipeline.executor import PipelineExecutor
 from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
@@ -79,9 +82,7 @@ def get_analytics_service(
     breakdown_repo = BreakdownRepository(session)
     comparison_repo = ComparisonRepository(session)
     hierarchy_repo = HierarchyRepository(session)
-    return AnalyticsService(
-        repo, detail_repo, breakdown_repo, comparison_repo, hierarchy_repo
-    )
+    return AnalyticsService(repo, detail_repo, breakdown_repo, comparison_repo, hierarchy_repo)
 
 
 def get_pipeline_service(

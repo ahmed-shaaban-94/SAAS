@@ -185,20 +185,26 @@ def _sse_event(event_type: str, data: dict) -> str:
 
 
 @router.post(
-    "/runs", response_model=PipelineRunResponse, status_code=201,
+    "/runs",
+    response_model=PipelineRunResponse,
+    status_code=201,
 )
 def create_run(
-    service: ServiceDep, body: PipelineRunCreate,
+    service: ServiceDep,
+    body: PipelineRunCreate,
 ) -> PipelineRunResponse:
     """Create a new pipeline run record."""
     return service.start_run(body)
 
 
 @router.patch(
-    "/runs/{run_id}", response_model=PipelineRunResponse,
+    "/runs/{run_id}",
+    response_model=PipelineRunResponse,
 )
 def update_run(
-    service: ServiceDep, run_id: UUID, body: PipelineRunUpdate,
+    service: ServiceDep,
+    run_id: UUID,
+    body: PipelineRunUpdate,
 ) -> PipelineRunResponse:
     """Update an existing pipeline run (status, metrics, error).
 
@@ -225,7 +231,9 @@ def update_run(
 
 
 @router.post(
-    "/trigger", response_model=TriggerResponse, status_code=202,
+    "/trigger",
+    response_model=TriggerResponse,
+    status_code=202,
     dependencies=[Depends(require_pipeline_token)],
 )
 def trigger_pipeline(
@@ -278,7 +286,8 @@ def trigger_pipeline(
 
 
 @router.post(
-    "/execute/bronze", response_model=ExecutionResult,
+    "/execute/bronze",
+    response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
 def execute_bronze(
@@ -293,7 +302,8 @@ def execute_bronze(
 
 
 @router.post(
-    "/execute/dbt-staging", response_model=ExecutionResult,
+    "/execute/dbt-staging",
+    response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
 def execute_dbt_staging(
@@ -305,7 +315,8 @@ def execute_dbt_staging(
 
 
 @router.post(
-    "/execute/dbt-marts", response_model=ExecutionResult,
+    "/execute/dbt-marts",
+    response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
 def execute_dbt_marts(
@@ -335,7 +346,8 @@ def get_quality_checks(
 
 
 @router.post(
-    "/execute/quality-check", response_model=QualityReport,
+    "/execute/quality-check",
+    response_model=QualityReport,
     dependencies=[Depends(require_pipeline_token)],
 )
 def execute_quality_check(
@@ -351,5 +363,7 @@ def execute_quality_check(
     invalid values are rejected with 422 before this handler runs.
     """
     return quality_service.run_checks_for_stage(
-        run_id=body.run_id, stage=body.stage, tenant_id=body.tenant_id,
+        run_id=body.run_id,
+        stage=body.stage,
+        tenant_id=body.tenant_id,
     )

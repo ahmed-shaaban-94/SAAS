@@ -41,14 +41,10 @@ _NUMERIC_PATTERNS = re.compile(
 )
 
 # Heuristic: column names containing these patterns are dates
-_DATE_PATTERNS = re.compile(
-    r"(date|_at$|year_month|year_week)", re.IGNORECASE
-)
+_DATE_PATTERNS = re.compile(r"(date|_at$|year_month|year_week)", re.IGNORECASE)
 
 # Heuristic: boolean columns
-_BOOL_PATTERNS = re.compile(
-    r"^(is_|has_)", re.IGNORECASE
-)
+_BOOL_PATTERNS = re.compile(r"^(is_|has_)", re.IGNORECASE)
 
 
 def _infer_dimension_type(col_name: str) -> DimensionType:
@@ -121,8 +117,11 @@ def _parse_model_yaml(model_dict: dict, schema: str = "public_marts") -> Explore
 
         # All columns become dimensions (even metric source columns,
         # since users may want to filter/group by them)
-        dim_type = DimensionType(col_meta.get("dimension_type", "")) \
-            if col_meta.get("dimension_type") else _infer_dimension_type(col_name)
+        dim_type = (
+            DimensionType(col_meta.get("dimension_type", ""))
+            if col_meta.get("dimension_type")
+            else _infer_dimension_type(col_name)
+        )
 
         dimensions.append(
             Dimension(

@@ -1,4 +1,5 @@
 """Tests for PipelineExecutor."""
+
 from __future__ import annotations
 
 import subprocess
@@ -93,9 +94,7 @@ class TestRunDbt:
 
     @patch("datapulse.pipeline.executor.subprocess")
     def test_dbt_marts_success(self, mock_sub):
-        mock_sub.run.return_value = MagicMock(
-            returncode=0, stdout="OK", stderr=""
-        )
+        mock_sub.run.return_value = MagicMock(returncode=0, stdout="OK", stderr="")
         mock_sub.TimeoutExpired = subprocess.TimeoutExpired
 
         executor = self._make_executor()
@@ -120,9 +119,7 @@ class TestRunDbt:
 
     @patch("datapulse.pipeline.executor.subprocess")
     def test_dbt_timeout(self, mock_sub):
-        mock_sub.run.side_effect = subprocess.TimeoutExpired(
-            cmd="dbt run", timeout=300
-        )
+        mock_sub.run.side_effect = subprocess.TimeoutExpired(cmd="dbt run", timeout=300)
         mock_sub.TimeoutExpired = subprocess.TimeoutExpired
 
         executor = self._make_executor()

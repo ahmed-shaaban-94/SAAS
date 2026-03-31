@@ -14,7 +14,6 @@ from datapulse.analytics.models import (
     TimeSeriesPoint,
 )
 
-
 # --- Helpers ---
 
 

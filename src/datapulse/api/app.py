@@ -13,7 +13,17 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from datapulse.api.limiter import limiter
-from datapulse.api.routes import ai_light, analytics, explore, health, pipeline, queries
+from datapulse.api.routes import (
+    ai_light,
+    analytics,
+    embed,
+    explore,
+    health,
+    pipeline,
+    queries,
+    reports,
+    sql_lab,
+)
 from datapulse.config import get_settings
 from datapulse.logging import setup_logging
 
@@ -42,12 +52,22 @@ def create_app() -> FastAPI:
     )
 
     # Security headers middleware
+    # Embed paths allow iframe embedding; all other paths block it.
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next) -> Response:
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if request.url.path.startswith("/api/v1/embed/") and "/token" not in request.url.path:
+            embed_origins = " ".join(settings.embed_allowed_origins)
+            if embed_origins:
+                response.headers["Content-Security-Policy"] = (
+                    f"frame-ancestors 'self' {embed_origins}"
+                )
+            else:
+                response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        else:
+            response.headers["X-Frame-Options"] = "DENY"
         return response
 
     # Global exception handler
@@ -93,5 +113,9 @@ def create_app() -> FastAPI:
     app.include_router(ai_light.router, prefix="/api/v1")
     app.include_router(queries.router, prefix="/api/v1")
     app.include_router(explore.router, prefix="/api/v1")
+    app.include_router(embed.auth_router, prefix="/api/v1")
+    app.include_router(embed.public_router, prefix="/api/v1")
+    app.include_router(sql_lab.router, prefix="/api/v1")
+    app.include_router(reports.router, prefix="/api/v1")
 
     return app

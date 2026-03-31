@@ -13,6 +13,7 @@ from datapulse.import_pipeline.validator import ALLOWED_EXTENSIONS, ValidationEr
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _write(path: Path, content: bytes = b"data") -> Path:
     """Write bytes to a path and return it."""
     path.write_bytes(content)
@@ -37,6 +38,7 @@ def _patch_settings(max_mb: int):
 # Test: file does not exist
 # ---------------------------------------------------------------------------
 
+
 class TestValidateFileMissing:
     def test_raises_when_file_not_found(self, tmp_path):
         missing = tmp_path / "ghost.csv"
@@ -53,6 +55,7 @@ class TestValidateFileMissing:
 # ---------------------------------------------------------------------------
 # Test: unsupported extensions
 # ---------------------------------------------------------------------------
+
 
 class TestValidateFileExtension:
     @pytest.mark.parametrize("ext", [".txt", ".json", ".parquet", ".pdf", ".xml", ""])
@@ -71,11 +74,14 @@ class TestValidateFileExtension:
         for allowed in ALLOWED_EXTENSIONS:
             assert allowed in message
 
-    @pytest.mark.parametrize("ext,expected_format", [
-        (".csv", FileFormat.CSV),
-        (".xlsx", FileFormat.XLSX),
-        (".xls", FileFormat.XLS),
-    ])
+    @pytest.mark.parametrize(
+        "ext,expected_format",
+        [
+            (".csv", FileFormat.CSV),
+            (".xlsx", FileFormat.XLSX),
+            (".xls", FileFormat.XLS),
+        ],
+    )
     def test_accepts_all_allowed_extensions(self, tmp_path, ext, expected_format):
         valid_file = _write(tmp_path / f"file{ext}")
         with _patch_settings(500):
@@ -93,6 +99,7 @@ class TestValidateFileExtension:
 # ---------------------------------------------------------------------------
 # Test: empty files
 # ---------------------------------------------------------------------------
+
 
 class TestValidateFileEmpty:
     def test_raises_on_empty_csv(self, tmp_path):
@@ -117,6 +124,7 @@ class TestValidateFileEmpty:
 # ---------------------------------------------------------------------------
 # Test: oversized files
 # ---------------------------------------------------------------------------
+
 
 class TestValidateFileSize:
     def test_raises_when_file_exceeds_limit(self, tmp_path):
@@ -161,6 +169,7 @@ class TestValidateFileSize:
 # ---------------------------------------------------------------------------
 # Test: return values (happy path)
 # ---------------------------------------------------------------------------
+
 
 class TestValidateFileReturnValues:
     def test_csv_returns_csv_format(self, tmp_path):

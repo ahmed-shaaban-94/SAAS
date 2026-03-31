@@ -31,6 +31,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 # bronze.loader — read_and_concat
 # ---------------------------------------------------------------------------
 
+
 class TestReadAndConcat:
     """Test read_and_concat() using the real fixture Excel approach — but since
     we only have CSV fixtures, we mock pl.read_excel to avoid needing real .xlsx files.
@@ -91,6 +92,7 @@ class TestReadAndConcat:
 # bronze.loader — save_parquet
 # ---------------------------------------------------------------------------
 
+
 class TestSaveParquet:
     def test_creates_parquet_file(self, tmp_path):
         df = pl.DataFrame({"id": [1, 2, 3], "name": ["a", "b", "c"]})
@@ -124,13 +126,15 @@ class TestSaveParquet:
 # bronze.loader — main() CLI entry point
 # ---------------------------------------------------------------------------
 
+
 class TestMain:
     def test_main_calls_run_with_correct_args(self):
         from datapulse.bronze.loader import main
 
         test_args = [
             "prog",
-            "--source", "/tmp/data",
+            "--source",
+            "/tmp/data",
             "--skip-db",
         ]
 
@@ -150,8 +154,10 @@ class TestMain:
 
         test_args = [
             "prog",
-            "--source", "/tmp/data",
-            "--parquet", "/tmp/output.parquet",
+            "--source",
+            "/tmp/data",
+            "--parquet",
+            "/tmp/output.parquet",
             "--skip-db",
         ]
 
@@ -170,8 +176,10 @@ class TestMain:
 
         test_args = [
             "prog",
-            "--source", "/tmp/data",
-            "--batch-size", "5000",
+            "--source",
+            "/tmp/data",
+            "--batch-size",
+            "5000",
             "--skip-db",
         ]
 
@@ -189,6 +197,7 @@ class TestMain:
 # ---------------------------------------------------------------------------
 # import_pipeline.reader — latin-1 retry path in read_csv
 # ---------------------------------------------------------------------------
+
 
 class TestReadCsvLatin1Retry:
     def test_retries_with_latin1_on_utf8_decode_error(self, tmp_path):
@@ -208,16 +217,20 @@ class TestReadCsvLatin1Retry:
         latin1_csv.write_bytes(b"name\ntest")
 
         # Simulate a ComputeError from polars for non-utf-8 encoding
-        with patch(
-            "datapulse.import_pipeline.reader.pl.read_csv",
-            side_effect=pl.exceptions.ComputeError("encoding error"),
-        ), pytest.raises(pl.exceptions.ComputeError):
+        with (
+            patch(
+                "datapulse.import_pipeline.reader.pl.read_csv",
+                side_effect=pl.exceptions.ComputeError("encoding error"),
+            ),
+            pytest.raises(pl.exceptions.ComputeError),
+        ):
             read_csv(latin1_csv, encoding="latin-1")
 
 
 # ---------------------------------------------------------------------------
 # import_pipeline.reader — read_excel
 # ---------------------------------------------------------------------------
+
 
 class TestReadExcel:
     def test_raises_validation_error_for_xls_format(self, tmp_path):
@@ -268,6 +281,7 @@ class TestReadExcel:
 # import_pipeline.reader — row/column limit enforcement in read_file
 # ---------------------------------------------------------------------------
 
+
 class TestReadFileLimits:
     def test_raises_when_row_count_exceeds_max_rows(self):
         """read_file should raise ValidationError when df has too many rows."""
@@ -304,6 +318,7 @@ class TestReadFileLimits:
 # utils.logging — setup_logging
 # ---------------------------------------------------------------------------
 
+
 class TestSetupLogging:
     """setup_logging() calls structlog.get_level_from_name which is only
     available in newer structlog versions. We inject the attribute with
@@ -313,6 +328,7 @@ class TestSetupLogging:
     def _patch_get_level(self):
         """Patch structlog.get_level_from_name (may not exist in older versions)."""
         import logging
+
         return patch(
             "structlog.get_level_from_name",
             return_value=logging.INFO,

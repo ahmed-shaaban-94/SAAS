@@ -95,9 +95,7 @@ def _validate_dimensions(
         elif req in available:
             resolved.append((available[req], req))
         else:
-            raise ValueError(
-                f"Unknown dimension '{req}'. Available: {sorted(available.keys())}"
-            )
+            raise ValueError(f"Unknown dimension '{req}'. Available: {sorted(available.keys())}")
     return resolved
 
 
@@ -110,9 +108,7 @@ def _validate_metrics(
     resolved: list[Metric] = []
     for req in requested:
         if req not in available:
-            raise ValueError(
-                f"Unknown metric '{req}'. Available: {sorted(available.keys())}"
-            )
+            raise ValueError(f"Unknown metric '{req}'. Available: {sorted(available.keys())}")
         resolved.append(available[req])
     return resolved
 
@@ -143,8 +139,7 @@ def build_sql(
     base = _find_model(catalog, query.model)
     if base is None:
         raise ValueError(
-            f"Unknown model '{query.model}'. "
-            f"Available: {[m.name for m in catalog.models]}"
+            f"Unknown model '{query.model}'. Available: {[m.name for m in catalog.models]}"
         )
 
     # Resolve joined models needed for requested dimensions
@@ -188,8 +183,7 @@ def build_sql(
             jm_schema = f"{jm.schema_name}." if jm.schema_name else ""
             on_clause = _resolve_join_on(jp.sql_on, base.name, jp.join_model)
             join_clauses.append(
-                f"LEFT JOIN {jm_schema}{jp.join_model} AS {jp.join_model} "
-                f"ON {on_clause}"
+                f"LEFT JOIN {jm_schema}{jp.join_model} AS {jp.join_model} ON {on_clause}"
             )
 
     # Build WHERE clause
@@ -211,9 +205,7 @@ def build_sql(
                 bind_params[param_name] = flt.value
         elif flt.operator in _FILTER_OPS:
             template = _FILTER_OPS[flt.operator]
-            where_parts.append(
-                template.format(col=f"{base.name}.{flt.field}", param=param_name)
-            )
+            where_parts.append(template.format(col=f"{base.name}.{flt.field}", param=param_name))
             bind_params[param_name] = flt.value
         else:
             raise ValueError(f"Unknown filter operator '{flt.operator}'")
@@ -221,9 +213,7 @@ def build_sql(
     # Build GROUP BY clause (only if we have both dims and metrics)
     group_by = ""
     if dim_refs and metric_defs:
-        group_by = "GROUP BY " + ", ".join(
-            f"{alias}.{col}" for alias, col in dim_refs
-        )
+        group_by = "GROUP BY " + ", ".join(f"{alias}.{col}" for alias, col in dim_refs)
 
     # Build ORDER BY clause
     order_parts: list[str] = []

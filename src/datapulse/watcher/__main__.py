@@ -38,6 +38,7 @@ def main() -> None:
     except AttributeError:
         # Windows fallback
         import time
+
         while svc.is_running:
             time.sleep(1)
 

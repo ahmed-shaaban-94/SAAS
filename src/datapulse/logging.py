@@ -1,17 +1,24 @@
 """Structured logging setup using structlog."""
 
 import logging
+
 import structlog
 
-_SENSITIVE_KEYS = frozenset({
-    "api_key", "password", "token", "secret", "credential",
-    "database_url", "connection_string", "authorization",
-})
+_SENSITIVE_KEYS = frozenset(
+    {
+        "api_key",
+        "password",
+        "token",
+        "secret",
+        "credential",
+        "database_url",
+        "connection_string",
+        "authorization",
+    }
+)
 
 
-def _mask_sensitive_fields(
-    logger: object, method_name: str, event_dict: dict
-) -> dict:
+def _mask_sensitive_fields(logger: object, method_name: str, event_dict: dict) -> dict:
     """Redact values of sensitive keys in log records."""
     for key in _SENSITIVE_KEYS:
         if key in event_dict:
@@ -40,9 +47,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "console") -> None:
             structlog.processors.TimeStamper(fmt="iso"),
             renderer,
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(
-            logging.getLevelName(log_level)
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(logging.getLevelName(log_level)),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,

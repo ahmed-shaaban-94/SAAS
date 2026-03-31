@@ -7,9 +7,11 @@ import { useSession, signOut } from "next-auth/react";
 import {
   Activity,
   Compass,
+  FileBarChart,
   LayoutDashboard,
   Menu,
   Package,
+  Terminal,
   Users,
   UserCog,
   Building2,
@@ -32,11 +34,13 @@ interface SidebarProps {
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
   Compass,
+  Terminal,
   Package,
   Users,
   UserCog,
   Building2,
   RotateCcw,
+  FileBarChart,
   GitBranch,
   Sparkles,
 };

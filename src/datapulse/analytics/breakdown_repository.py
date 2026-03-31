@@ -32,9 +32,7 @@ class BreakdownRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_billing_breakdown(
-        self, filters: AnalyticsFilter
-    ) -> BillingBreakdown:
+    def get_billing_breakdown(self, filters: AnalyticsFilter) -> BillingBreakdown:
         """Return billing method distribution for the given filters."""
         log.info("get_billing_breakdown", filters=filters.model_dump())
         where, params = build_where(
@@ -53,14 +51,9 @@ class BreakdownRepository:
         rows = self._session.execute(stmt, params).fetchall()
 
         if not rows:
-            return BillingBreakdown(
-                items=[], total_transactions=0, total_net_amount=_ZERO
-            )
+            return BillingBreakdown(items=[], total_transactions=0, total_net_amount=_ZERO)
 
-        raw = [
-            (str(r[0]), int(r[1]), Decimal(str(r[2])))
-            for r in rows
-        ]
+        raw = [(str(r[0]), int(r[1]), Decimal(str(r[2]))) for r in rows]
         grand_total = sum(v for _, _, v in raw) or Decimal("1")
         total_txn = sum(c for _, c, _ in raw)
 
@@ -69,9 +62,7 @@ class BreakdownRepository:
                 billing_way=name,
                 transaction_count=count,
                 total_net_amount=amount,
-                pct_of_total=(amount / grand_total * 100).quantize(
-                    Decimal("0.01")
-                ),
+                pct_of_total=(amount / grand_total * 100).quantize(Decimal("0.01")),
             )
             for name, count, amount in raw
         ]
@@ -82,16 +73,10 @@ class BreakdownRepository:
             total_net_amount=grand_total,
         )
 
-    def get_customer_type_breakdown(
-        self, filters: AnalyticsFilter
-    ) -> CustomerTypeBreakdown:
+    def get_customer_type_breakdown(self, filters: AnalyticsFilter) -> CustomerTypeBreakdown:
         """Return walk-in vs insurance vs other distribution by month."""
-        log.info(
-            "get_customer_type_breakdown", filters=filters.model_dump()
-        )
-        where, params = build_where(
-            filters, use_year_month=True, supported_fields=SITE_DATE_ONLY
-        )
+        log.info("get_customer_type_breakdown", filters=filters.model_dump())
+        where, params = build_where(filters, use_year_month=True, supported_fields=SITE_DATE_ONLY)
 
         stmt = text(f"""
             SELECT LPAD(year::text, 4, '0') || '-'

@@ -1,4 +1,5 @@
 """Tests for POST /api/v1/pipeline/trigger endpoint."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -18,10 +19,17 @@ def _mock_service():
     run_id = uuid4()
     mock_service = MagicMock(spec=PipelineService)
     mock_service.start_run.return_value = PipelineRunResponse(
-        id=run_id, tenant_id=1, run_type="full", status="pending",
-        trigger_source="api", started_at="2026-03-28T00:00:00Z",
-        finished_at=None, duration_seconds=None, rows_loaded=None,
-        error_message=None, metadata={},
+        id=run_id,
+        tenant_id=1,
+        run_type="full",
+        status="pending",
+        trigger_source="api",
+        started_at="2026-03-28T00:00:00Z",
+        finished_at=None,
+        duration_seconds=None,
+        rows_loaded=None,
+        error_message=None,
+        metadata={},
     )
     return mock_service, run_id
 

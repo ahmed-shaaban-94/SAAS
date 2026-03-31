@@ -30,10 +30,16 @@ _COLUMNS = (
     "error_message, metadata"
 )
 
-_UPDATABLE_COLUMNS = frozenset({
-    "status", "finished_at", "duration_seconds",
-    "rows_loaded", "error_message", "metadata",
-})
+_UPDATABLE_COLUMNS = frozenset(
+    {
+        "status",
+        "finished_at",
+        "duration_seconds",
+        "rows_loaded",
+        "error_message",
+        "metadata",
+    }
+)
 
 
 class PipelineRepository:
@@ -69,7 +75,9 @@ class PipelineRepository:
         )
 
     def create_run(
-        self, data: PipelineRunCreate, tenant_id: int = 1,
+        self,
+        data: PipelineRunCreate,
+        tenant_id: int = 1,
     ) -> PipelineRunResponse:
         log.info("create_pipeline_run", run_type=data.run_type, trigger=data.trigger_source)
         stmt = text(f"""
@@ -79,17 +87,22 @@ class PipelineRepository:
                 (:run_type, :trigger_source, :metadata::jsonb, :tenant_id)
             RETURNING {_COLUMNS}
         """)
-        row = self._session.execute(stmt, {
-            "run_type": data.run_type,
-            "trigger_source": data.trigger_source,
-            "metadata": json.dumps(data.metadata),
-            "tenant_id": tenant_id,
-        }).fetchone()
+        row = self._session.execute(
+            stmt,
+            {
+                "run_type": data.run_type,
+                "trigger_source": data.trigger_source,
+                "metadata": json.dumps(data.metadata),
+                "tenant_id": tenant_id,
+            },
+        ).fetchone()
         self._session.commit()
         return self._row_to_response(row)
 
     def update_run(
-        self, run_id: UUID, data: PipelineRunUpdate,
+        self,
+        run_id: UUID,
+        data: PipelineRunUpdate,
     ) -> PipelineRunResponse | None:
         fields = data.model_dump(exclude_none=True)
         if not fields:
@@ -184,7 +197,8 @@ class PipelineRepository:
         )
 
     def get_latest_run(
-        self, run_type: str | None = None,
+        self,
+        run_type: str | None = None,
     ) -> PipelineRunResponse | None:
         params: dict = {}
         where = ""

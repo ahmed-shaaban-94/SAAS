@@ -34,6 +34,7 @@ class TestCreateRun:
         mock_session.execute.return_value.fetchone.return_value = _make_row(id=run_id)
 
         from datapulse.pipeline.models import PipelineRunCreate
+
         data = PipelineRunCreate(run_type="full_refresh", trigger_source="manual")
         result = pipeline_repo.create_run(data)
 
@@ -46,6 +47,7 @@ class TestCreateRun:
             metadata={"source": "n8n"},
         )
         from datapulse.pipeline.models import PipelineRunCreate
+
         data = PipelineRunCreate(run_type="incremental", metadata={"source": "n8n"})
         result = pipeline_repo.create_run(data)
         assert result.metadata == {"source": "n8n"}
@@ -55,9 +57,11 @@ class TestUpdateRun:
     def test_found(self, pipeline_repo, mock_session):
         run_id = uuid4()
         mock_session.execute.return_value.fetchone.return_value = _make_row(
-            id=run_id, status="running",
+            id=run_id,
+            status="running",
         )
         from datapulse.pipeline.models import PipelineRunUpdate
+
         data = PipelineRunUpdate(status="running")
         result = pipeline_repo.update_run(run_id, data)
         assert result is not None
@@ -67,6 +71,7 @@ class TestUpdateRun:
     def test_not_found(self, pipeline_repo, mock_session):
         mock_session.execute.return_value.fetchone.return_value = None
         from datapulse.pipeline.models import PipelineRunUpdate
+
         data = PipelineRunUpdate(status="running")
         result = pipeline_repo.update_run(uuid4(), data)
         assert result is None
@@ -75,6 +80,7 @@ class TestUpdateRun:
         run_id = uuid4()
         mock_session.execute.return_value.fetchone.return_value = _make_row(id=run_id)
         from datapulse.pipeline.models import PipelineRunUpdate
+
         data = PipelineRunUpdate()
         result = pipeline_repo.update_run(run_id, data)
         assert result is not None

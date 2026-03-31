@@ -129,12 +129,8 @@ class AnalyticsRepository:
         return FilterOptions(
             categories=[str(r[0]) for r in cat_rows],
             brands=[str(r[0]) for r in brand_rows],
-            sites=[
-                FilterOption(key=int(r[0]), label=str(r[1])) for r in site_rows
-            ],
-            staff=[
-                FilterOption(key=int(r[0]), label=str(r[1])) for r in staff_rows
-            ],
+            sites=[FilterOption(key=int(r[0]), label=str(r[1])) for r in site_rows],
+            staff=[FilterOption(key=int(r[0]), label=str(r[1])) for r in staff_rows],
         )
 
     def get_kpi_summary(self, target_date: date) -> KPISummary:
@@ -153,9 +149,7 @@ class AnalyticsRepository:
             FROM public_marts.metrics_summary
             WHERE full_date = :target_date
         """)
-        row = self._session.execute(
-            daily_stmt, {"target_date": target_date}
-        ).fetchone()
+        row = self._session.execute(daily_stmt, {"target_date": target_date}).fetchone()
 
         if row is None:
             log.warning("kpi_no_data", target_date=str(target_date))
@@ -190,10 +184,12 @@ class AnalyticsRepository:
             WHERE date_key = :date_key
         """)
         date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
-        basket_row = self._session.execute(
-            basket_stmt, {"date_key": date_key}
-        ).fetchone()
-        avg_basket = Decimal(str(basket_row[0])).quantize(Decimal("0.01")) if basket_row and basket_row[0] is not None else _ZERO
+        basket_row = self._session.execute(basket_stmt, {"date_key": date_key}).fetchone()
+        avg_basket = (
+            Decimal(str(basket_row[0])).quantize(Decimal("0.01"))
+            if basket_row and basket_row[0] is not None
+            else _ZERO
+        )
 
         # --- MoM growth -------------------------------------------------
         prev_month_stmt = text("""
@@ -209,9 +205,7 @@ class AnalyticsRepository:
 
         mom_growth: Decimal | None = None
         if prev_month_row is not None:
-            mom_growth = safe_growth(
-                mtd_net, Decimal(str(prev_month_row[0]))
-            )
+            mom_growth = safe_growth(mtd_net, Decimal(str(prev_month_row[0])))
 
         # --- YoY growth -------------------------------------------------
         prev_year_stmt = text("""
@@ -227,9 +221,7 @@ class AnalyticsRepository:
 
         yoy_growth: Decimal | None = None
         if prev_year_row is not None:
-            yoy_growth = safe_growth(
-                ytd_net, Decimal(str(prev_year_row[0]))
-            )
+            yoy_growth = safe_growth(ytd_net, Decimal(str(prev_year_row[0])))
 
         # --- Sparkline (last 7 days) ------------------------------------
         sparkline = self.get_kpi_sparkline(target_date)
@@ -249,9 +241,7 @@ class AnalyticsRepository:
             sparkline=sparkline,
         )
 
-    def get_kpi_sparkline(
-        self, target_date: date, days: int = 7
-    ) -> list[TimeSeriesPoint]:
+    def get_kpi_sparkline(self, target_date: date, days: int = 7) -> list[TimeSeriesPoint]:
         """Last N days of daily_net_amount from metrics_summary."""
         start_date = target_date - timedelta(days=days)
         stmt = text("""
@@ -263,10 +253,7 @@ class AnalyticsRepository:
         rows = self._session.execute(
             stmt, {"start_date": start_date, "target_date": target_date}
         ).fetchall()
-        return [
-            TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1])))
-            for r in rows
-        ]
+        return [TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows]
 
     def get_daily_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by day."""
@@ -287,9 +274,7 @@ class AnalyticsRepository:
     def get_monthly_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by year-month."""
         log.info("get_monthly_trend", filters=filters.model_dump())
-        where, params = build_where(
-            filters, use_year_month=True
-        )
+        where, params = build_where(filters, use_year_month=True)
 
         stmt = text(f"""
             SELECT LPAD(year::text, 4, '0') || '-'
@@ -307,33 +292,43 @@ class AnalyticsRepository:
         """Return top-N products by net sales."""
         log.info("get_top_products", filters=filters.model_dump())
         return self._get_ranking(
-            "public_marts.agg_sales_by_product", "product_key", "drug_name", filters,
+            "public_marts.agg_sales_by_product",
+            "product_key",
+            "drug_name",
+            filters,
         )
 
     def get_top_customers(self, filters: AnalyticsFilter) -> RankingResult:
         """Return top-N customers by net sales."""
         log.info("get_top_customers", filters=filters.model_dump())
         return self._get_ranking(
-            "public_marts.agg_sales_by_customer", "customer_key", "customer_name", filters,
+            "public_marts.agg_sales_by_customer",
+            "customer_key",
+            "customer_name",
+            filters,
         )
 
     def get_top_staff(self, filters: AnalyticsFilter) -> RankingResult:
         """Return top-N staff members by net sales."""
         log.info("get_top_staff", filters=filters.model_dump())
         return self._get_ranking(
-            "public_marts.agg_sales_by_staff", "staff_key", "staff_name", filters,
+            "public_marts.agg_sales_by_staff",
+            "staff_key",
+            "staff_name",
+            filters,
         )
 
     def get_site_performance(self, filters: AnalyticsFilter) -> RankingResult:
         """Return site ranking by net sales."""
         log.info("get_site_performance", filters=filters.model_dump())
         return self._get_ranking(
-            "public_marts.agg_sales_by_site", "site_key", "site_name", filters,
+            "public_marts.agg_sales_by_site",
+            "site_key",
+            "site_name",
+            filters,
         )
 
-    def get_return_analysis(
-        self, filters: AnalyticsFilter
-    ) -> list[ReturnAnalysis]:
+    def get_return_analysis(self, filters: AnalyticsFilter) -> list[ReturnAnalysis]:
         """Return top return/credit-note entries."""
         log.info("get_return_analysis", filters=filters.model_dump())
         where, params = build_where(filters, use_year_month=True)

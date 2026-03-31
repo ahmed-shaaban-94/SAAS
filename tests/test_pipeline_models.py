@@ -27,7 +27,9 @@ class TestPipelineRunCreate:
 
     def test_full(self):
         m = PipelineRunCreate(
-            run_type="incremental", trigger_source="n8n", metadata={"key": "val"},
+            run_type="incremental",
+            trigger_source="n8n",
+            metadata={"key": "val"},
         )
         assert m.trigger_source == "n8n"
         assert m.metadata == {"key": "val"}
@@ -61,11 +63,17 @@ class TestPipelineRunResponse:
     def test_full_construction(self):
         now = datetime.now(UTC)
         m = PipelineRunResponse(
-            id=uuid4(), tenant_id=1, run_type="full_refresh",
-            status="success", trigger_source="manual",
-            started_at=now, finished_at=now,
-            duration_seconds=Decimal("12.34"), rows_loaded=5000,
-            error_message=None, metadata={"ai_summary": "ok"},
+            id=uuid4(),
+            tenant_id=1,
+            run_type="full_refresh",
+            status="success",
+            trigger_source="manual",
+            started_at=now,
+            finished_at=now,
+            duration_seconds=Decimal("12.34"),
+            rows_loaded=5000,
+            error_message=None,
+            metadata={"ai_summary": "ok"},
         )
         assert m.status == "success"
         assert m.rows_loaded == 5000
@@ -73,10 +81,17 @@ class TestPipelineRunResponse:
     def test_frozen(self):
         now = datetime.now(UTC)
         m = PipelineRunResponse(
-            id=uuid4(), tenant_id=1, run_type="x", status="pending",
-            trigger_source=None, started_at=now, finished_at=None,
-            duration_seconds=None, rows_loaded=None,
-            error_message=None, metadata={},
+            id=uuid4(),
+            tenant_id=1,
+            run_type="x",
+            status="pending",
+            trigger_source=None,
+            started_at=now,
+            finished_at=None,
+            duration_seconds=None,
+            rows_loaded=None,
+            error_message=None,
+            metadata={},
         )
         with pytest.raises(ValidationError):
             m.status = "running"
@@ -84,10 +99,17 @@ class TestPipelineRunResponse:
     def test_json_decimal_serializes_as_float(self):
         now = datetime.now(UTC)
         m = PipelineRunResponse(
-            id=uuid4(), tenant_id=1, run_type="x", status="success",
-            trigger_source=None, started_at=now, finished_at=now,
-            duration_seconds=Decimal("45.67"), rows_loaded=100,
-            error_message=None, metadata={},
+            id=uuid4(),
+            tenant_id=1,
+            run_type="x",
+            status="success",
+            trigger_source=None,
+            started_at=now,
+            finished_at=now,
+            duration_seconds=Decimal("45.67"),
+            rows_loaded=100,
+            error_message=None,
+            metadata={},
         )
         data = m.model_dump()
         assert isinstance(data["duration_seconds"], float)
@@ -103,10 +125,17 @@ class TestPipelineRunList:
     def test_with_items(self):
         now = datetime.now(UTC)
         item = PipelineRunResponse(
-            id=uuid4(), tenant_id=1, run_type="x", status="success",
-            trigger_source=None, started_at=now, finished_at=now,
-            duration_seconds=Decimal("1.0"), rows_loaded=10,
-            error_message=None, metadata={},
+            id=uuid4(),
+            tenant_id=1,
+            run_type="x",
+            status="success",
+            trigger_source=None,
+            started_at=now,
+            finished_at=now,
+            duration_seconds=Decimal("1.0"),
+            rows_loaded=10,
+            error_message=None,
+            metadata={},
         )
         m = PipelineRunList(items=[item], total=1, offset=0, limit=20)
         assert len(m.items) == 1
@@ -115,8 +144,13 @@ class TestPipelineRunList:
 class TestValidStatuses:
     def test_contains_all_expected(self):
         expected = {
-            "pending", "running", "bronze_complete", "silver_complete",
-            "gold_complete", "success", "failed",
+            "pending",
+            "running",
+            "bronze_complete",
+            "silver_complete",
+            "gold_complete",
+            "success",
+            "failed",
         }
         assert expected == VALID_STATUSES
 

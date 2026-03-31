@@ -12,6 +12,7 @@ from datapulse.config import Settings, get_settings
 # tells pydantic-settings to skip .env loading entirely so tests are isolated.
 # ---------------------------------------------------------------------------
 
+
 def _settings(**overrides) -> Settings:
     # database_url is required (no default) — provide empty string for tests
     overrides.setdefault("database_url", "")
@@ -84,16 +85,19 @@ class TestSettings:
 
     def test_parquet_dir_is_path_type(self):
         from pathlib import Path
+
         s = _settings()
         assert isinstance(s.parquet_dir, Path)
 
     def test_raw_data_dir_is_path_type(self):
         from pathlib import Path
+
         s = _settings()
         assert isinstance(s.raw_data_dir, Path)
 
     def test_processed_data_dir_is_path_type(self):
         from pathlib import Path
+
         s = _settings()
         assert isinstance(s.processed_data_dir, Path)
 
@@ -117,6 +121,7 @@ class TestGetSettings:
         fixed = _settings()
         with patch("datapulse.config.get_settings", return_value=fixed):
             from datapulse.config import get_settings as gs
+
             first = gs()
             second = gs()
         assert first is second
@@ -143,7 +148,10 @@ class TestGetSettings:
         assert first is not second
 
     def test_database_url_readable_from_cached_settings(self):
-        with patch("datapulse.core.config.Settings", return_value=_settings(database_url="postgresql://test:test@localhost/test")):
+        with patch(
+            "datapulse.core.config.Settings",
+            return_value=_settings(database_url="postgresql://test:test@localhost/test"),
+        ):
             s = get_settings()
         assert isinstance(s.database_url, str)
         assert len(s.database_url) > 0

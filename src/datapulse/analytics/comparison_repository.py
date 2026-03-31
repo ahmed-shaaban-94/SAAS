@@ -17,8 +17,6 @@ from datapulse.analytics.models import (
     TopMovers,
 )
 from datapulse.analytics.queries import (
-    ALLOWED_RANKING_COLUMNS,
-    ALLOWED_RANKING_TABLES,
     build_where,
     safe_growth,
 )
@@ -75,9 +73,7 @@ class ComparisonRepository:
             LIMIT :limit
         """)
         rows = self._session.execute(stmt, params).fetchall()
-        return {
-            int(r[0]): (str(r[1]), Decimal(str(r[2]))) for r in rows
-        }
+        return {int(r[0]): (str(r[1]), Decimal(str(r[2]))) for r in rows}
 
     def get_top_movers(
         self,
@@ -96,17 +92,14 @@ class ComparisonRepository:
 
         if entity_type not in _ENTITY_MAP:
             raise ValueError(
-                f"Invalid entity_type: {entity_type}. "
-                f"Must be one of: {', '.join(_ENTITY_MAP)}"
+                f"Invalid entity_type: {entity_type}. Must be one of: {', '.join(_ENTITY_MAP)}"
             )
 
         table, key_col, name_col = _ENTITY_MAP[entity_type]
 
         # Fetch broader set to find movers (top 50 from each period)
         fetch_limit = max(limit * 10, 50)
-        current = self._fetch_period_totals(
-            table, key_col, name_col, current_filters, fetch_limit
-        )
+        current = self._fetch_period_totals(table, key_col, name_col, current_filters, fetch_limit)
         previous = self._fetch_period_totals(
             table, key_col, name_col, previous_filters, fetch_limit
         )

@@ -11,11 +11,13 @@ export const API_BASE_URL =
 export const NAV_ITEMS = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
   { label: "Explore", href: "/explore", icon: "Compass" },
+  { label: "SQL Lab", href: "/sql-lab", icon: "Terminal" },
   { label: "Products", href: "/products", icon: "Package" },
   { label: "Customers", href: "/customers", icon: "Users" },
   { label: "Staff", href: "/staff", icon: "UserCog" },
   { label: "Sites", href: "/sites", icon: "Building2" },
   { label: "Returns", href: "/returns", icon: "RotateCcw" },
+  { label: "Reports", href: "/reports", icon: "FileBarChart" },
   { label: "Pipeline", href: "/pipeline", icon: "GitBranch" },
   { label: "Insights", href: "/insights", icon: "Sparkles" },
 ] as const;

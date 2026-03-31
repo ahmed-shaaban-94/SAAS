@@ -36,9 +36,7 @@ def _validate_columns(columns: list[str]) -> None:
     """
     unknown = [c for c in columns if c not in ALLOWED_COLUMNS]
     if unknown:
-        raise ValueError(
-            f"Column name(s) not in whitelist and cannot be used in SQL: {unknown}"
-        )
+        raise ValueError(f"Column name(s) not in whitelist and cannot be used in SQL: {unknown}")
 
 
 def discover_files(source_dir: Path) -> list[Path]:
@@ -201,9 +199,7 @@ def run_migrations(engine: Engine) -> None:
 
                 # Record it
                 conn.execute(
-                    text(
-                        "INSERT INTO public.schema_migrations (filename) VALUES (:fn)"
-                    ),
+                    text("INSERT INTO public.schema_migrations (filename) VALUES (:fn)"),
                     {"fn": mig.name},
                 )
         except Exception:

@@ -22,19 +22,27 @@ _ZERO = Decimal("0")
 # Whitelists for SQL-safe dynamic identifiers
 ALLOWED_DATE_COLUMNS = frozenset({"date_key", "full_date"})
 
-ALLOWED_RANKING_TABLES = frozenset({
-    "public_marts.agg_sales_by_product",
-    "public_marts.agg_sales_by_customer",
-    "public_marts.agg_sales_by_staff",
-    "public_marts.agg_sales_by_site",
-})
+ALLOWED_RANKING_TABLES = frozenset(
+    {
+        "public_marts.agg_sales_by_product",
+        "public_marts.agg_sales_by_customer",
+        "public_marts.agg_sales_by_staff",
+        "public_marts.agg_sales_by_site",
+    }
+)
 
-ALLOWED_RANKING_COLUMNS = frozenset({
-    "product_key", "drug_name",
-    "customer_key", "customer_name",
-    "staff_key", "staff_name",
-    "site_key", "site_name",
-})
+ALLOWED_RANKING_COLUMNS = frozenset(
+    {
+        "product_key",
+        "drug_name",
+        "customer_key",
+        "customer_name",
+        "staff_key",
+        "staff_name",
+        "site_key",
+        "site_name",
+    }
+)
 
 
 # Supported filter field sets per table schema.
@@ -72,29 +80,19 @@ def build_where(
 
     if filters.date_range is not None:
         if use_year_month:
-            clauses.append(
-                "year * 100 + month BETWEEN :start_ym AND :end_ym"
-            )
+            clauses.append("year * 100 + month BETWEEN :start_ym AND :end_ym")
             params["start_ym"] = (
-                filters.date_range.start_date.year * 100
-                + filters.date_range.start_date.month
+                filters.date_range.start_date.year * 100 + filters.date_range.start_date.month
             )
             params["end_ym"] = (
-                filters.date_range.end_date.year * 100
-                + filters.date_range.end_date.month
+                filters.date_range.end_date.year * 100 + filters.date_range.end_date.month
             )
         else:
-            clauses.append(
-                f"{date_column} BETWEEN :start_date AND :end_date"
-            )
+            clauses.append(f"{date_column} BETWEEN :start_date AND :end_date")
             sd = filters.date_range.start_date
             ed = filters.date_range.end_date
-            params["start_date"] = (
-                sd.year * 10000 + sd.month * 100 + sd.day
-            )
-            params["end_date"] = (
-                ed.year * 10000 + ed.month * 100 + ed.day
-            )
+            params["start_date"] = sd.year * 10000 + sd.month * 100 + sd.day
+            params["end_date"] = ed.year * 10000 + ed.month * 100 + ed.day
 
     if filters.site_key is not None and "site_key" in fields:
         clauses.append("site_key = :site_key")
@@ -135,10 +133,7 @@ def build_trend(rows: list) -> TrendResult:
             growth_pct=None,
         )
 
-    points = [
-        TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1])))
-        for r in rows
-    ]
+    points = [TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows]
     values = [p.value for p in points]
     total = sum(values, _ZERO)
     average = (total / len(values)).quantize(Decimal("0.01"))
@@ -164,9 +159,7 @@ def build_ranking(rows: list) -> RankingResult:
     if not rows:
         return RankingResult(items=[], total=_ZERO)
 
-    raw_items = [
-        (int(r[0]), str(r[1]), Decimal(str(r[2]))) for r in rows
-    ]
+    raw_items = [(int(r[0]), str(r[1]), Decimal(str(r[2]))) for r in rows]
     total = sum(v for _, _, v in raw_items) or Decimal("1")
 
     items = [

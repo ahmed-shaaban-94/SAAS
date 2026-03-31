@@ -22,9 +22,7 @@ log = get_logger(__name__)
 _PATH_RE = _re.compile(r"(/[\w./-]+)+")
 _CONN_STR_RE = _re.compile(r"postgresql://[^\s]+")
 _CLASS_NAME_RE = _re.compile(r"\b[\w.]+(?:Error|Exception|Warning)\b")
-_TRACEBACK_RE = _re.compile(
-    r"Traceback \(most recent call last\):.*?(?=\n\S|\Z)", _re.DOTALL
-)
+_TRACEBACK_RE = _re.compile(r"Traceback \(most recent call last\):.*?(?=\n\S|\Z)", _re.DOTALL)
 _FILE_LINE_RE = _re.compile(r'File "[^"]+", line \d+.*')
 
 
@@ -96,10 +94,14 @@ class PipelineExecutor:
         Uses subprocess since dbt has no stable Python API.
         """
         cmd = [
-            "dbt", "run",
-            "--project-dir", self._settings.dbt_project_dir,
-            "--profiles-dir", self._settings.dbt_profiles_dir,
-            "--select", selector,
+            "dbt",
+            "run",
+            "--project-dir",
+            self._settings.dbt_project_dir,
+            "--profiles-dir",
+            self._settings.dbt_profiles_dir,
+            "--select",
+            selector,
         ]
         log.info("executor_dbt_start", run_id=str(run_id), selector=selector, cmd=" ".join(cmd))
         t0 = time.perf_counter()
