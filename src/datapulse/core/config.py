@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     celery_worker_concurrency: int = 4
     query_row_limit: int = 10_000      # Max rows for async queries
 
+    # Embed (iframe white-label)
+    embed_allowed_origins: list[str] = []  # Domains allowed to iframe embed
+
     # Logging
     log_format: str = "console"
 
