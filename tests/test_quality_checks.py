@@ -327,15 +327,14 @@ class TestCheckSchemaDrift:
 class TestCheckNullRate:
     """check_null_rate() — critical columns must have <5% NULL values."""
 
-    def _session_for_null_pcts(self, pcts: list[float]):
-        """Build a session returning each null_pct value in order (one per column)."""
+    def _session_for_null_pcts(self, pcts: list[float | None]):
+        """Build a session returning a single row with null pct values (one per column)."""
         session = MagicMock()
-        results = []
-        for pct in pcts:
-            r = MagicMock()
-            r.scalar_one.return_value = pct
-            results.append(r)
-        session.execute.side_effect = results
+        row = MagicMock()
+        row.__getitem__ = lambda self_, i: pcts[i]
+        result = MagicMock()
+        result.fetchone.return_value = row
+        session.execute.return_value = result
         return session
 
     def test_passes_below_threshold(self):
@@ -416,13 +415,14 @@ class TestCheckNullRate:
             assert result.details["columns"][col] == 0.0
 
     def test_all_critical_columns_checked(self):
-        """Exactly len(CRITICAL_COLUMNS) queries should be issued."""
+        """Single query should check all critical columns at once."""
         pcts = [0.0] * len(CRITICAL_COLUMNS)
         session = self._session_for_null_pcts(pcts)
 
-        check_null_rate(session, uuid4())
+        result = check_null_rate(session, uuid4())
 
-        assert session.execute.call_count == len(CRITICAL_COLUMNS)
+        session.execute.assert_called_once()
+        assert len(result.details["columns"]) == len(CRITICAL_COLUMNS)
 
 
 # ---------------------------------------------------------------------------

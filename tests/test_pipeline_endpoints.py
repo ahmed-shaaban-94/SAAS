@@ -12,7 +12,7 @@ def _make_response(**overrides):
     defaults = dict(
         id=uuid4(),
         tenant_id=1,
-        run_type="full_refresh",
+        run_type="full",
         status="pending",
         trigger_source=None,
         started_at=datetime.now(UTC),
@@ -113,7 +113,7 @@ class TestCreateRun:
         mock_repo.create_run.return_value = _make_response()
         resp = client.post(
             "/api/v1/pipeline/runs",
-            json={"run_type": "full_refresh", "trigger_source": "manual"},
+            json={"run_type": "full", "trigger_source": "manual"},
         )
         assert resp.status_code == 201
 
@@ -122,7 +122,7 @@ class TestCreateRun:
         mock_repo.create_run.return_value = _make_response()
         resp = client.post(
             "/api/v1/pipeline/runs",
-            json={"run_type": "full_refresh"},
+            json={"run_type": "full"},
         )
         assert resp.status_code == 201
 

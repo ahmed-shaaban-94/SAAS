@@ -15,9 +15,28 @@ from datapulse.pipeline.models import ExecutionResult
 
 @pytest.fixture
 def mock_executor_and_client():
+    from datapulse.api import deps
+    from datapulse.api.auth import get_current_user, require_pipeline_token
+    from datapulse.config import Settings, get_settings
+
+    _dev_user = {
+        "sub": "test-user",
+        "email": "test@datapulse.local",
+        "preferred_username": "test",
+        "tenant_id": "1",
+        "roles": ["admin"],
+        "raw_claims": {},
+    }
+    clean_settings = Settings(_env_file=None, api_key="test-api-key", database_url="")
+
     app = create_app()
     mock_exec = MagicMock()
+    app.dependency_overrides[get_settings] = lambda: clean_settings
     app.dependency_overrides[get_pipeline_executor] = lambda: mock_exec
+    app.dependency_overrides[deps.get_db_session] = lambda: MagicMock()
+    app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
+    app.dependency_overrides[get_current_user] = lambda: _dev_user
+    app.dependency_overrides[require_pipeline_token] = lambda: None
     client = TestClient(app, headers={"X-API-Key": "test-api-key"})
     yield mock_exec, client
     app.dependency_overrides.clear()

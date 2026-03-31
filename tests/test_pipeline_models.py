@@ -20,14 +20,14 @@ from datapulse.pipeline.models import (
 
 class TestPipelineRunCreate:
     def test_minimal(self):
-        m = PipelineRunCreate(run_type="full_refresh")
-        assert m.run_type == "full_refresh"
+        m = PipelineRunCreate(run_type="full")
+        assert m.run_type == "full"
         assert m.trigger_source is None
         assert m.metadata == {}
 
     def test_full(self):
         m = PipelineRunCreate(
-            run_type="incremental",
+            run_type="bronze",
             trigger_source="n8n",
             metadata={"key": "val"},
         )
@@ -35,7 +35,7 @@ class TestPipelineRunCreate:
         assert m.metadata == {"key": "val"}
 
     def test_frozen(self):
-        m = PipelineRunCreate(run_type="full_refresh")
+        m = PipelineRunCreate(run_type="full")
         with pytest.raises(ValidationError):
             m.run_type = "other"
 
@@ -65,7 +65,7 @@ class TestPipelineRunResponse:
         m = PipelineRunResponse(
             id=uuid4(),
             tenant_id=1,
-            run_type="full_refresh",
+            run_type="full",
             status="success",
             trigger_source="manual",
             started_at=now,

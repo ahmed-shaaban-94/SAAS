@@ -22,7 +22,7 @@ def _write(path: Path, content: bytes = b"data") -> Path:
 
 def _settings_with_max_mb(max_mb: int) -> Settings:
     """Return a Settings instance with a custom max file size, bypassing .env."""
-    return Settings(_env_file=None, max_file_size_mb=max_mb)
+    return Settings(_env_file=None, max_file_size_mb=max_mb, database_url="")
 
 
 def _patch_settings(max_mb: int):

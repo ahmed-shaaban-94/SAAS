@@ -454,7 +454,7 @@ class TestFileWatcherServiceTriggerPipeline:
 
         call_args = mock_httpx.post.call_args
         headers = call_args[1]["headers"]
-        assert headers["X-Webhook-Secret"] == "s3cret"
+        assert headers["X-Pipeline-Token"] == "s3cret"
 
     @patch("datapulse.watcher.service.httpx")
     def test_trigger_no_header_when_secret_empty(self, mock_httpx):
@@ -467,7 +467,7 @@ class TestFileWatcherServiceTriggerPipeline:
 
         call_args = mock_httpx.post.call_args
         headers = call_args[1]["headers"]
-        assert "X-Webhook-Secret" not in headers
+        assert "X-Pipeline-Token" not in headers
 
     @patch("datapulse.watcher.service.httpx")
     def test_trigger_http_error_does_not_raise(self, mock_httpx):

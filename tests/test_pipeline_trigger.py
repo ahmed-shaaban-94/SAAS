@@ -34,11 +34,33 @@ def _mock_service():
     return mock_service, run_id
 
 
+def _setup_app_overrides(app, mock_service):
+    from datapulse.api import deps
+    from datapulse.api.auth import get_current_user, require_pipeline_token
+    from datapulse.config import Settings, get_settings
+
+    _dev_user = {
+        "sub": "test-user",
+        "email": "test@datapulse.local",
+        "preferred_username": "test",
+        "tenant_id": "1",
+        "roles": ["admin"],
+        "raw_claims": {},
+    }
+    clean_settings = Settings(_env_file=None, api_key="test-api-key", database_url="")
+    app.dependency_overrides[get_settings] = lambda: clean_settings
+    app.dependency_overrides[get_pipeline_service] = lambda: mock_service
+    app.dependency_overrides[deps.get_db_session] = lambda: MagicMock()
+    app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
+    app.dependency_overrides[get_current_user] = lambda: _dev_user
+    app.dependency_overrides[require_pipeline_token] = lambda: None
+
+
 @pytest.fixture
 def client():
     app = create_app()
     mock_service, _ = _mock_service()
-    app.dependency_overrides[get_pipeline_service] = lambda: mock_service
+    _setup_app_overrides(app, mock_service)
     yield TestClient(app, headers={"X-API-Key": "test-api-key"})
     app.dependency_overrides.clear()
 
@@ -47,7 +69,7 @@ def client():
 def mock_service_and_client():
     app = create_app()
     mock_service, run_id = _mock_service()
-    app.dependency_overrides[get_pipeline_service] = lambda: mock_service
+    _setup_app_overrides(app, mock_service)
     client = TestClient(app, headers={"X-API-Key": "test-api-key"})
     yield mock_service, run_id, client
     app.dependency_overrides.clear()

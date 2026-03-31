@@ -19,7 +19,7 @@ def _make_response(**overrides):
     defaults = dict(
         id=uuid4(),
         tenant_id=1,
-        run_type="full_refresh",
+        run_type="full",
         status="pending",
         trigger_source=None,
         started_at=datetime.now(UTC),
@@ -37,7 +37,7 @@ class TestStartRun:
     def test_delegates(self, pipeline_service, mock_pipeline_repo):
         expected = _make_response()
         mock_pipeline_repo.create_run.return_value = expected
-        data = PipelineRunCreate(run_type="full_refresh")
+        data = PipelineRunCreate(run_type="full")
         result = pipeline_service.start_run(data)
         assert result == expected
         mock_pipeline_repo.create_run.assert_called_once_with(data, 1)
@@ -53,9 +53,9 @@ class TestUpdateStatus:
         assert result == expected
 
     def test_invalid_status(self, pipeline_service):
-        data = PipelineRunUpdate(status="bogus")
-        with pytest.raises(ValueError, match="Invalid status"):
-            pipeline_service.update_status(uuid4(), data)
+        """Invalid status is now rejected at model level by field_validator."""
+        with pytest.raises(ValueError):
+            PipelineRunUpdate(status="bogus")
 
     def test_none_status_skips_validation(self, pipeline_service, mock_pipeline_repo):
         expected = _make_response()
@@ -123,9 +123,13 @@ class TestListRuns:
         result = pipeline_service.list_runs()
         assert result == expected
 
-    def test_invalid_status_filter(self, pipeline_service):
-        with pytest.raises(ValueError, match="Invalid status"):
-            pipeline_service.list_runs(status="bogus")
+    def test_invalid_status_filter(self, pipeline_service, mock_pipeline_repo):
+        """Status validation is now done at the route layer, service delegates."""
+        mock_pipeline_repo.list_runs.return_value = PipelineRunList(
+            items=[], total=0, offset=0, limit=20
+        )
+        result = pipeline_service.list_runs(status="bogus")
+        assert result.total == 0
 
 
 class TestGetLatestRun:

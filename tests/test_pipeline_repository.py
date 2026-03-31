@@ -12,7 +12,7 @@ def _make_row(**overrides):
     defaults = {
         "id": uuid4(),
         "tenant_id": 1,
-        "run_type": "full_refresh",
+        "run_type": "full",
         "status": "pending",
         "trigger_source": None,
         "started_at": datetime.now(UTC),
@@ -35,11 +35,11 @@ class TestCreateRun:
 
         from datapulse.pipeline.models import PipelineRunCreate
 
-        data = PipelineRunCreate(run_type="full_refresh", trigger_source="manual")
+        data = PipelineRunCreate(run_type="full", trigger_source="manual")
         result = pipeline_repo.create_run(data)
 
         assert result.id == run_id
-        assert result.run_type == "full_refresh"
+        assert result.run_type == "full"
         mock_session.commit.assert_called_once()
 
     def test_with_metadata(self, pipeline_repo, mock_session):
@@ -48,7 +48,7 @@ class TestCreateRun:
         )
         from datapulse.pipeline.models import PipelineRunCreate
 
-        data = PipelineRunCreate(run_type="incremental", metadata={"source": "n8n"})
+        data = PipelineRunCreate(run_type="bronze", metadata={"source": "n8n"})
         result = pipeline_repo.create_run(data)
         assert result.metadata == {"source": "n8n"}
 
@@ -154,8 +154,8 @@ class TestGetLatestRun:
 
     def test_with_type_filter(self, pipeline_repo, mock_session):
         mock_session.execute.return_value.fetchone.return_value = _make_row(
-            run_type="incremental",
+            run_type="bronze",
         )
-        result = pipeline_repo.get_latest_run(run_type="incremental")
+        result = pipeline_repo.get_latest_run(run_type="bronze")
         assert result is not None
-        assert result.run_type == "incremental"
+        assert result.run_type == "bronze"

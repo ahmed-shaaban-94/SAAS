@@ -54,6 +54,8 @@ def _patch_get_settings_globally():
         patch("datapulse.embed.token.get_settings", return_value=clean_settings),
         patch("datapulse.api.routes.explore.get_settings", return_value=clean_settings),
         patch("datapulse.api.routes.pipeline.get_settings", return_value=clean_settings),
+        patch("datapulse.cache.get_settings", return_value=clean_settings),
+        patch("datapulse.analytics.service.get_settings", return_value=clean_settings),
     ):
         yield
 
@@ -81,9 +83,13 @@ def analytics_repo(mock_session):
 @pytest.fixture()
 def mock_repo():
     """Fully mocked AnalyticsRepository for service tests."""
+    from datetime import date
+
     from datapulse.analytics.repository import AnalyticsRepository
 
-    return create_autospec(AnalyticsRepository, instance=True)
+    repo = create_autospec(AnalyticsRepository, instance=True)
+    repo.get_data_date_range.return_value = (date(2023, 1, 1), date(2025, 3, 31))
+    return repo
 
 
 @pytest.fixture()
@@ -133,6 +139,8 @@ def analytics_service(
 @pytest.fixture()
 def api_client():
     """FastAPI TestClient with mocked dependencies."""
+    from datetime import date
+
     from fastapi.testclient import TestClient
 
     from datapulse.analytics.breakdown_repository import BreakdownRepository
@@ -144,6 +152,7 @@ def api_client():
 
     mock_session = MagicMock()
     mock_repo = create_autospec(AnalyticsRepository, instance=True)
+    mock_repo.get_data_date_range.return_value = (date(2023, 1, 1), date(2025, 3, 31))
     mock_detail_repo = create_autospec(DetailRepository, instance=True)
     mock_breakdown_repo = create_autospec(BreakdownRepository, instance=True)
     mock_comparison_repo = create_autospec(ComparisonRepository, instance=True)

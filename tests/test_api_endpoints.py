@@ -56,7 +56,7 @@ def _make_kpi_summary() -> KPISummary:
 def test_health_endpoint(api_client):
     """GET /health returns 200 with status info."""
     client, mock_repo, mock_detail_repo = api_client
-    with patch("datapulse.api.routes.health._get_engine") as mock_engine:
+    with patch("datapulse.api.routes.health.get_engine") as mock_engine:
         mock_conn = MagicMock()
         mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
         mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None

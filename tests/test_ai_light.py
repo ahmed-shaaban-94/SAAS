@@ -346,11 +346,25 @@ class TestAILightEndpoints:
     def client(self, mock_svc):
         from fastapi.testclient import TestClient
 
+        from datapulse.api import deps
         from datapulse.api.app import create_app
+        from datapulse.api.auth import get_current_user
         from datapulse.api.deps import get_ai_light_service
+
+        _dev_user = {
+            "sub": "test-user",
+            "email": "test@datapulse.local",
+            "preferred_username": "test",
+            "tenant_id": "1",
+            "roles": ["admin"],
+            "raw_claims": {},
+        }
 
         app = create_app()
         app.dependency_overrides[get_ai_light_service] = lambda: mock_svc
+        app.dependency_overrides[deps.get_db_session] = lambda: MagicMock()
+        app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
+        app.dependency_overrides[get_current_user] = lambda: _dev_user
         yield TestClient(app, headers={"X-API-Key": "test-api-key"})
         app.dependency_overrides.clear()
 

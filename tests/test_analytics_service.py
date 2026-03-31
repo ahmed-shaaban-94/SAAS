@@ -13,19 +13,21 @@ from datapulse.analytics.models import (
     TimeSeriesPoint,
     TrendResult,
 )
-from datapulse.analytics.service import AnalyticsService
 
 
-def test_default_filter_none():
+def test_default_filter_none(analytics_service, mock_repo):
     """When no filter is provided, returns a 30-day default."""
-    result = AnalyticsService._default_filter(None)
-    today = date.today()
+    max_date = date(2025, 3, 31)
+    mock_repo.get_data_date_range.return_value = (date(2023, 1, 1), max_date)
+
+    result = analytics_service._default_filter(None)
+
     assert result.date_range is not None
-    assert result.date_range.start_date == today - timedelta(days=30)
-    assert result.date_range.end_date == today
+    assert result.date_range.start_date == max_date - timedelta(days=30)
+    assert result.date_range.end_date == max_date
 
 
-def test_default_filter_passthrough():
+def test_default_filter_passthrough(analytics_service):
     """When a filter is provided, returns it unchanged."""
     custom_filter = AnalyticsFilter(
         date_range=DateRange(
@@ -34,12 +36,14 @@ def test_default_filter_passthrough():
         ),
         limit=5,
     )
-    result = AnalyticsService._default_filter(custom_filter)
+    result = analytics_service._default_filter(custom_filter)
     assert result is custom_filter
 
 
 def test_get_dashboard_summary_default_date(analytics_service, mock_repo):
-    """Calls repo.get_kpi_summary with today's date when none given."""
+    """Calls repo.get_kpi_summary with max date when none given."""
+    max_date = date(2025, 3, 31)
+    mock_repo.get_data_date_range.return_value = (date(2023, 1, 1), max_date)
     expected = KPISummary(
         today_net=Decimal("500"),
         mtd_net=Decimal("3000"),
@@ -51,7 +55,7 @@ def test_get_dashboard_summary_default_date(analytics_service, mock_repo):
 
     result = analytics_service.get_dashboard_summary()
 
-    mock_repo.get_kpi_summary.assert_called_once_with(date.today())
+    mock_repo.get_kpi_summary.assert_called_once_with(max_date)
     assert result == expected
 
 
