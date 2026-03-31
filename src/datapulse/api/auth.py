@@ -27,8 +27,8 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def require_api_key(
-    api_key: str | None = Security(_api_key_header),
-    settings: Settings = Depends(get_settings),
+    api_key: str | None = Security(_api_key_header),  # noqa: B008
+    settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> None:
     """Verify the X-API-Key header matches the configured api_key.
 
@@ -41,8 +41,8 @@ def require_api_key(
 
 
 def require_pipeline_token(
-    token: str | None = Security(_pipeline_token_header),
-    settings: Settings = Depends(get_settings),
+    token: str | None = Security(_pipeline_token_header),  # noqa: B008
+    settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> None:
     """Verify the X-Pipeline-Token header for pipeline execution endpoints.
 
@@ -55,9 +55,9 @@ def require_pipeline_token(
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
-    api_key: str | None = Security(_api_key_header),
-    settings: Settings = Depends(get_settings),
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),  # noqa: B008
+    api_key: str | None = Security(_api_key_header),  # noqa: B008
+    settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> dict[str, Any]:
     """Authenticate the current user via JWT Bearer token or API key fallback.
 
@@ -119,9 +119,9 @@ def get_current_user(
 
 
 def get_optional_user(
-    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
-    api_key: str | None = Security(_api_key_header),
-    settings: Settings = Depends(get_settings),
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),  # noqa: B008
+    api_key: str | None = Security(_api_key_header),  # noqa: B008
+    settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> dict[str, Any] | None:
     """Same as get_current_user but returns None instead of raising on missing auth.
 

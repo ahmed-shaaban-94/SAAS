@@ -1,4 +1,6 @@
-"""Tests for monthly_trend field on detail models (ProductPerformance, CustomerAnalytics, StaffPerformance).
+"""Tests for monthly_trend field on detail models.
+
+Covers ProductPerformance, CustomerAnalytics, StaffPerformance.
 
 Pure unit tests -- no database required. Validates that the monthly_trend
 field (list[TimeSeriesPoint]) is accepted, defaults to an empty list, and

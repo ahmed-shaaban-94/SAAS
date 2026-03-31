@@ -72,7 +72,10 @@ def list_runs(
     if status is not None and status not in VALID_STATUSES:
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid status '{status}'. Must be one of: {', '.join(sorted(VALID_STATUSES))}",
+            detail=(
+                f"Invalid status '{status}'. "
+                f"Must be one of: {', '.join(sorted(VALID_STATUSES))}"
+            ),
         )
     return service.list_runs(
         status=status,
@@ -117,9 +120,9 @@ async def stream_run_progress(
 
     Polls every 2 seconds. Closes automatically on terminal state or after 10 minutes.
     """
-    TERMINAL = {"success", "failed", "cancelled"}
-    POLL_INTERVAL = 2  # seconds
-    MAX_DURATION = 600  # 10 minutes
+    terminal = {"success", "failed", "cancelled"}
+    poll_interval = 2  # seconds
+    max_duration = 600  # 10 minutes
 
     # Verify run exists before starting stream
     loop = asyncio.get_event_loop()
@@ -131,7 +134,7 @@ async def stream_run_progress(
         last_status = None
         elapsed = 0
 
-        while elapsed < MAX_DURATION:
+        while elapsed < max_duration:
             try:
                 current = await loop.run_in_executor(None, service.get_run, run_id)
             except Exception as exc:
@@ -159,12 +162,12 @@ async def stream_run_progress(
                 yield _sse_event("status_change", data)
                 last_status = current.status
 
-            if current.status in TERMINAL:
+            if current.status in terminal:
                 yield _sse_event("complete", data)
                 return
 
-            await asyncio.sleep(POLL_INTERVAL)
-            elapsed += POLL_INTERVAL
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
 
         yield _sse_event("timeout", {"message": "Stream timeout after 10 minutes"})
 
