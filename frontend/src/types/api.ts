@@ -265,3 +265,69 @@ export interface CategoryGroup {
 export interface ProductHierarchy {
   categories: CategoryGroup[];
 }
+
+// --- Explore types (Phase 3: Self-serve analytics) ---
+
+export interface ExploreDimension {
+  name: string;
+  label: string;
+  description: string;
+  dimension_type: "string" | "number" | "date" | "boolean";
+  model: string;
+}
+
+export interface ExploreMetric {
+  name: string;
+  label: string;
+  description: string;
+  metric_type: "sum" | "average" | "count" | "count_distinct" | "min" | "max";
+  column: string;
+  model: string;
+}
+
+export interface ExploreJoinPath {
+  join_model: string;
+  sql_on: string;
+}
+
+export interface ExploreModel {
+  name: string;
+  label: string;
+  description: string;
+  schema_name: string;
+  dimensions: ExploreDimension[];
+  metrics: ExploreMetric[];
+  joins: ExploreJoinPath[];
+}
+
+export interface ExploreCatalog {
+  models: ExploreModel[];
+}
+
+export interface ExploreFilter {
+  field: string;
+  operator: string;
+  value: string | number | boolean | string[];
+}
+
+export interface ExploreSortSpec {
+  field: string;
+  direction: "asc" | "desc";
+}
+
+export interface ExploreQueryRequest {
+  model: string;
+  dimensions: string[];
+  metrics: string[];
+  filters: ExploreFilter[];
+  sorts: ExploreSortSpec[];
+  limit: number;
+}
+
+export interface ExploreResult {
+  columns: string[];
+  rows: (string | number | boolean | null)[][];
+  row_count: number;
+  sql: string;
+  truncated: boolean;
+}
