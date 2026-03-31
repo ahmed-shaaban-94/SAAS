@@ -7,6 +7,7 @@ import { useSession, signOut } from "next-auth/react";
 import {
   Activity,
   Compass,
+  FileBarChart,
   LayoutDashboard,
   Menu,
   Package,
@@ -39,6 +40,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   UserCog,
   Building2,
   RotateCcw,
+  FileBarChart,
   GitBranch,
   Sparkles,
 };

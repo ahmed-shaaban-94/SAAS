@@ -17,6 +17,7 @@ export const NAV_ITEMS = [
   { label: "Staff", href: "/staff", icon: "UserCog" },
   { label: "Sites", href: "/sites", icon: "Building2" },
   { label: "Returns", href: "/returns", icon: "RotateCcw" },
+  { label: "Reports", href: "/reports", icon: "FileBarChart" },
   { label: "Pipeline", href: "/pipeline", icon: "GitBranch" },
   { label: "Insights", href: "/insights", icon: "Sparkles" },
 ] as const;
