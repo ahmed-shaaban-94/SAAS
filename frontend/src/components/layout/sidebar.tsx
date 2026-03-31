@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Menu,
   Package,
+  Terminal,
   Users,
   UserCog,
   Building2,
@@ -32,6 +33,7 @@ interface SidebarProps {
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
   Compass,
+  Terminal,
   Package,
   Users,
   UserCog,
