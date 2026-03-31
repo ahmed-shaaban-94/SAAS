@@ -62,8 +62,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const keycloakProvider: any = {
+const keycloakProvider: Record<string, unknown> = {
   id: "keycloak",
   name: "Keycloak",
   type: "oauth",
@@ -83,8 +82,7 @@ const keycloakProvider: any = {
   issuer: KC_INTERNAL,
   checks: ["pkce", "state"],
   idToken: true,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  profile(profile: any) {
+  profile(profile: Record<string, unknown>) {
     return {
       id: profile.sub,
       name: profile.name ?? profile.preferred_username,

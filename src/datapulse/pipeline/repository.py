@@ -7,6 +7,7 @@ interpolation of user-supplied values.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -40,6 +41,8 @@ _UPDATABLE_COLUMNS = frozenset(
         "metadata",
     }
 )
+
+_SAFE_IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
 class PipelineRepository:
@@ -114,6 +117,8 @@ class PipelineRepository:
         for key, value in fields.items():
             if key not in _UPDATABLE_COLUMNS:
                 raise ValueError(f"Cannot update column: {key}")
+            if not _SAFE_IDENTIFIER_RE.match(key):
+                raise ValueError(f"Unsafe column name: {key!r}")
             if key == "metadata":
                 set_parts.append("metadata = :metadata::jsonb")
                 params["metadata"] = json.dumps(value)

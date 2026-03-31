@@ -45,6 +45,9 @@ _FILTER_OPS = {
 # Regex to parse ${model.column} syntax in join sql_on
 _JOIN_REF = re.compile(r"\$\{(\w+)\.(\w+)\}")
 
+# Only allow safe SQL identifiers (lowercase letters, digits, underscores)
+_SAFE_IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
+
 
 def _resolve_join_on(sql_on: str, base_alias: str, join_alias: str) -> str:
     """Resolve ``${model.column}`` references in a JOIN ON clause to table aliases."""
@@ -170,7 +173,11 @@ def build_sql(
         select_parts.append(f"{agg_expr} AS {metric.name}")
         select_aliases.append(metric.name)
 
-    # Build FROM clause
+    # Build FROM clause — validate identifiers before interpolation
+    if base.schema_name and not _SAFE_IDENT.match(base.schema_name):
+        raise ValueError(f"Unsafe schema name: {base.schema_name!r}")
+    if not _SAFE_IDENT.match(base.name):
+        raise ValueError(f"Unsafe model name: {base.name!r}")
     schema_prefix = f"{base.schema_name}." if base.schema_name else ""
     from_clause = f"{schema_prefix}{base.name} AS {base.name}"
 
@@ -180,6 +187,10 @@ def build_sql(
     for jp in base.joins:
         if jp.join_model in needed_joins:
             jm = joined_models[jp.join_model]
+            if not _SAFE_IDENT.match(jp.join_model):
+                raise ValueError(f"Unsafe join model name: {jp.join_model!r}")
+            if jm.schema_name and not _SAFE_IDENT.match(jm.schema_name):
+                raise ValueError(f"Unsafe join schema name: {jm.schema_name!r}")
             jm_schema = f"{jm.schema_name}." if jm.schema_name else ""
             on_clause = _resolve_join_on(jp.sql_on, base.name, jp.join_model)
             join_clauses.append(
@@ -192,6 +203,8 @@ def build_sql(
 
     for i, flt in enumerate(query.filters):
         param_name = f"p{i}"
+        if not _SAFE_IDENT.match(flt.field):
+            raise ValueError(f"Unsafe filter field name: {flt.field!r}")
 
         if flt.operator == "in":
             # IN clause with multiple values

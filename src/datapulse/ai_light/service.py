@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re as _re
 import statistics
 from datetime import date, timedelta
 from decimal import Decimal
@@ -28,9 +29,6 @@ from datapulse.config import Settings
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
-
-
-import re as _re
 
 _CONTROL_CHARS_RE = _re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _INJECTION_DELIMITERS_RE = _re.compile(r"[<>\[\]{}|\\`]")
