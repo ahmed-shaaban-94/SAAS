@@ -73,8 +73,7 @@ def list_runs(
         raise HTTPException(
             status_code=422,
             detail=(
-                f"Invalid status '{status}'. "
-                f"Must be one of: {', '.join(sorted(VALID_STATUSES))}"
+                f"Invalid status '{status}'. Must be one of: {', '.join(sorted(VALID_STATUSES))}"
             ),
         )
     return service.list_runs(

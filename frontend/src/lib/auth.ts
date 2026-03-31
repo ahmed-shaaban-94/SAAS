@@ -62,7 +62,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   }
 }
 
-const keycloakProvider: Record<string, unknown> = {
+const keycloakProvider: any = {
   id: "keycloak",
   name: "Keycloak",
   type: "oauth",
@@ -82,7 +82,7 @@ const keycloakProvider: Record<string, unknown> = {
   issuer: KC_INTERNAL,
   checks: ["pkce", "state"],
   idToken: true,
-  profile(profile: Record<string, unknown>) {
+  profile(profile: any) {
     return {
       id: profile.sub,
       name: profile.name ?? profile.preferred_username,

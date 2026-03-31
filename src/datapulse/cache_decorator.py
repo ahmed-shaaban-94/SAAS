@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import inspect
 import json
 from typing import Any, TypeVar
 
@@ -103,6 +104,11 @@ def cached(ttl: int = 300, prefix: str = _DEFAULT_PREFIX):
                 log.debug("cache_skip_unserializable", key=key, type=type(result).__name__)
 
             return result
+
+        # Preserve the original function's signature so that FastAPI's
+        # dependency injection inspects the real parameters instead of
+        # seeing the wrapper's (*args, **kwargs).
+        wrapper.__signature__ = inspect.signature(func)  # type: ignore[attr-defined]
 
         # Expose cache metadata for testing/introspection
         wrapper._cache_prefix = prefix  # type: ignore[attr-defined]

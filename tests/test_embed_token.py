@@ -80,9 +80,7 @@ class TestCreateEmbedToken:
 
     def test_returns_valid_jwt(self):
         token = create_embed_token("tenant-1")
-        decoded = jwt.decode(
-            token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER
-        )
+        decoded = jwt.decode(token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER)
         assert isinstance(decoded, dict)
 
     def test_correct_claims(self):
@@ -91,9 +89,7 @@ class TestCreateEmbedToken:
             resource_type="dashboard",
             resource_id="dash-7",
         )
-        decoded = jwt.decode(
-            token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER
-        )
+        decoded = jwt.decode(token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER)
         assert decoded["iss"] == _ISSUER
         assert decoded["tenant_id"] == "t-42"
         assert decoded["resource_type"] == "dashboard"
@@ -101,17 +97,13 @@ class TestCreateEmbedToken:
 
     def test_default_resource_type(self):
         token = create_embed_token("t-1")
-        decoded = jwt.decode(
-            token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER
-        )
+        decoded = jwt.decode(token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER)
         assert decoded["resource_type"] == "explore"
         assert decoded["resource_id"] == ""
 
     def test_expiration_is_set(self):
         token = create_embed_token("t-1", expires_hours=2)
-        decoded = jwt.decode(
-            token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER
-        )
+        decoded = jwt.decode(token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER)
         assert "exp" in decoded
         assert "iat" in decoded
         # exp should be ~2 hours after iat
@@ -120,9 +112,7 @@ class TestCreateEmbedToken:
 
     def test_custom_expires_hours(self):
         token = create_embed_token("t-1", expires_hours=24)
-        decoded = jwt.decode(
-            token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER
-        )
+        decoded = jwt.decode(token, "test-secret", algorithms=[_ALGORITHM], issuer=_ISSUER)
         diff = decoded["exp"] - decoded["iat"]
         assert 86399 <= diff <= 86401
 

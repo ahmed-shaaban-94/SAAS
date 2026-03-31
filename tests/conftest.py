@@ -49,6 +49,11 @@ def _patch_get_settings_globally():
         patch("datapulse.import_pipeline.reader.get_settings", return_value=clean_settings),
         patch("datapulse.bronze.loader.get_settings", return_value=clean_settings),
         patch("datapulse.api.deps.get_settings", return_value=clean_settings),
+        patch("datapulse.api.app.get_settings", return_value=clean_settings),
+        patch("datapulse.api.auth.get_settings", return_value=clean_settings),
+        patch("datapulse.embed.token.get_settings", return_value=clean_settings),
+        patch("datapulse.api.routes.explore.get_settings", return_value=clean_settings),
+        patch("datapulse.api.routes.pipeline.get_settings", return_value=clean_settings),
     ):
         yield
 
@@ -149,10 +154,22 @@ def api_client():
 
     from datapulse.api import deps
     from datapulse.api.app import create_app
+    from datapulse.api.auth import get_current_user
+
+    _dev_user = {
+        "sub": "test-user",
+        "email": "test@datapulse.local",
+        "preferred_username": "test",
+        "tenant_id": "1",
+        "roles": ["admin"],
+        "raw_claims": {},
+    }
 
     app = create_app()
     app.dependency_overrides[deps.get_db_session] = lambda: mock_session
+    app.dependency_overrides[deps.get_tenant_session] = lambda: mock_session
     app.dependency_overrides[deps.get_analytics_service] = lambda: mock_svc
+    app.dependency_overrides[get_current_user] = lambda: _dev_user
 
     client = TestClient(app, headers={"X-API-Key": "test-api-key"})
     yield client, mock_repo, mock_detail_repo
@@ -192,8 +209,18 @@ def pipeline_api_client():
     """FastAPI TestClient with mocked pipeline dependencies."""
     from fastapi.testclient import TestClient
 
+    from datapulse.api.auth import get_current_user
     from datapulse.pipeline.repository import PipelineRepository
     from datapulse.pipeline.service import PipelineService
+
+    _dev_user = {
+        "sub": "test-user",
+        "email": "test@datapulse.local",
+        "preferred_username": "test",
+        "tenant_id": "1",
+        "roles": ["admin"],
+        "raw_claims": {},
+    }
 
     mock_session = MagicMock()
     mock_pl_repo = create_autospec(PipelineRepository, instance=True)
@@ -204,7 +231,9 @@ def pipeline_api_client():
 
     app = create_app()
     app.dependency_overrides[deps.get_db_session] = lambda: mock_session
+    app.dependency_overrides[deps.get_tenant_session] = lambda: mock_session
     app.dependency_overrides[deps.get_pipeline_service] = lambda: mock_pl_svc
+    app.dependency_overrides[get_current_user] = lambda: _dev_user
 
     client = TestClient(app, headers={"X-API-Key": "test-api-key"})
     yield client, mock_pl_repo

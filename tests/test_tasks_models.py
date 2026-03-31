@@ -29,9 +29,7 @@ class TestQueryStatus:
             (QueryStatus.failed, "failed"),
         ],
     )
-    def test_values_are_correct_strings(
-        self, member: QueryStatus, expected: str
-    ) -> None:
+    def test_values_are_correct_strings(self, member: QueryStatus, expected: str) -> None:
         assert member.value == expected
         assert str(member) == expected
 

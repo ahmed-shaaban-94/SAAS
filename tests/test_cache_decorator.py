@@ -12,6 +12,7 @@ from datapulse.cache_decorator import _build_cache_key, cached
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _FakePydanticModel:
     """Minimal stand-in for a Pydantic model with model_dump()."""
 

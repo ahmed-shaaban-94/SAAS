@@ -47,9 +47,7 @@ def _make_dimension(
     model: str = "fct_sales",
     dim_type: DimensionType = DimensionType.string,
 ) -> Dimension:
-    return Dimension(
-        name=name, label=label, model=model, dimension_type=dim_type
-    )
+    return Dimension(name=name, label=label, model=model, dimension_type=dim_type)
 
 
 def _make_metric(
@@ -487,9 +485,7 @@ class TestBuildSql:
         dim = _make_dimension(name="brand", label="Brand")
         model = _make_explore_model(dimensions=[dim])
         catalog = _make_catalog([model])
-        query = ExploreQuery(
-            model="fct_sales", dimensions=["brand"], metrics=["bad_metric"]
-        )
+        query = ExploreQuery(model="fct_sales", dimensions=["brand"], metrics=["bad_metric"])
 
         with pytest.raises(ValueError, match="Unknown metric 'bad_metric'"):
             build_sql(query, catalog)
@@ -511,11 +507,7 @@ class TestBuildSql:
         query = ExploreQuery(
             model="fct_sales",
             dimensions=["customer_name"],
-            filters=[
-                ExploreFilter(
-                    field="customer_name", operator="gt", value=100
-                )
-            ],
+            filters=[ExploreFilter(field="customer_name", operator="gt", value=100)],
         )
 
         sql, params = build_sql(query, catalog)
@@ -527,11 +519,7 @@ class TestBuildSql:
         query = ExploreQuery(
             model="fct_sales",
             dimensions=["customer_name"],
-            filters=[
-                ExploreFilter(
-                    field="customer_name", operator="like", value="%pharma%"
-                )
-            ],
+            filters=[ExploreFilter(field="customer_name", operator="like", value="%pharma%")],
         )
 
         sql, params = build_sql(query, catalog)
@@ -559,9 +547,7 @@ class TestBuildSql:
 
     def test_unsafe_identifier_raises(self):
         dim = _make_dimension(name="brand", label="Brand")
-        model = _make_explore_model(
-            dimensions=[dim], schema_name="DROP TABLE"
-        )
+        model = _make_explore_model(dimensions=[dim], schema_name="DROP TABLE")
         catalog = _make_catalog([model])
         query = ExploreQuery(model="fct_sales", dimensions=["brand"])
 
@@ -573,39 +559,28 @@ class TestBuildSql:
         query = ExploreQuery(
             model="fct_sales",
             dimensions=["customer_name"],
-            filters=[
-                ExploreFilter(
-                    field="1; DROP TABLE", operator="eq", value="x"
-                )
-            ],
+            filters=[ExploreFilter(field="1; DROP TABLE", operator="eq", value="x")],
         )
 
         with pytest.raises(ValueError, match="Unsafe filter field"):
             build_sql(query, catalog)
 
     def test_join_clauses_included(self):
-        base_dim = _make_dimension(
-            name="customer_key", label="CK", dim_type=DimensionType.number
-        )
+        base_dim = _make_dimension(name="customer_key", label="CK", dim_type=DimensionType.number)
         base_metric = _make_metric()
         join_dim = _make_dimension(
             name="customer_name",
             label="Customer Name",
             model="dim_customer",
         )
-        join_model = _make_explore_model(
-            name="dim_customer", dimensions=[join_dim]
-        )
+        join_model = _make_explore_model(name="dim_customer", dimensions=[join_dim])
         base_model = _make_explore_model(
             dimensions=[base_dim],
             metrics=[base_metric],
             joins=[
                 JoinPath(
                     join_model="dim_customer",
-                    sql_on=(
-                        "${fct_sales.customer_key}"
-                        " = ${dim_customer.customer_key}"
-                    ),
+                    sql_on=("${fct_sales.customer_key} = ${dim_customer.customer_key}"),
                 )
             ],
         )
@@ -625,9 +600,7 @@ class TestBuildSql:
         catalog = _make_catalog([model])
         query = ExploreQuery(model="fct_sales")
 
-        with pytest.raises(
-            ValueError, match="At least one dimension or metric"
-        ):
+        with pytest.raises(ValueError, match="At least one dimension or metric"):
             build_sql(query, catalog)
 
     def test_sort_spec_applied(self):
