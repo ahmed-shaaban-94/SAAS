@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse
 
 from datapulse.api.auth import get_current_user, require_pipeline_token
 from datapulse.api.deps import get_pipeline_executor, get_pipeline_service, get_quality_service
+from datapulse.cache import cache_invalidate_pattern
 from datapulse.config import get_settings
 from datapulse.logging import get_logger
 from datapulse.pipeline.executor import PipelineExecutor
@@ -203,10 +204,23 @@ def update_run(
 
     Status validation is handled by PipelineRunUpdate's Pydantic field_validator;
     invalid values are rejected with 422 before this handler runs.
+
+    When a run transitions to 'success', all analytics caches are invalidated
+    so that dashboards reflect the freshly loaded data.
     """
     result = service.update_status(run_id, body)
     if result is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    # Invalidate analytics cache on successful pipeline completion
+    if body.status == "success":
+        deleted = cache_invalidate_pattern("datapulse:analytics:*")
+        log.info(
+            "cache_invalidated_on_pipeline_success",
+            run_id=str(run_id),
+            keys_deleted=deleted,
+        )
+
     return result
 
 

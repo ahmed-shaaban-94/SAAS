@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     redis_default_ttl: int = 300       # 5 minutes
     redis_dashboard_ttl: int = 600     # 10 minutes
 
+    # Celery (async query execution)
+    celery_broker_db: int = 1          # Redis DB index for Celery broker
+    celery_result_db: int = 2          # Redis DB index for Celery results
+    celery_worker_concurrency: int = 4
+    query_row_limit: int = 10_000      # Max rows for async queries
+
     # Logging
     log_format: str = "console"
 

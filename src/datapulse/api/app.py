@@ -13,7 +13,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from datapulse.api.limiter import limiter
-from datapulse.api.routes import ai_light, analytics, health, pipeline
+from datapulse.api.routes import ai_light, analytics, explore, health, pipeline, queries
 from datapulse.config import get_settings
 from datapulse.logging import setup_logging
 
@@ -91,5 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(analytics.router, prefix="/api/v1")
     app.include_router(pipeline.router, prefix="/api/v1")
     app.include_router(ai_light.router, prefix="/api/v1")
+    app.include_router(queries.router, prefix="/api/v1")
+    app.include_router(explore.router, prefix="/api/v1")
 
     return app

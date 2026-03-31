@@ -32,6 +32,7 @@ from datapulse.analytics.models import (
 )
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.cache import cache_get, cache_set
+from datapulse.cache_decorator import cached
 from datapulse.config import get_settings
 from datapulse.logging import get_logger
 
@@ -157,13 +158,14 @@ class AnalyticsService:
         return result
 
     # ------------------------------------------------------------------
-    # Non-cached methods (filter-dependent, short-lived)
+    # Filter-dependent methods (cached 60-120s via @cached decorator)
     # ------------------------------------------------------------------
 
+    @cached(ttl=90, prefix=_CACHE_PREFIX)
     def get_revenue_trends(
         self, filters: AnalyticsFilter | None = None
     ) -> dict[str, TrendResult]:
-        """Daily and monthly revenue trends."""
+        """Daily and monthly revenue trends (cached 90s)."""
         f = self._default_filter(filters)
         log.info("revenue_trends", filters=f.model_dump())
         return {
@@ -171,58 +173,65 @@ class AnalyticsService:
             "monthly": self._repo.get_monthly_trend(f),
         }
 
+    @cached(ttl=60, prefix=_CACHE_PREFIX)
     def get_daily_trend(
         self, filters: AnalyticsFilter | None = None
     ) -> TrendResult:
-        """Daily revenue trend only (avoids fetching monthly data)."""
+        """Daily revenue trend only (cached 60s)."""
         f = self._default_filter(filters)
         log.info("daily_trend", filters=f.model_dump())
         return self._repo.get_daily_trend(f)
 
+    @cached(ttl=60, prefix=_CACHE_PREFIX)
     def get_monthly_trend(
         self, filters: AnalyticsFilter | None = None
     ) -> TrendResult:
-        """Monthly revenue trend only (avoids fetching daily data)."""
+        """Monthly revenue trend only (cached 60s)."""
         f = self._default_filter(filters)
         log.info("monthly_trend", filters=f.model_dump())
         return self._repo.get_monthly_trend(f)
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_product_insights(
         self, filters: AnalyticsFilter | None = None
     ) -> RankingResult:
-        """Top products by net revenue."""
+        """Top products by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("product_insights", filters=f.model_dump())
         return self._repo.get_top_products(f)
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_customer_insights(
         self, filters: AnalyticsFilter | None = None
     ) -> RankingResult:
-        """Top customers by net revenue."""
+        """Top customers by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("customer_insights", filters=f.model_dump())
         return self._repo.get_top_customers(f)
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_site_comparison(
         self, filters: AnalyticsFilter | None = None
     ) -> RankingResult:
-        """Site ranking by net revenue."""
+        """Site ranking by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("site_comparison", filters=f.model_dump())
         return self._repo.get_site_performance(f)
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_staff_leaderboard(
         self, filters: AnalyticsFilter | None = None
     ) -> RankingResult:
-        """Staff ranking by net revenue."""
+        """Staff ranking by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("staff_leaderboard", filters=f.model_dump())
         return self._repo.get_top_staff(f)
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_return_report(
         self, filters: AnalyticsFilter | None = None
     ) -> list[ReturnAnalysis]:
-        """Top returns by amount."""
+        """Top returns by amount (cached 120s)."""
         f = self._default_filter(filters)
         log.info("return_report", filters=f.model_dump())
         return self._repo.get_return_analysis(f)
@@ -256,20 +265,22 @@ class AnalyticsService:
     # Phase 2: Billing & Customer Type
     # ------------------------------------------------------------------
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_billing_breakdown(
         self, filters: AnalyticsFilter | None = None
     ) -> BillingBreakdown:
-        """Billing method distribution (cash, credit, etc.)."""
+        """Billing method distribution (cached 120s)."""
         if self._breakdown_repo is None:
             raise RuntimeError("BreakdownRepository not configured")
         f = self._default_filter(filters)
         log.info("billing_breakdown", filters=f.model_dump())
         return self._breakdown_repo.get_billing_breakdown(f)
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_customer_type_breakdown(
         self, filters: AnalyticsFilter | None = None
     ) -> CustomerTypeBreakdown:
-        """Walk-in vs insurance vs other distribution by month."""
+        """Walk-in vs insurance vs other distribution by month (cached 120s)."""
         if self._breakdown_repo is None:
             raise RuntimeError("BreakdownRepository not configured")
         f = self._default_filter(filters)
@@ -338,10 +349,11 @@ class AnalyticsService:
             raise RuntimeError("DetailRepository not configured")
         return self._detail_repo.get_site_detail(site_key)
 
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
     def get_product_hierarchy(
         self, filters: AnalyticsFilter | None = None
     ) -> ProductHierarchy:
-        """Category > Brand > Product hierarchy view."""
+        """Category > Brand > Product hierarchy view (cached 120s)."""
         if self._hierarchy_repo is None:
             raise RuntimeError("HierarchyRepository not configured")
         f = self._default_filter(filters)
