@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import {
   BarChart,
   Bar,
@@ -56,9 +57,12 @@ export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) 
           >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-text-primary">
+                <Link
+                  href={`/sites/${site.key}`}
+                  className="text-lg font-semibold text-text-primary transition-colors hover:text-accent"
+                >
                   {site.name}
-                </h3>
+                </Link>
                 <p className="mt-1 text-2xl font-bold text-accent">
                   {formatCurrency(site.value)}
                 </p>

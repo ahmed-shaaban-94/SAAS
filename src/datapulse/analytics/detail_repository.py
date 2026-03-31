@@ -1,4 +1,4 @@
-"""Read-only repository for entity detail queries (product, customer, staff).
+"""Read-only repository for entity detail queries (product, customer, staff, site).
 
 Extracted from ``AnalyticsRepository`` to keep individual modules under the
 400-line convention.  Follows the same pattern: takes a SQLAlchemy session
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from datapulse.analytics.models import (
     CustomerAnalytics,
     ProductPerformance,
+    SiteDetail,
     StaffPerformance,
     TimeSeriesPoint,
 )
@@ -24,18 +25,20 @@ log = get_logger(__name__)
 
 
 class DetailRepository:
-    """Detail queries for individual products, customers, and staff."""
+    """Detail queries for individual products, customers, staff, and sites."""
 
     _ALLOWED_TABLES: frozenset[str] = frozenset({
         "public_marts.agg_sales_by_product",
         "public_marts.agg_sales_by_customer",
         "public_marts.agg_sales_by_staff",
+        "public_marts.agg_sales_by_site",
     })
 
     _ALLOWED_KEY_COLS: frozenset[str] = frozenset({
         "product_key",
         "customer_key",
         "staff_key",
+        "site_key",
     })
 
     def __init__(self, session: Session) -> None:
@@ -203,5 +206,60 @@ class DetailRepository:
             transaction_count=int(row[5]),
             avg_transaction_value=Decimal(str(row[6])) if row[6] is not None else Decimal("0"),
             unique_customers=int(row[7]),
+            monthly_trend=trend,
+        )
+
+    def get_site_detail(self, site_key: int) -> SiteDetail | None:
+        """Return detailed metrics for a single site."""
+        log.info("get_site_detail", site_key=site_key)
+
+        stmt = text("""
+            SELECT
+                a.site_key,
+                s.site_code,
+                s.site_name,
+                s.area_manager,
+                SUM(a.total_net_amount)      AS total_net_amount,
+                SUM(a.transaction_count)     AS transaction_count,
+                SUM(a.unique_customers)      AS unique_customers,
+                SUM(a.unique_staff)          AS unique_staff,
+                COALESCE(
+                    SUM(a.walk_in_count)::NUMERIC
+                    / NULLIF(SUM(a.transaction_count), 0), 0
+                )                            AS walk_in_ratio,
+                COALESCE(
+                    SUM(a.insurance_count)::NUMERIC
+                    / NULLIF(SUM(a.transaction_count), 0), 0
+                )                            AS insurance_ratio,
+                COALESCE(
+                    SUM(a.return_count)::NUMERIC
+                    / NULLIF(SUM(a.transaction_count), 0), 0
+                )                            AS return_rate
+            FROM public_marts.agg_sales_by_site a
+            INNER JOIN public_marts.dim_site s
+                ON a.site_key = s.site_key
+            WHERE a.site_key = :site_key
+            GROUP BY a.site_key, s.site_code, s.site_name, s.area_manager
+        """)
+        row = self._session.execute(stmt, {"site_key": site_key}).fetchone()
+        if row is None:
+            return None
+
+        trend = self._get_monthly_trend(
+            "public_marts.agg_sales_by_site", "site_key", site_key,
+        )
+
+        return SiteDetail(
+            site_key=int(row[0]),
+            site_code=str(row[1]) if row[1] else "",
+            site_name=str(row[2]),
+            area_manager=str(row[3]) if row[3] else "",
+            total_net_amount=Decimal(str(row[4])),
+            transaction_count=int(row[5]),
+            unique_customers=int(row[6]),
+            unique_staff=int(row[7]),
+            walk_in_ratio=Decimal(str(row[8])).quantize(Decimal("0.0001")),
+            insurance_ratio=Decimal(str(row[9])).quantize(Decimal("0.0001")),
+            return_rate=Decimal(str(row[10])).quantize(Decimal("0.0001")),
             monthly_trend=trend,
         )

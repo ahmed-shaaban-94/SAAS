@@ -6,6 +6,11 @@ export interface KPISummary {
   yoy_growth_pct: number | null;
   daily_transactions: number;
   daily_customers: number;
+  avg_basket_size: number;
+  daily_returns: number;
+  mtd_transactions: number;
+  ytd_transactions: number;
+  sparkline?: TimeSeriesPoint[];
 }
 
 export interface TimeSeriesPoint {
@@ -175,4 +180,88 @@ export interface StaffPerformance {
   avg_transaction_value: number;
   unique_customers: number;
   monthly_trend?: TimeSeriesPoint[];
+}
+
+// --- Phase 2: Billing & Customer Type ---
+
+export interface BillingBreakdownItem {
+  billing_way: string;
+  transaction_count: number;
+  total_net_amount: number;
+  pct_of_total: number;
+}
+
+export interface BillingBreakdown {
+  items: BillingBreakdownItem[];
+  total_transactions: number;
+  total_net_amount: number;
+}
+
+export interface CustomerTypeBreakdownItem {
+  period: string;
+  walk_in_count: number;
+  insurance_count: number;
+  other_count: number;
+  total_count: number;
+}
+
+export interface CustomerTypeBreakdown {
+  items: CustomerTypeBreakdownItem[];
+}
+
+// --- Phase 3: Comparative Analytics ---
+
+export interface MoverItem {
+  key: number;
+  name: string;
+  current_value: number;
+  previous_value: number;
+  change_pct: number;
+  direction: "up" | "down";
+}
+
+export interface TopMovers {
+  gainers: MoverItem[];
+  losers: MoverItem[];
+  entity_type: string;
+}
+
+// --- Phase 4: Site Detail & Product Hierarchy ---
+
+export interface SiteDetail {
+  site_key: number;
+  site_code: string;
+  site_name: string;
+  area_manager: string;
+  total_net_amount: number;
+  transaction_count: number;
+  unique_customers: number;
+  unique_staff: number;
+  walk_in_ratio: number;
+  insurance_ratio: number;
+  return_rate: number;
+  monthly_trend?: TimeSeriesPoint[];
+}
+
+export interface ProductInCategory {
+  product_key: number;
+  drug_name: string;
+  total_net_amount: number;
+  transaction_count: number;
+}
+
+export interface BrandGroup {
+  brand: string;
+  total_net_amount: number;
+  products: ProductInCategory[];
+}
+
+export interface CategoryGroup {
+  category: string;
+  total_net_amount: number;
+  brands: BrandGroup[];
+}
+
+export interface ProductHierarchy {
+  categories: CategoryGroup[];
 }

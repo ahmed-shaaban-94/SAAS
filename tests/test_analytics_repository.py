@@ -1,18 +1,23 @@
-"""Tests for analytics repository."""
+"""Tests for analytics repository and shared query helpers."""
 
 from datetime import date
 from decimal import Decimal
 
 from datapulse.analytics.models import AnalyticsFilter, DateRange
-from datapulse.analytics.repository import AnalyticsRepository
+from datapulse.analytics.queries import (
+    build_ranking,
+    build_trend,
+    build_where,
+    safe_growth,
+)
 
 # ------------------------------------------------------------------
-# _build_where
+# build_where (shared helper)
 # ------------------------------------------------------------------
 
 
 def test_build_where_no_filters():
-    clause, params = AnalyticsRepository._build_where(AnalyticsFilter())
+    clause, params = build_where(AnalyticsFilter())
     assert clause == "1=1"
     assert params == {}
 
@@ -23,7 +28,7 @@ def test_build_where_date_range_year_month():
             start_date=date(2024, 3, 1), end_date=date(2024, 6, 30)
         )
     )
-    clause, params = AnalyticsRepository._build_where(f, use_year_month=True)
+    clause, params = build_where(f, use_year_month=True)
     assert "start_ym" in params
     assert "end_ym" in params
     assert params["start_ym"] == 202403
@@ -37,7 +42,7 @@ def test_build_where_date_range_date_key():
             start_date=date(2024, 1, 1), end_date=date(2024, 12, 31)
         )
     )
-    clause, params = AnalyticsRepository._build_where(
+    clause, params = build_where(
         f, use_year_month=False
     )
     assert "date_key BETWEEN :start_date AND :end_date" in clause
@@ -47,7 +52,7 @@ def test_build_where_date_range_date_key():
 
 def test_build_where_multiple_filters():
     f = AnalyticsFilter(site_key=5, category="Analgesic", brand="BrandX")
-    clause, params = AnalyticsRepository._build_where(f)
+    clause, params = build_where(f)
     assert "site_key = :site_key" in clause
     assert "drug_category = :category" in clause
     assert "drug_brand = :brand" in clause
@@ -57,27 +62,27 @@ def test_build_where_multiple_filters():
 
 
 # ------------------------------------------------------------------
-# _safe_growth
+# safe_growth (shared helper)
 # ------------------------------------------------------------------
 
 
 def test_safe_growth_normal():
-    result = AnalyticsRepository._safe_growth(Decimal("150"), Decimal("100"))
+    result = safe_growth(Decimal("150"), Decimal("100"))
     assert result == Decimal("50.00")
 
 
 def test_safe_growth_zero_previous():
-    result = AnalyticsRepository._safe_growth(Decimal("100"), Decimal("0"))
+    result = safe_growth(Decimal("100"), Decimal("0"))
     assert result is None
 
 
 # ------------------------------------------------------------------
-# _build_trend
+# build_trend (shared helper)
 # ------------------------------------------------------------------
 
 
 def test_build_trend_empty():
-    trend = AnalyticsRepository._build_trend([])
+    trend = build_trend([])
     assert trend.points == []
     assert trend.total == Decimal("0")
     assert trend.average == Decimal("0")
@@ -88,7 +93,7 @@ def test_build_trend_empty():
 
 def test_build_trend_single_point():
     rows = [("2024-01", 100)]
-    trend = AnalyticsRepository._build_trend(rows)
+    trend = build_trend(rows)
     assert len(trend.points) == 1
     assert trend.total == Decimal("100")
     assert trend.average == Decimal("100.00")
@@ -97,7 +102,7 @@ def test_build_trend_single_point():
 
 def test_build_trend_multiple():
     rows = [("2024-01", 100), ("2024-02", 200), ("2024-03", 150)]
-    trend = AnalyticsRepository._build_trend(rows)
+    trend = build_trend(rows)
     assert len(trend.points) == 3
     assert trend.total == Decimal("450")
     assert trend.average == Decimal("150.00")
@@ -108,19 +113,19 @@ def test_build_trend_multiple():
 
 
 # ------------------------------------------------------------------
-# _build_ranking
+# build_ranking (shared helper)
 # ------------------------------------------------------------------
 
 
-def test_build_ranking_empty(analytics_repo):
-    result = analytics_repo._build_ranking([])
+def test_build_ranking_empty():
+    result = build_ranking([])
     assert result.items == []
     assert result.total == Decimal("0")
 
 
-def test_build_ranking_items(analytics_repo):
+def test_build_ranking_items():
     rows = [(1, "Product A", 500), (2, "Product B", 300), (3, "Product C", 200)]
-    result = analytics_repo._build_ranking(rows)
+    result = build_ranking(rows)
     assert len(result.items) == 3
     assert result.total == Decimal("1000")
     assert result.items[0].rank == 1
@@ -131,7 +136,7 @@ def test_build_ranking_items(analytics_repo):
 
 
 # ------------------------------------------------------------------
-# get_kpi_summary
+# get_kpi_summary (expanded with new fields)
 # ------------------------------------------------------------------
 
 
@@ -143,19 +148,32 @@ def test_get_kpi_summary_no_data(analytics_repo, mock_session):
     assert result.ytd_net == Decimal("0")
     assert result.daily_transactions == 0
     assert result.daily_customers == 0
+    assert result.avg_basket_size == Decimal("0")
+    assert result.daily_returns == 0
+    assert result.mtd_transactions == 0
+    assert result.ytd_transactions == 0
+    assert result.sparkline == []
 
 
 def test_get_kpi_summary_with_data(analytics_repo, mock_session):
-    # First call: daily row; second call: prev month; third call: prev year
-    daily_row = (1000, 25000, 300000, 42, 15)
+    # Calls: daily row, basket, prev month, prev year, sparkline
+    daily_row = (1000, 25000, 300000, 42, 15, 3, 420, 5000)
+    basket_row = (Decimal("595.24"),)
     prev_month_row = (20000,)
     prev_year_row = (250000,)
+    sparkline_rows = [
+        (date(2025, 6, 9), 800),
+        (date(2025, 6, 10), 900),
+        (date(2025, 6, 11), 1000),
+    ]
 
     mock_session.execute.return_value.fetchone.side_effect = [
         daily_row,
+        basket_row,
         prev_month_row,
         prev_year_row,
     ]
+    mock_session.execute.return_value.fetchall.return_value = sparkline_rows
 
     result = analytics_repo.get_kpi_summary(date(2025, 6, 15))
     assert result.today_net == Decimal("1000")
@@ -163,10 +181,34 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
     assert result.ytd_net == Decimal("300000")
     assert result.daily_transactions == 42
     assert result.daily_customers == 15
+    assert result.daily_returns == 3
+    assert result.mtd_transactions == 420
+    assert result.ytd_transactions == 5000
     # MoM: (25000 - 20000) / 20000 * 100 = 25.00
     assert result.mom_growth_pct == Decimal("25.00")
     # YoY: (300000 - 250000) / 250000 * 100 = 20.00
     assert result.yoy_growth_pct == Decimal("20.00")
+
+
+# ------------------------------------------------------------------
+# get_kpi_sparkline
+# ------------------------------------------------------------------
+
+
+def test_get_kpi_sparkline(analytics_repo, mock_session):
+    mock_session.execute.return_value.fetchall.return_value = [
+        (date(2025, 6, 9), 800),
+        (date(2025, 6, 10), 900),
+        (date(2025, 6, 11), 1000),
+        (date(2025, 6, 12), 1100),
+        (date(2025, 6, 13), 950),
+        (date(2025, 6, 14), 1200),
+        (date(2025, 6, 15), 1050),
+    ]
+    result = analytics_repo.get_kpi_sparkline(date(2025, 6, 15), days=7)
+    assert len(result) == 7
+    assert result[0].value == Decimal("800")
+    assert result[6].value == Decimal("1050")
 
 
 # ------------------------------------------------------------------

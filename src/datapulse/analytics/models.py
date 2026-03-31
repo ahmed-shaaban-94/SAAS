@@ -99,6 +99,11 @@ class KPISummary(BaseModel):
     yoy_growth_pct: JsonDecimal | None = None
     daily_transactions: int
     daily_customers: int
+    avg_basket_size: JsonDecimal = Field(default=0)
+    daily_returns: int = 0
+    mtd_transactions: int = 0
+    ytd_transactions: int = 0
+    sparkline: list[TimeSeriesPoint] = Field(default_factory=list)
 
 
 class ProductPerformance(BaseModel):
@@ -195,3 +200,140 @@ class DashboardData(BaseModel):
     top_customers: RankingResult
     top_staff: RankingResult
     filter_options: FilterOptions
+
+
+# ------------------------------------------------------------------
+# Phase 2: Billing & Customer Type Analysis
+# ------------------------------------------------------------------
+
+
+class BillingBreakdownItem(BaseModel):
+    """Single billing method with its share of total sales."""
+
+    model_config = ConfigDict(frozen=True)
+
+    billing_way: str
+    transaction_count: int
+    total_net_amount: JsonDecimal
+    pct_of_total: JsonDecimal
+
+
+class BillingBreakdown(BaseModel):
+    """Billing method distribution for a given filter range."""
+
+    model_config = ConfigDict(frozen=True)
+
+    items: list[BillingBreakdownItem]
+    total_transactions: int
+    total_net_amount: JsonDecimal
+
+
+class CustomerTypeBreakdownItem(BaseModel):
+    """Monthly customer type split: walk-in, insurance, other."""
+
+    model_config = ConfigDict(frozen=True)
+
+    period: str
+    walk_in_count: int
+    insurance_count: int
+    other_count: int
+    total_count: int
+
+
+class CustomerTypeBreakdown(BaseModel):
+    """Customer type distribution over time."""
+
+    model_config = ConfigDict(frozen=True)
+
+    items: list[CustomerTypeBreakdownItem]
+
+
+# ------------------------------------------------------------------
+# Phase 3: Comparative Analytics
+# ------------------------------------------------------------------
+
+
+class MoverItem(BaseModel):
+    """Single entity in a top-movers list (gainer or loser)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: int
+    name: str
+    current_value: JsonDecimal
+    previous_value: JsonDecimal
+    change_pct: JsonDecimal
+    direction: str  # "up" or "down"
+
+
+class TopMovers(BaseModel):
+    """Top gainers and losers for a given entity type."""
+
+    model_config = ConfigDict(frozen=True)
+
+    gainers: list[MoverItem]
+    losers: list[MoverItem]
+    entity_type: str  # "product", "customer", "staff"
+
+
+# ------------------------------------------------------------------
+# Phase 4: Site Detail & Product Hierarchy
+# ------------------------------------------------------------------
+
+
+class SiteDetail(BaseModel):
+    """Detailed metrics for a single site."""
+
+    model_config = ConfigDict(frozen=True)
+
+    site_key: int
+    site_code: str
+    site_name: str
+    area_manager: str
+    total_net_amount: JsonDecimal
+    transaction_count: int
+    unique_customers: int
+    unique_staff: int
+    walk_in_ratio: JsonDecimal
+    insurance_ratio: JsonDecimal
+    return_rate: JsonDecimal
+    monthly_trend: list[TimeSeriesPoint] = Field(default_factory=list)
+
+
+class ProductInCategory(BaseModel):
+    """Single product within a brand group."""
+
+    model_config = ConfigDict(frozen=True)
+
+    product_key: int
+    drug_name: str
+    total_net_amount: JsonDecimal
+    transaction_count: int
+
+
+class BrandGroup(BaseModel):
+    """Brand-level grouping within a category."""
+
+    model_config = ConfigDict(frozen=True)
+
+    brand: str
+    total_net_amount: JsonDecimal
+    products: list[ProductInCategory]
+
+
+class CategoryGroup(BaseModel):
+    """Top-level category grouping in the product hierarchy."""
+
+    model_config = ConfigDict(frozen=True)
+
+    category: str
+    total_net_amount: JsonDecimal
+    brands: list[BrandGroup]
+
+
+class ProductHierarchy(BaseModel):
+    """Hierarchical product view: Category > Brand > Product."""
+
+    model_config = ConfigDict(frozen=True)
+
+    categories: list[CategoryGroup]

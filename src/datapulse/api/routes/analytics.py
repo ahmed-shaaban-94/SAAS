@@ -15,16 +15,21 @@ from pydantic import BaseModel, Field
 
 from datapulse.analytics.models import (
     AnalyticsFilter,
+    BillingBreakdown,
     CustomerAnalytics,
+    CustomerTypeBreakdown,
     DashboardData,
     DataDateRange,
     DateRange,
     FilterOptions,
     KPISummary,
+    ProductHierarchy,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
+    SiteDetail,
     StaffPerformance,
+    TopMovers,
     TrendResult,
 )
 from datapulse.analytics.service import AnalyticsService
@@ -219,6 +224,52 @@ def get_filter_options(
     return service.get_filter_options()
 
 
+@router.get("/billing-breakdown", response_model=BillingBreakdown)
+@limiter.limit("60/minute")
+def get_billing_breakdown(
+    request: Request,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+) -> BillingBreakdown:
+    """Billing method distribution (cash, credit, delivery, etc.)."""
+    return service.get_billing_breakdown(_to_filter(params))
+
+
+@router.get("/customer-type-breakdown", response_model=CustomerTypeBreakdown)
+@limiter.limit("60/minute")
+def get_customer_type_breakdown(
+    request: Request,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+) -> CustomerTypeBreakdown:
+    """Walk-in vs insurance vs other distribution by month."""
+    return service.get_customer_type_breakdown(_to_filter(params))
+
+
+@router.get("/top-movers", response_model=TopMovers)
+@limiter.limit("60/minute")
+def get_top_movers(
+    request: Request,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+    entity_type: Annotated[str, Query(pattern="^(product|customer|staff)$")] = "product",
+    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+) -> TopMovers:
+    """Top gainers and losers vs previous period."""
+    return service.get_top_movers(entity_type, _to_filter(params), limit)
+
+
+@router.get("/products/by-category", response_model=ProductHierarchy)
+@limiter.limit("60/minute")
+def get_product_hierarchy(
+    request: Request,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+) -> ProductHierarchy:
+    """Product hierarchy: Category > Brand > Product."""
+    return service.get_product_hierarchy(_to_filter(params))
+
+
 @router.get("/returns", response_model=list[ReturnAnalysis])
 @limiter.limit("100/minute")
 def get_returns(
@@ -228,6 +279,20 @@ def get_returns(
 ) -> list[ReturnAnalysis]:
     """Top returns/credit notes by amount."""
     return service.get_return_report(_to_filter(params))
+
+
+@router.get("/sites/{site_key}", response_model=SiteDetail)
+@limiter.limit("100/minute")
+def get_site_detail(
+    request: Request,
+    site_key: Annotated[int, Path(ge=1, description="Site surrogate key")],
+    service: ServiceDep,
+) -> SiteDetail:
+    """Detailed site metrics with monthly trend."""
+    result = service.get_site_detail(site_key)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Site not found")
+    return result
 
 
 @router.get("/products/{product_key}", response_model=ProductPerformance)

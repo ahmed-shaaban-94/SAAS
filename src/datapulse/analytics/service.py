@@ -7,21 +7,29 @@ import json
 from datetime import date, timedelta
 from typing import Any
 
+from datapulse.analytics.breakdown_repository import BreakdownRepository
+from datapulse.analytics.comparison_repository import ComparisonRepository
+from datapulse.analytics.detail_repository import DetailRepository
+from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.models import (
     AnalyticsFilter,
+    BillingBreakdown,
     CustomerAnalytics,
+    CustomerTypeBreakdown,
     DashboardData,
     DataDateRange,
     DateRange,
     FilterOptions,
     KPISummary,
+    ProductHierarchy,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
+    SiteDetail,
     StaffPerformance,
+    TopMovers,
     TrendResult,
 )
-from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.cache import cache_get, cache_set
 from datapulse.config import get_settings
@@ -44,9 +52,19 @@ def _cache_key(method: str, params: dict[str, Any] | None = None) -> str:
 class AnalyticsService:
     """Orchestrates analytics queries with sensible defaults and caching."""
 
-    def __init__(self, repo: AnalyticsRepository, detail_repo: DetailRepository | None = None) -> None:
+    def __init__(
+        self,
+        repo: AnalyticsRepository,
+        detail_repo: DetailRepository | None = None,
+        breakdown_repo: BreakdownRepository | None = None,
+        comparison_repo: ComparisonRepository | None = None,
+        hierarchy_repo: HierarchyRepository | None = None,
+    ) -> None:
         self._repo = repo
         self._detail_repo = detail_repo
+        self._breakdown_repo = breakdown_repo
+        self._comparison_repo = comparison_repo
+        self._hierarchy_repo = hierarchy_repo
 
     def get_date_range(self) -> DataDateRange:
         """Return the min/max dates of available data."""
@@ -233,3 +251,99 @@ class AnalyticsService:
         if self._detail_repo is None:
             raise RuntimeError("DetailRepository not configured")
         return self._detail_repo.get_staff_detail(staff_key)
+
+    # ------------------------------------------------------------------
+    # Phase 2: Billing & Customer Type
+    # ------------------------------------------------------------------
+
+    def get_billing_breakdown(
+        self, filters: AnalyticsFilter | None = None
+    ) -> BillingBreakdown:
+        """Billing method distribution (cash, credit, etc.)."""
+        if self._breakdown_repo is None:
+            raise RuntimeError("BreakdownRepository not configured")
+        f = self._default_filter(filters)
+        log.info("billing_breakdown", filters=f.model_dump())
+        return self._breakdown_repo.get_billing_breakdown(f)
+
+    def get_customer_type_breakdown(
+        self, filters: AnalyticsFilter | None = None
+    ) -> CustomerTypeBreakdown:
+        """Walk-in vs insurance vs other distribution by month."""
+        if self._breakdown_repo is None:
+            raise RuntimeError("BreakdownRepository not configured")
+        f = self._default_filter(filters)
+        log.info("customer_type_breakdown", filters=f.model_dump())
+        return self._breakdown_repo.get_customer_type_breakdown(f)
+
+    # ------------------------------------------------------------------
+    # Phase 3: Comparative Analytics
+    # ------------------------------------------------------------------
+
+    def get_top_movers(
+        self,
+        entity_type: str,
+        filters: AnalyticsFilter | None = None,
+        limit: int = 5,
+    ) -> TopMovers:
+        """Top gainers and losers vs previous period."""
+        if self._comparison_repo is None:
+            raise RuntimeError("ComparisonRepository not configured")
+
+        current_f = self._default_filter(filters)
+        log.info("top_movers", entity_type=entity_type, filters=current_f.model_dump())
+
+        # Compute previous period (same duration, shifted back)
+        if current_f.date_range is not None:
+            dr = current_f.date_range
+            duration = dr.end_date - dr.start_date
+            prev_end = dr.start_date - timedelta(days=1)
+            prev_start = prev_end - duration
+            previous_f = AnalyticsFilter(
+                date_range=DateRange(start_date=prev_start, end_date=prev_end),
+                site_key=current_f.site_key,
+                category=current_f.category,
+                brand=current_f.brand,
+                staff_key=current_f.staff_key,
+                limit=current_f.limit,
+            )
+        else:
+            # No date range — use last 30d vs prior 30d
+            _, max_date = self._repo.get_data_date_range()
+            end = max_date or date.today()
+            current_f = AnalyticsFilter(
+                date_range=DateRange(
+                    start_date=end - timedelta(days=30), end_date=end
+                )
+            )
+            previous_f = AnalyticsFilter(
+                date_range=DateRange(
+                    start_date=end - timedelta(days=61),
+                    end_date=end - timedelta(days=31),
+                )
+            )
+
+        return self._comparison_repo.get_top_movers(
+            entity_type, current_f, previous_f, limit
+        )
+
+    # ------------------------------------------------------------------
+    # Phase 4: Site Detail & Product Hierarchy
+    # ------------------------------------------------------------------
+
+    def get_site_detail(self, site_key: int) -> SiteDetail | None:
+        """Detailed metrics for a single site."""
+        log.info("site_detail", site_key=site_key)
+        if self._detail_repo is None:
+            raise RuntimeError("DetailRepository not configured")
+        return self._detail_repo.get_site_detail(site_key)
+
+    def get_product_hierarchy(
+        self, filters: AnalyticsFilter | None = None
+    ) -> ProductHierarchy:
+        """Category > Brand > Product hierarchy view."""
+        if self._hierarchy_repo is None:
+            raise RuntimeError("HierarchyRepository not configured")
+        f = self._default_filter(filters)
+        log.info("product_hierarchy", filters=f.model_dump())
+        return self._hierarchy_repo.get_product_hierarchy(f)

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   AreaChart,
   Area,
@@ -10,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useDailyTrend } from "@/hooks/use-daily-trend";
+import { useComparisonTrend } from "@/hooks/use-comparison-trend";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
@@ -17,7 +19,8 @@ import { ErrorRetry } from "@/components/error-retry";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
 import { parseDateKey } from "@/lib/date-utils";
 import { useChartTheme } from "@/hooks/use-chart-theme";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, GitCompare } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function CustomTooltip(props: Record<string, unknown>) {
   const { active, payload, label } = props;
@@ -37,15 +40,23 @@ export function DailyTrendChart() {
   const { filters } = useFilters();
   const { data, error, isLoading } = useDailyTrend(filters);
   const CHART_THEME = useChartTheme();
+  const [compare, setCompare] = useState(false);
+
+  const { previous: prevData } = useComparisonTrend(
+    "/api/v1/analytics/trends/daily",
+    filters,
+    compare,
+  );
 
   if (isLoading) return <LoadingCard lines={8} className="h-80" />;
   if (error) return <ErrorRetry title="Failed to load daily trend data" description="Failed to load data. Please try again." />;
   if (!data || data.points.length === 0)
     return <EmptyState title="No daily trend data" />;
 
-  const chartData = data.points.map((p) => ({
+  const chartData = data.points.map((p, i) => ({
     date: parseDateKey(p.period),
     value: p.value,
+    prev: prevData?.points[i]?.value ?? undefined,
   }));
 
   const isPositiveGrowth = data.growth_pct !== null && data.growth_pct >= 0;
@@ -61,21 +72,35 @@ export function DailyTrendChart() {
             {formatCurrency(data.total)}
           </p>
         </div>
-        {data.growth_pct !== null && (
-          <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${
-            isPositiveGrowth
-              ? "bg-growth-green/10 text-growth-green"
-              : "bg-growth-red/10 text-growth-red"
-          }`}>
-            {isPositiveGrowth ? (
-              <TrendingUp className="h-4 w-4" />
-            ) : (
-              <TrendingDown className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCompare((v) => !v)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
+              compare
+                ? "bg-accent/20 text-accent"
+                : "text-text-secondary hover:bg-accent/10 hover:text-accent"
             )}
-            {data.growth_pct > 0 ? "+" : ""}
-            {data.growth_pct.toFixed(1)}%
-          </div>
-        )}
+          >
+            <GitCompare className="h-3.5 w-3.5" />
+            Compare
+          </button>
+          {data.growth_pct !== null && (
+            <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${
+              isPositiveGrowth
+                ? "bg-growth-green/10 text-growth-green"
+                : "bg-growth-red/10 text-growth-red"
+            }`}>
+              {isPositiveGrowth ? (
+                <TrendingUp className="h-4 w-4" />
+              ) : (
+                <TrendingDown className="h-4 w-4" />
+              )}
+              {data.growth_pct > 0 ? "+" : ""}
+              {data.growth_pct.toFixed(1)}%
+            </div>
+          )}
+        </div>
       </div>
       <ResponsiveContainer width="100%" height={280}>
         <AreaChart data={chartData}>
@@ -109,6 +134,18 @@ export function DailyTrendChart() {
             animationDuration={1200}
             animationEasing="ease-out"
           />
+          {compare && prevData && (
+            <Area
+              type="monotone"
+              dataKey="prev"
+              stroke={CHART_THEME.accentColor}
+              strokeWidth={1.5}
+              strokeDasharray="5 5"
+              strokeOpacity={0.4}
+              fill="none"
+              animationDuration={800}
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
     </div>

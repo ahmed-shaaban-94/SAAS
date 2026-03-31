@@ -3,11 +3,13 @@
 All SQL uses parameterized queries via SQLAlchemy ``text()`` — no f-string
 interpolation of user-supplied values.  Filter clauses are built dynamically
 but every value is bound through ``:param`` placeholders.
+
+Shared helpers (build_where, build_ranking, etc.) live in ``queries.py``.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -18,11 +20,18 @@ from datapulse.analytics.models import (
     FilterOption,
     FilterOptions,
     KPISummary,
-    RankingItem,
     RankingResult,
     ReturnAnalysis,
     TimeSeriesPoint,
     TrendResult,
+)
+from datapulse.analytics.queries import (
+    ALLOWED_RANKING_COLUMNS,
+    ALLOWED_RANKING_TABLES,
+    build_ranking,
+    build_trend,
+    build_where,
+    safe_growth,
 )
 from datapulse.logging import get_logger
 
@@ -37,173 +46,6 @@ class AnalyticsRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _build_where(
-        filters: AnalyticsFilter,
-        *,
-        date_column: str = "date_key",
-        use_year_month: bool = False,
-    ) -> tuple[str, dict]:
-        """Build a WHERE clause string and bind-param dict from *filters*.
-
-        Args:
-            filters: User-supplied filter values.
-            date_column: Column name used for date/range filtering.
-            use_year_month: When ``True`` the date range is compared against
-                ``year`` and ``month`` integer columns instead of a single
-                date column.
-
-        Returns:
-            A ``(clause, params)`` tuple.  *clause* is a SQL fragment like
-            ``"site_key = :site_key AND drug_category = :category"`` or
-            ``"1=1"`` when no filters are active.
-        """
-        clauses: list[str] = []
-        params: dict = {}
-
-        # Validate date_column against whitelist to prevent injection
-        if date_column not in AnalyticsRepository._ALLOWED_DATE_COLUMNS:
-            raise ValueError(f"Invalid date_column: {date_column}")
-
-        if filters.date_range is not None:
-            if use_year_month:
-                clauses.append(
-                    "year * 100 + month BETWEEN :start_ym AND :end_ym"
-                )
-                params["start_ym"] = (
-                    filters.date_range.start_date.year * 100
-                    + filters.date_range.start_date.month
-                )
-                params["end_ym"] = (
-                    filters.date_range.end_date.year * 100
-                    + filters.date_range.end_date.month
-                )
-            else:
-                clauses.append(
-                    f"{date_column} BETWEEN :start_date AND :end_date"
-                )
-                sd = filters.date_range.start_date
-                ed = filters.date_range.end_date
-                # date_key columns are stored as YYYYMMDD integers
-                params["start_date"] = (
-                    sd.year * 10000 + sd.month * 100 + sd.day
-                )
-                params["end_date"] = (
-                    ed.year * 10000 + ed.month * 100 + ed.day
-                )
-
-        if filters.site_key is not None:
-            clauses.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-
-        if filters.category is not None:
-            clauses.append("drug_category = :category")
-            params["category"] = filters.category
-
-        if filters.brand is not None:
-            clauses.append("drug_brand = :brand")
-            params["brand"] = filters.brand
-
-        if filters.staff_key is not None:
-            clauses.append("staff_key = :staff_key")
-            params["staff_key"] = filters.staff_key
-
-        where = " AND ".join(clauses) if clauses else "1=1"
-        return where, params
-
-    @staticmethod
-    def _safe_growth(current: Decimal, previous: Decimal) -> Decimal | None:
-        """Return percentage growth or ``None`` when *previous* is zero."""
-        if previous == _ZERO:
-            return None
-        return ((current - previous) / previous * 100).quantize(
-            Decimal("0.01")
-        )
-
-    @staticmethod
-    def _build_trend(rows: list) -> TrendResult:
-        """Convert raw rows ``(period, value)`` into a ``TrendResult``."""
-        if not rows:
-            return TrendResult(
-                points=[],
-                total=_ZERO,
-                average=_ZERO,
-                minimum=_ZERO,
-                maximum=_ZERO,
-                growth_pct=None,
-            )
-
-        points = [
-            TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1])))
-            for r in rows
-        ]
-        values = [p.value for p in points]
-        total = sum(values, _ZERO)
-        average = (total / len(values)).quantize(Decimal("0.01"))
-        minimum = min(values)
-        maximum = max(values)
-
-        growth_pct: Decimal | None = None
-        if len(values) >= 2:
-            growth_pct = AnalyticsRepository._safe_growth(
-                values[-1], values[0]
-            )
-
-        return TrendResult(
-            points=points,
-            total=total,
-            average=average,
-            minimum=minimum,
-            maximum=maximum,
-            growth_pct=growth_pct,
-        )
-
-    def _build_ranking(
-        self,
-        rows: list,
-    ) -> RankingResult:
-        """Convert raw rows ``(key, name, value)`` into a ``RankingResult``."""
-        if not rows:
-            return RankingResult(items=[], total=_ZERO)
-
-        raw_items = [
-            (int(r[0]), str(r[1]), Decimal(str(r[2]))) for r in rows
-        ]
-        total = sum(v for _, _, v in raw_items) or Decimal("1")
-
-        items = [
-            RankingItem(
-                rank=idx,
-                key=key,
-                name=name,
-                value=value,
-                pct_of_total=(value / total * 100).quantize(Decimal("0.01")),
-            )
-            for idx, (key, name, value) in enumerate(raw_items, start=1)
-        ]
-        return RankingResult(items=items, total=total)
-
-    # Whitelist of valid date columns to prevent SQL injection via dynamic column names
-    _ALLOWED_DATE_COLUMNS = frozenset({"date_key", "full_date"})
-
-    # Whitelist of valid ranking table/column identifiers
-    _ALLOWED_RANKING_TABLES = frozenset({
-        "public_marts.agg_sales_by_product",
-        "public_marts.agg_sales_by_customer",
-        "public_marts.agg_sales_by_staff",
-        "public_marts.agg_sales_by_site",
-    })
-    _ALLOWED_RANKING_COLUMNS = frozenset({
-        "product_key", "drug_name",
-        "customer_key", "customer_name",
-        "staff_key", "staff_name",
-        "site_key", "site_name",
-    })
-
     def _get_ranking(
         self,
         table: str,
@@ -213,19 +55,15 @@ class AnalyticsRepository:
         *,
         use_year_month: bool = True,
     ) -> RankingResult:
-        """Generic top-N ranking query against an aggregation table.
-
-        Consolidates the common pattern used by get_top_products,
-        get_top_customers, get_top_staff, and get_site_performance.
-        """
-        if table not in self._ALLOWED_RANKING_TABLES:
+        """Generic top-N ranking query against an aggregation table."""
+        if table not in ALLOWED_RANKING_TABLES:
             raise ValueError(f"Invalid ranking table: {table}")
-        if key_col not in self._ALLOWED_RANKING_COLUMNS:
+        if key_col not in ALLOWED_RANKING_COLUMNS:
             raise ValueError(f"Invalid ranking key column: {key_col}")
-        if name_col not in self._ALLOWED_RANKING_COLUMNS:
+        if name_col not in ALLOWED_RANKING_COLUMNS:
             raise ValueError(f"Invalid ranking name column: {name_col}")
 
-        where, params = self._build_where(filters, use_year_month=use_year_month)
+        where, params = build_where(filters, use_year_month=use_year_month)
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -237,7 +75,7 @@ class AnalyticsRepository:
             LIMIT :limit
         """)
         rows = self._session.execute(stmt, params).fetchall()
-        return self._build_ranking(rows)
+        return build_ranking(rows)
 
     # ------------------------------------------------------------------
     # Public query methods
@@ -310,7 +148,8 @@ class AnalyticsRepository:
         # --- Daily row --------------------------------------------------
         daily_stmt = text("""
             SELECT daily_net_amount, mtd_net_amount, ytd_net_amount,
-                   daily_transactions, daily_unique_customers
+                   daily_transactions, daily_unique_customers,
+                   daily_returns, mtd_transactions, ytd_transactions
             FROM public_marts.metrics_summary
             WHERE full_date = :target_date
         """)
@@ -328,6 +167,11 @@ class AnalyticsRepository:
                 yoy_growth_pct=None,
                 daily_transactions=0,
                 daily_customers=0,
+                avg_basket_size=_ZERO,
+                daily_returns=0,
+                mtd_transactions=0,
+                ytd_transactions=0,
+                sparkline=[],
             )
 
         today_net = Decimal(str(row[0]))
@@ -335,6 +179,21 @@ class AnalyticsRepository:
         ytd_net = Decimal(str(row[2]))
         daily_transactions = int(row[3])
         daily_customers = int(row[4])
+        daily_returns = int(row[5]) if row[5] is not None else 0
+        mtd_transactions = int(row[6]) if row[6] is not None else 0
+        ytd_transactions = int(row[7]) if row[7] is not None else 0
+
+        # --- Avg basket size (SUM/NULLIF, not AVG of AVG) ---------------
+        basket_stmt = text("""
+            SELECT SUM(total_net_amount) / NULLIF(SUM(transaction_count), 0)
+            FROM public_marts.agg_sales_daily
+            WHERE date_key = :date_key
+        """)
+        date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
+        basket_row = self._session.execute(
+            basket_stmt, {"date_key": date_key}
+        ).fetchone()
+        avg_basket = Decimal(str(basket_row[0])).quantize(Decimal("0.01")) if basket_row and basket_row[0] is not None else _ZERO
 
         # --- MoM growth -------------------------------------------------
         prev_month_stmt = text("""
@@ -350,7 +209,7 @@ class AnalyticsRepository:
 
         mom_growth: Decimal | None = None
         if prev_month_row is not None:
-            mom_growth = self._safe_growth(
+            mom_growth = safe_growth(
                 mtd_net, Decimal(str(prev_month_row[0]))
             )
 
@@ -368,9 +227,12 @@ class AnalyticsRepository:
 
         yoy_growth: Decimal | None = None
         if prev_year_row is not None:
-            yoy_growth = self._safe_growth(
+            yoy_growth = safe_growth(
                 ytd_net, Decimal(str(prev_year_row[0]))
             )
+
+        # --- Sparkline (last 7 days) ------------------------------------
+        sparkline = self.get_kpi_sparkline(target_date)
 
         return KPISummary(
             today_net=today_net,
@@ -380,12 +242,36 @@ class AnalyticsRepository:
             yoy_growth_pct=yoy_growth,
             daily_transactions=daily_transactions,
             daily_customers=daily_customers,
+            avg_basket_size=avg_basket,
+            daily_returns=daily_returns,
+            mtd_transactions=mtd_transactions,
+            ytd_transactions=ytd_transactions,
+            sparkline=sparkline,
         )
+
+    def get_kpi_sparkline(
+        self, target_date: date, days: int = 7
+    ) -> list[TimeSeriesPoint]:
+        """Last N days of daily_net_amount from metrics_summary."""
+        start_date = target_date - timedelta(days=days)
+        stmt = text("""
+            SELECT full_date AS period, daily_net_amount AS value
+            FROM public_marts.metrics_summary
+            WHERE full_date BETWEEN :start_date AND :target_date
+            ORDER BY full_date
+        """)
+        rows = self._session.execute(
+            stmt, {"start_date": start_date, "target_date": target_date}
+        ).fetchall()
+        return [
+            TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1])))
+            for r in rows
+        ]
 
     def get_daily_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by day."""
         log.info("get_daily_trend", filters=filters.model_dump())
-        where, params = self._build_where(filters, date_column="date_key")
+        where, params = build_where(filters, date_column="date_key")
 
         stmt = text(f"""
             SELECT date_key AS period,
@@ -396,12 +282,12 @@ class AnalyticsRepository:
             ORDER BY date_key
         """)
         rows = self._session.execute(stmt, params).fetchall()
-        return self._build_trend(rows)
+        return build_trend(rows)
 
     def get_monthly_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by year-month."""
         log.info("get_monthly_trend", filters=filters.model_dump())
-        where, params = self._build_where(
+        where, params = build_where(
             filters, use_year_month=True
         )
 
@@ -415,7 +301,7 @@ class AnalyticsRepository:
             ORDER BY year, month
         """)
         rows = self._session.execute(stmt, params).fetchall()
-        return self._build_trend(rows)
+        return build_trend(rows)
 
     def get_top_products(self, filters: AnalyticsFilter) -> RankingResult:
         """Return top-N products by net sales."""
@@ -450,7 +336,7 @@ class AnalyticsRepository:
     ) -> list[ReturnAnalysis]:
         """Return top return/credit-note entries."""
         log.info("get_return_analysis", filters=filters.model_dump())
-        where, params = self._build_where(filters, use_year_month=True)
+        where, params = build_where(filters, use_year_month=True)
         params["limit"] = filters.limit
 
         stmt = text(f"""

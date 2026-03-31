@@ -87,10 +87,31 @@ def mock_detail_repo():
 
 
 @pytest.fixture()
-def analytics_service(mock_repo, mock_detail_repo):
+def mock_breakdown_repo():
+    """Fully mocked BreakdownRepository for breakdown tests."""
+    from datapulse.analytics.breakdown_repository import BreakdownRepository
+    return create_autospec(BreakdownRepository, instance=True)
+
+
+@pytest.fixture()
+def mock_comparison_repo():
+    """Fully mocked ComparisonRepository for comparison tests."""
+    from datapulse.analytics.comparison_repository import ComparisonRepository
+    return create_autospec(ComparisonRepository, instance=True)
+
+
+@pytest.fixture()
+def mock_hierarchy_repo():
+    """Fully mocked HierarchyRepository for hierarchy tests."""
+    from datapulse.analytics.hierarchy_repository import HierarchyRepository
+    return create_autospec(HierarchyRepository, instance=True)
+
+
+@pytest.fixture()
+def analytics_service(mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo):
     """AnalyticsService with mocked repositories."""
     from datapulse.analytics.service import AnalyticsService
-    return AnalyticsService(mock_repo, mock_detail_repo)
+    return AnalyticsService(mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo)
 
 
 @pytest.fixture()
@@ -98,14 +119,20 @@ def api_client():
     """FastAPI TestClient with mocked dependencies."""
     from fastapi.testclient import TestClient
 
+    from datapulse.analytics.breakdown_repository import BreakdownRepository
+    from datapulse.analytics.comparison_repository import ComparisonRepository
     from datapulse.analytics.detail_repository import DetailRepository
+    from datapulse.analytics.hierarchy_repository import HierarchyRepository
     from datapulse.analytics.repository import AnalyticsRepository
     from datapulse.analytics.service import AnalyticsService
 
     mock_session = MagicMock()
     mock_repo = create_autospec(AnalyticsRepository, instance=True)
     mock_detail_repo = create_autospec(DetailRepository, instance=True)
-    mock_svc = AnalyticsService(mock_repo, mock_detail_repo)
+    mock_breakdown_repo = create_autospec(BreakdownRepository, instance=True)
+    mock_comparison_repo = create_autospec(ComparisonRepository, instance=True)
+    mock_hierarchy_repo = create_autospec(HierarchyRepository, instance=True)
+    mock_svc = AnalyticsService(mock_repo, mock_detail_repo, mock_breakdown_repo, mock_comparison_repo, mock_hierarchy_repo)
 
     from datapulse.api import deps
     from datapulse.api.app import create_app

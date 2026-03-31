@@ -1,8 +1,12 @@
 "use client";
 
+import { useId } from "react";
+import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useCountUp } from "@/hooks/use-count-up";
+import { MetricTooltip } from "@/components/shared/metric-tooltip";
+import type { TimeSeriesPoint } from "@/types/api";
 
 interface KPICardProps {
   label: string;
@@ -15,6 +19,8 @@ interface KPICardProps {
   icon?: React.ComponentType<{ className?: string }>;
   className?: string;
   accentGradient?: string;
+  sparkline?: TimeSeriesPoint[];
+  tooltip?: string;
 }
 
 function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
@@ -39,7 +45,8 @@ function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
   return <>{animated}</>;
 }
 
-export function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, icon: Icon, className, accentGradient }: KPICardProps) {
+export function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
+  const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
 
@@ -85,9 +92,12 @@ export function KPICard({ label, value, numericValue, isCurrency, isPercent, tre
       )} />
 
       <div className="relative flex items-start justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-          {label}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            {label}
+          </p>
+          {tooltip && <MetricTooltip description={tooltip} />}
+        </div>
         {Icon && (
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 transition-all duration-300 group-hover:bg-accent/20 group-hover:scale-110 group-hover:rotate-3">
             <Icon className="h-5 w-5 text-accent" />
@@ -119,6 +129,29 @@ export function KPICard({ label, value, numericValue, isCurrency, isPercent, tre
           {trendLabel && (
             <span className="text-xs text-text-secondary">{trendLabel}</span>
           )}
+        </div>
+      )}
+
+      {sparkline && sparkline.length > 1 && (
+        <div className="relative mt-3 h-8">
+          <ResponsiveContainer width="100%" height={32}>
+            <AreaChart data={sparkline.map((p) => ({ v: p.value }))}>
+              <defs>
+                <linearGradient id={sparkId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey="v"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                fill={`url(#${sparkId})`}
+                className="text-accent"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
