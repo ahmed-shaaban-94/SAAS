@@ -136,20 +136,65 @@ class AnalyticsRepository:
     def get_kpi_summary(self, target_date: date) -> KPISummary:
         """Return executive KPI snapshot for *target_date*.
 
-        Queries ``public_marts.metrics_summary`` for daily totals and computes
-        MTD / YTD aggregates plus month-over-month and year-over-year growth.
+        Uses a single unified CTE query to fetch daily KPIs, basket size,
+        MoM/YoY growth comparisons, and sparkline data in ONE database
+        round-trip (previously 5 separate queries).
         """
         log.info("get_kpi_summary", target_date=str(target_date))
 
-        # --- Daily row --------------------------------------------------
-        daily_stmt = text("""
-            SELECT daily_net_amount, mtd_net_amount, ytd_net_amount,
-                   daily_transactions, daily_unique_customers,
-                   daily_returns, mtd_transactions, ytd_transactions
-            FROM public_marts.metrics_summary
-            WHERE full_date = :target_date
+        date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
+
+        stmt = text("""
+            WITH daily AS (
+                SELECT daily_net_amount, mtd_net_amount, ytd_net_amount,
+                       daily_transactions, daily_unique_customers,
+                       daily_returns, mtd_transactions, ytd_transactions
+                FROM public_marts.metrics_summary
+                WHERE full_date = :target_date
+            ),
+            basket AS (
+                SELECT ROUND(
+                    SUM(total_net_amount) / NULLIF(SUM(transaction_count), 0),
+                    2
+                ) AS avg_basket_size
+                FROM public_marts.agg_sales_daily
+                WHERE date_key = :date_key
+            ),
+            prev_month AS (
+                SELECT mtd_net_amount
+                FROM public_marts.metrics_summary
+                WHERE full_date = CAST(
+                    CAST(:target_date AS date) - INTERVAL '1 month'
+                AS date)
+            ),
+            prev_year AS (
+                SELECT ytd_net_amount
+                FROM public_marts.metrics_summary
+                WHERE full_date = CAST(
+                    CAST(:target_date AS date) - INTERVAL '1 year'
+                AS date)
+            )
+            SELECT
+                d.daily_net_amount,
+                d.mtd_net_amount,
+                d.ytd_net_amount,
+                d.daily_transactions,
+                d.daily_unique_customers,
+                d.daily_returns,
+                d.mtd_transactions,
+                d.ytd_transactions,
+                b.avg_basket_size,
+                pm.mtd_net_amount AS prev_month_mtd,
+                py.ytd_net_amount AS prev_year_ytd
+            FROM daily d
+            LEFT JOIN basket b ON TRUE
+            LEFT JOIN prev_month pm ON TRUE
+            LEFT JOIN prev_year py ON TRUE
         """)
-        row = self._session.execute(daily_stmt, {"target_date": target_date}).fetchone()
+
+        row = self._session.execute(
+            stmt, {"target_date": target_date, "date_key": date_key}
+        ).mappings().fetchone()
 
         if row is None:
             log.warning("kpi_no_data", target_date=str(target_date))
@@ -168,62 +213,28 @@ class AnalyticsRepository:
                 sparkline=[],
             )
 
-        today_net = Decimal(str(row[0]))
-        mtd_net = Decimal(str(row[1]))
-        ytd_net = Decimal(str(row[2]))
-        daily_transactions = int(row[3])
-        daily_customers = int(row[4])
-        daily_returns = int(row[5]) if row[5] is not None else 0
-        mtd_transactions = int(row[6]) if row[6] is not None else 0
-        ytd_transactions = int(row[7]) if row[7] is not None else 0
-
-        # --- Avg basket size (SUM/NULLIF, not AVG of AVG) ---------------
-        basket_stmt = text("""
-            SELECT SUM(total_net_amount) / NULLIF(SUM(transaction_count), 0)
-            FROM public_marts.agg_sales_daily
-            WHERE date_key = :date_key
-        """)
-        date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
-        basket_row = self._session.execute(basket_stmt, {"date_key": date_key}).fetchone()
+        today_net = Decimal(str(row["daily_net_amount"]))
+        mtd_net = Decimal(str(row["mtd_net_amount"]))
+        ytd_net = Decimal(str(row["ytd_net_amount"]))
+        daily_transactions = int(row["daily_transactions"])
+        daily_customers = int(row["daily_unique_customers"])
+        daily_returns = int(row["daily_returns"]) if row["daily_returns"] is not None else 0
+        mtd_transactions = int(row["mtd_transactions"]) if row["mtd_transactions"] is not None else 0
+        ytd_transactions = int(row["ytd_transactions"]) if row["ytd_transactions"] is not None else 0
         avg_basket = (
-            Decimal(str(basket_row[0])).quantize(Decimal("0.01"))
-            if basket_row and basket_row[0] is not None
+            Decimal(str(row["avg_basket_size"])).quantize(Decimal("0.01"))
+            if row["avg_basket_size"] is not None
             else _ZERO
         )
 
-        # --- MoM growth -------------------------------------------------
-        prev_month_stmt = text("""
-            SELECT mtd_net_amount
-            FROM public_marts.metrics_summary
-            WHERE full_date = CAST(
-                CAST(:target_date AS date) - INTERVAL '1 month'
-            AS date)
-        """)
-        prev_month_row = self._session.execute(
-            prev_month_stmt, {"target_date": target_date}
-        ).fetchone()
-
         mom_growth: Decimal | None = None
-        if prev_month_row is not None:
-            mom_growth = safe_growth(mtd_net, Decimal(str(prev_month_row[0])))
-
-        # --- YoY growth -------------------------------------------------
-        prev_year_stmt = text("""
-            SELECT ytd_net_amount
-            FROM public_marts.metrics_summary
-            WHERE full_date = CAST(
-                CAST(:target_date AS date) - INTERVAL '1 year'
-            AS date)
-        """)
-        prev_year_row = self._session.execute(
-            prev_year_stmt, {"target_date": target_date}
-        ).fetchone()
+        if row["prev_month_mtd"] is not None:
+            mom_growth = safe_growth(mtd_net, Decimal(str(row["prev_month_mtd"])))
 
         yoy_growth: Decimal | None = None
-        if prev_year_row is not None:
-            yoy_growth = safe_growth(ytd_net, Decimal(str(prev_year_row[0])))
+        if row["prev_year_ytd"] is not None:
+            yoy_growth = safe_growth(ytd_net, Decimal(str(row["prev_year_ytd"])))
 
-        # --- Sparkline (last 7 days) ------------------------------------
         sparkline = self.get_kpi_sparkline(target_date)
 
         return KPISummary(

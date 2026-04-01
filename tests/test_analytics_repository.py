@@ -135,7 +135,7 @@ def test_build_ranking_items():
 
 
 def test_get_kpi_summary_no_data(analytics_repo, mock_session):
-    mock_session.execute.return_value.fetchone.return_value = None
+    mock_session.execute.return_value.mappings.return_value.fetchone.return_value = None
     result = analytics_repo.get_kpi_summary(date(2025, 1, 15))
     assert result.today_net == Decimal("0")
     assert result.mtd_net == Decimal("0")
@@ -150,23 +150,29 @@ def test_get_kpi_summary_no_data(analytics_repo, mock_session):
 
 
 def test_get_kpi_summary_with_data(analytics_repo, mock_session):
-    # Calls: daily row, basket, prev month, prev year, sparkline
-    daily_row = (1000, 25000, 300000, 42, 15, 3, 420, 5000)
-    basket_row = (Decimal("595.24"),)
-    prev_month_row = (20000,)
-    prev_year_row = (250000,)
+    # Unified CTE returns a single row as a named mapping
+    unified_row = {
+        "daily_net_amount": 1000,
+        "mtd_net_amount": 25000,
+        "ytd_net_amount": 300000,
+        "daily_transactions": 42,
+        "daily_unique_customers": 15,
+        "daily_returns": 3,
+        "mtd_transactions": 420,
+        "ytd_transactions": 5000,
+        "avg_basket_size": Decimal("595.24"),
+        "prev_month_mtd": 20000,
+        "prev_year_ytd": 250000,
+    }
     sparkline_rows = [
         (date(2025, 6, 9), 800),
         (date(2025, 6, 10), 900),
         (date(2025, 6, 11), 1000),
     ]
 
-    mock_session.execute.return_value.fetchone.side_effect = [
-        daily_row,
-        basket_row,
-        prev_month_row,
-        prev_year_row,
-    ]
+    mock_session.execute.return_value.mappings.return_value.fetchone.return_value = (
+        unified_row
+    )
     mock_session.execute.return_value.fetchall.return_value = sparkline_rows
 
     result = analytics_repo.get_kpi_summary(date(2025, 6, 15))
@@ -178,6 +184,7 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
     assert result.daily_returns == 3
     assert result.mtd_transactions == 420
     assert result.ytd_transactions == 5000
+    assert result.avg_basket_size == Decimal("595.24")
     # MoM: (25000 - 20000) / 20000 * 100 = 25.00
     assert result.mom_growth_pct == Decimal("25.00")
     # YoY: (300000 - 250000) / 250000 * 100 = 20.00

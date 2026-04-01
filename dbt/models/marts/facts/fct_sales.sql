@@ -12,7 +12,11 @@
             "CREATE INDEX IF NOT EXISTS idx_fct_sales_date_key ON {{ this }} (date_key)",
             "CREATE INDEX IF NOT EXISTS idx_fct_sales_tenant_id ON {{ this }} (tenant_id)",
             "CREATE INDEX IF NOT EXISTS idx_fct_sales_product_key ON {{ this }} (product_key)",
-            "CREATE INDEX IF NOT EXISTS idx_fct_sales_customer_key ON {{ this }} (customer_key)"
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_customer_key ON {{ this }} (customer_key)",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_site_key ON {{ this }} (site_key)",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_staff_key ON {{ this }} (staff_key)",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_billing_key ON {{ this }} (billing_key)",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_is_return ON {{ this }} (is_return) WHERE is_return = TRUE"
         ]
     )
 }}

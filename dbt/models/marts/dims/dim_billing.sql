@@ -1,7 +1,11 @@
 {{
     config(
         materialized='table',
-        schema='marts'
+        schema='marts',
+        post_hook=[
+            "CREATE INDEX IF NOT EXISTS idx_dim_billing_billing_way ON {{ this }} (billing_way)",
+            "CREATE INDEX IF NOT EXISTS idx_dim_billing_billing_key ON {{ this }} (billing_key)"
+        ]
     )
 }}
 
