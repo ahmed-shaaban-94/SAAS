@@ -40,9 +40,7 @@ def _fetch_jwks(settings: Settings) -> dict[str, Any]:
         logger.info("jwks_fetched", url=settings.keycloak_jwks_url)
         return _jwks_cache
     except (httpx.HTTPError, httpx.TimeoutException, OSError) as exc:
-        logger.error(
-            "jwks_fetch_failed", url=settings.keycloak_jwks_url, error=str(exc)
-        )
+        logger.error("jwks_fetch_failed", url=settings.keycloak_jwks_url, error=str(exc))
         # Return stale cache if available (better than hard failure)
         if _jwks_cache:
             logger.warning("jwks_using_stale_cache")

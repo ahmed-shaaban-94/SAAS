@@ -26,9 +26,7 @@ def _get_secret() -> str:
     secret = settings.api_key
     if not secret:
         secret = "datapulse-embed-default-secret"
-        log.warning(
-            "embed_secret_fallback", detail="Using default embed secret — set API_KEY"
-        )
+        log.warning("embed_secret_fallback", detail="Using default embed secret — set API_KEY")
     return secret
 
 

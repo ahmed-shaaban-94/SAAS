@@ -79,14 +79,8 @@ def validate_sql(sql: str) -> str:
 
     # Basic sanity check: must start with SELECT or WITH
     upper = normalised.upper().lstrip()
-    if not (
-        upper.startswith("SELECT")
-        or upper.startswith("WITH")
-        or upper.startswith("EXPLAIN")
-    ):
-        raise SQLValidationError(
-            "Only SELECT, WITH (CTE), and EXPLAIN statements are allowed."
-        )
+    if not (upper.startswith("SELECT") or upper.startswith("WITH") or upper.startswith("EXPLAIN")):
+        raise SQLValidationError("Only SELECT, WITH (CTE), and EXPLAIN statements are allowed.")
 
     log.debug("sql_validated", length=len(normalised))
     return normalised
@@ -99,7 +93,8 @@ def get_schema_tables(session) -> list[dict]:
     """
     from sqlalchemy import text
 
-    result = session.execute(text("""
+    result = session.execute(
+        text("""
             SELECT
                 t.table_name,
                 c.column_name,
@@ -112,7 +107,8 @@ def get_schema_tables(session) -> list[dict]:
             WHERE t.table_schema = 'public_marts'
                 AND t.table_type = 'BASE TABLE'
             ORDER BY t.table_name, c.ordinal_position
-        """))
+        """)
+    )
 
     tables: dict[str, list[dict]] = {}
     for row in result:

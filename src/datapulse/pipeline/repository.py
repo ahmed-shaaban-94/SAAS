@@ -82,9 +82,7 @@ class PipelineRepository:
         data: PipelineRunCreate,
         tenant_id: int = 1,
     ) -> PipelineRunResponse:
-        log.info(
-            "create_pipeline_run", run_type=data.run_type, trigger=data.trigger_source
-        )
+        log.info("create_pipeline_run", run_type=data.run_type, trigger=data.trigger_source)
         stmt = text(f"""
             INSERT INTO public.pipeline_runs
                 (run_type, trigger_source, metadata, tenant_id)

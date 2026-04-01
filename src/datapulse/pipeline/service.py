@@ -37,9 +37,7 @@ class PipelineService:
         started = started_at
         if started.tzinfo is None:
             started = started.replace(tzinfo=UTC)
-        duration = Decimal(str((now - started).total_seconds())).quantize(
-            Decimal("0.01")
-        )
+        duration = Decimal(str((now - started).total_seconds())).quantize(Decimal("0.01"))
         return now, duration
 
     def start_run(

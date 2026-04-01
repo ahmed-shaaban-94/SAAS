@@ -51,9 +51,7 @@ class BreakdownRepository:
         rows = self._session.execute(stmt, params).fetchall()
 
         if not rows:
-            return BillingBreakdown(
-                items=[], total_transactions=0, total_net_amount=_ZERO
-            )
+            return BillingBreakdown(items=[], total_transactions=0, total_net_amount=_ZERO)
 
         raw = [(str(r[0]), int(r[1]), Decimal(str(r[2]))) for r in rows]
         grand_total = sum(v for _, _, v in raw) or Decimal("1")
@@ -75,14 +73,10 @@ class BreakdownRepository:
             total_net_amount=grand_total,
         )
 
-    def get_customer_type_breakdown(
-        self, filters: AnalyticsFilter
-    ) -> CustomerTypeBreakdown:
+    def get_customer_type_breakdown(self, filters: AnalyticsFilter) -> CustomerTypeBreakdown:
         """Return walk-in vs insurance vs other distribution by month."""
         log.info("get_customer_type_breakdown", filters=filters.model_dump())
-        where, params = build_where(
-            filters, use_year_month=True, supported_fields=SITE_DATE_ONLY
-        )
+        where, params = build_where(filters, use_year_month=True, supported_fields=SITE_DATE_ONLY)
 
         stmt = text(f"""
             SELECT LPAD(year::text, 4, '0') || '-'

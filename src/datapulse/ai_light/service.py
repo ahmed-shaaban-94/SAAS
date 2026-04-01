@@ -91,12 +91,8 @@ class AILightService:
 
         # Parse: first paragraph = narrative, bullet lines = highlights
         lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
-        highlights = [
-            line.lstrip("•-* ") for line in lines if line.startswith(("•", "-", "*"))
-        ]
-        narrative_lines = [
-            line for line in lines if not line.startswith(("•", "-", "*"))
-        ]
+        highlights = [line.lstrip("•-* ") for line in lines if line.startswith(("•", "-", "*"))]
+        narrative_lines = [line for line in lines if not line.startswith(("•", "-", "*"))]
         narrative = " ".join(narrative_lines) if narrative_lines else raw
 
         return AISummary(
@@ -148,9 +144,7 @@ class AILightService:
         # If OpenRouter is available, enhance with AI analysis
         if self._client.is_configured and values:
             try:
-                daily_text = "\n".join(
-                    f"  {p.period}: {p.value:,.0f} EGP" for p in trends.points
-                )
+                daily_text = "\n".join(f"  {p.period}: {p.value:,.0f} EGP" for p in trends.points)
                 prompt = ANOMALY_PROMPT.format(
                     daily_data=daily_text,
                     avg=f"{avg:,.0f}",
@@ -170,16 +164,10 @@ class AILightService:
                                 date=ai_date,
                                 metric="daily_net_sales",
                                 actual_value=Decimal("0"),
-                                expected_range_low=Decimal(
-                                    str(round(avg - 2 * std, 2))
-                                ),
-                                expected_range_high=Decimal(
-                                    str(round(avg + 2 * std, 2))
-                                ),
+                                expected_range_low=Decimal(str(round(avg - 2 * std, 2))),
+                                expected_range_high=Decimal(str(round(avg + 2 * std, 2))),
                                 severity=item.get("severity", "low"),
-                                description=item.get(
-                                    "description", "AI-detected anomaly"
-                                ),
+                                description=item.get("description", "AI-detected anomaly"),
                             )
                         )
             except Exception as exc:

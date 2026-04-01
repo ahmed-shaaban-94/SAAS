@@ -63,10 +63,7 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        if (
-            request.url.path.startswith("/api/v1/embed/")
-            and "/token" not in request.url.path
-        ):
+        if request.url.path.startswith("/api/v1/embed/") and "/token" not in request.url.path:
             embed_origins = " ".join(settings.embed_allowed_origins)
             if embed_origins:
                 response.headers["Content-Security-Policy"] = (
@@ -80,9 +77,7 @@ def create_app() -> FastAPI:
 
     # Global exception handler
     @app.exception_handler(Exception)
-    async def global_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         logger.error(
             "unhandled_exception",
             method=request.method,

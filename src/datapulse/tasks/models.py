@@ -20,9 +20,7 @@ class QueryStatus(StrEnum):
 class QuerySubmit(BaseModel):
     """Request body for submitting an async query."""
 
-    sql: str = Field(
-        ..., min_length=1, max_length=10_000, description="SQL SELECT statement"
-    )
+    sql: str = Field(..., min_length=1, max_length=10_000, description="SQL SELECT statement")
     row_limit: int = Field(10_000, ge=1, le=100_000, description="Max rows to return")
 
 

@@ -213,9 +213,7 @@ class AnalyticsRepository:
         """)
 
         row = (
-            self._session.execute(
-                stmt, {"target_date": target_date, "date_key": date_key}
-            )
+            self._session.execute(stmt, {"target_date": target_date, "date_key": date_key})
             .mappings()
             .fetchone()
         )
@@ -242,9 +240,7 @@ class AnalyticsRepository:
         ytd_net = Decimal(str(row["ytd_net_amount"]))
         daily_transactions = int(row["daily_transactions"])
         daily_customers = int(row["daily_unique_customers"])
-        daily_returns = (
-            int(row["daily_returns"]) if row["daily_returns"] is not None else 0
-        )
+        daily_returns = int(row["daily_returns"]) if row["daily_returns"] is not None else 0
         mtd_transactions = (
             int(row["mtd_transactions"]) if row["mtd_transactions"] is not None else 0
         )
@@ -282,9 +278,7 @@ class AnalyticsRepository:
             sparkline=sparkline,
         )
 
-    def get_kpi_sparkline(
-        self, target_date: date, days: int = 7
-    ) -> list[TimeSeriesPoint]:
+    def get_kpi_sparkline(self, target_date: date, days: int = 7) -> list[TimeSeriesPoint]:
         """Last N days of daily_net_amount from metrics_summary."""
         start_date = target_date - timedelta(days=days)
         stmt = text("""
@@ -296,9 +290,7 @@ class AnalyticsRepository:
         rows = self._session.execute(
             stmt, {"start_date": start_date, "target_date": target_date}
         ).fetchall()
-        return [
-            TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows
-        ]
+        return [TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows]
 
     def get_daily_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by day."""

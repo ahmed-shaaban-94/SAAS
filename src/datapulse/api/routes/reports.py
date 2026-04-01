@@ -49,9 +49,7 @@ def get_template_detail(request: Request, template_id: str) -> ReportTemplate:
     """Get a report template with its parameter definitions."""
     template = get_template(template_id)
     if template is None:
-        raise HTTPException(
-            status_code=404, detail=f"Template '{template_id}' not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
     return template
 
 
@@ -66,9 +64,7 @@ def render_report_endpoint(
     """Render a report with the supplied parameters."""
     template = get_template(template_id)
     if template is None:
-        raise HTTPException(
-            status_code=404, detail=f"Template '{template_id}' not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     log.info("render_report", template_id=template_id, params=body.parameters)
     return render_report(template, body.parameters, session)

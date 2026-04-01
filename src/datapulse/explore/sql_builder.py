@@ -98,9 +98,7 @@ def _validate_dimensions(
         elif req in available:
             resolved.append((available[req], req))
         else:
-            raise ValueError(
-                f"Unknown dimension '{req}'. Available: {sorted(available.keys())}"
-            )
+            raise ValueError(f"Unknown dimension '{req}'. Available: {sorted(available.keys())}")
     return resolved
 
 
@@ -113,9 +111,7 @@ def _validate_metrics(
     resolved: list[Metric] = []
     for req in requested:
         if req not in available:
-            raise ValueError(
-                f"Unknown metric '{req}'. Available: {sorted(available.keys())}"
-            )
+            raise ValueError(f"Unknown metric '{req}'. Available: {sorted(available.keys())}")
         resolved.append(available[req])
     return resolved
 
@@ -213,9 +209,7 @@ def build_sql(
         if flt.operator == "in":
             # IN clause with multiple values
             if isinstance(flt.value, list):
-                placeholders = ", ".join(
-                    f":{param_name}_{j}" for j in range(len(flt.value))
-                )
+                placeholders = ", ".join(f":{param_name}_{j}" for j in range(len(flt.value)))
                 where_parts.append(f"{base.name}.{flt.field} IN ({placeholders})")
                 for j, v in enumerate(flt.value):
                     bind_params[f"{param_name}_{j}"] = v
@@ -224,9 +218,7 @@ def build_sql(
                 bind_params[param_name] = flt.value
         elif flt.operator in _FILTER_OPS:
             template = _FILTER_OPS[flt.operator]
-            where_parts.append(
-                template.format(col=f"{base.name}.{flt.field}", param=param_name)
-            )
+            where_parts.append(template.format(col=f"{base.name}.{flt.field}", param=param_name))
             bind_params[param_name] = flt.value
         else:
             raise ValueError(f"Unknown filter operator '{flt.operator}'")

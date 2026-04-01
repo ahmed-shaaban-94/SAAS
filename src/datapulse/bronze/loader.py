@@ -36,9 +36,7 @@ def _validate_columns(columns: list[str]) -> None:
     """
     unknown = [c for c in columns if c not in ALLOWED_COLUMNS]
     if unknown:
-        raise ValueError(
-            f"Column name(s) not in whitelist and cannot be used in SQL: {unknown}"
-        )
+        raise ValueError(f"Column name(s) not in whitelist and cannot be used in SQL: {unknown}")
 
 
 def discover_files(source_dir: Path) -> list[Path]:
@@ -87,9 +85,7 @@ def read_and_concat(files: list[Path]) -> pl.DataFrame:
         frames.append(df)
 
     combined = pl.concat(frames, how="diagonal_relaxed")
-    log.info(
-        "concat_complete", total_rows=combined.shape[0], total_cols=combined.shape[1]
-    )
+    log.info("concat_complete", total_rows=combined.shape[0], total_cols=combined.shape[1])
     return combined
 
 
@@ -143,9 +139,7 @@ def load_to_postgres(df: pl.DataFrame, engine: Engine, batch_size: int) -> int:
         # Pre-compute INSERT template from validated columns (not per-batch)
         placeholders = ", ".join(f":{c}" for c in db_columns)
         col_names = ", ".join(db_columns)
-        insert_sql = text(
-            f"INSERT INTO bronze.sales ({col_names}) VALUES ({placeholders})"
-        )
+        insert_sql = text(f"INSERT INTO bronze.sales ({col_names}) VALUES ({placeholders})")
 
         for offset in range(0, total_rows, batch_size):
             batch = df_to_load.slice(offset, batch_size)
@@ -201,9 +195,7 @@ def run_migrations(engine: Engine) -> None:
                     {"fn": mig.name},
                 )
                 if result.fetchone() is not None:
-                    log.info(
-                        "migration_skipped", file=mig.name, reason="already applied"
-                    )
+                    log.info("migration_skipped", file=mig.name, reason="already applied")
                     continue
 
                 # Execute the migration
@@ -212,9 +204,7 @@ def run_migrations(engine: Engine) -> None:
 
                 # Record it
                 conn.execute(
-                    text(
-                        "INSERT INTO public.schema_migrations (filename) VALUES (:fn)"
-                    ),
+                    text("INSERT INTO public.schema_migrations (filename) VALUES (:fn)"),
                     {"fn": mig.name},
                 )
         except Exception:
@@ -287,20 +277,12 @@ def run(
 
 def main() -> None:
     """CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description="Load Excel sales data into bronze layer"
-    )
+    parser = argparse.ArgumentParser(description="Load Excel sales data into bronze layer")
     parser.add_argument("--source", required=True, help="Directory with .xlsx files")
-    parser.add_argument(
-        "--db-url", default=None, help="PostgreSQL URL (default: from .env)"
-    )
+    parser.add_argument("--db-url", default=None, help="PostgreSQL URL (default: from .env)")
     parser.add_argument("--parquet", default=None, help="Output Parquet path")
-    parser.add_argument(
-        "--batch-size", type=int, default=None, help="Insert batch size"
-    )
-    parser.add_argument(
-        "--skip-db", action="store_true", help="Only create Parquet, skip DB load"
-    )
+    parser.add_argument("--batch-size", type=int, default=None, help="Insert batch size")
+    parser.add_argument("--skip-db", action="store_true", help="Only create Parquet, skip DB load")
     args = parser.parse_args()
 
     run(

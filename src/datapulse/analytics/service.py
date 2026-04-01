@@ -161,9 +161,7 @@ class AnalyticsService:
     # ------------------------------------------------------------------
 
     @cached(ttl=90, prefix=_CACHE_PREFIX)
-    def get_revenue_trends(
-        self, filters: AnalyticsFilter | None = None
-    ) -> dict[str, TrendResult]:
+    def get_revenue_trends(self, filters: AnalyticsFilter | None = None) -> dict[str, TrendResult]:
         """Daily and monthly revenue trends (cached 90s)."""
         f = self._default_filter(filters)
         log.info("revenue_trends", filters=f.model_dump())
@@ -187,45 +185,35 @@ class AnalyticsService:
         return self._repo.get_monthly_trend(f)
 
     @cached(ttl=120, prefix=_CACHE_PREFIX)
-    def get_product_insights(
-        self, filters: AnalyticsFilter | None = None
-    ) -> RankingResult:
+    def get_product_insights(self, filters: AnalyticsFilter | None = None) -> RankingResult:
         """Top products by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("product_insights", filters=f.model_dump())
         return self._repo.get_top_products(f)
 
     @cached(ttl=120, prefix=_CACHE_PREFIX)
-    def get_customer_insights(
-        self, filters: AnalyticsFilter | None = None
-    ) -> RankingResult:
+    def get_customer_insights(self, filters: AnalyticsFilter | None = None) -> RankingResult:
         """Top customers by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("customer_insights", filters=f.model_dump())
         return self._repo.get_top_customers(f)
 
     @cached(ttl=120, prefix=_CACHE_PREFIX)
-    def get_site_comparison(
-        self, filters: AnalyticsFilter | None = None
-    ) -> RankingResult:
+    def get_site_comparison(self, filters: AnalyticsFilter | None = None) -> RankingResult:
         """Site ranking by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("site_comparison", filters=f.model_dump())
         return self._repo.get_site_performance(f)
 
     @cached(ttl=120, prefix=_CACHE_PREFIX)
-    def get_staff_leaderboard(
-        self, filters: AnalyticsFilter | None = None
-    ) -> RankingResult:
+    def get_staff_leaderboard(self, filters: AnalyticsFilter | None = None) -> RankingResult:
         """Staff ranking by net revenue (cached 120s)."""
         f = self._default_filter(filters)
         log.info("staff_leaderboard", filters=f.model_dump())
         return self._repo.get_top_staff(f)
 
     @cached(ttl=120, prefix=_CACHE_PREFIX)
-    def get_return_report(
-        self, filters: AnalyticsFilter | None = None
-    ) -> list[ReturnAnalysis]:
+    def get_return_report(self, filters: AnalyticsFilter | None = None) -> list[ReturnAnalysis]:
         """Top returns by amount (cached 120s)."""
         f = self._default_filter(filters)
         log.info("return_report", filters=f.model_dump())
@@ -261,9 +249,7 @@ class AnalyticsService:
     # ------------------------------------------------------------------
 
     @cached(ttl=120, prefix=_CACHE_PREFIX)
-    def get_billing_breakdown(
-        self, filters: AnalyticsFilter | None = None
-    ) -> BillingBreakdown:
+    def get_billing_breakdown(self, filters: AnalyticsFilter | None = None) -> BillingBreakdown:
         """Billing method distribution (cached 120s)."""
         if self._breakdown_repo is None:
             raise RuntimeError("BreakdownRepository not configured")
@@ -327,9 +313,7 @@ class AnalyticsService:
                 )
             )
 
-        return self._comparison_repo.get_top_movers(
-            entity_type, current_f, previous_f, limit
-        )
+        return self._comparison_repo.get_top_movers(entity_type, current_f, previous_f, limit)
 
     # ------------------------------------------------------------------
     # Phase 4: Site Detail & Product Hierarchy
@@ -343,9 +327,7 @@ class AnalyticsService:
         return self._detail_repo.get_site_detail(site_key)
 
     @cached(ttl=120, prefix=_CACHE_PREFIX)
-    def get_product_hierarchy(
-        self, filters: AnalyticsFilter | None = None
-    ) -> ProductHierarchy:
+    def get_product_hierarchy(self, filters: AnalyticsFilter | None = None) -> ProductHierarchy:
         """Category > Brand > Product hierarchy view (cached 120s)."""
         if self._hierarchy_repo is None:
             raise RuntimeError("HierarchyRepository not configured")

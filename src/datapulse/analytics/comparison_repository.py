@@ -99,9 +99,7 @@ class ComparisonRepository:
 
         # Fetch broader set to find movers (top 50 from each period)
         fetch_limit = max(limit * 10, 50)
-        current = self._fetch_period_totals(
-            table, key_col, name_col, current_filters, fetch_limit
-        )
+        current = self._fetch_period_totals(table, key_col, name_col, current_filters, fetch_limit)
         previous = self._fetch_period_totals(
             table, key_col, name_col, previous_filters, fetch_limit
         )

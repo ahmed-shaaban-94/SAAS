@@ -288,9 +288,7 @@ def get_top_movers(
     response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
-    entity_type: Annotated[
-        str, Query(pattern="^(product|customer|staff)$")
-    ] = "product",
+    entity_type: Annotated[str, Query(pattern="^(product|customer|staff)$")] = "product",
     limit: Annotated[int, Query(ge=1, le=20)] = 5,
 ) -> TopMovers:
     """Top gainers and losers vs previous period."""

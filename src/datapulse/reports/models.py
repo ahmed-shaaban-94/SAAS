@@ -23,9 +23,7 @@ class ReportParameter(BaseModel):
     label: str = Field(..., description="Display label")
     param_type: ParameterType = Field(..., description="Input type")
     default: str | int | float | None = None
-    options: list[str] = Field(
-        default_factory=list, description="Options for select type"
-    )
+    options: list[str] = Field(default_factory=list, description="Options for select type")
     required: bool = True
 
 

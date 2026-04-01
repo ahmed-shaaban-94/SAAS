@@ -101,9 +101,7 @@ def cached(ttl: int = 300, prefix: str = _DEFAULT_PREFIX):
             elif isinstance(result, tuple):
                 cache_set(key, list(result), ttl=ttl)
             else:
-                log.debug(
-                    "cache_skip_unserializable", key=key, type=type(result).__name__
-                )
+                log.debug("cache_skip_unserializable", key=key, type=type(result).__name__)
 
             return result
 

@@ -69,9 +69,7 @@ class DetailRepository:
             ORDER BY a.month
         """)
         rows = self._session.execute(stmt, {"key_value": key_value}).fetchall()
-        return [
-            TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows
-        ]
+        return [TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows]
 
     def get_product_detail(self, product_key: int) -> ProductPerformance | None:
         """Return detailed performance for a single product."""
@@ -213,9 +211,7 @@ class DetailRepository:
             staff_position=str(row[3]),
             total_net_amount=Decimal(str(row[4])),
             transaction_count=int(row[5]),
-            avg_transaction_value=(
-                Decimal(str(row[6])) if row[6] is not None else Decimal("0")
-            ),
+            avg_transaction_value=(Decimal(str(row[6])) if row[6] is not None else Decimal("0")),
             unique_customers=int(row[7]),
             monthly_trend=trend,
         )

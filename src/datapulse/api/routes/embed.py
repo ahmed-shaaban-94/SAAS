@@ -107,9 +107,7 @@ def embed_query(
     try:
         payload = validate_embed_token(token)
     except jwt.InvalidTokenError as exc:
-        raise HTTPException(
-            status_code=401, detail="Invalid or expired embed token"
-        ) from exc
+        raise HTTPException(status_code=401, detail="Invalid or expired embed token") from exc
 
     session = _get_embed_session(payload)
     try:

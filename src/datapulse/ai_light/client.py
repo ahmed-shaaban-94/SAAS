@@ -96,9 +96,7 @@ class OpenRouterClient:
         )
         return content
 
-    def chat_json(
-        self, system: str, user: str, temperature: float = 0.1
-    ) -> list | dict:
+    def chat_json(self, system: str, user: str, temperature: float = 0.1) -> list | dict:
         """Send a chat request expecting JSON back, parse and return."""
         raw = self.chat(system, user, temperature=temperature)
         # Strip markdown code fences if present

@@ -171,9 +171,7 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
         (date(2025, 6, 11), 1000),
     ]
 
-    mock_session.execute.return_value.mappings.return_value.fetchone.return_value = (
-        unified_row
-    )
+    mock_session.execute.return_value.mappings.return_value.fetchone.return_value = unified_row
     mock_session.execute.return_value.fetchall.return_value = sparkline_rows
 
     result = analytics_repo.get_kpi_summary(date(2025, 6, 15))

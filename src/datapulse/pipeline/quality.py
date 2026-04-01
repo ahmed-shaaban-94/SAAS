@@ -178,9 +178,7 @@ def check_row_delta(session: Session, run_id: UUID) -> QualityCheckResult:
         severity="warn",
         passed=passed,
         message=(
-            None
-            if passed
-            else f"Row count dropped {delta_pct}% vs previous run (threshold 50%)"
+            None if passed else f"Row count dropped {delta_pct}% vs previous run (threshold 50%)"
         ),
         details={"current": current, "previous": previous, "delta_pct": delta_pct},
     )

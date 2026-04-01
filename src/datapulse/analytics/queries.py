@@ -48,9 +48,7 @@ ALLOWED_RANKING_COLUMNS = frozenset(
 # Supported filter field sets per table schema.
 # Tables that don't have certain columns must exclude those filter fields.
 ALL_FILTER_FIELDS = frozenset({"site_key", "category", "brand", "staff_key"})
-SITE_DATE_ONLY = frozenset(
-    {"site_key"}
-)  # agg_sales_daily, agg_sales_monthly, agg_sales_by_site
+SITE_DATE_ONLY = frozenset({"site_key"})  # agg_sales_daily, agg_sales_monthly, agg_sales_by_site
 
 
 def build_where(
@@ -84,12 +82,10 @@ def build_where(
         if use_year_month:
             clauses.append("year * 100 + month BETWEEN :start_ym AND :end_ym")
             params["start_ym"] = (
-                filters.date_range.start_date.year * 100
-                + filters.date_range.start_date.month
+                filters.date_range.start_date.year * 100 + filters.date_range.start_date.month
             )
             params["end_ym"] = (
-                filters.date_range.end_date.year * 100
-                + filters.date_range.end_date.month
+                filters.date_range.end_date.year * 100 + filters.date_range.end_date.month
             )
         else:
             clauses.append(f"{date_column} BETWEEN :start_date AND :end_date")

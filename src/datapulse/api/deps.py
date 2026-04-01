@@ -82,9 +82,7 @@ def get_analytics_service(
     breakdown_repo = BreakdownRepository(session)
     comparison_repo = ComparisonRepository(session)
     hierarchy_repo = HierarchyRepository(session)
-    return AnalyticsService(
-        repo, detail_repo, breakdown_repo, comparison_repo, hierarchy_repo
-    )
+    return AnalyticsService(repo, detail_repo, breakdown_repo, comparison_repo, hierarchy_repo)
 
 
 def get_pipeline_service(
