@@ -8,8 +8,9 @@
 
 BEGIN;
 
-INSERT INTO public.schema_migrations (version, description)
-VALUES (9, 'Create performance indexes for dimension JOINs and query filters');
+INSERT INTO public.schema_migrations (filename)
+VALUES ('009_create_performance_indexes.sql')
+ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- Dimension table indexes (JOIN acceleration)
@@ -75,10 +76,9 @@ CREATE INDEX IF NOT EXISTS idx_fct_sales_is_return
 CREATE INDEX IF NOT EXISTS idx_agg_sales_by_site_site_key
     ON public_marts.agg_sales_by_site (site_key);
 
--- metrics_summary: composite (tenant_id, full_date) for RLS-filtered KPI lookups
--- RLS always filters by tenant_id first, so it must lead the index
-CREATE INDEX IF NOT EXISTS idx_metrics_summary_tenant_full_date
-    ON public_marts.metrics_summary (tenant_id, full_date);
+-- metrics_summary: full_date index for KPI date lookups
+CREATE INDEX IF NOT EXISTS idx_metrics_summary_full_date
+    ON public_marts.metrics_summary (full_date);
 
 -- ============================================================
 -- Pipeline & quality indexes (operational queries)
