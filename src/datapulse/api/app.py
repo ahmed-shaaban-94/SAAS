@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import traceback
 
+import sentry_sdk
 import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +34,16 @@ logger = structlog.get_logger()
 def create_app() -> FastAPI:
     settings = get_settings()
     setup_logging(log_format=settings.log_format)
+
+    # Initialize Sentry error tracking (skipped when DSN is empty)
+    if settings.sentry_dsn:
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.sentry_environment,
+            traces_sample_rate=settings.sentry_traces_sample_rate,
+            send_default_pii=False,
+        )
+        logger.info("sentry_initialized", environment=settings.sentry_environment)
 
     app = FastAPI(
         title="DataPulse API",

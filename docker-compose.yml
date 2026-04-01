@@ -88,8 +88,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
       prestart:
         condition: service_completed_successfully
       redis:
@@ -103,15 +101,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-datapulse}
       PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:-}
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-datapulse}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-datapulse-frontend}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
-      # Issuer URL — must match the `iss` claim in tokens.
-      # Keycloak stamps tokens with its public hostname (KC_HOSTNAME_URL),
-      # which differs from the internal Docker hostname (keycloak:8080).
-      KEYCLOAK_PUBLIC_URL: http://localhost:8081
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
+      AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-}
+      AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET:-}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
       API_KEY: ${API_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini:free}
     ports:
@@ -205,13 +201,15 @@ services:
       - NEXT_PUBLIC_API_URL=
       # Server-side rewrite target — the API container hostname inside Docker.
       - INTERNAL_API_URL=http://api:8000
-      - KEYCLOAK_CLIENT_ID=datapulse-frontend
-      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-}
-      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/datapulse
-      - KEYCLOAK_PUBLIC_URL=http://localhost:8081/realms/datapulse
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN:-}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-to-a-random-secret}
       - NEXTAUTH_DEBUG=true
+      - NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN:-}
+      - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     depends_on:
       api:
         condition: service_healthy
@@ -355,46 +353,9 @@ services:
       - backend
       - frontend-net
 
-  # ---------- Keycloak (Auth / OAuth2 / OIDC) ----------
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.0
-    container_name: datapulse-keycloak
-    restart: unless-stopped
-    command: start --import-realm --hostname-strict=false --http-enabled=true
-    ports:
-      - "8081:8080"
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-datapulse}
-      KC_DB_USERNAME: ${POSTGRES_USER:-datapulse}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      KC_DB_SCHEMA: keycloak
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD must be set}
-      KC_HEALTH_ENABLED: "true"
-      KC_METRICS_ENABLED: "true"
-      KC_HOSTNAME_URL: "http://localhost:8081"
-      KC_HOSTNAME_ADMIN_URL: "http://localhost:8081"
-      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
-      KC_HTTP_PORT: "8080"
-    volumes:
-      - ./keycloak:/opt/keycloak/data/import:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'UP'"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-    networks:
-      - backend
-      - frontend-net
+  # ---------- Keycloak REMOVED — migrated to Auth0 (Wild Wolf beta) ----------
+  # Auth0 is a managed SaaS service — no container needed.
+  # Saves 512MB RAM. Configure via AUTH0_* env vars.
 
 volumes:
   pgdata:

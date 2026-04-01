@@ -44,7 +44,7 @@ function LoginForm() {
           )}
 
           <button
-            onClick={() => signIn("keycloak", { callbackUrl })}
+            onClick={() => signIn("auth0", { callbackUrl })}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-page transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-page"
           >
             <LogIn className="h-4 w-4" />

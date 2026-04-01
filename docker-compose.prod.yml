@@ -87,7 +87,10 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=https://${DOMAIN:-datapulse.dev}
       - NEXTAUTH_URL=https://${DOMAIN:-datapulse.dev}
-      - KEYCLOAK_ISSUER=https://${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}/realms/datapulse
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN:-}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
     labels:
       traefik.enable: "true"
       traefik.http.routers.frontend.rule: "Host(`${DOMAIN:-datapulse.dev}`)"
@@ -111,20 +114,7 @@ services:
   n8n:
     ports: !reset []
 
-  keycloak:
-    ports: !reset []
-    environment:
-      KC_HOSTNAME: "${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}"
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.keycloak.rule: "Host(`${KEYCLOAK_HOSTNAME:-auth.datapulse.dev}`)"
-      traefik.http.routers.keycloak.entrypoints: "websecure"
-      traefik.http.routers.keycloak.tls.certresolver: "letsencrypt"
-      traefik.http.routers.keycloak.middlewares: "security-headers@docker"
-      traefik.http.services.keycloak.loadbalancer.server.port: "8080"
-    networks:
-      - backend
-      - frontend-net
+  # Keycloak removed — auth handled by Auth0 (managed SaaS)
 
   app:
     ports: !reset []

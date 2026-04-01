@@ -1,28 +1,26 @@
 import type { AuthOptions } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 
-// Internal Docker URL — used for server-side token exchange & userinfo
-const KC_INTERNAL = process.env.KEYCLOAK_ISSUER || "http://keycloak:8080/realms/datapulse";
-// Public browser-facing URL — used for the auth redirect the user clicks
-const KC_PUBLIC = process.env.KEYCLOAK_PUBLIC_URL || "http://localhost:8081/realms/datapulse";
+// Auth0 configuration
+const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || "";
+const AUTH0_ISSUER = `https://${AUTH0_DOMAIN}`;
 
 /**
- * Refresh the Keycloak access token using the refresh_token grant.
+ * Refresh the Auth0 access token using the refresh_token grant.
  * Returns the updated JWT on success, or marks it with an error on failure.
  */
 async function refreshAccessToken(token: JWT): Promise<JWT> {
-  const tokenUrl = `${KC_INTERNAL}/protocol/openid-connect/token`;
+  const tokenUrl = `${AUTH0_ISSUER}/oauth/token`;
 
   try {
     const params = new URLSearchParams({
-      client_id: process.env.KEYCLOAK_CLIENT_ID!,
+      client_id: process.env.AUTH0_CLIENT_ID!,
       grant_type: "refresh_token",
       refresh_token: token.refreshToken as string,
     });
 
-    // For confidential clients, include the secret
-    if (process.env.KEYCLOAK_CLIENT_SECRET) {
-      params.set("client_secret", process.env.KEYCLOAK_CLIENT_SECRET);
+    if (process.env.AUTH0_CLIENT_SECRET) {
+      params.set("client_secret", process.env.AUTH0_CLIENT_SECRET);
     }
 
     const res = await fetch(tokenUrl, {
@@ -38,7 +36,6 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       throw new Error(refreshed.error_description || "Token refresh failed");
     }
 
-    // Build a clean token without the error field (delete, don't set undefined)
     const refreshedToken: JWT = {
       ...token,
       accessToken: refreshed.access_token,
@@ -66,30 +63,25 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   }
 }
 
-const keycloakProvider: any = {
-  id: "keycloak",
-  name: "Keycloak",
+const auth0Provider: any = {
+  id: "auth0",
+  name: "Auth0",
   type: "oauth",
-  clientId: process.env.KEYCLOAK_CLIENT_ID || "datapulse-frontend",
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || "",
+  clientId: process.env.AUTH0_CLIENT_ID || "",
+  clientSecret: process.env.AUTH0_CLIENT_SECRET || "",
+  wellKnown: `${AUTH0_ISSUER}/.well-known/openid-configuration`,
   authorization: {
-    url: `${KC_PUBLIC}/protocol/openid-connect/auth`,
-    params: { scope: "openid email profile" },
+    params: {
+      scope: "openid email profile offline_access",
+      audience: process.env.AUTH0_AUDIENCE || "",
+    },
   },
-  token: `${KC_INTERNAL}/protocol/openid-connect/token`,
-  userinfo: `${KC_INTERNAL}/protocol/openid-connect/userinfo`,
-  jwks_endpoint: `${KC_INTERNAL}/protocol/openid-connect/certs`,
-  // issuer must match the `iss` claim Keycloak puts in tokens.
-  // With hostname-strict=false, Keycloak uses the browser-facing URL as `iss`,
-  // so we must use KC_PUBLIC here (not KC_INTERNAL).
-  // Token/userinfo/jwks endpoints still use KC_INTERNAL for server-to-server calls.
-  issuer: KC_PUBLIC,
-  checks: ["pkce", "state"],
   idToken: true,
+  checks: ["pkce", "state"],
   profile(profile: any) {
     return {
       id: profile.sub,
-      name: profile.name ?? profile.preferred_username,
+      name: profile.name ?? profile.nickname,
       email: profile.email,
       image: profile.picture,
     };
@@ -97,7 +89,7 @@ const keycloakProvider: any = {
 };
 
 export const authOptions: AuthOptions = {
-  providers: [keycloakProvider],
+  providers: [auth0Provider],
   debug: process.env.NODE_ENV === "development",
 
   logger: {
@@ -127,17 +119,17 @@ export const authOptions: AuthOptions = {
       if (account) {
         const claims = decodeJwtPayload(account.access_token as string);
 
-        // Extract tenant_id — Keycloak can put this in a custom claim or realm_access
+        // Extract tenant_id from Auth0 custom claim (set via Auth0 Action/Rule)
         const tenantId =
+          (claims["https://datapulse.tech/tenant_id"] as number) ??
           (claims.tenant_id as number) ??
-          (claims.tenantId as number) ??
           undefined;
 
-        // Extract realm roles
-        const realmAccess = claims.realm_access as
-          | { roles?: string[] }
-          | undefined;
-        const roles = realmAccess?.roles ?? [];
+        // Extract roles from Auth0 namespaced claim or permissions
+        const roles =
+          (claims["https://datapulse.tech/roles"] as string[]) ??
+          (claims.permissions as string[]) ??
+          [];
 
         return {
           ...token,

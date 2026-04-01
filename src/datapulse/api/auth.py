@@ -78,9 +78,15 @@ def get_current_user(
         claims = verify_jwt(credentials.credentials, settings)
         # Extract tenant_id from custom claim, fallback to "1"
         tenant_id = claims.get("tenant_id") or claims.get("tid") or "1"
-        # Extract realm roles from Keycloak token structure
-        realm_access = claims.get("realm_access", {})
-        roles = realm_access.get("roles", [])
+        # Extract roles — Auth0 uses a namespaced custom claim or permissions
+        # Auth0 custom rule/action can set roles at a namespace like
+        # "https://datapulse.tech/roles" or in the "permissions" claim.
+        roles = (
+            claims.get("https://datapulse.tech/roles")
+            or claims.get("permissions")
+            or claims.get("roles")
+            or []
+        )
         return {
             "sub": claims.get("sub", ""),
             "email": claims.get("email", ""),
@@ -104,7 +110,7 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Authentication failed")
 
     # 3. Dev mode — both auth mechanisms unconfigured
-    if not settings.api_key and not settings.keycloak_client_id:
+    if not settings.api_key and not settings.auth0_domain:
         return {
             "sub": "dev-user",
             "email": "dev@datapulse.local",

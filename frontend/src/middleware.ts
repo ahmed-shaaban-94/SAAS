@@ -38,9 +38,8 @@ export async function middleware(request: NextRequest) {
 
   // --- Security headers ---
   const response = NextResponse.next();
-  const keycloakIssuer =
-    process.env.KEYCLOAK_ISSUER || "http://localhost:8080/realms/datapulse";
-  const keycloakOrigin = new URL(keycloakIssuer).origin;
+  const auth0Domain = process.env.AUTH0_DOMAIN || "";
+  const auth0Origin = auth0Domain ? `https://${auth0Domain}` : "";
   const isDev = process.env.NODE_ENV === "development";
 
   // Next.js requires 'unsafe-inline' for styles (CSS-in-JS / Tailwind injection).
@@ -58,10 +57,10 @@ export async function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self'",
-      `connect-src 'self' ${keycloakOrigin}`,
+      `connect-src 'self'${auth0Origin ? ` ${auth0Origin}` : ""}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      `form-action 'self' ${keycloakOrigin}`,
+      `form-action 'self'${auth0Origin ? ` ${auth0Origin}` : ""}`,
     ].join("; "),
   );
 

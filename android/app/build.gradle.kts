@@ -26,7 +26,8 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
-            buildConfigField("String", "KEYCLOAK_URL", "\"http://10.0.2.2:8081/realms/datapulse\"")
+            buildConfigField("String", "AUTH0_DOMAIN", "\"your-tenant.us.auth0.com\"")
+            buildConfigField("String", "AUTH0_CLIENT_ID", "\"your-auth0-client-id\"")
         }
         release {
             isMinifyEnabled = true
@@ -35,8 +36,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://api.datapulse.example.com\"")
-            buildConfigField("String", "KEYCLOAK_URL", "\"https://auth.datapulse.example.com/realms/datapulse\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.datapulse.tech\"")
+            buildConfigField("String", "AUTH0_DOMAIN", "\"your-tenant.us.auth0.com\"")
+            buildConfigField("String", "AUTH0_CLIENT_ID", "\"your-auth0-client-id\"")
         }
     }
 

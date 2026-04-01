@@ -1,7 +1,7 @@
 /**
  * TEMPORARY DEV-ONLY LOGIN ROUTE
- * Creates a NextAuth session for demo-admin without going through Keycloak browser flow.
- * Gets a real Keycloak access token via admin-cli direct grant.
+ * Creates a NextAuth session for demo-admin without going through Auth0 browser flow.
+ * Gets a real Auth0 access token via Resource Owner Password grant (if configured).
  * DELETE THIS FILE after auth testing is complete.
  */
 import { encode } from "next-auth/jwt";
@@ -13,37 +13,41 @@ export async function GET() {
   }
 
   const secret = process.env.NEXTAUTH_SECRET!;
-  const kcInternal =
-    process.env.KEYCLOAK_ISSUER || "http://keycloak:8080/realms/datapulse";
+  const auth0Domain = process.env.AUTH0_DOMAIN || "";
 
-  // --- Get a real Keycloak access token via admin-cli direct grant ---
+  // --- Get a real Auth0 access token via Resource Owner Password grant ---
   let accessToken = "dev-access-token";
   let refreshToken = "dev-refresh-token";
   let expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
-  try {
-    const tokenUrl = `${kcInternal}/protocol/openid-connect/token`;
-    const kcRes = await fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: process.env.KEYCLOAK_CLIENT_ID || "datapulse-frontend",
-        grant_type: "password",
-        username: process.env.DEV_LOGIN_USERNAME || "demo-admin",
-        password: process.env.DEV_LOGIN_PASSWORD || "",
-      }).toString(),
-    });
+  if (auth0Domain) {
+    try {
+      const tokenUrl = `https://${auth0Domain}/oauth/token`;
+      const res = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: process.env.AUTH0_CLIENT_ID || "",
+          client_secret: process.env.AUTH0_CLIENT_SECRET || "",
+          grant_type: "password",
+          username: process.env.DEV_LOGIN_USERNAME || "demo-admin",
+          password: process.env.DEV_LOGIN_PASSWORD || "",
+          audience: process.env.AUTH0_AUDIENCE || "",
+          scope: "openid email profile offline_access",
+        }).toString(),
+      });
 
-    if (kcRes.ok) {
-      const kcTokens = await kcRes.json();
-      accessToken = kcTokens.access_token ?? accessToken;
-      refreshToken = kcTokens.refresh_token ?? refreshToken;
-      expiresAt = Math.floor(Date.now() / 1000) + (kcTokens.expires_in ?? 3600);
-    } else {
-      console.warn("[dev-login] Keycloak token fetch failed, using fake token");
+      if (res.ok) {
+        const tokens = await res.json();
+        accessToken = tokens.access_token ?? accessToken;
+        refreshToken = tokens.refresh_token ?? refreshToken;
+        expiresAt = Math.floor(Date.now() / 1000) + (tokens.expires_in ?? 3600);
+      } else {
+        console.warn("[dev-login] Auth0 token fetch failed, using fake token");
+      }
+    } catch (err) {
+      console.warn("[dev-login] Auth0 token fetch error:", err);
     }
-  } catch (err) {
-    console.warn("[dev-login] Keycloak token fetch error:", err);
   }
 
   // Build a NextAuth JWT payload for demo-admin
@@ -57,7 +61,7 @@ export async function GET() {
       refreshToken,
       expiresAt,
       tenant_id: 1,
-      roles: ["admin", "default-roles-datapulse"],
+      roles: ["admin"],
     },
     secret,
     maxAge: 24 * 60 * 60,

@@ -54,16 +54,11 @@ class Settings(BaseSettings):
     # API security
     api_key: str = ""
 
-    # Keycloak OIDC
-    keycloak_url: str = "http://keycloak:8080"
-    keycloak_realm: str = "datapulse"
-    keycloak_client_id: str = "datapulse-frontend"
-    keycloak_client_secret: str = ""
-    # Public-facing Keycloak URL (used for `iss` claim validation).
-    # Keycloak issues tokens with its public hostname as `iss`, which differs
-    # from the internal Docker hostname used to reach Keycloak server-side.
-    # Leave empty to fall back to keycloak_url (single-host / no-proxy setups).
-    keycloak_public_url: str = ""
+    # Auth0 OIDC (replaces Keycloak — see Wild Wolf beta release plan)
+    auth0_domain: str = ""  # e.g. "datapulse.us.auth0.com"
+    auth0_client_id: str = ""  # Application Client ID
+    auth0_client_secret: str = ""  # Application Client Secret
+    auth0_audience: str = ""  # API identifier, e.g. "https://api.datapulse.tech"
 
     # Redis cache
     redis_url: str = ""
@@ -78,6 +73,11 @@ class Settings(BaseSettings):
 
     # Embed (iframe white-label)
     embed_allowed_origins: list[str] = []  # Domains allowed to iframe embed
+
+    # Sentry (error tracking)
+    sentry_dsn: str = ""
+    sentry_environment: str = "development"
+    sentry_traces_sample_rate: float = 0.1  # 10% performance monitoring
 
     # Logging
     log_format: str = "console"
@@ -97,26 +97,14 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     @property
-    def keycloak_issuer_url(self) -> str:
-        """Internal Keycloak issuer URL — used to build the JWKS endpoint."""
-        return f"{self.keycloak_url}/realms/{self.keycloak_realm}"
+    def auth0_issuer_url(self) -> str:
+        """Auth0 issuer URL — matches the ``iss`` claim in tokens."""
+        return f"https://{self.auth0_domain}/"
 
     @property
-    def keycloak_token_issuer_url(self) -> str:
-        """Public-facing issuer URL that must match the `iss` claim in tokens.
-
-        Keycloak embeds its public hostname in the `iss` claim, which can differ
-        from the internal Docker hostname. Set KEYCLOAK_PUBLIC_URL to the
-        host-visible base URL (e.g. ``http://localhost:8081``) when running
-        behind a port-mapping proxy.
-        """
-        base = self.keycloak_public_url or self.keycloak_url
-        return f"{base}/realms/{self.keycloak_realm}"
-
-    @property
-    def keycloak_jwks_url(self) -> str:
-        """Keycloak JWKS endpoint — always uses the internal URL for server-side access."""
-        return f"{self.keycloak_issuer_url}/protocol/openid-connect/certs"
+    def auth0_jwks_url(self) -> str:
+        """Auth0 JWKS endpoint for JWT signature verification."""
+        return f"https://{self.auth0_domain}/.well-known/jwks.json"
 
     def warn_if_auth_disabled(self) -> None:
         """Log warnings when authentication secrets are not configured."""
@@ -130,10 +118,10 @@ class Settings(BaseSettings):
                 "auth_disabled",
                 detail="PIPELINE_WEBHOOK_SECRET is empty — pipeline token auth is disabled",
             )
-        if not self.keycloak_client_id:
+        if not self.auth0_domain:
             logger.warning(
                 "auth_disabled",
-                detail="KEYCLOAK_CLIENT_ID is empty — JWT authentication is disabled",
+                detail="AUTH0_DOMAIN is empty — JWT authentication is disabled",
             )
 
 

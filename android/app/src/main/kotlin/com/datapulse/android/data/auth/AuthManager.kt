@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import net.openid.appauth.AppAuthConfiguration
@@ -44,7 +43,7 @@ class AuthManager @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val authService = if (BuildConfig.DEBUG) {
-        // Allow HTTP connections in debug mode (emulator → localhost Keycloak)
+        // Allow HTTP connections in debug mode (emulator)
         val httpConnectionBuilder = ConnectionBuilder { uri ->
             URL(uri.toString()).openConnection() as HttpURLConnection
         }
@@ -62,21 +61,24 @@ class AuthManager @Inject constructor(
     val authState: StateFlow<Boolean> = tokenStore.hasAccessToken
         .stateIn(scope, SharingStarted.Eagerly, false)
 
+    // Auth0 uses standard OIDC discovery — endpoints derived from the domain
+    private val auth0BaseUrl = "https://${BuildConfig.AUTH0_DOMAIN}"
+
     private val serviceConfig = AuthorizationServiceConfiguration(
-        Uri.parse("${BuildConfig.KEYCLOAK_URL}/protocol/openid-connect/auth"),
-        Uri.parse("${BuildConfig.KEYCLOAK_URL}/protocol/openid-connect/token"),
+        Uri.parse("$auth0BaseUrl/authorize"),
+        Uri.parse("$auth0BaseUrl/oauth/token"),
         null,
-        Uri.parse("${BuildConfig.KEYCLOAK_URL}/protocol/openid-connect/logout"),
+        Uri.parse("$auth0BaseUrl/v2/logout"),
     )
 
     fun createAuthIntent(): Intent {
         val authRequest = AuthorizationRequest.Builder(
             serviceConfig,
-            CLIENT_ID,
+            BuildConfig.AUTH0_CLIENT_ID,
             ResponseTypeValues.CODE,
             Uri.parse(REDIRECT_URI),
         )
-            .setScope("openid email profile")
+            .setScope("openid email profile offline_access")
             .build()
 
         return authService.getAuthorizationRequestIntent(authRequest)
@@ -110,7 +112,7 @@ class AuthManager @Inject constructor(
             suspendCoroutine<TokenResponse?> { cont ->
                 val tokenRequest = net.openid.appauth.TokenRequest.Builder(
                     serviceConfig,
-                    CLIENT_ID,
+                    BuildConfig.AUTH0_CLIENT_ID,
                 )
                     .setGrantType("refresh_token")
                     .setRefreshToken(refreshToken)
@@ -148,12 +150,15 @@ class AuthManager @Inject constructor(
             val parts = accessToken.split(".")
             if (parts.size != 3) return emptyList()
             val payload = String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE))
-            val realmAccess = kotlinx.serialization.json.Json.parseToJsonElement(payload)
-                .jsonObject["realm_access"]
-                ?.jsonObject?.get("roles")
+            val json = kotlinx.serialization.json.Json.parseToJsonElement(payload).jsonObject
+            // Auth0 uses namespaced claims or "permissions" for roles
+            val roles = json["https://datapulse.tech/roles"]
                 ?.jsonArray
                 ?.map { it.jsonPrimitive.content }
-            realmAccess ?: emptyList()
+            roles ?: json["permissions"]
+                ?.jsonArray
+                ?.map { it.jsonPrimitive.content }
+            ?: emptyList()
         } catch (_: Exception) {
             emptyList()
         }
@@ -168,7 +173,7 @@ class AuthManager @Inject constructor(
             mapOf(
                 "sub" to (json["sub"]?.jsonPrimitive?.content ?: ""),
                 "email" to (json["email"]?.jsonPrimitive?.content ?: ""),
-                "preferred_username" to (json["preferred_username"]?.jsonPrimitive?.content ?: ""),
+                "preferred_username" to (json["nickname"]?.jsonPrimitive?.content ?: ""),
             )
         } catch (_: Exception) {
             emptyMap()
@@ -176,7 +181,6 @@ class AuthManager @Inject constructor(
     }
 
     companion object {
-        private const val CLIENT_ID = "datapulse-frontend"
         private const val REDIRECT_URI = "com.datapulse.android:/oauth2callback"
     }
 }
