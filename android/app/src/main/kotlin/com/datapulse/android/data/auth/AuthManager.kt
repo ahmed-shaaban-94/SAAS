@@ -12,12 +12,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
+import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthorizationRequest
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.AuthorizationService
 import net.openid.appauth.AuthorizationServiceConfiguration
 import net.openid.appauth.ResponseTypeValues
 import net.openid.appauth.TokenResponse
+import net.openid.appauth.connectivity.ConnectionBuilder
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -39,7 +43,20 @@ class AuthManager @Inject constructor(
     private val tokenStore: TokenStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val authService = AuthorizationService(context)
+    private val authService = if (BuildConfig.DEBUG) {
+        // Allow HTTP connections in debug mode (emulator → localhost Keycloak)
+        val httpConnectionBuilder = ConnectionBuilder { uri ->
+            URL(uri.toString()).openConnection() as HttpURLConnection
+        }
+        AuthorizationService(
+            context,
+            AppAuthConfiguration.Builder()
+                .setConnectionBuilder(httpConnectionBuilder)
+                .build()
+        )
+    } else {
+        AuthorizationService(context)
+    }
 
     /** Reactive auth state — emits true when user has a valid access token. */
     val authState: StateFlow<Boolean> = tokenStore.hasAccessToken

@@ -1,0 +1,211 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#e94560', 'primaryBorderColor': '#e94560', 'lineColor': '#0f3460', 'secondaryColor': '#16213e', 'tertiaryColor': '#533483'}}}%%
+
+graph TB
+    subgraph TITLE["🐺 THE WILD WOLF BETA RELEASE"]
+        direction TB
+    end
+
+    subgraph PHASE0["PHASE 0: Pre-Flight Check (Week 1)"]
+        P0A[🔍 Audit Current State]
+        P0B[🧪 Run Full Test Suite]
+        P0C[🔒 Security Scan]
+        P0D[📱 Android Build Verification]
+        P0A --> P0B --> P0C --> P0D
+    end
+
+    subgraph PHASE1["PHASE 1: Infrastructure Setup (Week 1-2)"]
+        P1A[🌊 DigitalOcean Droplet<br/>4GB RAM - $24/mo]
+        P1B[🗄️ AWS RDS PostgreSQL<br/>db.t3.micro - $15/mo]
+        P1C[📦 AWS S3 Bucket<br/>File uploads]
+        P1D[🌐 Domain Registration<br/>.tech or .app FREE]
+        P1E[🔐 Doppler Secrets<br/>Replace .env files]
+        P1A --> P1E
+        P1B --> P1E
+        P1C --> P1E
+        P1D --> P1A
+    end
+
+    subgraph PHASE2["PHASE 2: Auth Migration (Week 2)"]
+        P2A[🔑 Setup Auth0<br/>7,500 users FREE]
+        P2B[🔄 Migrate jwt.py<br/>Keycloak → Auth0]
+        P2C[🔄 Migrate NextAuth<br/>Provider swap]
+        P2D[📱 Migrate Android<br/>AppAuth config]
+        P2E[🗑️ Remove Keycloak<br/>Save 512MB RAM]
+        P2A --> P2B --> P2C --> P2D --> P2E
+    end
+
+    subgraph PHASE3["PHASE 3: Monitoring Stack (Week 2-3)"]
+        P3A[📊 Datadog Agent<br/>10 servers FREE 2yr]
+        P3B[🚨 Sentry SDK<br/>FastAPI + Next.js]
+        P3C[📈 Codecov CI<br/>Coverage tracking]
+        P3D[💚 Honeybadger<br/>Uptime monitoring]
+        P3A --> P3D
+        P3B --> P3D
+        P3C --> P3D
+    end
+
+    subgraph PHASE4["PHASE 4: Android Release (Week 3)"]
+        P4A[🔧 Update API URLs<br/>Point to production]
+        P4B[🔑 Update Auth Config<br/>Auth0 endpoints]
+        P4C[🧪 Full E2E Testing<br/>All 9 screens]
+        P4D[📦 Build Release APK<br/>Signed + ProGuard]
+        P4E[🚀 Firebase Distribution<br/>30 beta testers]
+        P4A --> P4B --> P4C --> P4D --> P4E
+    end
+
+    subgraph PHASE5["PHASE 5: Beta Launch (Week 3-4)"]
+        P5A[👥 Invite 30 Testers]
+        P5B[📊 Monitor Datadog<br/>Performance baseline]
+        P5C[🚨 Monitor Sentry<br/>Error tracking]
+        P5D[📝 Collect Feedback<br/>Google Forms / Notion]
+        P5E[🔄 Iterate & Fix<br/>Based on feedback]
+        P5A --> P5B --> P5D
+        P5A --> P5C --> P5D
+        P5D --> P5E
+    end
+
+    PHASE0 --> PHASE1 --> PHASE2 --> PHASE3 --> PHASE4 --> PHASE5
+
+    style TITLE fill:#1a1a2e,stroke:#e94560,stroke-width:3px,color:#e94560
+    style PHASE0 fill:#16213e,stroke:#0f3460,stroke-width:2px,color:#eee
+    style PHASE1 fill:#16213e,stroke:#0f3460,stroke-width:2px,color:#eee
+    style PHASE2 fill:#16213e,stroke:#0f3460,stroke-width:2px,color:#eee
+    style PHASE3 fill:#16213e,stroke:#0f3460,stroke-width:2px,color:#eee
+    style PHASE4 fill:#16213e,stroke:#0f3460,stroke-width:2px,color:#eee
+    style PHASE5 fill:#16213e,stroke:#0f3460,stroke-width:2px,color:#eee
+
+---
+
+%%{init: {'theme': 'dark'}}%%
+graph LR
+    subgraph INFRA["🏗️ Production Infrastructure"]
+        direction TB
+
+        subgraph DO["DigitalOcean ($200 credit)"]
+            DROP[Droplet 4GB<br/>$24/mo ≈ 8 months]
+            TRAF[Traefik<br/>Reverse Proxy + SSL]
+            API[FastAPI<br/>4 workers]
+            FE[Next.js<br/>SSR Production]
+            N8N[n8n<br/>Workflows]
+            REDIS[Redis<br/>Cache + Celery]
+            CEL[Celery Worker<br/>Async tasks]
+            DD[Datadog Agent<br/>Monitoring]
+        end
+
+        subgraph AWS["AWS ($200 credit)"]
+            RDS[(RDS PostgreSQL<br/>db.t3.micro<br/>Automated backups)]
+            S3[(S3 Bucket<br/>Excel/CSV uploads)]
+            SES[SES<br/>Email notifications]
+        end
+
+        subgraph CLOUD["Free Cloud Services"]
+            AUTH0[Auth0<br/>7,500 users FREE]
+            SENT[Sentry<br/>Error tracking]
+            DOP[Doppler<br/>Secret management]
+            COV[Codecov<br/>Coverage reports]
+            HB[Honeybadger<br/>Uptime monitoring]
+        end
+    end
+
+    TRAF --> API
+    TRAF --> FE
+    API --> RDS
+    API --> REDIS
+    API --> S3
+    CEL --> REDIS
+    CEL --> RDS
+    N8N --> API
+    N8N --> REDIS
+    API --> AUTH0
+    FE --> AUTH0
+    DD --> SENT
+
+---
+
+%%{init: {'theme': 'dark'}}%%
+graph TB
+    subgraph BUDGET["💰 Budget Breakdown (12 months)"]
+        direction LR
+
+        subgraph FREE["🆓 FREE (Student Pack)"]
+            F1[Datadog Pro<br/>2 years]
+            F2[Auth0<br/>7,500 users]
+            F3[Sentry<br/>1 year]
+            F4[Doppler<br/>Student duration]
+            F5[Codecov<br/>Forever]
+            F6[Honeybadger<br/>Free tier]
+            F7[GitHub Copilot<br/>Student duration]
+            F8[JetBrains<br/>1 year renewable]
+            F9[Domain<br/>1 year]
+        end
+
+        subgraph CREDIT["💳 CREDITS"]
+            C1[DigitalOcean<br/>$200 ≈ 8 months]
+            C2[AWS<br/>$200 ≈ 7 months]
+        end
+
+        subgraph TOTAL["📊 TOTAL"]
+            T1[Year 1 Cost: $0]
+            T2[Tools Value: ~$12,000+]
+            T3[Runway: 8-12 months]
+        end
+    end
+
+---
+
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    participant U as 👤 User (30 testers)
+    participant FE as 🖥️ Next.js Frontend
+    participant AUTH as 🔑 Auth0
+    participant API as ⚡ FastAPI
+    participant DB as 🗄️ AWS RDS PostgreSQL
+    participant S3 as 📦 AWS S3
+    participant DD as 📊 Datadog
+    participant SE as 🚨 Sentry
+
+    U->>FE: Open datapulse.tech
+    FE->>AUTH: Login redirect
+    AUTH-->>FE: JWT Token
+    FE->>API: GET /api/v1/analytics/summary
+    API->>DB: SQL Query (marts schema)
+    DB-->>API: Results
+    API-->>FE: JSON Response
+    FE-->>U: Dashboard rendered
+
+    Note over DD: Monitors every step ⏱️
+    Note over SE: Catches any errors 🚨
+
+    U->>FE: Upload Excel file
+    FE->>API: POST /api/v1/pipeline/trigger
+    API->>S3: Store raw file
+    API->>DB: Bronze → Silver → Gold
+    API-->>FE: Pipeline complete ✅
+
+---
+
+%%{init: {'theme': 'dark'}}%%
+graph TB
+    subgraph ANDROID["📱 Android Release Pipeline"]
+        direction TB
+        A1[Update build.gradle.kts<br/>Release API URL + Auth0]
+        A2[Update AuthManager<br/>Auth0 endpoints]
+        A3[Run Unit Tests<br/>JUnit5 + MockK]
+        A4[Build Release APK<br/>Signed keystore]
+        A5[Firebase App Distribution<br/>30 beta testers]
+        A6[Monitor Crashlytics<br/>Runtime errors]
+
+        A1 --> A2 --> A3 --> A4 --> A5 --> A6
+    end
+
+    subgraph SCREENS["📱 Android Screens (9)"]
+        S1[🔑 Login]
+        S2[📊 Dashboard]
+        S3[💊 Products]
+        S4[👥 Customers]
+        S5[👔 Staff]
+        S6[📍 Sites]
+        S7[↩️ Returns]
+        S8[⚙️ Pipeline]
+        S9[🔧 Settings]
+    end
