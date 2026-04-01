@@ -34,17 +34,21 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     const refreshed = await res.json();
 
     if (!res.ok) {
+      console.error("[TOKEN_REFRESH] Failed:", refreshed.error, refreshed.error_description);
       throw new Error(refreshed.error_description || "Token refresh failed");
     }
 
-    return {
+    // Build a clean token without the error field (delete, don't set undefined)
+    const refreshedToken: JWT = {
       ...token,
       accessToken: refreshed.access_token,
       refreshToken: refreshed.refresh_token ?? token.refreshToken,
       expiresAt: Math.floor(Date.now() / 1000) + refreshed.expires_in,
-      error: undefined,
     };
-  } catch {
+    delete refreshedToken.error;
+    return refreshedToken;
+  } catch (err) {
+    console.error("[TOKEN_REFRESH] Exception:", err);
     return { ...token, error: "RefreshAccessTokenError" };
   }
 }
