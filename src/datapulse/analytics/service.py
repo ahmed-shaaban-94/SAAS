@@ -129,18 +129,21 @@ class AnalyticsService:
 
     def get_dashboard_data(self, target_date: date | None = None) -> DashboardData:
         """Composite dashboard payload — KPI + trends + rankings + filters (cached 600s)."""
+        _, max_date = self._repo.get_data_date_range()
         if target_date is None:
-            _, max_date = self._repo.get_data_date_range()
             target_date = max_date or date.today()
         key = _cache_key("dashboard", {"target_date": str(target_date)})
-        cached = cache_get(key)
-        if cached is not None:
+        cached_val = cache_get(key)
+        if cached_val is not None:
             log.debug("cache_hit", key=key)
-            return DashboardData(**cached)
+            return DashboardData(**cached_val)
 
         log.info("dashboard_data", target_date=str(target_date))
         kpi = self.get_dashboard_summary(target_date)
-        default_f = self._default_filter()
+        end = max_date or date.today()
+        default_f = AnalyticsFilter(
+            date_range=DateRange(start_date=end - timedelta(days=30), end_date=end)
+        )
         result = DashboardData(
             kpi=kpi,
             daily_trend=self._repo.get_daily_trend(default_f),

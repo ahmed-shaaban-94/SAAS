@@ -93,63 +93,120 @@ class AnalyticsRepository:
         return row[0], row[1]
 
     def get_filter_options(self) -> FilterOptions:
-        """Return distinct values for all slicer/dropdown filters."""
+        """Return distinct values for all slicer/dropdown filters.
+
+        Uses a single UNION ALL query instead of 4 separate round-trips.
+        """
         log.info("get_filter_options")
 
-        cat_rows = self._session.execute(
-            text(
-                "SELECT DISTINCT drug_category FROM public_marts.agg_sales_by_product "
-                "WHERE drug_category IS NOT NULL ORDER BY drug_category"
-            )
-        ).fetchall()
+        stmt = text("""
+            SELECT 'category' AS type, drug_category AS value, NULL::int AS key
+            FROM public_marts.agg_sales_by_product
+            WHERE drug_category IS NOT NULL
+            GROUP BY drug_category
 
-        brand_rows = self._session.execute(
-            text(
-                "SELECT DISTINCT drug_brand FROM public_marts.agg_sales_by_product "
-                "WHERE drug_brand IS NOT NULL ORDER BY drug_brand"
-            )
-        ).fetchall()
+            UNION ALL
 
-        site_rows = self._session.execute(
-            text(
-                "SELECT DISTINCT site_key, site_name "
-                "FROM public_marts.agg_sales_by_site "
-                "WHERE site_key > 0 ORDER BY site_name"
-            )
-        ).fetchall()
+            SELECT 'brand', drug_brand, NULL
+            FROM public_marts.agg_sales_by_product
+            WHERE drug_brand IS NOT NULL
+            GROUP BY drug_brand
 
-        staff_rows = self._session.execute(
-            text(
-                "SELECT DISTINCT staff_key, staff_name "
-                "FROM public_marts.agg_sales_by_staff "
-                "WHERE staff_key > 0 ORDER BY staff_name"
-            )
-        ).fetchall()
+            UNION ALL
+
+            SELECT 'site', site_name, site_key
+            FROM public_marts.agg_sales_by_site
+            WHERE site_key > 0
+            GROUP BY site_key, site_name
+
+            UNION ALL
+
+            SELECT 'staff', staff_name, staff_key
+            FROM public_marts.agg_sales_by_staff
+            WHERE staff_key > 0
+            GROUP BY staff_key, staff_name
+
+            ORDER BY type, value
+        """)
+        rows = self._session.execute(stmt).fetchall()
+
+        categories: list[str] = []
+        brands: list[str] = []
+        sites: list[FilterOption] = []
+        staff: list[FilterOption] = []
+
+        for r in rows:
+            rtype, value, key = str(r[0]), str(r[1]), r[2]
+            if rtype == "category":
+                categories.append(value)
+            elif rtype == "brand":
+                brands.append(value)
+            elif rtype == "site":
+                sites.append(FilterOption(key=int(key), label=value))
+            elif rtype == "staff":
+                staff.append(FilterOption(key=int(key), label=value))
 
         return FilterOptions(
-            categories=[str(r[0]) for r in cat_rows],
-            brands=[str(r[0]) for r in brand_rows],
-            sites=[FilterOption(key=int(r[0]), label=str(r[1])) for r in site_rows],
-            staff=[FilterOption(key=int(r[0]), label=str(r[1])) for r in staff_rows],
+            categories=categories,
+            brands=brands,
+            sites=sites,
+            staff=staff,
         )
 
     def get_kpi_summary(self, target_date: date) -> KPISummary:
         """Return executive KPI snapshot for *target_date*.
 
-        Queries ``public_marts.metrics_summary`` for daily totals and computes
-        MTD / YTD aggregates plus month-over-month and year-over-year growth.
+        Uses a single CTE query to fetch daily totals, basket size, and
+        previous-period comparisons from ``public_marts.metrics_summary``
+        and ``public_marts.agg_sales_daily``.  Sparkline is a separate query.
         """
         log.info("get_kpi_summary", target_date=str(target_date))
 
-        # --- Daily row --------------------------------------------------
-        daily_stmt = text("""
-            SELECT daily_net_amount, mtd_net_amount, ytd_net_amount,
-                   daily_transactions, daily_unique_customers,
-                   daily_returns, mtd_transactions, ytd_transactions
-            FROM public_marts.metrics_summary
-            WHERE full_date = :target_date
+        date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
+
+        # --- Single CTE: daily + basket + prev_month + prev_year --------
+        cte_stmt = text("""
+            WITH daily AS (
+                SELECT daily_net_amount, mtd_net_amount, ytd_net_amount,
+                       daily_transactions, daily_unique_customers, daily_returns,
+                       mtd_transactions, ytd_transactions
+                FROM public_marts.metrics_summary
+                WHERE full_date = :target_date
+            ),
+            basket AS (
+                SELECT SUM(total_net_amount)
+                       / NULLIF(SUM(transaction_count), 0) AS avg_basket
+                FROM public_marts.agg_sales_daily
+                WHERE date_key = :date_key
+            ),
+            prev_month AS (
+                SELECT mtd_net_amount
+                FROM public_marts.metrics_summary
+                WHERE full_date = CAST(
+                    CAST(:target_date AS date) - INTERVAL '1 month'
+                AS date)
+            ),
+            prev_year AS (
+                SELECT ytd_net_amount
+                FROM public_marts.metrics_summary
+                WHERE full_date = CAST(
+                    CAST(:target_date AS date) - INTERVAL '1 year'
+                AS date)
+            )
+            SELECT d.daily_net_amount, d.mtd_net_amount, d.ytd_net_amount,
+                   d.daily_transactions, d.daily_unique_customers, d.daily_returns,
+                   d.mtd_transactions, d.ytd_transactions,
+                   b.avg_basket,
+                   pm.mtd_net_amount AS prev_mtd,
+                   py.ytd_net_amount AS prev_ytd
+            FROM daily d
+            LEFT JOIN basket b ON TRUE
+            LEFT JOIN prev_month pm ON TRUE
+            LEFT JOIN prev_year py ON TRUE
         """)
-        row = self._session.execute(daily_stmt, {"target_date": target_date}).fetchone()
+        row = self._session.execute(
+            cte_stmt, {"target_date": target_date, "date_key": date_key}
+        ).fetchone()
 
         if row is None:
             log.warning("kpi_no_data", target_date=str(target_date))
@@ -177,53 +234,21 @@ class AnalyticsRepository:
         mtd_transactions = int(row[6]) if row[6] is not None else 0
         ytd_transactions = int(row[7]) if row[7] is not None else 0
 
-        # --- Avg basket size (SUM/NULLIF, not AVG of AVG) ---------------
-        basket_stmt = text("""
-            SELECT SUM(total_net_amount) / NULLIF(SUM(transaction_count), 0)
-            FROM public_marts.agg_sales_daily
-            WHERE date_key = :date_key
-        """)
-        date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
-        basket_row = self._session.execute(basket_stmt, {"date_key": date_key}).fetchone()
         avg_basket = (
-            Decimal(str(basket_row[0])).quantize(Decimal("0.01"))
-            if basket_row and basket_row[0] is not None
+            Decimal(str(row[8])).quantize(Decimal("0.01"))
+            if row[8] is not None
             else _ZERO
         )
 
-        # --- MoM growth -------------------------------------------------
-        prev_month_stmt = text("""
-            SELECT mtd_net_amount
-            FROM public_marts.metrics_summary
-            WHERE full_date = CAST(
-                CAST(:target_date AS date) - INTERVAL '1 month'
-            AS date)
-        """)
-        prev_month_row = self._session.execute(
-            prev_month_stmt, {"target_date": target_date}
-        ).fetchone()
-
         mom_growth: Decimal | None = None
-        if prev_month_row is not None:
-            mom_growth = safe_growth(mtd_net, Decimal(str(prev_month_row[0])))
-
-        # --- YoY growth -------------------------------------------------
-        prev_year_stmt = text("""
-            SELECT ytd_net_amount
-            FROM public_marts.metrics_summary
-            WHERE full_date = CAST(
-                CAST(:target_date AS date) - INTERVAL '1 year'
-            AS date)
-        """)
-        prev_year_row = self._session.execute(
-            prev_year_stmt, {"target_date": target_date}
-        ).fetchone()
+        if row[9] is not None:
+            mom_growth = safe_growth(mtd_net, Decimal(str(row[9])))
 
         yoy_growth: Decimal | None = None
-        if prev_year_row is not None:
-            yoy_growth = safe_growth(ytd_net, Decimal(str(prev_year_row[0])))
+        if row[10] is not None:
+            yoy_growth = safe_growth(ytd_net, Decimal(str(row[10])))
 
-        # --- Sparkline (last 7 days) ------------------------------------
+        # --- Sparkline (last 7 days) — separate query -------------------
         sparkline = self.get_kpi_sparkline(target_date)
 
         return KPISummary(

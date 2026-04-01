@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from datapulse.analytics.models import (
@@ -42,6 +42,16 @@ router = APIRouter(
     tags=["analytics"],
     dependencies=[Depends(get_current_user)],
 )
+
+
+# ------------------------------------------------------------------
+# Cache-Control helper
+# ------------------------------------------------------------------
+
+
+def _set_cache(response: Response, max_age: int) -> None:
+    """Set Cache-Control header for browser caching (always private for RLS)."""
+    response.headers["Cache-Control"] = f"max-age={max_age}, private"
 
 
 # ------------------------------------------------------------------
@@ -119,10 +129,12 @@ ServiceDep = Annotated[AnalyticsService, Depends(get_analytics_service)]
 @limiter.limit("60/minute")
 def get_dashboard(
     request: Request,
+    response: Response,
     service: ServiceDep,
     target_date: Annotated[date | None, Query()] = None,
 ) -> DashboardData:
     """Composite dashboard endpoint — KPI + trends + rankings + filters in one call."""
+    _set_cache(response, 600)
     return service.get_dashboard_data(target_date)
 
 
@@ -130,9 +142,11 @@ def get_dashboard(
 @limiter.limit("100/minute")
 def get_date_range(
     request: Request,
+    response: Response,
     service: ServiceDep,
 ) -> DataDateRange:
     """Return the min/max dates of available data for frontend preset calculation."""
+    _set_cache(response, 300)
     return service.get_date_range()
 
 
@@ -140,10 +154,12 @@ def get_date_range(
 @limiter.limit("100/minute")
 def get_summary(
     request: Request,
+    response: Response,
     service: ServiceDep,
     target_date: Annotated[date | None, Query()] = None,
 ) -> KPISummary:
     """Executive KPI snapshot for the dashboard header."""
+    _set_cache(response, 300)
     return service.get_dashboard_summary(target_date)
 
 
@@ -151,10 +167,12 @@ def get_summary(
 @limiter.limit("100/minute")
 def get_daily_trend(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
     """Daily net-sales trend line."""
+    _set_cache(response, 60)
     filters = _to_filter(params)
     return service.get_daily_trend(filters)
 
@@ -163,10 +181,12 @@ def get_daily_trend(
 @limiter.limit("100/minute")
 def get_monthly_trend(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
     """Monthly net-sales trend line."""
+    _set_cache(response, 60)
     filters = _to_filter(params)
     return service.get_monthly_trend(filters)
 
@@ -175,10 +195,12 @@ def get_monthly_trend(
 @limiter.limit("100/minute")
 def get_top_products(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Top products ranked by net revenue."""
+    _set_cache(response, 120)
     return service.get_product_insights(_to_filter(params))
 
 
@@ -186,10 +208,12 @@ def get_top_products(
 @limiter.limit("100/minute")
 def get_top_customers(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Top customers ranked by net revenue."""
+    _set_cache(response, 120)
     return service.get_customer_insights(_to_filter(params))
 
 
@@ -197,10 +221,12 @@ def get_top_customers(
 @limiter.limit("100/minute")
 def get_top_staff(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Staff leaderboard ranked by net revenue."""
+    _set_cache(response, 120)
     return service.get_staff_leaderboard(_to_filter(params))
 
 
@@ -208,10 +234,12 @@ def get_top_staff(
 @limiter.limit("100/minute")
 def get_sites(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Site comparison ranked by net revenue."""
+    _set_cache(response, 120)
     return service.get_site_comparison(_to_filter(params))
 
 
@@ -219,9 +247,11 @@ def get_sites(
 @limiter.limit("100/minute")
 def get_filter_options(
     request: Request,
+    response: Response,
     service: ServiceDep,
 ) -> FilterOptions:
     """Return available filter values for slicer/dropdown population."""
+    _set_cache(response, 600)
     return service.get_filter_options()
 
 
@@ -229,10 +259,12 @@ def get_filter_options(
 @limiter.limit("60/minute")
 def get_billing_breakdown(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> BillingBreakdown:
     """Billing method distribution (cash, credit, delivery, etc.)."""
+    _set_cache(response, 120)
     return service.get_billing_breakdown(_to_filter(params))
 
 
@@ -240,10 +272,12 @@ def get_billing_breakdown(
 @limiter.limit("60/minute")
 def get_customer_type_breakdown(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> CustomerTypeBreakdown:
     """Walk-in vs insurance vs other distribution by month."""
+    _set_cache(response, 120)
     return service.get_customer_type_breakdown(_to_filter(params))
 
 
@@ -251,12 +285,14 @@ def get_customer_type_breakdown(
 @limiter.limit("60/minute")
 def get_top_movers(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
     entity_type: Annotated[str, Query(pattern="^(product|customer|staff)$")] = "product",
     limit: Annotated[int, Query(ge=1, le=20)] = 5,
 ) -> TopMovers:
     """Top gainers and losers vs previous period."""
+    _set_cache(response, 120)
     return service.get_top_movers(entity_type, _to_filter(params), limit)
 
 
@@ -264,10 +300,12 @@ def get_top_movers(
 @limiter.limit("60/minute")
 def get_product_hierarchy(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> ProductHierarchy:
     """Product hierarchy: Category > Brand > Product."""
+    _set_cache(response, 120)
     return service.get_product_hierarchy(_to_filter(params))
 
 
@@ -275,10 +313,12 @@ def get_product_hierarchy(
 @limiter.limit("100/minute")
 def get_returns(
     request: Request,
+    response: Response,
     service: ServiceDep,
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> list[ReturnAnalysis]:
     """Top returns/credit notes by amount."""
+    _set_cache(response, 120)
     return service.get_return_report(_to_filter(params))
 
 
@@ -286,10 +326,12 @@ def get_returns(
 @limiter.limit("100/minute")
 def get_site_detail(
     request: Request,
+    response: Response,
     site_key: Annotated[int, Path(ge=1, description="Site surrogate key")],
     service: ServiceDep,
 ) -> SiteDetail:
     """Detailed site metrics with monthly trend."""
+    _set_cache(response, 120)
     result = service.get_site_detail(site_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -300,10 +342,12 @@ def get_site_detail(
 @limiter.limit("100/minute")
 def get_product_detail(
     request: Request,
+    response: Response,
     product_key: Annotated[int, Path(ge=1, description="Product surrogate key")],
     service: ServiceDep,
 ) -> ProductPerformance:
     """Detailed product performance metrics."""
+    _set_cache(response, 120)
     result = service.get_product_detail(product_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -314,10 +358,12 @@ def get_product_detail(
 @limiter.limit("100/minute")
 def get_customer_detail(
     request: Request,
+    response: Response,
     customer_key: Annotated[int, Path(ge=1, description="Customer surrogate key")],
     service: ServiceDep,
 ) -> CustomerAnalytics:
     """Detailed customer analytics."""
+    _set_cache(response, 120)
     result = service.get_customer_detail(customer_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -328,10 +374,12 @@ def get_customer_detail(
 @limiter.limit("100/minute")
 def get_staff_detail(
     request: Request,
+    response: Response,
     staff_key: Annotated[int, Path(ge=1, description="Staff surrogate key")],
     service: ServiceDep,
 ) -> StaffPerformance:
     """Detailed staff performance metrics."""
+    _set_cache(response, 120)
     result = service.get_staff_detail(staff_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Staff member not found")

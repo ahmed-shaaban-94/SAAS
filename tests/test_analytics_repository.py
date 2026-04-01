@@ -136,6 +136,7 @@ def test_build_ranking_items():
 
 def test_get_kpi_summary_no_data(analytics_repo, mock_session):
     mock_session.execute.return_value.fetchone.return_value = None
+    mock_session.execute.return_value.fetchall.return_value = []
     result = analytics_repo.get_kpi_summary(date(2025, 1, 15))
     assert result.today_net == Decimal("0")
     assert result.mtd_net == Decimal("0")
@@ -150,23 +151,15 @@ def test_get_kpi_summary_no_data(analytics_repo, mock_session):
 
 
 def test_get_kpi_summary_with_data(analytics_repo, mock_session):
-    # Calls: daily row, basket, prev month, prev year, sparkline
-    daily_row = (1000, 25000, 300000, 42, 15, 3, 420, 5000)
-    basket_row = (Decimal("595.24"),)
-    prev_month_row = (20000,)
-    prev_year_row = (250000,)
+    # Single CTE row: daily(0-7) + avg_basket(8) + prev_mtd(9) + prev_ytd(10)
+    cte_row = (1000, 25000, 300000, 42, 15, 3, 420, 5000, Decimal("595.24"), 20000, 250000)
     sparkline_rows = [
         (date(2025, 6, 9), 800),
         (date(2025, 6, 10), 900),
         (date(2025, 6, 11), 1000),
     ]
 
-    mock_session.execute.return_value.fetchone.side_effect = [
-        daily_row,
-        basket_row,
-        prev_month_row,
-        prev_year_row,
-    ]
+    mock_session.execute.return_value.fetchone.return_value = cte_row
     mock_session.execute.return_value.fetchall.return_value = sparkline_rows
 
     result = analytics_repo.get_kpi_summary(date(2025, 6, 15))

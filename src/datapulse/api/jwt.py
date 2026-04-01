@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 # Module-level JWKS cache
 _jwks_cache: dict[str, Any] = {}
 _jwks_cache_time: float = 0.0
-_JWKS_CACHE_TTL: int = 300  # 5 minutes
+_JWKS_CACHE_TTL: int = 3600  # 1 hour (keys rarely rotate; miss triggers forced refresh)
 
 
 def _fetch_jwks(settings: Settings) -> dict[str, Any]:
