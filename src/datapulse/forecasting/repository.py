@@ -35,9 +35,7 @@ class ForecastingRepository:
     # Feature store reads
     # ------------------------------------------------------------------
 
-    def get_daily_revenue_series(
-        self, lookback_days: int = 730
-    ) -> list[tuple[date, float]]:
+    def get_daily_revenue_series(self, lookback_days: int = 730) -> list[tuple[date, float]]:
         """Daily net revenue from feat_revenue_daily_rolling, ordered by date."""
         stmt = text("""
             SELECT full_date, daily_net_amount
@@ -61,9 +59,7 @@ class ForecastingRepository:
         rows = self._session.execute(stmt).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
-    def get_product_monthly_series(
-        self, product_key: int
-    ) -> list[tuple[str, float]]:
+    def get_product_monthly_series(self, product_key: int) -> list[tuple[str, float]]:
         """Monthly net revenue for a specific product."""
         stmt = text("""
             SELECT
@@ -94,23 +90,32 @@ class ForecastingRepository:
         limit: int = 50,
     ) -> list[CustomerSegment]:
         """Read customer segments from the feature store."""
-        where = "1=1"
         params: dict = {"limit": limit}
-        if segment:
-            where = "rfm_segment = :segment"
-            params["segment"] = segment
 
-        stmt = text(f"""
-            SELECT
-                customer_key, customer_id, customer_name,
-                rfm_segment, r_score, f_score, m_score,
-                days_since_last, frequency, monetary,
-                avg_basket_size, return_rate
-            FROM public_marts.feat_customer_segments
-            WHERE {where}
-            ORDER BY monetary DESC
-            LIMIT :limit
-        """)
+        if segment:
+            params["segment"] = segment
+            stmt = text("""
+                SELECT
+                    customer_key, customer_id, customer_name,
+                    rfm_segment, r_score, f_score, m_score,
+                    days_since_last, frequency, monetary,
+                    avg_basket_size, return_rate
+                FROM public_marts.feat_customer_segments
+                WHERE rfm_segment = :segment
+                ORDER BY monetary DESC
+                LIMIT :limit
+            """)
+        else:
+            stmt = text("""
+                SELECT
+                    customer_key, customer_id, customer_name,
+                    rfm_segment, r_score, f_score, m_score,
+                    days_since_last, frequency, monetary,
+                    avg_basket_size, return_rate
+                FROM public_marts.feat_customer_segments
+                ORDER BY monetary DESC
+                LIMIT :limit
+            """)
         rows = self._session.execute(stmt, params).fetchall()
         return [
             CustomerSegment(
@@ -141,38 +146,19 @@ class ForecastingRepository:
     ) -> int:
         """Bulk upsert forecast points into forecast_results table.
 
+        Uses batch INSERT for performance. tenant_id is derived from
+        the session variable (SET LOCAL app.tenant_id) set by the executor.
         Returns the number of rows written.
         """
         if not results:
             return 0
 
-        rows_written = 0
+        # Collect all rows into a flat list for batch insert
+        rows: list[dict] = []
         for result in results:
+            accuracy = result.accuracy_metrics
             for point in result.points:
-                stmt = text("""
-                    INSERT INTO public.forecast_results (
-                        entity_type, entity_key, granularity, method,
-                        forecast_date, point_forecast, lower_bound, upper_bound,
-                        mape, mae, rmse, run_at
-                    ) VALUES (
-                        :entity_type, :entity_key, :granularity, :method,
-                        :forecast_date, :point_forecast, :lower_bound, :upper_bound,
-                        :mape, :mae, :rmse, :run_at
-                    )
-                    ON CONFLICT (tenant_id, entity_type, entity_key, granularity, forecast_date)
-                    DO UPDATE SET
-                        method = EXCLUDED.method,
-                        point_forecast = EXCLUDED.point_forecast,
-                        lower_bound = EXCLUDED.lower_bound,
-                        upper_bound = EXCLUDED.upper_bound,
-                        mape = EXCLUDED.mape,
-                        mae = EXCLUDED.mae,
-                        rmse = EXCLUDED.rmse,
-                        run_at = EXCLUDED.run_at
-                """)
-                accuracy = result.accuracy_metrics
-                self._session.execute(
-                    stmt,
+                rows.append(
                     {
                         "entity_type": result.entity_type,
                         "entity_key": result.entity_key,
@@ -186,13 +172,41 @@ class ForecastingRepository:
                         "mae": float(accuracy.mae) if accuracy else None,
                         "rmse": float(accuracy.rmse) if accuracy else None,
                         "run_at": run_at,
-                    },
+                    }
                 )
-                rows_written += 1
+
+        if not rows:
+            return 0
+
+        stmt = text("""
+            INSERT INTO public.forecast_results (
+                tenant_id, entity_type, entity_key, granularity, method,
+                forecast_date, point_forecast, lower_bound, upper_bound,
+                mape, mae, rmse, run_at
+            ) VALUES (
+                NULLIF(current_setting('app.tenant_id', true), '')::INT,
+                :entity_type, :entity_key, :granularity, :method,
+                :forecast_date, :point_forecast, :lower_bound, :upper_bound,
+                :mape, :mae, :rmse, :run_at
+            )
+            ON CONFLICT (tenant_id, entity_type, entity_key, granularity, forecast_date)
+            DO UPDATE SET
+                method = EXCLUDED.method,
+                point_forecast = EXCLUDED.point_forecast,
+                lower_bound = EXCLUDED.lower_bound,
+                upper_bound = EXCLUDED.upper_bound,
+                mape = EXCLUDED.mape,
+                mae = EXCLUDED.mae,
+                rmse = EXCLUDED.rmse,
+                run_at = EXCLUDED.run_at
+        """)
+
+        for row in rows:
+            self._session.execute(stmt, row)
 
         self._session.flush()
-        log.info("forecasts_saved", rows=rows_written)
-        return rows_written
+        log.info("forecasts_saved", rows=len(rows))
+        return len(rows)
 
     # ------------------------------------------------------------------
     # Forecast result reads

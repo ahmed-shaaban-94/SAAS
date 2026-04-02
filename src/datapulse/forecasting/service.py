@@ -125,12 +125,18 @@ class ForecastingService:
             method_name = select_method(len(daily_values), 7)
 
             daily_points = _run_method(
-                method_name, daily_values, horizon=30, seasonal_periods=7,
-                start_date=start, monthly=False,
+                method_name,
+                daily_values,
+                horizon=30,
+                seasonal_periods=7,
+                start_date=start,
+                monthly=False,
             )
             daily_accuracy = backtest(
-                daily_values, horizon=min(30, len(daily_values) // 4),
-                seasonal_periods=7, method=method_name,
+                daily_values,
+                horizon=min(30, len(daily_values) // 4),
+                seasonal_periods=7,
+                method=method_name,
             )
             daily_result = ForecastResult(
                 entity_type="revenue",
@@ -166,12 +172,19 @@ class ForecastingService:
 
             method_name = select_method(len(monthly_values), 12)
             monthly_points = _run_method(
-                method_name, monthly_values, horizon=3, seasonal_periods=12,
-                start_date=start, monthly=True,
+                method_name,
+                monthly_values,
+                horizon=3,
+                seasonal_periods=12,
+                start_date=start,
+                monthly=True,
             )
             monthly_accuracy = backtest(
-                monthly_values, horizon=min(3, len(monthly_values) // 4),
-                seasonal_periods=12, method=method_name, monthly=True,
+                monthly_values,
+                horizon=min(3, len(monthly_values) // 4),
+                seasonal_periods=12,
+                method=method_name,
+                monthly=True,
             )
             monthly_result = ForecastResult(
                 entity_type="revenue",
@@ -206,12 +219,19 @@ class ForecastingService:
 
             method_name = select_method(len(product_values), 12)
             product_points = _run_method(
-                method_name, product_values, horizon=3, seasonal_periods=12,
-                start_date=start, monthly=True,
+                method_name,
+                product_values,
+                horizon=3,
+                seasonal_periods=12,
+                start_date=start,
+                monthly=True,
             )
             product_accuracy = backtest(
-                product_values, horizon=min(3, len(product_values) // 4),
-                seasonal_periods=12, method=method_name, monthly=True,
+                product_values,
+                horizon=min(3, len(product_values) // 4),
+                seasonal_periods=12,
+                method=method_name,
+                monthly=True,
             )
             product_result = ForecastResult(
                 entity_type="product",
@@ -248,17 +268,29 @@ def _run_method(
     start_date: date,
     monthly: bool,
 ) -> list:
-    """Dispatch to the correct forecasting function."""
+    """Dispatch to the correct forecasting function.
+
+    sma_forecast does not accept seasonal_periods, so we must route explicitly.
+    """
     if method_name == "holt_winters":
         return holt_winters_forecast(
-            series, horizon, seasonal_periods,
-            start_date=start_date, monthly=monthly,
+            series,
+            horizon,
+            seasonal_periods,
+            start_date=start_date,
+            monthly=monthly,
         )
     if method_name == "seasonal_naive":
         return seasonal_naive_forecast(
-            series, horizon, seasonal_periods,
-            start_date=start_date, monthly=monthly,
+            series,
+            horizon,
+            seasonal_periods,
+            start_date=start_date,
+            monthly=monthly,
         )
     return sma_forecast(
-        series, horizon, start_date=start_date, monthly=monthly,
+        series,
+        horizon,
+        start_date=start_date,
+        monthly=monthly,
     )

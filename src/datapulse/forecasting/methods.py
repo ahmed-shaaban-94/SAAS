@@ -7,6 +7,7 @@ ForecastPoint with point estimates and confidence intervals.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -46,9 +47,7 @@ def holt_winters_forecast(
     Falls back to SMA if statsmodels fitting fails (e.g., convergence error).
     """
     if len(series) < 2 * seasonal_periods:
-        return sma_forecast(
-            series, horizon, start_date=start_date, monthly=monthly
-        )
+        return sma_forecast(series, horizon, start_date=start_date, monthly=monthly)
 
     try:
         arr = np.array(series, dtype=np.float64)
@@ -72,9 +71,7 @@ def holt_winters_forecast(
 
     except Exception:
         log.warning("holt_winters_fallback_to_sma", reason="fit_failed")
-        return sma_forecast(
-            series, horizon, start_date=start_date, monthly=monthly
-        )
+        return sma_forecast(series, horizon, start_date=start_date, monthly=monthly)
 
     points: list[ForecastPoint] = []
     for i in range(horizon):
@@ -138,9 +135,7 @@ def seasonal_naive_forecast(
     The simplest seasonal baseline: next Monday = last Monday, next January = last January.
     """
     if len(series) < seasonal_periods:
-        return sma_forecast(
-            series, horizon, start_date=start_date, monthly=monthly
-        )
+        return sma_forecast(series, horizon, start_date=start_date, monthly=monthly)
 
     last_cycle = series[-seasonal_periods:]
     # Compute cycle-level standard deviation for confidence bounds
@@ -150,8 +145,7 @@ def seasonal_naive_forecast(
         std_val = (sum(d**2 for d in diffs) / len(diffs)) ** 0.5
     else:
         std_val = (
-            sum((x - sum(last_cycle) / len(last_cycle)) ** 2 for x in last_cycle)
-            / len(last_cycle)
+            sum((x - sum(last_cycle) / len(last_cycle)) ** 2 for x in last_cycle) / len(last_cycle)
         ) ** 0.5
 
     z = 1.2816
@@ -251,7 +245,7 @@ def _make_period(start_date: date | None, offset: int, *, monthly: bool) -> str:
     return str(start_date + timedelta(days=offset))
 
 
-_METHOD_MAP = {
+METHOD_MAP: dict[str, Callable[..., list[ForecastPoint]]] = {
     "holt_winters": holt_winters_forecast,
     "seasonal_naive": seasonal_naive_forecast,
     "sma": sma_forecast,

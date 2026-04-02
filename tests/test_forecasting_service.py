@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import create_autospec
 
@@ -66,22 +66,17 @@ class TestGetProductForecast:
         )
         mock_forecast_repo.get_forecast.return_value = expected
         forecast_service.get_product_forecast(42)
-        mock_forecast_repo.get_forecast.assert_called_once_with(
-            "product", "monthly", entity_key=42
-        )
+        mock_forecast_repo.get_forecast.assert_called_once_with("product", "monthly", entity_key=42)
 
 
 class TestRunAllForecasts:
     def test_runs_daily_and_monthly(self, forecast_service, mock_forecast_repo):
         mock_forecast_repo.get_daily_revenue_series.return_value = [
-            (date(2026, 1, 1) + __import__("datetime").timedelta(days=i), 100.0 + i)
-            for i in range(100)
+            (date(2026, 1, 1) + timedelta(days=i), 100.0 + i) for i in range(100)
         ]
         mock_forecast_repo.get_monthly_revenue_series.return_value = [
             (f"2024-{m:02d}", 10000.0 + m * 100) for m in range(1, 13)
-        ] + [
-            (f"2025-{m:02d}", 11000.0 + m * 100) for m in range(1, 13)
-        ]
+        ] + [(f"2025-{m:02d}", 11000.0 + m * 100) for m in range(1, 13)]
         mock_forecast_repo.get_top_products_by_revenue.return_value = []
         mock_forecast_repo.save_forecasts.return_value = 33
 
