@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Printer, TrendingUp, Trophy, PieChart, Zap } from "lucide-react";
+import { Printer, TrendingUp, Trophy, PieChart, Zap, Target, Calendar } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -12,6 +12,10 @@ import { CustomerTypeChart } from "@/components/dashboard/customer-type-chart";
 import { TopMoversCard } from "@/components/dashboard/top-movers-card";
 import { LastUpdated } from "@/components/dashboard/last-updated";
 import { FilterBar } from "@/components/filters/filter-bar";
+import { CalendarHeatmap } from "@/components/dashboard/calendar-heatmap";
+import { TargetProgress } from "@/components/dashboard/target-progress";
+import { ForecastCard } from "@/components/dashboard/forecast-card";
+import { EgyptMap } from "@/components/dashboard/egypt-map";
 
 function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
   return (
@@ -84,6 +88,26 @@ export default function DashboardPage() {
           <SectionHeader icon={Zap} title="Top Movers" />
           <div className="mt-4">
             <TopMoversCard />
+          </div>
+        </div>
+
+        {/* Strategic Insights Section */}
+        <div className="mt-10">
+          <SectionHeader icon={Target} title="Goals & Forecast" />
+          <div className="mt-4 grid gap-6 lg:grid-cols-2">
+            <TargetProgress />
+            <ForecastCard />
+          </div>
+        </div>
+
+        {/* Geographic & Temporal Section */}
+        <div className="mt-10">
+          <SectionHeader icon={Calendar} title="Revenue Patterns" />
+          <div className="mt-4 grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <CalendarHeatmap />
+            </div>
+            <EgyptMap />
           </div>
         </div>
       </div>

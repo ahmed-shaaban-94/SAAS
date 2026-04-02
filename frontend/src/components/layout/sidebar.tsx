@@ -6,11 +6,13 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   Activity,
+  Bell,
   Compass,
   FileBarChart,
   LayoutDashboard,
   Menu,
   Package,
+  Target,
   Terminal,
   Users,
   UserCog,
@@ -29,10 +31,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 interface SidebarProps {
   anomalyCount?: number;
+  alertCount?: number;
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
+  Target,
   Compass,
   Terminal,
   Package,
@@ -42,6 +46,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   RotateCcw,
   FileBarChart,
   GitBranch,
+  Bell,
   Sparkles,
 };
 
@@ -91,17 +96,20 @@ function NavLinks({
   pathname,
   onNavigate,
   anomalyCount = 0,
+  alertCount = 0,
 }: {
   pathname: string;
   onNavigate?: () => void;
   anomalyCount?: number;
+  alertCount?: number;
 }) {
   return (
     <>
       {NAV_ITEMS.map((item) => {
         const Icon = iconMap[item.icon];
         const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-        const showBadge = item.label === "Insights" && anomalyCount > 0;
+        const showInsightsBadge = item.label === "Insights" && anomalyCount > 0;
+        const showAlertsBadge = item.label === "Alerts" && alertCount > 0;
         return (
           <Link
             key={item.href}
@@ -116,9 +124,14 @@ function NavLinks({
           >
             {Icon && <Icon className="h-5 w-5" />}
             <span>{item.label}</span>
-            {showBadge && (
+            {showInsightsBadge && (
               <span className="ml-auto rounded-full bg-chart-amber px-1.5 py-0.5 text-xs font-bold text-black">
                 {anomalyCount}
+              </span>
+            )}
+            {showAlertsBadge && (
+              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                {alertCount}
               </span>
             )}
           </Link>
@@ -128,7 +141,7 @@ function NavLinks({
   );
 }
 
-export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
+export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -186,7 +199,7 @@ export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
 
             {/* Navigation */}
             <nav className="flex-1 space-y-1 px-3 py-4">
-              <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} anomalyCount={anomalyCount} />
+              <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} anomalyCount={anomalyCount} alertCount={alertCount} />
             </nav>
 
             {/* Footer */}
@@ -210,7 +223,7 @@ export function Sidebar({ anomalyCount = 0 }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
-          <NavLinks pathname={pathname} anomalyCount={anomalyCount} />
+          <NavLinks pathname={pathname} anomalyCount={anomalyCount} alertCount={alertCount} />
         </nav>
 
         {/* Footer */}

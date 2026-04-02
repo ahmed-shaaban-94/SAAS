@@ -7,6 +7,8 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { FilterBar } from "@/components/filters/filter-bar";
 import { ProductOverview } from "@/components/products/product-overview";
 import { ProductHierarchyView } from "@/components/products/product-hierarchy";
+import { ParetoChart } from "@/components/products/pareto-chart";
+import { ABCSummary } from "@/components/products/abc-summary";
 import { cn } from "@/lib/utils";
 import { BarChart3, FolderTree } from "lucide-react";
 
@@ -46,6 +48,25 @@ export default function ProductsPage() {
       </div>
       <FilterBar />
       {view === "ranking" ? <ProductOverview /> : <ProductHierarchyView />}
+
+      {/* ABC / Pareto Section */}
+      <div className="mt-10">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/10">
+            <BarChart3 className="h-3.5 w-3.5 text-accent" />
+          </div>
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-text-secondary">
+            ABC / Pareto Analysis
+          </h2>
+          <div className="flex-1 section-divider" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ParetoChart />
+          </div>
+          <ABCSummary />
+        </div>
+      </div>
     </PageTransition>
   );
 }

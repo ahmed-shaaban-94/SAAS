@@ -331,3 +331,132 @@ export interface ExploreResult {
   sql: string;
   truncated: boolean;
 }
+
+// --- Phase 5: CEO Review — Advanced Analytics ---
+
+export interface ABCItem {
+  rank: number;
+  key: number;
+  name: string;
+  value: number;
+  cumulative_pct: number;
+  abc_class: "A" | "B" | "C";
+}
+
+export interface ABCAnalysis {
+  items: ABCItem[];
+  total: number;
+  class_a_count: number;
+  class_b_count: number;
+  class_c_count: number;
+  class_a_pct: number;
+  class_b_pct: number;
+  class_c_pct: number;
+}
+
+export interface HeatmapCell {
+  date: string;
+  value: number;
+}
+
+export interface HeatmapData {
+  cells: HeatmapCell[];
+  min_value: number;
+  max_value: number;
+}
+
+export interface ReturnsTrendPoint {
+  period: string;
+  return_count: number;
+  return_amount: number;
+  return_rate: number;
+}
+
+export interface ReturnsTrend {
+  points: ReturnsTrendPoint[];
+  total_returns: number;
+  total_return_amount: number;
+  avg_return_rate: number;
+}
+
+export interface SegmentSummary {
+  segment: string;
+  count: number;
+  total_revenue: number;
+  avg_monetary: number;
+  avg_frequency: number;
+  pct_of_customers: number;
+}
+
+export interface CustomerSegment {
+  customer_key: number;
+  customer_id: string;
+  customer_name: string;
+  rfm_segment: string;
+  r_score: number;
+  f_score: number;
+  m_score: number;
+  days_since_last: number;
+  frequency: number;
+  monetary: number;
+  avg_basket_size: number;
+  return_rate: number;
+}
+
+export interface ForecastPoint {
+  period: string;
+  value: number;
+  lower_bound: number;
+  upper_bound: number;
+}
+
+export interface ForecastResult {
+  entity_type: string;
+  entity_key: number | null;
+  method: string;
+  horizon: number;
+  granularity: string;
+  points: ForecastPoint[];
+  accuracy_metrics: {
+    mape: number;
+    mae: number;
+    rmse: number;
+    coverage: number;
+  } | null;
+}
+
+export interface ForecastSummary {
+  last_run_at: string | null;
+  next_30d_revenue: number;
+  next_3m_revenue: number;
+  revenue_trend: string;
+  mape: number | null;
+  top_growing_products: { product_key: number; drug_name: string; forecast_change_pct: number }[];
+  top_declining_products: { product_key: number; drug_name: string; forecast_change_pct: number }[];
+}
+
+export interface TargetVsActual {
+  period: string;
+  target_value: number;
+  actual_value: number;
+  variance: number;
+  achievement_pct: number;
+}
+
+export interface TargetSummary {
+  monthly_targets: TargetVsActual[];
+  ytd_target: number;
+  ytd_actual: number;
+  ytd_achievement_pct: number;
+}
+
+export interface AlertLogItem {
+  id: number;
+  alert_config_id: number | null;
+  alert_name: string;
+  fired_at: string;
+  metric_value: number | null;
+  threshold_value: number | null;
+  message: string | null;
+  acknowledged: boolean;
+}

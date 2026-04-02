@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from datapulse.ai_light.service import AILightService
+from datapulse.analytics.advanced_repository import AdvancedRepository
 from datapulse.analytics.breakdown_repository import BreakdownRepository
 from datapulse.analytics.comparison_repository import ComparisonRepository
 from datapulse.analytics.detail_repository import DetailRepository
@@ -84,7 +85,10 @@ def get_analytics_service(
     breakdown_repo = BreakdownRepository(session)
     comparison_repo = ComparisonRepository(session)
     hierarchy_repo = HierarchyRepository(session)
-    return AnalyticsService(repo, detail_repo, breakdown_repo, comparison_repo, hierarchy_repo)
+    advanced_repo = AdvancedRepository(session)
+    return AnalyticsService(
+        repo, detail_repo, breakdown_repo, comparison_repo, hierarchy_repo, advanced_repo
+    )
 
 
 def get_pipeline_service(

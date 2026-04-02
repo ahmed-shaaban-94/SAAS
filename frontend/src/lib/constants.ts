@@ -10,6 +10,7 @@ export const API_BASE_URL =
 
 export const NAV_ITEMS = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
+  { label: "Goals", href: "/goals", icon: "Target" },
   { label: "Explore", href: "/explore", icon: "Compass" },
   { label: "SQL Lab", href: "/sql-lab", icon: "Terminal" },
   { label: "Products", href: "/products", icon: "Package" },
@@ -19,5 +20,6 @@ export const NAV_ITEMS = [
   { label: "Returns", href: "/returns", icon: "RotateCcw" },
   { label: "Reports", href: "/reports", icon: "FileBarChart" },
   { label: "Pipeline", href: "/pipeline", icon: "GitBranch" },
+  { label: "Alerts", href: "/alerts", icon: "Bell" },
   { label: "Insights", href: "/insights", icon: "Sparkles" },
 ] as const;

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from pydantic import BaseModel, Field
 
 from datapulse.analytics.models import (
+    ABCAnalysis,
     AnalyticsFilter,
     BillingBreakdown,
     CustomerAnalytics,
@@ -22,11 +23,14 @@ from datapulse.analytics.models import (
     DataDateRange,
     DateRange,
     FilterOptions,
+    HeatmapData,
     KPISummary,
     ProductHierarchy,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
+    ReturnsTrend,
+    SegmentSummary,
     SiteDetail,
     StaffPerformance,
     TopMovers,
@@ -384,3 +388,60 @@ def get_staff_detail(
     if result is None:
         raise HTTPException(status_code=404, detail="Staff member not found")
     return result
+
+
+# ------------------------------------------------------------------
+# Phase 5: CEO Review — Advanced Analytics
+# ------------------------------------------------------------------
+
+
+@router.get("/abc-analysis", response_model=ABCAnalysis)
+@limiter.limit("60/minute")
+def get_abc_analysis(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+    entity: Annotated[str, Query(pattern="^(product|customer)$")] = "product",
+) -> ABCAnalysis:
+    """ABC/Pareto analysis for products or customers."""
+    _set_cache(response, 120)
+    return service.get_abc_analysis(entity, _to_filter(params))
+
+
+@router.get("/heatmap", response_model=HeatmapData)
+@limiter.limit("60/minute")
+def get_heatmap(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    year: Annotated[int, Query(ge=2020, le=2030)] = 2025,
+) -> HeatmapData:
+    """Calendar heatmap — daily revenue for a year."""
+    _set_cache(response, 300)
+    return service.get_heatmap(year)
+
+
+@router.get("/returns/trend", response_model=ReturnsTrend)
+@limiter.limit("60/minute")
+def get_returns_trend(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+) -> ReturnsTrend:
+    """Monthly returns trend."""
+    _set_cache(response, 120)
+    return service.get_returns_trend(_to_filter(params))
+
+
+@router.get("/segments/summary", response_model=list[SegmentSummary])
+@limiter.limit("60/minute")
+def get_segment_summary(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> list[SegmentSummary]:
+    """Customer RFM segment summary."""
+    _set_cache(response, 120)
+    return service.get_segment_summary()

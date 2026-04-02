@@ -338,3 +338,90 @@ class ProductHierarchy(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     categories: list[CategoryGroup]
+
+
+# ------------------------------------------------------------------
+# Phase 5: CEO Review — Advanced Analytics
+# ------------------------------------------------------------------
+
+
+class ABCItem(BaseModel):
+    """Product classified by ABC analysis (revenue contribution)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    rank: int
+    key: int
+    name: str
+    value: JsonDecimal
+    cumulative_pct: JsonDecimal
+    abc_class: str  # "A", "B", "C"
+
+
+class ABCAnalysis(BaseModel):
+    """ABC/Pareto analysis result."""
+
+    model_config = ConfigDict(frozen=True)
+
+    items: list[ABCItem]
+    total: JsonDecimal
+    class_a_count: int
+    class_b_count: int
+    class_c_count: int
+    class_a_pct: JsonDecimal
+    class_b_pct: JsonDecimal
+    class_c_pct: JsonDecimal
+
+
+class HeatmapCell(BaseModel):
+    """Single cell in a calendar heatmap."""
+
+    model_config = ConfigDict(frozen=True)
+
+    date: str  # "2026-01-15"
+    value: JsonDecimal
+
+
+class HeatmapData(BaseModel):
+    """Calendar heatmap data for revenue visualization."""
+
+    model_config = ConfigDict(frozen=True)
+
+    cells: list[HeatmapCell]
+    min_value: JsonDecimal
+    max_value: JsonDecimal
+
+
+class ReturnsTrendPoint(BaseModel):
+    """Returns trend data point."""
+
+    model_config = ConfigDict(frozen=True)
+
+    period: str
+    return_count: int
+    return_amount: JsonDecimal
+    return_rate: JsonDecimal
+
+
+class ReturnsTrend(BaseModel):
+    """Returns trend over time."""
+
+    model_config = ConfigDict(frozen=True)
+
+    points: list[ReturnsTrendPoint]
+    total_returns: int
+    total_return_amount: JsonDecimal
+    avg_return_rate: JsonDecimal
+
+
+class SegmentSummary(BaseModel):
+    """Summary of customer segments for the dashboard."""
+
+    model_config = ConfigDict(frozen=True)
+
+    segment: str
+    count: int
+    total_revenue: JsonDecimal
+    avg_monetary: JsonDecimal
+    avg_frequency: JsonDecimal
+    pct_of_customers: JsonDecimal

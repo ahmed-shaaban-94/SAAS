@@ -7,11 +7,13 @@ import json
 from datetime import date, timedelta
 from typing import Any
 
+from datapulse.analytics.advanced_repository import AdvancedRepository
 from datapulse.analytics.breakdown_repository import BreakdownRepository
 from datapulse.analytics.comparison_repository import ComparisonRepository
 from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.models import (
+    ABCAnalysis,
     AnalyticsFilter,
     BillingBreakdown,
     CustomerAnalytics,
@@ -20,11 +22,14 @@ from datapulse.analytics.models import (
     DataDateRange,
     DateRange,
     FilterOptions,
+    HeatmapData,
     KPISummary,
     ProductHierarchy,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
+    ReturnsTrend,
+    SegmentSummary,
     SiteDetail,
     StaffPerformance,
     TopMovers,
@@ -60,12 +65,14 @@ class AnalyticsService:
         breakdown_repo: BreakdownRepository | None = None,
         comparison_repo: ComparisonRepository | None = None,
         hierarchy_repo: HierarchyRepository | None = None,
+        advanced_repo: AdvancedRepository | None = None,
     ) -> None:
         self._repo = repo
         self._detail_repo = detail_repo
         self._breakdown_repo = breakdown_repo
         self._comparison_repo = comparison_repo
         self._hierarchy_repo = hierarchy_repo
+        self._advanced_repo = advanced_repo
 
     def get_date_range(self) -> DataDateRange:
         """Return the min/max dates of available data."""
@@ -334,3 +341,39 @@ class AnalyticsService:
         f = self._default_filter(filters)
         log.info("product_hierarchy", filters=f.model_dump())
         return self._hierarchy_repo.get_product_hierarchy(f)
+
+    # ------------------------------------------------------------------
+    # Phase 5: CEO Review — Advanced Analytics
+    # ------------------------------------------------------------------
+
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    def get_abc_analysis(
+        self, entity: str = "product", filters: AnalyticsFilter | None = None
+    ) -> ABCAnalysis:
+        """ABC/Pareto analysis for products or customers (cached 120s)."""
+        if self._advanced_repo is None:
+            raise RuntimeError("AdvancedRepository not configured")
+        f = self._default_filter(filters)
+        return self._advanced_repo.get_abc_analysis(f, entity)
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_heatmap(self, year: int) -> HeatmapData:
+        """Calendar heatmap — daily revenue for a year (cached 300s)."""
+        if self._advanced_repo is None:
+            raise RuntimeError("AdvancedRepository not configured")
+        return self._advanced_repo.get_heatmap_data(year)
+
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    def get_returns_trend(self, filters: AnalyticsFilter | None = None) -> ReturnsTrend:
+        """Monthly returns trend (cached 120s)."""
+        if self._advanced_repo is None:
+            raise RuntimeError("AdvancedRepository not configured")
+        f = self._default_filter(filters)
+        return self._advanced_repo.get_returns_trend(f)
+
+    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    def get_segment_summary(self) -> list[SegmentSummary]:
+        """Customer RFM segment summary (cached 120s)."""
+        if self._advanced_repo is None:
+            raise RuntimeError("AdvancedRepository not configured")
+        return self._advanced_repo.get_segment_summary()

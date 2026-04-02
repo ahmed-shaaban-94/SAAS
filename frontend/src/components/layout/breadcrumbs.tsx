@@ -13,6 +13,8 @@ const pathLabels: Record<string, string> = {
   returns: "Returns",
   pipeline: "Pipeline",
   insights: "Insights",
+  goals: "Goals",
+  alerts: "Alerts",
 };
 
 interface Crumb {
