@@ -8,6 +8,8 @@ export interface FilterParams {
   staff_key?: number;
   limit?: number;
   entity_type?: string; // "product" | "customer" | "staff" — used by /top-movers
+  // Index signature for extra API params (year, granularity, entity, etc.)
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface FilterOption {
