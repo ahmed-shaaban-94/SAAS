@@ -14,6 +14,7 @@ from uuid import UUID
 
 from datapulse.bronze import loader as bronze_loader
 from datapulse.config import Settings
+from datapulse.core.db import get_session_factory
 from datapulse.logging import get_logger
 from datapulse.pipeline.models import ExecutionResult
 
@@ -160,3 +161,54 @@ class PipelineExecutor:
                 error=_sanitize_error(str(exc)),
                 duration_seconds=elapsed,
             )
+
+    def run_forecasting(
+        self,
+        run_id: UUID,
+        tenant_id: str = "1",
+    ) -> ExecutionResult:
+        """Run the forecasting stage after gold layer completes.
+
+        Executes in-process (like bronze), not as a subprocess.
+        Creates its own DB session with tenant isolation.
+        """
+        from sqlalchemy import text as sa_text
+
+        from datapulse.forecasting.repository import ForecastingRepository
+        from datapulse.forecasting.service import ForecastingService
+
+        log.info("executor_forecasting_start", run_id=str(run_id))
+        t0 = time.perf_counter()
+
+        session = get_session_factory()()
+        try:
+            session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
+            repo = ForecastingRepository(session)
+            service = ForecastingService(repo)
+            stats = service.run_all_forecasts()
+            session.commit()
+
+            elapsed = round(time.perf_counter() - t0, 2)
+            rows = stats.get("rows_written", 0)
+            log.info(
+                "executor_forecasting_done",
+                run_id=str(run_id),
+                rows=rows,
+                seconds=elapsed,
+            )
+            return ExecutionResult(
+                success=True,
+                rows_loaded=rows,
+                duration_seconds=elapsed,
+            )
+        except Exception as exc:
+            session.rollback()
+            elapsed = round(time.perf_counter() - t0, 2)
+            log.error("executor_forecasting_failed", run_id=str(run_id), error=str(exc))
+            return ExecutionResult(
+                success=False,
+                error=_sanitize_error(str(exc)),
+                duration_seconds=elapsed,
+            )
+        finally:
+            session.close()

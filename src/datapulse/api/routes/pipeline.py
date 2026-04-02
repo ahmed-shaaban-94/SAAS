@@ -333,6 +333,19 @@ def execute_dbt_marts(
     return executor.run_dbt(run_id=body.run_id, selector="marts")
 
 
+@router.post(
+    "/execute/forecasting",
+    response_model=ExecutionResult,
+    dependencies=[Depends(require_pipeline_token)],
+)
+def execute_forecasting(
+    executor: ExecutorDep,
+    body: ExecuteRequest,
+) -> ExecutionResult:
+    """Run the forecasting stage (after gold layer completes)."""
+    return executor.run_forecasting(run_id=body.run_id)
+
+
 @router.get("/runs/{run_id}/quality", response_model=QualityCheckList)
 def get_quality_checks(
     service: ServiceDep,

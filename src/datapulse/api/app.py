@@ -19,6 +19,7 @@ from datapulse.api.routes import (
     analytics,
     embed,
     explore,
+    forecasting,
     health,
     pipeline,
     queries,
@@ -126,6 +127,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(analytics.router, prefix="/api/v1")
     app.include_router(pipeline.router, prefix="/api/v1")
+    app.include_router(forecasting.router, prefix="/api/v1")
     app.include_router(ai_light.router, prefix="/api/v1")
     app.include_router(queries.router, prefix="/api/v1")
     app.include_router(explore.router, prefix="/api/v1")

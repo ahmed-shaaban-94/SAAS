@@ -23,6 +23,8 @@ from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health
     get_engine,
     get_session_factory,
 )
+from datapulse.forecasting.repository import ForecastingRepository
+from datapulse.forecasting.service import ForecastingService
 from datapulse.pipeline.executor import PipelineExecutor
 from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
@@ -103,6 +105,14 @@ def get_quality_service(
     repo = QualityRepository(session)
     settings = get_settings()
     return QualityService(repo, session, settings)
+
+
+def get_forecasting_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> ForecastingService:
+    """Factory for forecasting service with feature store + forecast repository."""
+    repo = ForecastingRepository(session)
+    return ForecastingService(repo)
 
 
 def get_ai_light_service(

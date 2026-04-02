@@ -29,3 +29,5 @@ models:
         +materialized: table
       aggs:
         +materialized: table
+      features:
+        +materialized: table
