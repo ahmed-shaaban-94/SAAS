@@ -83,7 +83,7 @@
 body {
   background-color: var(--bg-page);
   color: var(--text-primary);
-  font-family: var(--font-inter), "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: "Inter Variable", "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
 /* Tabular numbers for consistent digit widths in KPIs, tables, and charts */
