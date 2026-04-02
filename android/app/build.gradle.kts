@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        load(keystorePropertiesFile.inputStream())
+    }
 }
 
 android {
@@ -16,18 +25,29 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "1.0.0-beta1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         manifestPlaceholders["appAuthRedirectScheme"] = "com.datapulse.android"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(keystoreProperties.getProperty("storeFile", "datapulse-release.jks"))
+            storePassword = keystoreProperties.getProperty("storePassword", "")
+            keyAlias = keystoreProperties.getProperty("keyAlias", "")
+            keyPassword = keystoreProperties.getProperty("keyPassword", "")
+        }
+    }
+
     buildTypes {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
-            buildConfigField("String", "AUTH0_DOMAIN", "\"your-tenant.us.auth0.com\"")
-            buildConfigField("String", "AUTH0_CLIENT_ID", "\"your-auth0-client-id\"")
+            buildConfigField("String", "AUTH0_DOMAIN", "\"datapulse.eu.auth0.com\"")
+            buildConfigField("String", "AUTH0_CLIENT_ID", "\"vlNwzP8QxD6bqdrAoEolkG0VnIZIQ6OT\"")
+            buildConfigField("String", "AUTH0_AUDIENCE", "\"https://api.datapulse.tech\"")
+            buildConfigField("String", "SENTRY_DSN", "\"https://32e9752c69b589b6deae7d23471a10b9@o4511146883416064.ingest.de.sentry.io/4511150691778640\"")
         }
         release {
             isMinifyEnabled = true
@@ -36,9 +56,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://api.datapulse.tech\"")
-            buildConfigField("String", "AUTH0_DOMAIN", "\"your-tenant.us.auth0.com\"")
-            buildConfigField("String", "AUTH0_CLIENT_ID", "\"your-auth0-client-id\"")
+            signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "API_BASE_URL", "\"https://smartdatapulse.tech\"")
+            buildConfigField("String", "AUTH0_DOMAIN", "\"datapulse.eu.auth0.com\"")
+            buildConfigField("String", "AUTH0_CLIENT_ID", "\"vlNwzP8QxD6bqdrAoEolkG0VnIZIQ6OT\"")
+            buildConfigField("String", "AUTH0_AUDIENCE", "\"https://api.datapulse.tech\"")
+            buildConfigField("String", "SENTRY_DSN", "\"https://32e9752c69b589b6deae7d23471a10b9@o4511146883416064.ingest.de.sentry.io/4511150691778640\"")
         }
     }
 
@@ -114,6 +137,10 @@ dependencies {
 
     // Coroutines
     implementation(libs.coroutines.android)
+
+    // Sentry
+    implementation(libs.sentry.android)
+    implementation(libs.sentry.compose)
 
     // Testing
     testImplementation(libs.junit5.api)

@@ -14,6 +14,13 @@
         android:theme="@style/Theme.DataPulse"
         android:networkSecurityConfig="@xml/network_security_config">
 
+        <!-- Disable Sentry auto-init; we init manually in DataPulseApp.onCreate() -->
+        <provider
+            android:name="io.sentry.android.core.SentryInitProvider"
+            android:authorities="${applicationId}.SentryInitProvider"
+            android:exported="false"
+            android:enabled="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

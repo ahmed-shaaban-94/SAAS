@@ -44,6 +44,15 @@
 | Sentry SDK integration (12 files) | DONE | 2026-04-01 |
 | Keycloak container removed | DONE | 2026-04-01 |
 | n8n Droplet identified for deletion | DONE | 2026-04-01 |
+| Android build.gradle.kts production config | DONE | 2026-04-02 |
+| Release keystore + signing config | DONE | 2026-04-02 |
+| Sentry Android SDK integration | DONE | 2026-04-02 |
+| Signed APK built (1.0.0-beta1, 7.5 MB) | DONE | 2026-04-02 |
+| Nginx DNS fix + API direct routing | DONE | 2026-04-02 |
+| Auth0 Native App (Android) configured | DONE | 2026-04-02 |
+| Firebase App Distribution | TODO | - |
+| APK tested on real device | TODO | - |
+| 30 testers invited | TODO | - |
 
 ---
 

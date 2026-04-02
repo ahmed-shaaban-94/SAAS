@@ -79,6 +79,7 @@ class AuthManager @Inject constructor(
             Uri.parse(REDIRECT_URI),
         )
             .setScope("openid email profile offline_access")
+            .setAdditionalParameters(mapOf("audience" to BuildConfig.AUTH0_AUDIENCE))
             .build()
 
         return authService.getAuthorizationRequestIntent(authRequest)
