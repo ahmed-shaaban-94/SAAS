@@ -114,7 +114,7 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           fingerprint: ${{ secrets.PROD_HOST_FINGERPRINT }}
-          source: "docker-compose.yml,docker-compose.prod.yml,traefik/"
+          source: "docker-compose.yml,docker-compose.prod.yml,traefik/,nginx/,migrations/"
           target: ${{ secrets.PROD_DEPLOY_PATH }}
 
       - name: Deploy via SSH

@@ -5,7 +5,7 @@ import { useFilters } from "@/contexts/filter-context";
 import type { ReturnsTrend } from "@/types/api";
 
 export function useReturnsTrend() {
-  const { filterParams } = useFilters();
+  const { filters: filterParams } = useFilters();
   const { data, error, isLoading } = useSWR<ReturnsTrend>(
     swrKey("/api/v1/analytics/returns/trend", filterParams),
     () => fetchAPI<ReturnsTrend>("/api/v1/analytics/returns/trend", filterParams),

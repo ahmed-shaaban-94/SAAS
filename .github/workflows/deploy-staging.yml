@@ -81,7 +81,7 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           fingerprint: ${{ secrets.STAGING_HOST_FINGERPRINT }}
-          source: "docker-compose.yml,docker-compose.prod.yml,traefik/"
+          source: "docker-compose.yml,docker-compose.prod.yml,traefik/,nginx/,migrations/"
           target: ${{ secrets.STAGING_DEPLOY_PATH }}
 
       - name: Deploy via SSH

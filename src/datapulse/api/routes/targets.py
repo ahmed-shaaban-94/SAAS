@@ -6,7 +6,6 @@ management, and alert log operations under ``/targets/`` and ``/alerts/``.
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response

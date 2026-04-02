@@ -5,7 +5,7 @@ import { useFilters } from "@/contexts/filter-context";
 import type { ABCAnalysis } from "@/types/api";
 
 export function useABCAnalysis(entity: "product" | "customer" = "product") {
-  const { filterParams } = useFilters();
+  const { filters: filterParams } = useFilters();
   const params = { ...filterParams, entity };
   const { data, error, isLoading } = useSWR<ABCAnalysis>(
     swrKey("/api/v1/analytics/abc-analysis", params),
