@@ -8,11 +8,9 @@ from typing import Any
 
 from datapulse.cache_decorator import cached
 from datapulse.forecasting.methods import (
+    METHOD_MAP,
     backtest,
-    holt_winters_forecast,
-    seasonal_naive_forecast,
     select_method,
-    sma_forecast,
 )
 from datapulse.forecasting.models import (
     CustomerSegment,
@@ -124,8 +122,7 @@ class ForecastingService:
             start = last_date + timedelta(days=1)
             method_name = select_method(len(daily_values), 7)
 
-            daily_points = _run_method(
-                method_name,
+            daily_points = METHOD_MAP[method_name](
                 daily_values,
                 horizon=30,
                 seasonal_periods=7,
@@ -171,8 +168,7 @@ class ForecastingService:
             start = date(next_year, next_month, 1)
 
             method_name = select_method(len(monthly_values), 12)
-            monthly_points = _run_method(
-                method_name,
+            monthly_points = METHOD_MAP[method_name](
                 monthly_values,
                 horizon=3,
                 seasonal_periods=12,
@@ -218,8 +214,7 @@ class ForecastingService:
             start = date(next_year, next_month, 1)
 
             method_name = select_method(len(product_values), 12)
-            product_points = _run_method(
-                method_name,
+            product_points = METHOD_MAP[method_name](
                 product_values,
                 horizon=3,
                 seasonal_periods=12,
@@ -255,39 +250,3 @@ class ForecastingService:
 
         log.info("forecast_run_complete", **stats)
         return stats
-
-
-# -- helpers ------------------------------------------------------------------
-
-
-def _run_method(
-    method_name: str,
-    series: list[float],
-    horizon: int,
-    seasonal_periods: int,
-    start_date: date,
-    monthly: bool,
-) -> list:
-    """Dispatch to the correct forecasting function."""
-    if method_name == "holt_winters":
-        return holt_winters_forecast(
-            series,
-            horizon,
-            seasonal_periods,
-            start_date=start_date,
-            monthly=monthly,
-        )
-    if method_name == "seasonal_naive":
-        return seasonal_naive_forecast(
-            series,
-            horizon,
-            seasonal_periods,
-            start_date=start_date,
-            monthly=monthly,
-        )
-    return sma_forecast(
-        series,
-        horizon,
-        start_date=start_date,
-        monthly=monthly,
-    )

@@ -7,6 +7,7 @@ ForecastPoint with point estimates and confidence intervals.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -244,7 +245,7 @@ def _make_period(start_date: date | None, offset: int, *, monthly: bool) -> str:
     return str(start_date + timedelta(days=offset))
 
 
-_METHOD_MAP = {
+METHOD_MAP: dict[str, Callable[..., list[ForecastPoint]]] = {
     "holt_winters": holt_winters_forecast,
     "seasonal_naive": seasonal_naive_forecast,
     "sma": sma_forecast,
