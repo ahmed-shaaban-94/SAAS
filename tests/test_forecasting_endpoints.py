@@ -11,11 +11,8 @@ from fastapi.testclient import TestClient
 
 from datapulse.forecasting.models import (
     CustomerSegment,
-    ForecastAccuracy,
     ForecastPoint,
     ForecastResult,
-    ForecastSummary,
-    ProductForecastSummary,
 )
 from datapulse.forecasting.repository import ForecastingRepository
 from datapulse.forecasting.service import ForecastingService

@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import create_autospec
 
 import pytest
 
 from datapulse.forecasting.models import (
-    ForecastAccuracy,
     ForecastPoint,
     ForecastResult,
     ForecastSummary,
@@ -66,7 +65,7 @@ class TestGetProductForecast:
             points=[],
         )
         mock_forecast_repo.get_forecast.return_value = expected
-        result = forecast_service.get_product_forecast(42)
+        forecast_service.get_product_forecast(42)
         mock_forecast_repo.get_forecast.assert_called_once_with(
             "product", "monthly", entity_key=42
         )
@@ -111,7 +110,7 @@ class TestRunAllForecasts:
         # Drug A has enough data, Drug B has too little
         mock_forecast_repo.get_product_monthly_series.side_effect = [
             [(f"2025-{m:02d}", 500.0 + m * 10) for m in range(1, 7)],  # 6 months
-            [(f"2025-01", 100.0)],  # only 1 month - skipped (< 3)
+            [("2025-01", 100.0)],  # only 1 month - skipped (< 3)
         ]
         mock_forecast_repo.save_forecasts.return_value = 3
 

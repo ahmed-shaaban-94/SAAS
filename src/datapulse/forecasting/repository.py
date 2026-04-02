@@ -17,8 +17,6 @@ from datapulse.forecasting.models import (
     ForecastAccuracy,
     ForecastPoint,
     ForecastResult,
-    ForecastSummary,
-    ProductForecastSummary,
 )
 from datapulse.logging import get_logger
 

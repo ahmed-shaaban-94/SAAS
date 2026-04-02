@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import math
 from datetime import date
-from decimal import Decimal
-
-import pytest
 
 from datapulse.forecasting.methods import (
     backtest,

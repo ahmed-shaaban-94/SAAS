@@ -16,7 +16,6 @@ from datapulse.forecasting.methods import (
 )
 from datapulse.forecasting.models import (
     CustomerSegment,
-    ForecastAccuracy,
     ForecastResult,
     ForecastSummary,
     ProductForecastSummary,
@@ -147,7 +146,11 @@ class ForecastingService:
                 "points": len(daily_points),
                 "mape": float(daily_accuracy.mape),
             }
-            log.info("forecast_daily_revenue_done", method=method_name, mape=float(daily_accuracy.mape))
+            log.info(
+                "forecast_daily_revenue_done",
+                method=method_name,
+                mape=float(daily_accuracy.mape),
+            )
 
         # --- 2. Monthly revenue ---
         monthly_series = self._repo.get_monthly_revenue_series()
@@ -189,7 +192,7 @@ class ForecastingService:
         # --- 3. Product demand (top 50) ---
         top_products = self._repo.get_top_products_by_revenue(limit=50)
         products_forecasted = 0
-        for product_key, drug_name in top_products:
+        for product_key, _drug_name in top_products:
             product_series = self._repo.get_product_monthly_series(product_key)
             if len(product_series) < 3:
                 continue

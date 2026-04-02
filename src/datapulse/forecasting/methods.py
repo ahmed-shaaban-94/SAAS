@@ -146,7 +146,7 @@ def seasonal_naive_forecast(
     # Compute cycle-level standard deviation for confidence bounds
     if len(series) >= 2 * seasonal_periods:
         prev_cycle = series[-2 * seasonal_periods : -seasonal_periods]
-        diffs = [abs(a - b) for a, b in zip(last_cycle, prev_cycle)]
+        diffs = [abs(a - b) for a, b in zip(last_cycle, prev_cycle, strict=True)]
         std_val = (sum(d**2 for d in diffs) / len(diffs)) ** 0.5
     else:
         std_val = (
@@ -191,13 +191,12 @@ def backtest(
     train = series[:-horizon]
     actuals = series[-horizon:]
 
-    method_fn = _METHOD_MAP.get(method, sma_forecast)
     if method == "holt_winters":
-        points = method_fn(train, horizon, seasonal_periods, monthly=monthly)
+        points = holt_winters_forecast(train, horizon, seasonal_periods, monthly=monthly)
     elif method == "seasonal_naive":
-        points = method_fn(train, horizon, seasonal_periods, monthly=monthly)
+        points = seasonal_naive_forecast(train, horizon, seasonal_periods, monthly=monthly)
     else:
-        points = method_fn(train, horizon, monthly=monthly)
+        points = sma_forecast(train, horizon, monthly=monthly)
 
     if not points:
         return ForecastAccuracy(
@@ -209,7 +208,7 @@ def backtest(
     sq_errors: list[float] = []
     within_bounds = 0
 
-    for actual, point in zip(actuals, points):
+    for actual, point in zip(actuals, points, strict=False):
         predicted = float(point.value)
         ae = abs(actual - predicted)
         abs_errors.append(ae)

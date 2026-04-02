@@ -6,6 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 
 from datapulse.forecasting.models import (
     CustomerSegment,
@@ -35,7 +36,7 @@ class TestForecastPoint:
             lower_bound=Decimal("90"),
             upper_bound=Decimal("110"),
         )
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             p.value = Decimal("200")  # type: ignore[misc]
 
     def test_json_roundtrip(self):
