@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useDailyTrend } from "@/hooks/use-daily-trend";
+import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { useComparisonTrend } from "@/hooks/use-comparison-trend";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
@@ -39,7 +39,8 @@ function CustomTooltip(props: Record<string, unknown>) {
 
 export function DailyTrendChart() {
   const { filters } = useFilters();
-  const { data, error, isLoading } = useDailyTrend(filters);
+  const { data: dashboardData, error, isLoading } = useDashboardData();
+  const data = dashboardData?.daily_trend;
   const CHART_THEME = useChartTheme();
   const [compare, setCompare] = useState(false);
 

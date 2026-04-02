@@ -2,8 +2,7 @@
 
 import { KPICard } from "./kpi-card";
 import { LoadingCard } from "@/components/loading-card";
-import { useSummary } from "@/hooks/use-summary";
-import { useFilters } from "@/contexts/filter-context";
+import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import {
   DollarSign,
@@ -33,8 +32,8 @@ const TOOLTIPS = {
 } as const;
 
 export function KPIGrid() {
-  const { filters } = useFilters();
-  const { data, isLoading } = useSummary(filters);
+  const { data: dashboardData, isLoading } = useDashboardData();
+  const data = dashboardData?.kpi;
 
   if (isLoading) {
     return (

@@ -1,8 +1,6 @@
 "use client";
 
-import { useTopProducts } from "@/hooks/use-top-products";
-import { useTopCustomers } from "@/hooks/use-top-customers";
-import { useFilters } from "@/contexts/filter-context";
+import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { formatCurrency } from "@/lib/formatters";
 import Link from "next/link";
 import { ArrowRight, Package, Users, Trophy } from "lucide-react";
@@ -112,38 +110,25 @@ function RankingCard({
 }
 
 export function QuickRankings() {
-  const { filters } = useFilters();
-  const hookFilters = { ...filters, limit: 5 };
-
-  const {
-    data: products,
-    error: productsError,
-    isLoading: productsLoading,
-  } = useTopProducts(hookFilters);
-
-  const {
-    data: customers,
-    error: customersError,
-    isLoading: customersLoading,
-  } = useTopCustomers(hookFilters);
+  const { data: dashboardData, error, isLoading } = useDashboardData();
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <RankingCard
         title="Top 5 Products"
         href="/products"
-        items={products?.items}
-        isLoading={productsLoading}
-        error={productsError}
+        items={dashboardData?.top_products?.items}
+        isLoading={isLoading}
+        error={error}
         icon={Package}
         accentColor="bg-accent/10 text-accent"
       />
       <RankingCard
         title="Top 5 Customers"
         href="/customers"
-        items={customers?.items}
-        isLoading={customersLoading}
-        error={customersError}
+        items={dashboardData?.top_customers?.items}
+        isLoading={isLoading}
+        error={error}
         icon={Users}
         accentColor="bg-chart-blue/10 text-chart-blue"
       />

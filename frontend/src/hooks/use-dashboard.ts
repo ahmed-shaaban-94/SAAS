@@ -14,6 +14,11 @@ export interface DashboardData {
     yoy_growth_pct: number | null;
     daily_transactions: number;
     daily_customers: number;
+    avg_basket_size: number;
+    daily_returns: number;
+    mtd_transactions: number;
+    ytd_transactions: number;
+    sparkline?: Array<{ period: string; value: number }>;
   };
   daily_trend: {
     points: Array<{ period: string; value: number }>;

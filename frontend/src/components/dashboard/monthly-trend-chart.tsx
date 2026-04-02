@@ -13,7 +13,7 @@ import {
   Line,
   ComposedChart,
 } from "recharts";
-import { useMonthlyTrend } from "@/hooks/use-monthly-trend";
+import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { useComparisonTrend } from "@/hooks/use-comparison-trend";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
@@ -41,7 +41,8 @@ function CustomTooltip(props: Record<string, unknown>) {
 
 export function MonthlyTrendChart() {
   const { filters } = useFilters();
-  const { data, error, isLoading } = useMonthlyTrend(filters);
+  const { data: dashboardData, error, isLoading } = useDashboardData();
+  const data = dashboardData?.monthly_trend;
   const CHART_THEME = useChartTheme();
   const [compare, setCompare] = useState(false);
 

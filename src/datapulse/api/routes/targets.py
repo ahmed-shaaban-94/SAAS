@@ -178,7 +178,8 @@ def get_alert_logs(
     """Get alert history log."""
     _set_cache(response, 30)
     return service.get_active_alerts(
-        limit=limit, unacknowledged_only=unacknowledged_only,
+        limit=limit,
+        unacknowledged_only=unacknowledged_only,
     )
 
 

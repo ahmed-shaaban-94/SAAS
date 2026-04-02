@@ -88,7 +88,8 @@ class TargetsService:
     ) -> list[AlertLogResponse]:
         """Return recent alert log entries."""
         return self._repo.list_alert_logs(
-            limit=limit, unacknowledged_only=unacknowledged_only,
+            limit=limit,
+            unacknowledged_only=unacknowledged_only,
         )
 
     def acknowledge_alert(self, alert_id: int) -> bool:

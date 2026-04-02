@@ -3,19 +3,52 @@ import { Printer, TrendingUp, Trophy, PieChart, Zap, Target, Calendar } from "lu
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
+import { FilterBar } from "@/components/filters/filter-bar";
+import { LoadingCard } from "@/components/loading-card";
+import dynamic from "next/dynamic";
+
+// Above-fold: regular imports (seen immediately)
 import { KPIGrid } from "@/components/dashboard/kpi-grid";
 import { DailyTrendChart } from "@/components/dashboard/daily-trend-chart";
 import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
-import { QuickRankings } from "@/components/dashboard/quick-rankings";
-import { BillingBreakdownChart } from "@/components/dashboard/billing-breakdown-chart";
-import { CustomerTypeChart } from "@/components/dashboard/customer-type-chart";
-import { TopMoversCard } from "@/components/dashboard/top-movers-card";
 import { LastUpdated } from "@/components/dashboard/last-updated";
-import { FilterBar } from "@/components/filters/filter-bar";
-import { CalendarHeatmap } from "@/components/dashboard/calendar-heatmap";
-import { TargetProgress } from "@/components/dashboard/target-progress";
-import { ForecastCard } from "@/components/dashboard/forecast-card";
-import { EgyptMap } from "@/components/dashboard/egypt-map";
+
+// Below-fold: lazy load with loading skeleton
+const BillingBreakdownChart = dynamic(
+  () => import("@/components/dashboard/billing-breakdown-chart").then(m => ({ default: m.BillingBreakdownChart })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+const CustomerTypeChart = dynamic(
+  () => import("@/components/dashboard/customer-type-chart").then(m => ({ default: m.CustomerTypeChart })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+const QuickRankings = dynamic(
+  () => import("@/components/dashboard/quick-rankings").then(m => ({ default: m.QuickRankings })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+const TopMoversCard = dynamic(
+  () => import("@/components/dashboard/top-movers-card").then(m => ({ default: m.TopMoversCard })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+const CalendarHeatmap = dynamic(
+  () => import("@/components/dashboard/calendar-heatmap").then(m => ({ default: m.CalendarHeatmap })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+const EgyptMap = dynamic(
+  () => import("@/components/dashboard/egypt-map").then(m => ({ default: m.EgyptMap })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+const TargetProgress = dynamic(
+  () => import("@/components/dashboard/target-progress").then(m => ({ default: m.TargetProgress })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+const ForecastCard = dynamic(
+  () => import("@/components/dashboard/forecast-card").then(m => ({ default: m.ForecastCard })),
+  { loading: () => <LoadingCard lines={3} /> },
+);
+
+// Client wrapper that provides composite dashboard data via context
+import { DashboardContent } from "./dashboard-content";
 
 function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
   return (
@@ -54,62 +87,65 @@ export default function DashboardPage() {
         </div>
         <FilterBar />
 
-        {/* KPI Section */}
-        <KPIGrid />
+        {/* Client boundary: single API call provides data to KPI + trends + rankings */}
+        <DashboardContent>
+          {/* KPI Section */}
+          <KPIGrid />
 
-        {/* Trends Section */}
-        <div className="mt-10">
-          <SectionHeader icon={TrendingUp} title="Trends" />
-          <div className="mt-4 grid gap-6 lg:grid-cols-2">
-            <DailyTrendChart />
-            <MonthlyTrendChart />
-          </div>
-        </div>
-
-        {/* Sales Distribution Section */}
-        <div className="mt-10">
-          <SectionHeader icon={PieChart} title="Sales Distribution" />
-          <div className="mt-4 grid gap-6 lg:grid-cols-2">
-            <BillingBreakdownChart />
-            <CustomerTypeChart />
-          </div>
-        </div>
-
-        {/* Rankings Section */}
-        <div className="mt-10">
-          <SectionHeader icon={Trophy} title="Top Performers" />
-          <div className="mt-4">
-            <QuickRankings />
-          </div>
-        </div>
-
-        {/* Top Movers Section */}
-        <div className="mt-10">
-          <SectionHeader icon={Zap} title="Top Movers" />
-          <div className="mt-4">
-            <TopMoversCard />
-          </div>
-        </div>
-
-        {/* Strategic Insights Section */}
-        <div className="mt-10">
-          <SectionHeader icon={Target} title="Goals & Forecast" />
-          <div className="mt-4 grid gap-6 lg:grid-cols-2">
-            <TargetProgress />
-            <ForecastCard />
-          </div>
-        </div>
-
-        {/* Geographic & Temporal Section */}
-        <div className="mt-10">
-          <SectionHeader icon={Calendar} title="Revenue Patterns" />
-          <div className="mt-4 grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <CalendarHeatmap />
+          {/* Trends Section */}
+          <div className="mt-10">
+            <SectionHeader icon={TrendingUp} title="Trends" />
+            <div className="mt-4 grid gap-6 lg:grid-cols-2">
+              <DailyTrendChart />
+              <MonthlyTrendChart />
             </div>
-            <EgyptMap />
           </div>
-        </div>
+
+          {/* Sales Distribution Section */}
+          <div className="mt-10">
+            <SectionHeader icon={PieChart} title="Sales Distribution" />
+            <div className="mt-4 grid gap-6 lg:grid-cols-2">
+              <BillingBreakdownChart />
+              <CustomerTypeChart />
+            </div>
+          </div>
+
+          {/* Rankings Section */}
+          <div className="mt-10">
+            <SectionHeader icon={Trophy} title="Top Performers" />
+            <div className="mt-4">
+              <QuickRankings />
+            </div>
+          </div>
+
+          {/* Top Movers Section */}
+          <div className="mt-10">
+            <SectionHeader icon={Zap} title="Top Movers" />
+            <div className="mt-4">
+              <TopMoversCard />
+            </div>
+          </div>
+
+          {/* Strategic Insights Section */}
+          <div className="mt-10">
+            <SectionHeader icon={Target} title="Goals & Forecast" />
+            <div className="mt-4 grid gap-6 lg:grid-cols-2">
+              <TargetProgress />
+              <ForecastCard />
+            </div>
+          </div>
+
+          {/* Geographic & Temporal Section */}
+          <div className="mt-10">
+            <SectionHeader icon={Calendar} title="Revenue Patterns" />
+            <div className="mt-4 grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <CalendarHeatmap />
+              </div>
+              <EgyptMap />
+            </div>
+          </div>
+        </DashboardContent>
       </div>
     </PageTransition>
   );

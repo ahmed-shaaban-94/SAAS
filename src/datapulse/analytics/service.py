@@ -75,12 +75,20 @@ class AnalyticsService:
         self._advanced_repo = advanced_repo
 
     def get_date_range(self) -> DataDateRange:
-        """Return the min/max dates of available data."""
+        """Return the min/max dates of available data (cached 3600s)."""
+        key = _cache_key("date_range")
+        cached_val = cache_get(key)
+        if cached_val is not None:
+            log.debug("cache_hit", key=key)
+            return DataDateRange(**cached_val)
+
         min_date, max_date = self._repo.get_data_date_range()
         if min_date is None or max_date is None:
             today = date.today()
             return DataDateRange(min_date=today - timedelta(days=365), max_date=today)
-        return DataDateRange(min_date=min_date, max_date=max_date)
+        result = DataDateRange(min_date=min_date, max_date=max_date)
+        cache_set(key, result.model_dump(mode="json"), ttl=3600)
+        return result
 
     def _default_filter(
         self,
@@ -103,7 +111,7 @@ class AnalyticsService:
     # ------------------------------------------------------------------
 
     def get_dashboard_summary(self, target_date: date | None = None) -> KPISummary:
-        """KPI cards for dashboard header (cached 300s)."""
+        """KPI cards for dashboard header (cached 600s)."""
         if target_date is None:
             _, max_date = self._repo.get_data_date_range()
             target = max_date or date.today()
@@ -111,27 +119,27 @@ class AnalyticsService:
             target = target_date
 
         key = _cache_key("summary", {"target_date": str(target)})
-        cached = cache_get(key)
-        if cached is not None:
+        cached_val = cache_get(key)
+        if cached_val is not None:
             log.debug("cache_hit", key=key)
-            return KPISummary(**cached)
+            return KPISummary(**cached_val)
 
         log.info("dashboard_summary", target_date=str(target))
         result = self._repo.get_kpi_summary(target)
-        cache_set(key, result.model_dump(), ttl=get_settings().redis_default_ttl)
+        cache_set(key, result.model_dump(mode="json"), ttl=600)
         return result
 
     def get_filter_options(self) -> FilterOptions:
-        """Return available filter values for slicers/dropdowns (cached 600s)."""
+        """Return available filter values for slicers/dropdowns (cached 3600s)."""
         key = _cache_key("filter_options")
-        cached = cache_get(key)
-        if cached is not None:
+        cached_val = cache_get(key)
+        if cached_val is not None:
             log.debug("cache_hit", key=key)
-            return FilterOptions(**cached)
+            return FilterOptions(**cached_val)
 
         log.info("filter_options")
         result = self._repo.get_filter_options()
-        cache_set(key, result.model_dump(), ttl=get_settings().redis_dashboard_ttl)
+        cache_set(key, result.model_dump(mode="json"), ttl=3600)
         return result
 
     def get_dashboard_data(self, target_date: date | None = None) -> DashboardData:
@@ -177,51 +185,51 @@ class AnalyticsService:
             "monthly": self._repo.get_monthly_trend(f),
         }
 
-    @cached(ttl=60, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_daily_trend(self, filters: AnalyticsFilter | None = None) -> TrendResult:
-        """Daily revenue trend only (cached 60s)."""
+        """Daily revenue trend only (cached 300s)."""
         f = self._default_filter(filters)
         log.info("daily_trend", filters=f.model_dump())
         return self._repo.get_daily_trend(f)
 
-    @cached(ttl=60, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_monthly_trend(self, filters: AnalyticsFilter | None = None) -> TrendResult:
-        """Monthly revenue trend only (cached 60s)."""
+        """Monthly revenue trend only (cached 300s)."""
         f = self._default_filter(filters)
         log.info("monthly_trend", filters=f.model_dump())
         return self._repo.get_monthly_trend(f)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_product_insights(self, filters: AnalyticsFilter | None = None) -> RankingResult:
-        """Top products by net revenue (cached 120s)."""
+        """Top products by net revenue (cached 300s)."""
         f = self._default_filter(filters)
         log.info("product_insights", filters=f.model_dump())
         return self._repo.get_top_products(f)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_customer_insights(self, filters: AnalyticsFilter | None = None) -> RankingResult:
-        """Top customers by net revenue (cached 120s)."""
+        """Top customers by net revenue (cached 300s)."""
         f = self._default_filter(filters)
         log.info("customer_insights", filters=f.model_dump())
         return self._repo.get_top_customers(f)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_site_comparison(self, filters: AnalyticsFilter | None = None) -> RankingResult:
-        """Site ranking by net revenue (cached 120s)."""
+        """Site ranking by net revenue (cached 300s)."""
         f = self._default_filter(filters)
         log.info("site_comparison", filters=f.model_dump())
         return self._repo.get_site_performance(f)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_staff_leaderboard(self, filters: AnalyticsFilter | None = None) -> RankingResult:
-        """Staff ranking by net revenue (cached 120s)."""
+        """Staff ranking by net revenue (cached 300s)."""
         f = self._default_filter(filters)
         log.info("staff_leaderboard", filters=f.model_dump())
         return self._repo.get_top_staff(f)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_return_report(self, filters: AnalyticsFilter | None = None) -> list[ReturnAnalysis]:
-        """Top returns by amount (cached 120s)."""
+        """Top returns by amount (cached 300s)."""
         f = self._default_filter(filters)
         log.info("return_report", filters=f.model_dump())
         return self._repo.get_return_analysis(f)
@@ -255,20 +263,20 @@ class AnalyticsService:
     # Phase 2: Billing & Customer Type
     # ------------------------------------------------------------------
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_billing_breakdown(self, filters: AnalyticsFilter | None = None) -> BillingBreakdown:
-        """Billing method distribution (cached 120s)."""
+        """Billing method distribution (cached 300s)."""
         if self._breakdown_repo is None:
             raise RuntimeError("BreakdownRepository not configured")
         f = self._default_filter(filters)
         log.info("billing_breakdown", filters=f.model_dump())
         return self._breakdown_repo.get_billing_breakdown(f)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_customer_type_breakdown(
         self, filters: AnalyticsFilter | None = None
     ) -> CustomerTypeBreakdown:
-        """Walk-in vs insurance vs other distribution by month (cached 120s)."""
+        """Walk-in vs insurance vs other distribution by month (cached 300s)."""
         if self._breakdown_repo is None:
             raise RuntimeError("BreakdownRepository not configured")
         f = self._default_filter(filters)
@@ -333,9 +341,9 @@ class AnalyticsService:
             raise RuntimeError("DetailRepository not configured")
         return self._detail_repo.get_site_detail(site_key)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_product_hierarchy(self, filters: AnalyticsFilter | None = None) -> ProductHierarchy:
-        """Category > Brand > Product hierarchy view (cached 120s)."""
+        """Category > Brand > Product hierarchy view (cached 300s)."""
         if self._hierarchy_repo is None:
             raise RuntimeError("HierarchyRepository not configured")
         f = self._default_filter(filters)
@@ -346,11 +354,11 @@ class AnalyticsService:
     # Phase 5: CEO Review — Advanced Analytics
     # ------------------------------------------------------------------
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_abc_analysis(
         self, entity: str = "product", filters: AnalyticsFilter | None = None
     ) -> ABCAnalysis:
-        """ABC/Pareto analysis for products or customers (cached 120s)."""
+        """ABC/Pareto analysis for products or customers (cached 300s)."""
         if self._advanced_repo is None:
             raise RuntimeError("AdvancedRepository not configured")
         f = self._default_filter(filters)
@@ -363,17 +371,17 @@ class AnalyticsService:
             raise RuntimeError("AdvancedRepository not configured")
         return self._advanced_repo.get_heatmap_data(year)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_returns_trend(self, filters: AnalyticsFilter | None = None) -> ReturnsTrend:
-        """Monthly returns trend (cached 120s)."""
+        """Monthly returns trend (cached 300s)."""
         if self._advanced_repo is None:
             raise RuntimeError("AdvancedRepository not configured")
         f = self._default_filter(filters)
         return self._advanced_repo.get_returns_trend(f)
 
-    @cached(ttl=120, prefix=_CACHE_PREFIX)
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_segment_summary(self) -> list[SegmentSummary]:
-        """Customer RFM segment summary (cached 120s)."""
+        """Customer RFM segment summary (cached 300s)."""
         if self._advanced_repo is None:
             raise RuntimeError("AdvancedRepository not configured")
         return self._advanced_repo.get_segment_summary()

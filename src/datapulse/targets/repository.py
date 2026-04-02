@@ -145,9 +145,7 @@ class TargetsRepository:
               AND t.period LIKE :year_prefix || '%'
             ORDER BY t.period
         """)
-        rows = self._session.execute(
-            stmt, {"year": year, "year_prefix": year_prefix}
-        ).fetchall()
+        rows = self._session.execute(stmt, {"year": year, "year_prefix": year_prefix}).fetchall()
 
         monthly: list[TargetVsActual] = []
         ytd_target = _ZERO
@@ -243,9 +241,7 @@ class TargetsRepository:
         assert row is not None
         return AlertConfigResponse(**row)
 
-    def update_alert_config(
-        self, alert_id: int, enabled: bool
-    ) -> AlertConfigResponse | None:
+    def update_alert_config(self, alert_id: int, enabled: bool) -> AlertConfigResponse | None:
         """Toggle the enabled flag on an alert config. Returns None if not found."""
         log.info("update_alert_config", alert_id=alert_id, enabled=enabled)
         stmt = text("""
@@ -273,9 +269,7 @@ class TargetsRepository:
         self, limit: int = 50, unacknowledged_only: bool = False
     ) -> list[AlertLogResponse]:
         """Return recent alert log entries, optionally filtered to unacknowledged."""
-        log.info(
-            "list_alert_logs", limit=limit, unacknowledged_only=unacknowledged_only
-        )
+        log.info("list_alert_logs", limit=limit, unacknowledged_only=unacknowledged_only)
         ack_filter = "AND acknowledged = FALSE" if unacknowledged_only else ""
         stmt = text(f"""
             SELECT id, alert_config_id, alert_name, fired_at,
