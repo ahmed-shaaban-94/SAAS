@@ -150,7 +150,7 @@ def get_date_range(
     service: ServiceDep,
 ) -> DataDateRange:
     """Return the min/max dates of available data for frontend preset calculation."""
-    _set_cache(response, 300)
+    _set_cache(response, 3600)
     return service.get_date_range()
 
 
@@ -163,7 +163,7 @@ def get_summary(
     target_date: Annotated[date | None, Query()] = None,
 ) -> KPISummary:
     """Executive KPI snapshot for the dashboard header."""
-    _set_cache(response, 300)
+    _set_cache(response, 600)
     return service.get_dashboard_summary(target_date)
 
 
@@ -176,7 +176,7 @@ def get_daily_trend(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
     """Daily net-sales trend line."""
-    _set_cache(response, 60)
+    _set_cache(response, 300)
     filters = _to_filter(params)
     return service.get_daily_trend(filters)
 
@@ -190,7 +190,7 @@ def get_monthly_trend(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
     """Monthly net-sales trend line."""
-    _set_cache(response, 60)
+    _set_cache(response, 300)
     filters = _to_filter(params)
     return service.get_monthly_trend(filters)
 
@@ -204,7 +204,7 @@ def get_top_products(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Top products ranked by net revenue."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_product_insights(_to_filter(params))
 
 
@@ -217,7 +217,7 @@ def get_top_customers(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Top customers ranked by net revenue."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_customer_insights(_to_filter(params))
 
 
@@ -230,7 +230,7 @@ def get_top_staff(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Staff leaderboard ranked by net revenue."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_staff_leaderboard(_to_filter(params))
 
 
@@ -243,7 +243,7 @@ def get_sites(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Site comparison ranked by net revenue."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_site_comparison(_to_filter(params))
 
 
@@ -255,7 +255,7 @@ def get_filter_options(
     service: ServiceDep,
 ) -> FilterOptions:
     """Return available filter values for slicer/dropdown population."""
-    _set_cache(response, 600)
+    _set_cache(response, 3600)
     return service.get_filter_options()
 
 
@@ -268,7 +268,7 @@ def get_billing_breakdown(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> BillingBreakdown:
     """Billing method distribution (cash, credit, delivery, etc.)."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_billing_breakdown(_to_filter(params))
 
 
@@ -281,7 +281,7 @@ def get_customer_type_breakdown(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> CustomerTypeBreakdown:
     """Walk-in vs insurance vs other distribution by month."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_customer_type_breakdown(_to_filter(params))
 
 
@@ -296,7 +296,7 @@ def get_top_movers(
     limit: Annotated[int, Query(ge=1, le=20)] = 5,
 ) -> TopMovers:
     """Top gainers and losers vs previous period."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_top_movers(entity_type, _to_filter(params), limit)
 
 
@@ -309,7 +309,7 @@ def get_product_hierarchy(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> ProductHierarchy:
     """Product hierarchy: Category > Brand > Product."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_product_hierarchy(_to_filter(params))
 
 
@@ -322,7 +322,7 @@ def get_returns(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> list[ReturnAnalysis]:
     """Top returns/credit notes by amount."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_return_report(_to_filter(params))
 
 
@@ -335,7 +335,7 @@ def get_site_detail(
     service: ServiceDep,
 ) -> SiteDetail:
     """Detailed site metrics with monthly trend."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     result = service.get_site_detail(site_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -351,7 +351,7 @@ def get_product_detail(
     service: ServiceDep,
 ) -> ProductPerformance:
     """Detailed product performance metrics."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     result = service.get_product_detail(product_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -367,7 +367,7 @@ def get_customer_detail(
     service: ServiceDep,
 ) -> CustomerAnalytics:
     """Detailed customer analytics."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     result = service.get_customer_detail(customer_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -383,7 +383,7 @@ def get_staff_detail(
     service: ServiceDep,
 ) -> StaffPerformance:
     """Detailed staff performance metrics."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     result = service.get_staff_detail(staff_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Staff member not found")
@@ -405,7 +405,7 @@ def get_abc_analysis(
     entity: Annotated[str, Query(pattern="^(product|customer)$")] = "product",
 ) -> ABCAnalysis:
     """ABC/Pareto analysis for products or customers."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_abc_analysis(entity, _to_filter(params))
 
 
@@ -431,7 +431,7 @@ def get_returns_trend(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> ReturnsTrend:
     """Monthly returns trend."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_returns_trend(_to_filter(params))
 
 
@@ -443,5 +443,5 @@ def get_segment_summary(
     service: ServiceDep,
 ) -> list[SegmentSummary]:
     """Customer RFM segment summary."""
-    _set_cache(response, 120)
+    _set_cache(response, 300)
     return service.get_segment_summary()

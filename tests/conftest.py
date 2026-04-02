@@ -55,7 +55,6 @@ def _patch_get_settings_globally():
         patch("datapulse.api.routes.explore.get_settings", return_value=clean_settings),
         patch("datapulse.api.routes.pipeline.get_settings", return_value=clean_settings),
         patch("datapulse.cache.get_settings", return_value=clean_settings),
-        patch("datapulse.analytics.service.get_settings", return_value=clean_settings),
     ):
         yield
 

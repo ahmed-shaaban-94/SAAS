@@ -38,7 +38,6 @@ from datapulse.analytics.models import (
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.cache import cache_get, cache_set
 from datapulse.cache_decorator import cached
-from datapulse.config import get_settings
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
@@ -168,11 +167,11 @@ class AnalyticsService:
             top_staff=self._repo.get_top_staff(default_f),
             filter_options=self.get_filter_options(),
         )
-        cache_set(key, result.model_dump(), ttl=get_settings().redis_dashboard_ttl)
+        cache_set(key, result.model_dump(mode="json"), ttl=600)
         return result
 
     # ------------------------------------------------------------------
-    # Filter-dependent methods (cached 60-120s via @cached decorator)
+    # Filter-dependent methods (cached via @cached decorator)
     # ------------------------------------------------------------------
 
     @cached(ttl=90, prefix=_CACHE_PREFIX)
