@@ -1,7 +1,9 @@
 name: Deploy Staging
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
 concurrency:
@@ -13,8 +15,16 @@ env:
   IMAGE_PREFIX: ${{ github.repository }}
 
 jobs:
+  gate:
+    name: Verify CI Passed
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - run: echo "CI passed — proceeding with staging deploy"
+
   build-push:
     name: Build & Push Images
+    needs: [gate]
     runs-on: ubuntu-latest
     permissions:
       contents: read
