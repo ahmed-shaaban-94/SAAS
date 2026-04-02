@@ -35,9 +35,7 @@ class ForecastingRepository:
     # Feature store reads
     # ------------------------------------------------------------------
 
-    def get_daily_revenue_series(
-        self, lookback_days: int = 730
-    ) -> list[tuple[date, float]]:
+    def get_daily_revenue_series(self, lookback_days: int = 730) -> list[tuple[date, float]]:
         """Daily net revenue from feat_revenue_daily_rolling, ordered by date."""
         stmt = text("""
             SELECT full_date, daily_net_amount
@@ -61,9 +59,7 @@ class ForecastingRepository:
         rows = self._session.execute(stmt).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
-    def get_product_monthly_series(
-        self, product_key: int
-    ) -> list[tuple[str, float]]:
+    def get_product_monthly_series(self, product_key: int) -> list[tuple[str, float]]:
         """Monthly net revenue for a specific product."""
         stmt = text("""
             SELECT

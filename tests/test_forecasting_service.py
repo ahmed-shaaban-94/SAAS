@@ -66,9 +66,7 @@ class TestGetProductForecast:
         )
         mock_forecast_repo.get_forecast.return_value = expected
         forecast_service.get_product_forecast(42)
-        mock_forecast_repo.get_forecast.assert_called_once_with(
-            "product", "monthly", entity_key=42
-        )
+        mock_forecast_repo.get_forecast.assert_called_once_with("product", "monthly", entity_key=42)
 
 
 class TestRunAllForecasts:
@@ -79,9 +77,7 @@ class TestRunAllForecasts:
         ]
         mock_forecast_repo.get_monthly_revenue_series.return_value = [
             (f"2024-{m:02d}", 10000.0 + m * 100) for m in range(1, 13)
-        ] + [
-            (f"2025-{m:02d}", 11000.0 + m * 100) for m in range(1, 13)
-        ]
+        ] + [(f"2025-{m:02d}", 11000.0 + m * 100) for m in range(1, 13)]
         mock_forecast_repo.get_top_products_by_revenue.return_value = []
         mock_forecast_repo.save_forecasts.return_value = 33
 

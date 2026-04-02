@@ -51,9 +51,7 @@ class TestSMAForecast:
         assert points[2].period == "2026-04-03"
 
     def test_monthly_period_format(self):
-        points = sma_forecast(
-            [100.0] * 10, horizon=3, start_date=date(2026, 4, 1), monthly=True
-        )
+        points = sma_forecast([100.0] * 10, horizon=3, start_date=date(2026, 4, 1), monthly=True)
         assert points[0].period == "2026-04"
         assert points[1].period == "2026-05"
         assert points[2].period == "2026-06"
