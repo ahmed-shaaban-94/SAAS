@@ -65,6 +65,18 @@ def test_health_endpoint(api_client):
     assert "status" in resp.json()
 
 
+def test_health_endpoint_degraded(api_client):
+    """GET /health returns 503 when database is unreachable."""
+    client, mock_repo, mock_detail_repo = api_client
+    with patch("datapulse.api.routes.health.get_engine") as mock_engine:
+        mock_engine.return_value.connect.side_effect = Exception("connection refused")
+        resp = client.get("/health")
+    assert resp.status_code == 503
+    data = resp.json()
+    assert data["status"] == "degraded"
+    assert data["db"] == "disconnected"
+
+
 def test_summary_endpoint(api_client):
     """GET /api/v1/analytics/summary returns 200 with KPI data."""
     client, mock_repo, mock_detail_repo = api_client
