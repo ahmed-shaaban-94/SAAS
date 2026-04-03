@@ -2,6 +2,19 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 import type { PricingTier } from "@/lib/marketing-constants";
 
+function getCtaHref(name: string): string {
+  switch (name) {
+    case "Starter":
+      return "/login";
+    case "Pro":
+      return "/login?callbackUrl=/billing";
+    case "Enterprise":
+      return "mailto:support@smartdatapulse.tech?subject=Enterprise%20Plan";
+    default:
+      return "/login";
+  }
+}
+
 export function PricingCard({
   name,
   price,
@@ -11,6 +24,9 @@ export function PricingCard({
   cta,
   isPopular,
 }: PricingTier) {
+  const href = getCtaHref(name);
+  const isExternal = href.startsWith("mailto:");
+
   return (
     <div
       className={`relative flex flex-col rounded-2xl border p-8 ${
@@ -42,16 +58,29 @@ export function PricingCard({
         ))}
       </ul>
 
-      <Link
-        href={isPopular ? "/dashboard" : "#"}
-        className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
-          isPopular
-            ? "bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
-            : "border border-border bg-card text-text-primary hover:bg-divider"
-        }`}
-      >
-        {cta}
-      </Link>
+      {isExternal ? (
+        <a
+          href={href}
+          className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
+            isPopular
+              ? "bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
+              : "border border-border bg-card text-text-primary hover:bg-divider"
+          }`}
+        >
+          {cta}
+        </a>
+      ) : (
+        <Link
+          href={href}
+          className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
+            isPopular
+              ? "bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
+              : "border border-border bg-card text-text-primary hover:bg-divider"
+          }`}
+        >
+          {cta}
+        </Link>
+      )}
     </div>
   );
 }

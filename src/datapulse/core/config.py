@@ -90,6 +90,21 @@ class Settings(BaseSettings):
     slack_webhook_url: str = ""
     notification_email: str = ""
 
+    # Stripe billing
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_pro_monthly: str = ""  # price_xxx from Stripe Dashboard
+    billing_base_url: str = "https://smartdatapulse.tech"
+
+    @property
+    def stripe_price_to_plan_map(self) -> dict[str, str]:
+        """Map Stripe Price IDs to internal plan names."""
+        mapping: dict[str, str] = {}
+        if self.stripe_price_pro_monthly:
+            mapping[self.stripe_price_pro_monthly] = "pro"
+        return mapping
+
     @property
     def max_file_size_bytes(self) -> int:
         return self.max_file_size_mb * 1024 * 1024

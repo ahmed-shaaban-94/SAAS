@@ -17,6 +17,7 @@ from datapulse.api.limiter import limiter
 from datapulse.api.routes import (
     ai_light,
     analytics,
+    billing,
     embed,
     explore,
     export,
@@ -139,5 +140,6 @@ def create_app() -> FastAPI:
     app.include_router(reports.router, prefix="/api/v1")
     app.include_router(targets.router, prefix="/api/v1")
     app.include_router(export.router, prefix="/api/v1")
+    app.include_router(billing.router, prefix="/api/v1")
 
     return app

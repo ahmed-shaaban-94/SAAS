@@ -33,6 +33,7 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.0,<3",
     "statsmodels>=0.14,<1",
     "numpy>=1.24,<3",
+    "stripe>=8.0,<12",
 ]
 
 [project.optional-dependencies]
