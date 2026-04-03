@@ -187,7 +187,7 @@ export interface StaffPerformance {
 // --- Phase 2: Billing & Customer Type ---
 
 export interface BillingBreakdownItem {
-  billing_way: string;
+  billing_group: string;
   transaction_count: number;
   total_net_amount: number;
   pct_of_total: number;

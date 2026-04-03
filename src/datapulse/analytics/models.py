@@ -209,11 +209,11 @@ class DashboardData(BaseModel):
 
 
 class BillingBreakdownItem(BaseModel):
-    """Single billing method with its share of total sales."""
+    """Single billing group with returns netted against sales."""
 
     model_config = ConfigDict(frozen=True)
 
-    billing_way: str
+    billing_group: str
     transaction_count: int
     total_net_amount: JsonDecimal
     pct_of_total: JsonDecimal

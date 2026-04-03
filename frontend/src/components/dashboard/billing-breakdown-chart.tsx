@@ -44,7 +44,7 @@ export function BillingBreakdownChart() {
     return <EmptyState title="No billing data" />;
 
   const chartData = data.items.map((item) => ({
-    name: item.billing_way,
+    name: item.billing_group,
     value: item.total_net_amount,
     pct: item.pct_of_total,
     count: item.transaction_count,

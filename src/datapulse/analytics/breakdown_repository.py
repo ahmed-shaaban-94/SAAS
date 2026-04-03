@@ -33,19 +33,26 @@ class BreakdownRepository:
         self._session = session
 
     def get_billing_breakdown(self, filters: AnalyticsFilter) -> BillingBreakdown:
-        """Return billing method distribution for the given filters."""
+        """Return billing group distribution with returns netted against sales.
+
+        Groups by ``dim_billing.billing_group`` (Cash, Credit, Delivery, etc.)
+        instead of individual billing_way.  Net amounts already carry the sign
+        (negative for returns), so SUM() naturally subtracts them.  Transaction
+        counts use ``SUM(txn) - 2*SUM(ret)`` to net return invoices out.
+        """
         log.info("get_billing_breakdown", filters=filters.model_dump())
         where, params = build_where(
             filters, date_column="date_key", supported_fields=SITE_DATE_ONLY
         )
 
         stmt = text(f"""
-            SELECT billing_way,
-                   SUM(transaction_count) AS transaction_count,
-                   SUM(total_net_amount)  AS total_net_amount
-            FROM public_marts.agg_sales_daily
+            SELECT db.billing_group,
+                   SUM(a.transaction_count) - 2 * SUM(a.return_count) AS transaction_count,
+                   SUM(a.total_net_amount) AS total_net_amount
+            FROM public_marts.agg_sales_daily a
+            JOIN public_marts.dim_billing db ON a.billing_way = db.billing_way
             WHERE {where}
-            GROUP BY billing_way
+            GROUP BY db.billing_group
             ORDER BY total_net_amount DESC
         """)
         rows = self._session.execute(stmt, params).fetchall()
@@ -59,7 +66,7 @@ class BreakdownRepository:
 
         items = [
             BillingBreakdownItem(
-                billing_way=name,
+                billing_group=name,
                 transaction_count=count,
                 total_net_amount=amount,
                 pct_of_total=(amount / grand_total * 100).quantize(Decimal("0.01")),

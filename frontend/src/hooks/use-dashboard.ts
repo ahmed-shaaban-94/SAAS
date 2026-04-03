@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import { fetchAPI } from "@/lib/api-client";
+import type { FilterParams } from "@/types/filters";
 
 /**
  * Composite dashboard data — KPI + trends + rankings + filter options
@@ -74,11 +75,12 @@ export interface DashboardData {
   };
 }
 
-export function useDashboard(targetDate?: string) {
-  const params = targetDate
-    ? `?${new URLSearchParams({ target_date: targetDate }).toString()}`
-    : "";
-  const key = `/api/v1/analytics/dashboard${params}`;
+export function useDashboard(filters?: FilterParams) {
+  const qp = new URLSearchParams();
+  if (filters?.start_date) qp.set("start_date", filters.start_date);
+  if (filters?.end_date) qp.set("end_date", filters.end_date);
+  const qs = qp.toString();
+  const key = `/api/v1/analytics/dashboard${qs ? `?${qs}` : ""}`;
 
   const { data, error, isLoading, mutate } = useSWR(
     key,

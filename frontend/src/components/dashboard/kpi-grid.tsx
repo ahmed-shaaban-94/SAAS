@@ -3,65 +3,64 @@
 import { KPICard } from "./kpi-card";
 import { LoadingCard } from "@/components/loading-card";
 import { useDashboardData } from "@/contexts/dashboard-data-context";
+import { useFilters } from "@/contexts/filter-context";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { format, parseISO } from "date-fns";
 import {
-  DollarSign,
   CalendarDays,
   TrendingUp,
-  BarChart3,
-  Users,
   Target,
   Zap,
   ShoppingCart,
-  RotateCcw,
-  Hash,
+  Receipt,
 } from "lucide-react";
 
 const TOOLTIPS = {
-  todayNet: "Net sales amount for the selected target date after discounts and returns",
+  periodNet: "Total net sales for the selected date range (after returns and discounts)",
   mtdNet: "Month-to-date cumulative net sales from the 1st of the current month",
   ytdNet: "Year-to-date cumulative net sales from January 1st",
-  momGrowth: "Month-over-month growth comparing current MTD to same date last month",
-  yoyGrowth: "Year-over-year growth comparing current YTD to same date last year",
-  dailyTxn: "Number of individual line-item transactions on the target date",
-  dailyCust: "Count of unique customers who made purchases on the target date",
-  avgBasket: "Average transaction value per invoice on the target date",
-  dailyReturns: "Number of return transactions recorded on the target date",
-  mtdTxn: "Month-to-date cumulative transaction count",
-  ytdTxn: "Year-to-date cumulative transaction count",
+  momGrowth: "Growth compared to the equivalent previous period",
+  netTxn: "Net transactions: total invoices minus returns for the selected period",
+  avgBasket: "Average transaction value per invoice for the selected period",
 } as const;
+
+function formatPeriodLabel(startDate?: string, endDate?: string): string | null {
+  if (!startDate || !endDate) return null;
+  try {
+    const s = format(parseISO(startDate), "MMM d, yyyy");
+    const e = format(parseISO(endDate), "MMM d, yyyy");
+    return s === e ? s : `${s} - ${e}`;
+  } catch {
+    return null;
+  }
+}
 
 export function KPIGrid() {
   const { data: dashboardData, isLoading } = useDashboardData();
+  const { filters } = useFilters();
   const data = dashboardData?.kpi;
+  const periodLabel = formatPeriodLabel(filters?.start_date, filters?.end_date);
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <LoadingCard key={i} lines={2} className={`stagger-${i + 1}`} />
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <LoadingCard key={`sec-${i}`} lines={2} className={`stagger-${i + 8}`} />
-          ))}
-        </div>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <LoadingCard key={i} lines={2} className={`stagger-${i + 1}`} />
+        ))}
       </div>
     );
   }
 
   if (!data) return null;
 
-  const primaryCards = [
+  const cards = [
     {
-      label: "Today Net Sales",
+      label: "Period Net Sales",
       value: formatCurrency(data.today_net),
       numericValue: data.today_net,
       isCurrency: true,
       icon: Zap,
-      tooltip: TOOLTIPS.todayNet,
+      tooltip: TOOLTIPS.periodNet,
       sparkline: data.sparkline,
     },
     {
@@ -81,42 +80,25 @@ export function KPIGrid() {
       tooltip: TOOLTIPS.ytdNet,
     },
     {
-      label: "MoM Growth",
+      label: "Growth",
       value: data.mom_growth_pct !== null ? `${data.mom_growth_pct.toFixed(1)}%` : "N/A",
       numericValue: data.mom_growth_pct ?? undefined,
       isPercent: true,
       trend: data.mom_growth_pct,
-      trendLabel: "vs last month",
+      trendLabel: "vs previous period",
       icon: TrendingUp,
       tooltip: TOOLTIPS.momGrowth,
     },
     {
-      label: "YoY Growth",
-      value: data.yoy_growth_pct !== null ? `${data.yoy_growth_pct.toFixed(1)}%` : "N/A",
-      numericValue: data.yoy_growth_pct ?? undefined,
-      isPercent: true,
-      trend: data.yoy_growth_pct,
-      trendLabel: "vs last year",
-      icon: BarChart3,
-      tooltip: TOOLTIPS.yoyGrowth,
-    },
-    {
-      label: "Daily Transactions",
+      label: "Net Transactions",
       value: formatNumber(data.daily_transactions),
       numericValue: data.daily_transactions,
-      icon: DollarSign,
-      tooltip: TOOLTIPS.dailyTxn,
+      subtitle: data.daily_returns > 0
+        ? `${formatNumber(data.daily_transactions + data.daily_returns)} sales - ${formatNumber(data.daily_returns)} returns`
+        : undefined,
+      icon: Receipt,
+      tooltip: TOOLTIPS.netTxn,
     },
-    {
-      label: "Daily Customers",
-      value: formatNumber(data.daily_customers),
-      numericValue: data.daily_customers,
-      icon: Users,
-      tooltip: TOOLTIPS.dailyCust,
-    },
-  ];
-
-  const secondaryCards = [
     {
       label: "Avg Basket Size",
       value: formatCurrency(data.avg_basket_size),
@@ -125,46 +107,22 @@ export function KPIGrid() {
       icon: ShoppingCart,
       tooltip: TOOLTIPS.avgBasket,
     },
-    {
-      label: "Daily Returns",
-      value: formatNumber(data.daily_returns),
-      numericValue: data.daily_returns,
-      icon: RotateCcw,
-      tooltip: TOOLTIPS.dailyReturns,
-    },
-    {
-      label: "MTD Transactions",
-      value: formatNumber(data.mtd_transactions),
-      numericValue: data.mtd_transactions,
-      icon: Hash,
-      tooltip: TOOLTIPS.mtdTxn,
-    },
-    {
-      label: "YTD Transactions",
-      value: formatNumber(data.ytd_transactions),
-      numericValue: data.ytd_transactions,
-      icon: Hash,
-      tooltip: TOOLTIPS.ytdTxn,
-    },
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {primaryCards.map((card, i) => (
+    <div className="space-y-3">
+      {periodLabel && (
+        <p className="text-xs font-medium text-text-secondary">
+          <CalendarDays className="mr-1 inline-block h-3.5 w-3.5 align-text-bottom" />
+          Showing: {periodLabel}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        {cards.map((card, i) => (
           <KPICard
             key={card.label}
             {...card}
             className={`stagger-${i + 1} animate-fade-in opacity-0`}
-          />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {secondaryCards.map((card, i) => (
-          <KPICard
-            key={card.label}
-            {...card}
-            className={`stagger-${i + 8} animate-fade-in opacity-0`}
           />
         ))}
       </div>

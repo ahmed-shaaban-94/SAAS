@@ -278,6 +278,143 @@ class AnalyticsRepository:
             sparkline=sparkline,
         )
 
+    def get_kpi_summary_range(self, filters: AnalyticsFilter) -> KPISummary:
+        """Aggregate KPI metrics over a date range instead of a single day.
+
+        * ``today_net`` → total net amount for the *entire* selected range
+        * ``mtd_net`` / ``ytd_net`` → running totals from the *last* day in range
+        * ``daily_transactions`` → net transactions (sales minus returns) for range
+        * ``daily_returns`` → total return count for range
+        * ``avg_basket_size`` → weighted average for range
+        * ``mom_growth_pct`` → compare range total to same-length previous period
+        """
+        if filters.date_range is None:
+            return self.get_kpi_summary(date.today())
+
+        start = filters.date_range.start_date
+        end = filters.date_range.end_date
+        log.info("get_kpi_summary_range", start=str(start), end=str(end))
+
+        stmt = text("""
+            WITH range_agg AS (
+                SELECT
+                    ROUND(SUM(daily_net_amount), 2) AS period_net,
+                    SUM(daily_transactions)::INT     AS total_transactions,
+                    SUM(daily_returns)::INT           AS total_returns,
+                    SUM(daily_unique_customers)::INT  AS total_customers
+                FROM public_marts.metrics_summary
+                WHERE full_date BETWEEN :start_date AND :end_date
+            ),
+            last_day AS (
+                SELECT mtd_net_amount, ytd_net_amount,
+                       mtd_transactions, ytd_transactions
+                FROM public_marts.metrics_summary
+                WHERE full_date = :end_date
+            ),
+            basket AS (
+                SELECT ROUND(
+                    SUM(total_net_amount) / NULLIF(SUM(transaction_count), 0),
+                    2
+                ) AS avg_basket_size
+                FROM public_marts.agg_sales_daily
+                WHERE date_key BETWEEN :start_key AND :end_key
+            ),
+            prev_period AS (
+                SELECT ROUND(SUM(daily_net_amount), 2) AS prev_net
+                FROM public_marts.metrics_summary
+                WHERE full_date BETWEEN
+                    CAST(:start_date AS date) - (:end_date - :start_date + 1) * INTERVAL '1 day'
+                    AND CAST(:start_date AS date) - INTERVAL '1 day'
+            )
+            SELECT
+                r.period_net,
+                r.total_transactions,
+                r.total_returns,
+                r.total_customers,
+                l.mtd_net_amount,
+                l.ytd_net_amount,
+                l.mtd_transactions,
+                l.ytd_transactions,
+                b.avg_basket_size,
+                p.prev_net
+            FROM range_agg r
+            LEFT JOIN last_day l ON TRUE
+            LEFT JOIN basket b ON TRUE
+            LEFT JOIN prev_period p ON TRUE
+        """)
+
+        start_key = start.year * 10000 + start.month * 100 + start.day
+        end_key = end.year * 10000 + end.month * 100 + end.day
+
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "start_date": start,
+                    "end_date": end,
+                    "start_key": start_key,
+                    "end_key": end_key,
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+
+        if row is None or row["period_net"] is None:
+            log.warning("kpi_range_no_data", start=str(start), end=str(end))
+            return KPISummary(
+                today_net=_ZERO,
+                mtd_net=_ZERO,
+                ytd_net=_ZERO,
+                daily_transactions=0,
+                daily_customers=0,
+                sparkline=[],
+            )
+
+        period_net = Decimal(str(row["period_net"]))
+        mtd_net = (
+            Decimal(str(row["mtd_net_amount"]))
+            if row["mtd_net_amount"] is not None
+            else _ZERO
+        )
+        ytd_net = (
+            Decimal(str(row["ytd_net_amount"]))
+            if row["ytd_net_amount"] is not None
+            else _ZERO
+        )
+        total_transactions = int(row["total_transactions"] or 0)
+        total_returns = int(row["total_returns"] or 0)
+        total_customers = int(row["total_customers"] or 0)
+        mtd_txn = int(row["mtd_transactions"] or 0)
+        ytd_txn = int(row["ytd_transactions"] or 0)
+        avg_basket = (
+            Decimal(str(row["avg_basket_size"])).quantize(Decimal("0.01"))
+            if row["avg_basket_size"] is not None
+            else _ZERO
+        )
+
+        mom_growth: Decimal | None = None
+        if row["prev_net"] is not None:
+            prev_net = Decimal(str(row["prev_net"]))
+            mom_growth = safe_growth(period_net, prev_net)
+
+        sparkline = self.get_kpi_sparkline(end)
+
+        return KPISummary(
+            today_net=period_net,
+            mtd_net=mtd_net,
+            ytd_net=ytd_net,
+            mom_growth_pct=mom_growth,
+            yoy_growth_pct=None,
+            daily_transactions=total_transactions - total_returns,
+            daily_customers=total_customers,
+            avg_basket_size=avg_basket,
+            daily_returns=total_returns,
+            mtd_transactions=mtd_txn,
+            ytd_transactions=ytd_txn,
+            sparkline=sparkline,
+        )
+
     def get_kpi_sparkline(self, target_date: date, days: int = 7) -> list[TimeSeriesPoint]:
         """Last N days of daily_net_amount from metrics_summary."""
         start_date = target_date - timedelta(days=days)

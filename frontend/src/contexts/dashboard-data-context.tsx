@@ -16,8 +16,7 @@ const DashboardDataContext = createContext<DashboardDataContextValue | null>(
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
   const { filters } = useFilters();
-  const targetDate = filters?.end_date;
-  const { data, error, isLoading } = useDashboard(targetDate);
+  const { data, error, isLoading } = useDashboard(filters ?? undefined);
 
   return (
     <DashboardDataContext.Provider value={{ data, error, isLoading }}>

@@ -16,6 +16,7 @@ interface KPICardProps {
   isPercent?: boolean;
   trend?: number | null;
   trendLabel?: string;
+  subtitle?: string;
   icon?: React.ComponentType<{ className?: string }>;
   className?: string;
   accentGradient?: string;
@@ -45,7 +46,7 @@ function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
   return <>{animated}</>;
 }
 
-export function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
+export function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, subtitle, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
   const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
@@ -113,6 +114,10 @@ export function KPICard({ label, value, numericValue, isCurrency, isPercent, tre
           isPercent={isPercent}
         />
       </p>
+
+      {subtitle && (
+        <p className="relative mt-0.5 text-[10px] text-text-secondary truncate">{subtitle}</p>
+      )}
 
       {trend !== undefined && (
         <div className="relative mt-2 flex items-center gap-1.5">
