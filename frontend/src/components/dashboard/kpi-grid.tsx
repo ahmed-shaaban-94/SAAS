@@ -8,13 +8,11 @@ import {
   DollarSign,
   CalendarDays,
   TrendingUp,
-  BarChart3,
   Users,
   Target,
   Zap,
   ShoppingCart,
   RotateCcw,
-  Hash,
 } from "lucide-react";
 
 const TOOLTIPS = {
@@ -54,7 +52,7 @@ export function KPIGrid() {
 
   if (!data) return null;
 
-  const primaryCards = [
+  const revenueCards = [
     {
       label: "Today Net Sales",
       value: formatCurrency(data.today_net),
@@ -90,16 +88,9 @@ export function KPIGrid() {
       icon: TrendingUp,
       tooltip: TOOLTIPS.momGrowth,
     },
-    {
-      label: "YoY Growth",
-      value: data.yoy_growth_pct !== null ? `${data.yoy_growth_pct.toFixed(1)}%` : "N/A",
-      numericValue: data.yoy_growth_pct ?? undefined,
-      isPercent: true,
-      trend: data.yoy_growth_pct,
-      trendLabel: "vs last year",
-      icon: BarChart3,
-      tooltip: TOOLTIPS.yoyGrowth,
-    },
+  ];
+
+  const activityCards = [
     {
       label: "Daily Transactions",
       value: formatNumber(data.daily_transactions),
@@ -114,9 +105,6 @@ export function KPIGrid() {
       icon: Users,
       tooltip: TOOLTIPS.dailyCust,
     },
-  ];
-
-  const secondaryCards = [
     {
       label: "Avg Basket Size",
       value: formatCurrency(data.avg_basket_size),
@@ -132,26 +120,12 @@ export function KPIGrid() {
       icon: RotateCcw,
       tooltip: TOOLTIPS.dailyReturns,
     },
-    {
-      label: "MTD Transactions",
-      value: formatNumber(data.mtd_transactions),
-      numericValue: data.mtd_transactions,
-      icon: Hash,
-      tooltip: TOOLTIPS.mtdTxn,
-    },
-    {
-      label: "YTD Transactions",
-      value: formatNumber(data.ytd_transactions),
-      numericValue: data.ytd_transactions,
-      icon: Hash,
-      tooltip: TOOLTIPS.ytdTxn,
-    },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {primaryCards.map((card, i) => (
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {revenueCards.map((card, i) => (
           <KPICard
             key={card.label}
             {...card}
@@ -160,11 +134,11 @@ export function KPIGrid() {
         ))}
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {secondaryCards.map((card, i) => (
+        {activityCards.map((card, i) => (
           <KPICard
             key={card.label}
             {...card}
-            className={`stagger-${i + 8} animate-fade-in opacity-0`}
+            className={`stagger-${i + 5} animate-fade-in opacity-0`}
           />
         ))}
       </div>

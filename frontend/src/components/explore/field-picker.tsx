@@ -52,7 +52,7 @@ export function FieldPicker({
         ) : (
           <ChevronRight className="h-3 w-3" />
         )}
-        Dimensions ({model.dimensions.length})
+        Group By ({model.dimensions.length})
       </button>
 
       {dimsOpen && (
@@ -95,7 +95,7 @@ export function FieldPicker({
         ) : (
           <ChevronRight className="h-3 w-3" />
         )}
-        Metrics ({model.metrics.length})
+        Values ({model.metrics.length})
       </button>
 
       {metricsOpen && (

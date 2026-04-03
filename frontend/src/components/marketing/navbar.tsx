@@ -57,7 +57,7 @@ export function Navbar() {
           ))}
           <Link
             href="/dashboard"
-            className="rounded-lg bg-accent px-5 py-2 text-sm font-semibold text-page transition-colors hover:bg-accent/90"
+            className="rounded-lg bg-accent px-5 py-2 text-sm font-semibold text-page shadow-[0_0_15px_rgba(255,69,0,0.4)] transition-all hover:bg-accent/90 hover:shadow-[0_0_20px_rgba(255,69,0,0.6)]"
           >
             Get Started
           </Link>

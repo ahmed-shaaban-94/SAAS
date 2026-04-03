@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DataPulse - Turn Raw Sales Data into Revenue Intelligence</title>
+    <meta name="description" content="Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. AI-powered insights, real-time dashboards, and enterprise-grade quality gates." />
+    <link rel="canonical" href="https://smartdatapulse.tech" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="DataPulse - Turn Raw Sales Data into Revenue Intelligence" />
+    <meta property="og:description" content="Import, clean, analyze, and visualize your sales data with an automated medallion pipeline." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Tailwind + Inter font -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        page: '#020617',
+                        card: '#0f172a',
+                        'text-primary': '#f8fafc',
+                        'text-secondary': '#94a3b8',
+                        accent: '#FF4500',
+                        border: '#1e293b',
+                        'chart-blue': '#3b82f6',
+                        'growth-red': '#ef4444',
+                        'growth-green': '#22c55e',
+                        'chart-amber': '#f59e0b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* ── Splash Screen ── */
+        #splash-screen {
+            position: fixed; inset: 0;
+            background-color: #020617;
+            z-index: 9999;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            overflow: hidden;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
+        }
+        .energy-core {
+            width: 30px; height: 30px;
+            background-color: #FFFFFF;
+            border-radius: 50%;
+            box-shadow: 0 0 20px 10px #FFD700, 0 0 50px 25px #FF4500, 0 0 100px 40px #8B0000;
+            animation: coreCharge 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards, corePulse 0.3s infinite alternate;
+        }
+        .shockwave {
+            position: absolute; width: 100px; height: 100px;
+            border-radius: 50%; border: 2px solid rgba(255, 69, 0, 0.8);
+            top: 50%; left: 50%; margin-top: -50px; margin-left: -50px;
+            opacity: 0; pointer-events: none; z-index: 2;
+        }
+        .shockwave.active { animation: explode 0.8s ease-out forwards; }
+        .fire-particle {
+            position: absolute; top: 50%; left: 50%;
+            background: radial-gradient(circle, #ffcc00 0%, #ff6b00 50%, transparent 100%);
+            border-radius: 50%; filter: blur(2px); opacity: 0;
+        }
+        @keyframes coreCharge {
+            0% { transform: scale(0); opacity: 0; }
+            12% { transform: scale(1); opacity: 1; }
+            75% { transform: scale(0.8); opacity: 1; }
+            90% { transform: scale(35); opacity: 0; }
+            100% { transform: scale(40); opacity: 0; display: none; }
+        }
+        @keyframes corePulse {
+            0% { box-shadow: 0 0 15px 5px #FFD700, 0 0 40px 15px #FF4500, 0 0 80px 30px #8B0000; }
+            100% { box-shadow: 0 0 30px 15px #FFFFFF, 0 0 70px 30px #FF4500, 0 0 120px 50px #8B0000; }
+        }
+        @keyframes explode {
+            0% { transform: scale(0.5); opacity: 1; box-shadow: 0 0 30px 15px rgba(255, 69, 0, 0.9); }
+            100% { transform: scale(20); opacity: 0; box-shadow: 0 0 80px 40px rgba(255, 0, 0, 0); border-color: transparent; }
+        }
+        @keyframes impactText {
+            0% { transform: scale(3); opacity: 0; filter: blur(10px); }
+            50% { transform: scale(0.9); opacity: 1; filter: blur(0px); }
+            75% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ── Canvas Network ── */
+        #network-canvas {
+            position: fixed; inset: 0; width: 100%; height: 100%;
+            z-index: 0; opacity: 0.35; pointer-events: none;
+        }
+
+        /* ── Main Content ── */
+        #main-content { opacity: 0; transform: translateY(20px); transition: opacity 0.8s ease-out, transform 0.8s ease-out; position: relative; z-index: 10; }
+        #main-content.show-content { opacity: 1; transform: translateY(0); }
+
+        /* ── Utilities ── */
+        .gradient-text {
+            background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(to right, #FF4500, #F59E0B);
+        }
+        .glow-btn { box-shadow: 0 0 20px rgba(255, 69, 0, 0.4); }
+        .glow-btn:hover { box-shadow: 0 0 30px rgba(255, 69, 0, 0.7); }
+        .glow-card { transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease; }
+        .glow-card:hover {
+            box-shadow: 0 4px 20px rgba(255, 69, 0, 0.1), 0 0 40px rgba(255, 69, 0, 0.08);
+            border-color: rgba(255, 69, 0, 0.3); transform: translateY(-4px);
+        }
+
+        /* ── Pipeline connectors ── */
+        @media (min-width: 768px) {
+            .pipeline-connector:not(:last-child)::after {
+                content: ''; position: absolute; top: 2rem; right: -50%; width: 100%; height: 2px;
+                background: linear-gradient(to right, rgba(255, 69, 0, 0.2), rgba(255, 69, 0, 0.8)); z-index: -1;
+            }
+        }
+
+        /* ── Scroll animations ── */
+        .animate-on-scroll { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease, transform 0.6s ease; }
+        .animate-on-scroll.is-visible { opacity: 1; transform: translateY(0); }
+
+        /* ── FAQ accordion ── */
+        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+        .faq-answer.open { max-height: 300px; padding-top: 0.75rem; }
+
+        /* ── Reduced motion ── */
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+            #splash-screen { display: none !important; }
+            #main-content { display: block !important; opacity: 1 !important; visibility: visible !important; transform: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-page font-sans text-text-primary antialiased relative">
+
+    <!-- Background Network Canvas -->
+    <canvas id="network-canvas"></canvas>
+
+    <!-- ═══════ SPLASH SCREEN ═══════ -->
+    <div id="splash-screen">
+        <div class="relative flex h-[100px] w-[100px] items-center justify-center" id="pulse-box">
+            <div class="shockwave" id="shockwave"></div>
+            <div class="energy-core" id="energy-core"></div>
+        </div>
+        <h1 class="text-5xl md:text-7xl font-extrabold mt-8 opacity-0 z-10 tracking-tight" id="splash-text"
+            style="background: linear-gradient(to right, #F59E0B, #FF4500, #EF4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 40px rgba(255,69,0,0.5);">
+            DATAPULSE
+        </h1>
+    </div>
+
+    <!-- ═══════ MAIN CONTENT ═══════ -->
+    <div id="main-content" class="hidden">
+
+        <!-- HEADER -->
+        <header class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-page/80 backdrop-blur-md border-b border-border/50">
+            <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+                <a class="flex items-center gap-2" href="#">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-7 w-7 text-accent"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg>
+                    <span class="text-xl font-bold text-accent">DataPulse</span>
+                </a>
+                <div class="hidden items-center gap-8 lg:flex">
+                    <a href="#features" class="text-sm font-medium text-text-secondary transition-colors hover:text-text-primary">Features</a>
+                    <a href="#how-it-works" class="text-sm font-medium text-text-secondary transition-colors hover:text-text-primary">How It Works</a>
+                    <a href="#pricing" class="text-sm font-medium text-text-secondary transition-colors hover:text-text-primary">Pricing</a>
+                    <a href="#faq" class="text-sm font-medium text-text-secondary transition-colors hover:text-text-primary">FAQ</a>
+                    <a class="rounded-lg bg-accent px-5 py-2 text-sm font-semibold text-page transition-all glow-btn hover:bg-accent/90" href="/dashboard">Get Started</a>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <!-- JSON-LD -->
+            <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"DataPulse","url":"https://smartdatapulse.tech","description":"Import, clean, analyze, and visualize your sales data with an automated medallion pipeline."}</script>
+            <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"DataPulse","url":"https://smartdatapulse.tech"}</script>
+
+            <!-- ═══════ HERO ═══════ -->
+            <section class="relative overflow-hidden px-4 pb-16 pt-32 sm:px-6 md:pb-24 md:pt-40 lg:px-8 bg-transparent">
+                <div class="pointer-events-none absolute inset-0 overflow-hidden">
+                    <div class="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/10 blur-[100px]"></div>
+                    <div class="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-chart-blue/10 blur-[100px]"></div>
+                </div>
+                <div class="relative mx-auto max-w-6xl">
+                    <div class="mx-auto max-w-3xl text-center">
+                        <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-4 py-1.5 text-sm text-accent">
+                            <span class="h-2 w-2 rounded-full bg-accent animate-pulse"></span> Now in public beta
+                        </div>
+                        <h1 class="text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">
+                            Turn Raw Sales Data into <span class="gradient-text">Revenue Intelligence</span>
+                        </h1>
+                        <p class="mx-auto mt-6 max-w-2xl text-lg text-text-secondary sm:text-xl">
+                            Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. From Excel chaos to actionable dashboards in minutes.
+                        </p>
+                        <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+                            <a class="w-full rounded-lg bg-accent px-8 py-3 text-center text-sm font-semibold text-page glow-btn transition-all hover:bg-accent/90 sm:w-auto" href="/dashboard">Start Free Trial</a>
+                            <a href="#how-it-works" class="w-full rounded-lg border border-border bg-card/50 backdrop-blur px-8 py-3 text-center text-sm font-semibold text-text-primary transition-colors hover:bg-card sm:w-auto">See How It Works</a>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard mockup -->
+                    <div class="mx-auto mt-16 max-w-4xl">
+                        <div class="relative overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4 shadow-2xl">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent to-chart-amber"></div>
+                            <div class="mb-4 flex items-center gap-2">
+                                <div class="h-3 w-3 rounded-full bg-growth-red/60"></div>
+                                <div class="h-3 w-3 rounded-full bg-chart-amber/60"></div>
+                                <div class="h-3 w-3 rounded-full bg-growth-green/60"></div>
+                                <span class="ml-2 text-xs text-text-secondary">DataPulse Dashboard</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                <div class="rounded-lg border border-border/50 bg-page/50 p-3"><p class="text-xs text-text-secondary">Total Revenue</p><p class="mt-1 text-lg font-bold">EGP 4.2M</p><p class="text-xs text-growth-green">+12.5%</p></div>
+                                <div class="rounded-lg border border-border/50 bg-page/50 p-3"><p class="text-xs text-text-secondary">Orders</p><p class="mt-1 text-lg font-bold">23,847</p><p class="text-xs text-growth-green">+8.3%</p></div>
+                                <div class="rounded-lg border border-border/50 bg-page/50 p-3"><p class="text-xs text-text-secondary">Customers</p><p class="mt-1 text-lg font-bold">1,245</p><p class="text-xs text-growth-green">+15.2%</p></div>
+                                <div class="rounded-lg border border-border/50 bg-page/50 p-3"><p class="text-xs text-text-secondary">Avg. Order</p><p class="mt-1 text-lg font-bold">EGP 176</p><p class="text-xs text-growth-green">+4.1%</p></div>
+                            </div>
+                            <div class="mt-4 rounded-lg border border-border/50 bg-page/50 p-4">
+                                <p class="mb-3 text-xs text-text-secondary">Revenue Trend</p>
+                                <div class="flex h-32 items-end gap-1.5">
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:40%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:55%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:35%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:65%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:50%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:75%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:60%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:85%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:70%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:90%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:80%"></div>
+                                    <div class="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80" style="height:95%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ FEATURES ═══════ -->
+            <section id="features" class="px-4 py-16 sm:px-6 md:py-24 lg:px-8 bg-card/30 backdrop-blur-sm border-t border-border">
+                <div class="mx-auto max-w-6xl animate-on-scroll">
+                    <div class="mb-12 text-center">
+                        <h2 class="text-3xl font-bold sm:text-4xl">Everything you need to <span class="gradient-text">master your data</span></h2>
+                        <p class="mx-auto mt-4 max-w-2xl text-text-secondary">From raw Excel files to AI-powered insights, DataPulse handles every step of your sales analytics pipeline.</p>
+                    </div>
+                    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="glow-card group rounded-xl border border-border bg-card p-6">
+                            <div class="mb-4 inline-flex rounded-lg bg-accent/10 p-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-accent transition-transform group-hover:scale-110"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg></div>
+                            <h3 class="mb-2 text-lg font-semibold">Upload &amp; Import</h3>
+                            <p class="text-sm leading-relaxed text-text-secondary">Import Excel and CSV files with automatic schema detection, type inference, and blazing-fast Polars processing.</p>
+                        </div>
+                        <div class="glow-card group rounded-xl border border-border bg-card p-6">
+                            <div class="mb-4 inline-flex rounded-lg bg-accent/10 p-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-accent transition-transform group-hover:scale-110"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg></div>
+                            <h3 class="mb-2 text-lg font-semibold">Data Cleaning</h3>
+                            <p class="text-sm leading-relaxed text-text-secondary">Automated deduplication, normalization, and validation through the dbt-powered silver layer.</p>
+                        </div>
+                        <div class="glow-card group rounded-xl border border-border bg-card p-6">
+                            <div class="mb-4 inline-flex rounded-lg bg-accent/10 p-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-accent transition-transform group-hover:scale-110"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></div>
+                            <h3 class="mb-2 text-lg font-semibold">Quality Gates</h3>
+                            <p class="text-sm leading-relaxed text-text-secondary">7 automated quality checks ensure data integrity at every pipeline stage. No bad data reaches your dashboards.</p>
+                        </div>
+                        <div class="glow-card group rounded-xl border border-border bg-card p-6">
+                            <div class="mb-4 inline-flex rounded-lg bg-accent/10 p-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-accent transition-transform group-hover:scale-110"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></div>
+                            <h3 class="mb-2 text-lg font-semibold">Real-time Analytics</h3>
+                            <p class="text-sm leading-relaxed text-text-secondary">Interactive dashboards with KPIs, trends, rankings, drill-downs, and 25+ API endpoints.</p>
+                        </div>
+                        <div class="glow-card group rounded-xl border border-border bg-card p-6">
+                            <div class="mb-4 inline-flex rounded-lg bg-accent/10 p-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-accent transition-transform group-hover:scale-110"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg></div>
+                            <h3 class="mb-2 text-lg font-semibold">AI Insights</h3>
+                            <p class="text-sm leading-relaxed text-text-secondary">AI-powered anomaly detection, change narratives, and bilingual summaries of your sales data.</p>
+                        </div>
+                        <div class="glow-card group rounded-xl border border-border bg-card p-6">
+                            <div class="mb-4 inline-flex rounded-lg bg-accent/10 p-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-accent transition-transform group-hover:scale-110"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></div>
+                            <h3 class="mb-2 text-lg font-semibold">Pipeline Automation</h3>
+                            <p class="text-sm leading-relaxed text-text-secondary">n8n-powered workflows auto-trigger the full pipeline from import to dashboard with Slack notifications.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ HOW IT WORKS ═══════ -->
+            <section id="how-it-works" class="px-4 py-16 sm:px-6 md:py-24 lg:px-8 bg-page/50 border-t border-border/50">
+                <div class="mx-auto max-w-6xl animate-on-scroll">
+                    <div class="mb-12 text-center">
+                        <h2 class="text-3xl font-bold sm:text-4xl">How <span class="gradient-text">DataPulse</span> works</h2>
+                        <p class="mx-auto mt-4 max-w-2xl text-text-secondary">Your data flows through four stages, each adding more value. From raw import to intelligent dashboards.</p>
+                    </div>
+                    <div class="flex flex-col gap-8 md:flex-row md:gap-4 relative">
+                        <div class="relative flex flex-1 flex-col items-center text-center pipeline-connector">
+                            <div class="relative mb-4"><div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/30 bg-accent/10 backdrop-blur"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-7 w-7 text-accent"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg></div><span class="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-page">1</span></div>
+                            <h3 class="mb-1 text-lg font-semibold">Import</h3>
+                            <span class="mb-2 inline-block rounded-full bg-accent/10 px-3 py-0.5 text-xs font-medium text-accent">Bronze</span>
+                            <p class="text-sm text-text-secondary">Raw data ingestion from Excel and CSV files</p>
+                        </div>
+                        <div class="relative flex flex-1 flex-col items-center text-center pipeline-connector">
+                            <div class="relative mb-4"><div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/30 bg-accent/10 backdrop-blur"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-7 w-7 text-accent"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg></div><span class="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-page">2</span></div>
+                            <h3 class="mb-1 text-lg font-semibold">Clean</h3>
+                            <span class="mb-2 inline-block rounded-full bg-accent/10 px-3 py-0.5 text-xs font-medium text-accent">Silver</span>
+                            <p class="text-sm text-text-secondary">Deduplication, normalization, and type casting</p>
+                        </div>
+                        <div class="relative flex flex-1 flex-col items-center text-center pipeline-connector">
+                            <div class="relative mb-4"><div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/30 bg-accent/10 backdrop-blur"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-7 w-7 text-accent"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></div><span class="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-page">3</span></div>
+                            <h3 class="mb-1 text-lg font-semibold">Analyze</h3>
+                            <span class="mb-2 inline-block rounded-full bg-accent/10 px-3 py-0.5 text-xs font-medium text-accent">Gold</span>
+                            <p class="text-sm text-text-secondary">Aggregations, KPIs, and business metrics</p>
+                        </div>
+                        <div class="relative flex flex-1 flex-col items-center text-center">
+                            <div class="relative mb-4"><div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/30 bg-accent/10 backdrop-blur"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-7 w-7 text-accent"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></div><span class="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-page">4</span></div>
+                            <h3 class="mb-1 text-lg font-semibold">Visualize</h3>
+                            <span class="mb-2 inline-block rounded-full bg-accent/10 px-3 py-0.5 text-xs font-medium text-accent">Dashboard</span>
+                            <p class="text-sm text-text-secondary">Interactive charts, tables, and AI insights</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ STATS BANNER ═══════ -->
+            <section class="px-4 py-16 sm:px-6 md:py-24 lg:px-8 border-t border-border">
+                <div class="mx-auto max-w-6xl animate-on-scroll">
+                    <div class="rounded-2xl border border-border bg-card/80 px-6 py-12 backdrop-blur">
+                        <div class="grid grid-cols-2 gap-8 md:grid-cols-4">
+                            <div class="text-center"><p class="text-3xl font-bold text-accent sm:text-4xl">2.2M+</p><p class="mt-1 text-sm text-text-secondary">Rows Processed</p></div>
+                            <div class="text-center"><p class="text-3xl font-bold text-accent sm:text-4xl">99.5%</p><p class="mt-1 text-sm text-text-secondary">Data Quality Score</p></div>
+                            <div class="text-center"><p class="text-3xl font-bold text-accent sm:text-4xl">10x</p><p class="mt-1 text-sm text-text-secondary">Faster than Pandas</p></div>
+                            <div class="text-center"><p class="text-3xl font-bold text-accent sm:text-4xl">25+</p><p class="mt-1 text-sm text-text-secondary">API Endpoints</p></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ PRICING ═══════ -->
+            <section id="pricing" class="px-4 py-16 sm:px-6 md:py-24 lg:px-8 bg-card/30 backdrop-blur-sm border-t border-border">
+                <div class="mx-auto max-w-6xl animate-on-scroll">
+                    <div class="mb-12 text-center">
+                        <h2 class="text-3xl font-bold sm:text-4xl">Simple, transparent <span class="gradient-text">pricing</span></h2>
+                        <p class="mx-auto mt-4 max-w-2xl text-text-secondary">Start free, scale when you need to. No hidden fees, no surprises.</p>
+                    </div>
+                    <div class="grid gap-8 lg:grid-cols-3">
+                        <!-- Starter -->
+                        <div class="glow-card rounded-xl border border-border bg-card p-8">
+                            <h3 class="text-xl font-bold">Starter</h3>
+                            <div class="mt-4"><span class="text-4xl font-bold">$0</span><span class="text-text-secondary">/mo</span></div>
+                            <p class="mt-2 text-sm text-text-secondary">Perfect for trying out DataPulse</p>
+                            <ul class="mt-6 space-y-3 text-sm text-text-secondary">
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> 1 data source</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> 10,000 rows</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Basic dashboard</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Daily quality checks</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Community support</li>
+                            </ul>
+                            <a href="/dashboard" class="mt-8 block w-full rounded-lg border border-border py-3 text-center text-sm font-semibold text-text-primary transition-colors hover:bg-card">Get Started Free</a>
+                        </div>
+                        <!-- Pro (Popular) -->
+                        <div class="relative glow-card rounded-xl border-2 border-accent bg-card p-8 shadow-[0_0_30px_rgba(255,69,0,0.15)]">
+                            <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-bold text-page">Most Popular</span>
+                            <h3 class="text-xl font-bold">Pro</h3>
+                            <div class="mt-4"><span class="text-4xl font-bold">$49</span><span class="text-text-secondary">/mo</span></div>
+                            <p class="mt-2 text-sm text-text-secondary">For growing teams and businesses</p>
+                            <ul class="mt-6 space-y-3 text-sm text-text-secondary">
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> 5 data sources</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> 1,000,000 rows</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> AI-powered insights</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Pipeline automation</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Quality gates</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Priority support</li>
+                            </ul>
+                            <a href="/dashboard" class="mt-8 block w-full rounded-lg bg-accent py-3 text-center text-sm font-semibold text-page glow-btn transition-all hover:bg-accent/90">Start Free Trial</a>
+                        </div>
+                        <!-- Enterprise -->
+                        <div class="glow-card rounded-xl border border-border bg-card p-8">
+                            <h3 class="text-xl font-bold">Enterprise</h3>
+                            <div class="mt-4"><span class="text-4xl font-bold">Custom</span></div>
+                            <p class="mt-2 text-sm text-text-secondary">For large-scale operations</p>
+                            <ul class="mt-6 space-y-3 text-sm text-text-secondary">
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Unlimited data sources</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Unlimited rows</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> SSO &amp; RBAC</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Custom integrations</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> Dedicated support</li>
+                                <li class="flex items-center gap-2"><span class="text-growth-green">&#10003;</span> On-premise option</li>
+                            </ul>
+                            <a href="mailto:support@smartdatapulse.tech" class="mt-8 block w-full rounded-lg border border-border py-3 text-center text-sm font-semibold text-text-primary transition-colors hover:bg-card">Contact Sales</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ FAQ ═══════ -->
+            <section id="faq" class="px-4 py-16 sm:px-6 md:py-24 lg:px-8 bg-page/50 border-t border-border/50">
+                <div class="mx-auto max-w-6xl animate-on-scroll">
+                    <div class="mb-12 text-center">
+                        <h2 class="text-3xl font-bold sm:text-4xl">Frequently asked <span class="gradient-text">questions</span></h2>
+                        <p class="mx-auto mt-4 max-w-2xl text-text-secondary">Everything you need to know about DataPulse.</p>
+                    </div>
+                    <div class="mx-auto max-w-3xl space-y-3" id="faq-list">
+                        <div class="rounded-xl border border-border bg-card overflow-hidden">
+                            <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left text-sm font-semibold hover:bg-card/80 transition-colors"><span>What data formats does DataPulse support?</span><span class="faq-icon text-accent transition-transform">+</span></button>
+                            <div class="faq-answer px-5 pb-5 text-sm text-text-secondary">DataPulse supports Excel (.xlsx, .xls) and CSV files. Our import engine uses Polars with PyArrow for blazing-fast processing of files up to 500 MB with automatic schema detection.</div>
+                        </div>
+                        <div class="rounded-xl border border-border bg-card overflow-hidden">
+                            <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left text-sm font-semibold hover:bg-card/80 transition-colors"><span>How does the medallion architecture work?</span><span class="faq-icon text-accent transition-transform">+</span></button>
+                            <div class="faq-answer px-5 pb-5 text-sm text-text-secondary">Data flows through three layers: Bronze (raw import), Silver (cleaned and validated via dbt), and Gold (aggregated business metrics). Each layer has quality gates to ensure data integrity.</div>
+                        </div>
+                        <div class="rounded-xl border border-border bg-card overflow-hidden">
+                            <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left text-sm font-semibold hover:bg-card/80 transition-colors"><span>What quality checks are included?</span><span class="faq-icon text-accent transition-transform">+</span></button>
+                            <div class="faq-answer px-5 pb-5 text-sm text-text-secondary">7 automated checks run at each pipeline stage: row count validation, null rate analysis, schema drift detection, duplicate detection, value range checks, referential integrity, and freshness monitoring.</div>
+                        </div>
+                        <div class="rounded-xl border border-border bg-card overflow-hidden">
+                            <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left text-sm font-semibold hover:bg-card/80 transition-colors"><span>Is my data secure?</span><span class="faq-icon text-accent transition-transform">+</span></button>
+                            <div class="faq-answer px-5 pb-5 text-sm text-text-secondary">Absolutely. DataPulse uses tenant-scoped Row Level Security (RLS) on all database tables, CORS protection, Content Security Policy headers, and all credentials are managed via environment variables.</div>
+                        </div>
+                        <div class="rounded-xl border border-border bg-card overflow-hidden">
+                            <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left text-sm font-semibold hover:bg-card/80 transition-colors"><span>How long does setup take?</span><span class="faq-icon text-accent transition-transform">+</span></button>
+                            <div class="faq-answer px-5 pb-5 text-sm text-text-secondary">Under 5 minutes. Run docker compose up and your entire stack is ready: PostgreSQL, the API, dashboard, pipeline automation, and AI insights.</div>
+                        </div>
+                        <div class="rounded-xl border border-border bg-card overflow-hidden">
+                            <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left text-sm font-semibold hover:bg-card/80 transition-colors"><span>What's included in the free tier?</span><span class="faq-icon text-accent transition-transform">+</span></button>
+                            <div class="faq-answer px-5 pb-5 text-sm text-text-secondary">The Starter plan includes 1 data source, up to 10,000 rows, the basic analytics dashboard, daily quality checks, and community support. No credit card required.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ TECH BADGES ═══════ -->
+            <section class="px-4 py-12 sm:px-6 lg:px-8 border-t border-border">
+                <div class="mx-auto max-w-6xl text-center animate-on-scroll">
+                    <p class="mb-6 text-sm font-medium text-text-secondary">Built with industry-leading technologies</p>
+                    <div class="flex flex-wrap items-center justify-center gap-3">
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">Next.js</span>
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">PostgreSQL</span>
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">dbt</span>
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">Polars</span>
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">FastAPI</span>
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">Docker</span>
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">n8n</span>
+                        <span class="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-accent">Recharts</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ CTA ═══════ -->
+            <section class="px-4 py-16 sm:px-6 md:py-24 lg:px-8 border-t border-border">
+                <div class="mx-auto max-w-6xl animate-on-scroll">
+                    <div class="rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/5 via-card to-chart-blue/5 p-8 text-center sm:p-12">
+                        <h2 class="text-3xl font-bold sm:text-4xl">Ready to transform your sales data?</h2>
+                        <p class="mx-auto mt-4 max-w-xl text-text-secondary">Join thousands of businesses turning raw data into revenue intelligence. Start your free trial today.</p>
+                        <div class="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+                            <a href="/dashboard" class="w-full rounded-lg bg-accent px-8 py-3 text-center text-sm font-semibold text-page glow-btn transition-all hover:bg-accent/90 sm:w-auto">Start Free Trial</a>
+                            <a href="mailto:support@smartdatapulse.tech" class="w-full rounded-lg border border-border bg-card/50 px-8 py-3 text-center text-sm font-semibold text-text-primary transition-colors hover:bg-card sm:w-auto">Contact Sales</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="border-t border-border bg-card/80 backdrop-blur">
+            <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-2 gap-8 md:grid-cols-4">
+                    <div><h3 class="text-sm font-semibold">Product</h3><ul class="mt-4 space-y-3"><li><a class="text-sm text-text-secondary hover:text-accent" href="#features">Features</a></li><li><a class="text-sm text-text-secondary hover:text-accent" href="#pricing">Pricing</a></li><li><a class="text-sm text-text-secondary hover:text-accent" href="/dashboard">Dashboard</a></li></ul></div>
+                    <div><h3 class="text-sm font-semibold">Company</h3><ul class="mt-4 space-y-3"><li><a class="text-sm text-text-secondary hover:text-accent" href="/#how-it-works">About</a></li><li><a class="text-sm text-text-secondary hover:text-accent" href="mailto:support@smartdatapulse.tech">Contact</a></li></ul></div>
+                    <div><h3 class="text-sm font-semibold">Legal</h3><ul class="mt-4 space-y-3"><li><a class="text-sm text-text-secondary hover:text-accent" href="/privacy">Privacy Policy</a></li><li><a class="text-sm text-text-secondary hover:text-accent" href="/terms">Terms of Service</a></li></ul></div>
+                    <div><h3 class="text-sm font-semibold">Connect</h3><ul class="mt-4 space-y-3"><li><a class="text-sm text-text-secondary hover:text-accent" href="https://github.com/ahmed-shaaban-94/SAAS" target="_blank" rel="noopener">GitHub</a></li></ul></div>
+                </div>
+                <div class="mt-12 flex flex-col items-center gap-4 border-t border-border pt-8 sm:flex-row sm:justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-accent"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg>
+                        <span class="text-sm font-semibold text-accent">DataPulse</span>
+                    </div>
+                    <p class="text-sm text-text-secondary">&copy; 2026 DataPulse. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ═══════ JAVASCRIPT ═══════ -->
+    <script>
+        // ── Fire Particles ──
+        function createFireParticles() {
+            const container = document.getElementById('splash-screen');
+            for (let i = 0; i < 60; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('fire-particle');
+                const size = Math.random() * 12 + 4;
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 150 + 50;
+                const tx = Math.cos(angle) * velocity;
+                const ty = Math.sin(angle) * velocity;
+                const duration = Math.random() * 800 + 400;
+                const delay = Math.random() * 1200;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.animate([
+                    { transform: 'translate(-50%, -50%) scale(1)', opacity: 0.8 },
+                    { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+                ], { duration, delay, iterations: 3, easing: 'ease-out' });
+                container.appendChild(particle);
+            }
+        }
+
+        // ── Canvas Network Background ──
+        function initCanvasNetwork() {
+            const canvas = document.getElementById('network-canvas');
+            const ctx = canvas.getContext('2d');
+            let width, height, particles, rafId, paused = false;
+            const MAX_PARTICLES = 120;
+            const CONNECT_DIST = 130;
+
+            function resize() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+                const count = Math.min(Math.floor((width * height) / 15000), MAX_PARTICLES);
+                particles = [];
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: Math.random() * width, y: Math.random() * height,
+                        vx: (Math.random() - 0.5) * 1.6, vy: (Math.random() - 0.5) * 1.6,
+                        r: Math.random() * 1.8 + 0.8
+                    });
+                }
+            }
+
+            function animate() {
+                if (paused) return;
+                ctx.clearRect(0, 0, width, height);
+                const maxD2 = CONNECT_DIST * CONNECT_DIST;
+                for (const p of particles) {
+                    p.x += p.vx; p.y += p.vy;
+                    if (p.x < 0 || p.x > width) p.vx *= -1;
+                    if (p.y < 0 || p.y > height) p.vy *= -1;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 69, 0, 0.6)';
+                    ctx.fill();
+                }
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const d2 = dx * dx + dy * dy;
+                        if (d2 < maxD2) {
+                            const opacity = 0.2 - Math.sqrt(d2) / (CONNECT_DIST * 4);
+                            if (opacity > 0) {
+                                ctx.beginPath();
+                                ctx.moveTo(particles[i].x, particles[i].y);
+                                ctx.lineTo(particles[j].x, particles[j].y);
+                                ctx.strokeStyle = `rgba(255, 69, 0, ${opacity})`;
+                                ctx.lineWidth = 0.8;
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                }
+                rafId = requestAnimationFrame(animate);
+            }
+
+            let resizeTimer;
+            window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 200); });
+            document.addEventListener('visibilitychange', () => { paused = document.hidden; if (!paused) rafId = requestAnimationFrame(animate); });
+            resize();
+            rafId = requestAnimationFrame(animate);
+        }
+
+        // ── FAQ Toggle ──
+        function toggleFaq(btn) {
+            const answer = btn.nextElementSibling;
+            const icon = btn.querySelector('.faq-icon');
+            const isOpen = answer.classList.contains('open');
+            // Close all
+            document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('open'));
+            document.querySelectorAll('.faq-icon').forEach(i => i.textContent = '+');
+            if (!isOpen) { answer.classList.add('open'); icon.textContent = '-'; }
+        }
+
+        // ── Scroll Animation Observer ──
+        function initScrollAnimations() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('is-visible'); });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+        }
+
+        // ── Boot Sequence ──
+        document.addEventListener("DOMContentLoaded", () => {
+            const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const splash = document.getElementById('splash-screen');
+            const main = document.getElementById('main-content');
+            const shockwave = document.getElementById('shockwave');
+            const splashText = document.getElementById('splash-text');
+
+            initCanvasNetwork();
+            initScrollAnimations();
+
+            if (prefersReduced) {
+                splash.style.display = 'none';
+                main.classList.remove('hidden');
+                main.classList.add('show-content');
+                return;
+            }
+
+            createFireParticles();
+
+            setTimeout(() => {
+                shockwave.classList.add('active');
+                splashText.style.animation = 'impactText 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+            }, 1800);
+
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                splash.style.visibility = 'hidden';
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                    main.classList.remove('hidden');
+                    setTimeout(() => main.classList.add('show-content'), 50);
+                }, 800);
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

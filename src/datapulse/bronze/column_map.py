@@ -46,6 +46,7 @@ COLUMN_MAP: dict[str, str] = {
     "KNUMV": "knumv",
     "Billing Document": "billing_document",
     "Billing Type2": "billing_type2",
+    "Billing Type_1": "billing_type2",  # Alternate header name in c086 site files
     "Cosm Mg": "cosm_mg",
     "Area Mg": "area_mg",
     "Site Name": "site_name",

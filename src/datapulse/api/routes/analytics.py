@@ -136,10 +136,15 @@ def get_dashboard(
     response: Response,
     service: ServiceDep,
     target_date: Annotated[date | None, Query()] = None,
+    start_date: Annotated[date | None, Query()] = None,
+    end_date: Annotated[date | None, Query()] = None,
 ) -> DashboardData:
     """Composite dashboard endpoint — KPI + trends + rankings + filters in one call."""
     _set_cache(response, 600)
-    return service.get_dashboard_data(target_date)
+    date_range: DateRange | None = None
+    if start_date is not None and end_date is not None:
+        date_range = DateRange(start_date=start_date, end_date=end_date)
+    return service.get_dashboard_data(target_date, date_range=date_range)
 
 
 @router.get("/date-range", response_model=DataDateRange)

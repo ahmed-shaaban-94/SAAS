@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
+import { FireBackground } from "@/components/marketing/fire-background";
 
 export default function MarketingLayout({
   children,
@@ -14,8 +15,11 @@ export default function MarketingLayout({
       >
         Skip to content
       </a>
+      <FireBackground />
       <Navbar />
-      <main id="main-content">{children}</main>
+      <main id="main-content" className="relative z-10">
+        {children}
+      </main>
       <Footer />
     </>
   );

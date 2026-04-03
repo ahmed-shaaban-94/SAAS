@@ -65,7 +65,7 @@ export default function ExplorePage() {
     return (
       <PageTransition>
         <Breadcrumbs />
-        <Header title="Explore" description="Build custom queries from your data models" />
+        <Header title="Explore Data" description="Choose a data source, pick columns, and see results" />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <LoadingCard />
           <LoadingCard />
@@ -79,8 +79,8 @@ export default function ExplorePage() {
     <PageTransition>
       <Breadcrumbs />
       <Header
-        title="Explore"
-        description="Build custom queries from your dbt models — select dimensions and metrics, then run"
+        title="Explore Data"
+        description="Choose a data source, pick the columns you want, and see the results"
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
@@ -89,14 +89,14 @@ export default function ExplorePage() {
           {/* Model selector */}
           <div className="rounded-xl border border-border bg-card p-4">
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              Model
+              Data Source
             </label>
             <select
               value={selectedModel}
               onChange={(e) => handleModelChange(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
             >
-              <option value="">Select a model...</option>
+              <option value="">Select a data source...</option>
               {catalog?.models.map((m) => (
                 <option key={m.name} value={m.name}>
                   {m.label || m.name}
@@ -123,7 +123,7 @@ export default function ExplorePage() {
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                  Row Limit
+                  Max Rows
                 </label>
                 <input
                   type="number"
@@ -146,7 +146,7 @@ export default function ExplorePage() {
                 )}
               >
                 <Play className="h-4 w-4" />
-                {queryLoading ? "Running..." : "Run Query"}
+                {queryLoading ? "Loading..." : "Get Results"}
               </button>
 
               {(result || error) && (
@@ -170,8 +170,8 @@ export default function ExplorePage() {
         <div>
           {!selectedModel && (
             <EmptyState
-              title="No model selected"
-              description="Select a model to start exploring your data"
+              title="No data source selected"
+              description="Pick a data source from the left to start exploring"
             />
           )}
 
@@ -179,12 +179,11 @@ export default function ExplorePage() {
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
               <Database className="mb-4 h-12 w-12 text-text-secondary/40" />
               <p className="text-sm text-text-secondary">
-                Select dimensions and metrics, then click &quot;Run Query&quot;
+                Pick columns from the left panel, then click &quot;Get Results&quot;
               </p>
               {selectedDimensions.length > 0 && (
                 <p className="mt-2 text-xs text-accent">
-                  {selectedDimensions.length} dimension{selectedDimensions.length !== 1 ? "s" : ""},{" "}
-                  {selectedMetrics.length} metric{selectedMetrics.length !== 1 ? "s" : ""} selected
+                  {selectedDimensions.length + selectedMetrics.length} column{(selectedDimensions.length + selectedMetrics.length) !== 1 ? "s" : ""} selected
                 </p>
               )}
             </div>
@@ -199,7 +198,7 @@ export default function ExplorePage() {
 
           {error && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6">
-              <p className="text-sm font-medium text-red-400">Query failed</p>
+              <p className="text-sm font-medium text-red-400">Something went wrong</p>
               <p className="mt-1 text-xs text-red-400/70">{error.message}</p>
             </div>
           )}

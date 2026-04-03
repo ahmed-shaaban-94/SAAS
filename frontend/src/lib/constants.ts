@@ -12,7 +12,6 @@ export const NAV_ITEMS = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
   { label: "Goals", href: "/goals", icon: "Target" },
   { label: "Explore", href: "/explore", icon: "Compass" },
-  { label: "SQL Lab", href: "/sql-lab", icon: "Terminal" },
   { label: "Products", href: "/products", icon: "Package" },
   { label: "Customers", href: "/customers", icon: "Users" },
   { label: "Staff", href: "/staff", icon: "UserCog" },

@@ -141,30 +141,43 @@ class AnalyticsService:
         cache_set(key, result.model_dump(mode="json"), ttl=3600)
         return result
 
-    def get_dashboard_data(self, target_date: date | None = None) -> DashboardData:
+    def get_dashboard_data(
+        self,
+        target_date: date | None = None,
+        *,
+        date_range: DateRange | None = None,
+    ) -> DashboardData:
         """Composite dashboard payload — KPI + trends + rankings + filters (cached 600s)."""
         _, max_date = self._repo.get_data_date_range()
         if target_date is None:
             target_date = max_date or date.today()
-        key = _cache_key("dashboard", {"target_date": str(target_date)})
+
+        # Use caller-provided date range, or fall back to 30-day default
+        if date_range is None:
+            end = max_date or date.today()
+            date_range = DateRange(start_date=end - timedelta(days=30), end_date=end)
+
+        key = _cache_key("dashboard", {
+            "target_date": str(target_date),
+            "start": str(date_range.start_date),
+            "end": str(date_range.end_date),
+        })
         cached_val = cache_get(key)
         if cached_val is not None:
             log.debug("cache_hit", key=key)
             return DashboardData(**cached_val)
 
-        log.info("dashboard_data", target_date=str(target_date))
+        log.info("dashboard_data", target_date=str(target_date),
+                 start=str(date_range.start_date), end=str(date_range.end_date))
         kpi = self.get_dashboard_summary(target_date)
-        end = max_date or date.today()
-        default_f = AnalyticsFilter(
-            date_range=DateRange(start_date=end - timedelta(days=30), end_date=end)
-        )
+        filters = AnalyticsFilter(date_range=date_range)
         result = DashboardData(
             kpi=kpi,
-            daily_trend=self._repo.get_daily_trend(default_f),
-            monthly_trend=self._repo.get_monthly_trend(default_f),
-            top_products=self._repo.get_top_products(default_f),
-            top_customers=self._repo.get_top_customers(default_f),
-            top_staff=self._repo.get_top_staff(default_f),
+            daily_trend=self._repo.get_daily_trend(filters),
+            monthly_trend=self._repo.get_monthly_trend(filters),
+            top_products=self._repo.get_top_products(filters),
+            top_customers=self._repo.get_top_customers(filters),
+            top_staff=self._repo.get_top_staff(filters),
             filter_options=self.get_filter_options(),
         )
         cache_set(key, result.model_dump(mode="json"), ttl=600)

@@ -5,8 +5,8 @@ export function HeroSection() {
     <section className="relative overflow-hidden px-4 pb-16 pt-32 sm:px-6 md:pb-24 md:pt-40 lg:px-8">
       {/* Background glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/5 blur-3xl" />
-        <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-chart-blue/5 blur-3xl" />
+        <div className="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/10 blur-[100px]" />
+        <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-chart-blue/10 blur-[100px]" />
       </div>
 
       <div className="relative mx-auto max-w-6xl">
@@ -34,7 +34,7 @@ export function HeroSection() {
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/dashboard"
-              className="w-full rounded-lg bg-accent px-8 py-3 text-center text-sm font-semibold text-page shadow-lg shadow-accent/20 transition-all hover:bg-accent/90 hover:shadow-accent/30 sm:w-auto"
+              className="w-full rounded-lg bg-accent px-8 py-3 text-center text-sm font-semibold text-page shadow-[0_0_20px_rgba(255,69,0,0.4)] transition-all hover:bg-accent/90 hover:shadow-[0_0_30px_rgba(255,69,0,0.7)] sm:w-auto"
             >
               Start Free Trial
             </Link>
@@ -49,7 +49,9 @@ export function HeroSection() {
 
         {/* Dashboard mockup */}
         <div className="mx-auto mt-16 max-w-4xl">
-          <div className="glow-card rounded-xl border border-border bg-card p-4 shadow-2xl">
+          <div className="glow-card relative overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4 shadow-2xl">
+            {/* Gradient top accent */}
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-accent to-chart-amber" />
             {/* Title bar */}
             <div className="mb-4 flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-growth-red/60" />

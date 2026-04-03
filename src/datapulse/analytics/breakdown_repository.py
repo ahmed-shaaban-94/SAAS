@@ -33,19 +33,44 @@ class BreakdownRepository:
         self._session = session
 
     def get_billing_breakdown(self, filters: AnalyticsFilter) -> BillingBreakdown:
-        """Return billing method distribution for the given filters."""
+        """Return billing method distribution with returns subtracted from their parent group.
+
+        Return billing types (e.g. 'Cash Return') are mapped back to
+        their parent type ('Cash') and their amounts/counts are subtracted
+        so the pie chart shows a clean net-of-returns picture.
+        """
         log.info("get_billing_breakdown", filters=filters.model_dump())
         where, params = build_where(
             filters, date_column="date_key", supported_fields=SITE_DATE_ONLY
         )
 
+        # Map return billing_ways to parent, then aggregate net amounts.
+        # Returns have positive net_amount in fct_sales, so we subtract them.
         stmt = text(f"""
-            SELECT billing_way,
-                   SUM(transaction_count) AS transaction_count,
-                   SUM(total_net_amount)  AS total_net_amount
-            FROM public_marts.agg_sales_daily
-            WHERE {where}
-            GROUP BY billing_way
+            WITH raw AS (
+                SELECT
+                    CASE
+                        WHEN billing_way LIKE '%% Return' THEN REPLACE(billing_way, ' Return', '')
+                        ELSE billing_way
+                    END AS base_billing_way,
+                    CASE WHEN billing_way LIKE '%% Return' THEN TRUE ELSE FALSE END AS is_return_type,
+                    SUM(transaction_count) AS txn_count,
+                    SUM(return_count)      AS ret_count,
+                    SUM(total_net_amount)  AS net_amount
+                FROM public_marts.agg_sales_daily
+                WHERE {where}
+                GROUP BY 1, 2
+            )
+            SELECT
+                base_billing_way,
+                SUM(CASE WHEN NOT is_return_type THEN txn_count ELSE 0 END)
+                  - SUM(CASE WHEN is_return_type THEN txn_count ELSE 0 END) AS transaction_count,
+                SUM(CASE WHEN NOT is_return_type THEN net_amount ELSE 0 END)
+                  - SUM(CASE WHEN is_return_type THEN net_amount ELSE 0 END) AS total_net_amount
+            FROM raw
+            GROUP BY base_billing_way
+            HAVING SUM(CASE WHEN NOT is_return_type THEN net_amount ELSE 0 END)
+                     - SUM(CASE WHEN is_return_type THEN net_amount ELSE 0 END) > 0
             ORDER BY total_net_amount DESC
         """)
         rows = self._session.execute(stmt, params).fetchall()
