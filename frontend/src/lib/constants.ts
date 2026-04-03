@@ -1,6 +1,6 @@
 export const CHART_COLORS = [
-  "#FF5722", "#2196F3", "#FFB300", "#E91E63",
-  "#9C27B0", "#FF5722", "#00ACC1", "#8BC34A",
+  "#4F46E5", "#D97706", "#8B5CF6", "#0891B2",
+  "#059669", "#6366F1", "#EA580C", "#2563EB",
 ] as const;
 
 export const CHART_MAX_ITEMS = 10;

@@ -159,7 +159,7 @@ export function GamifiedLeaderboard() {
                     className="h-full rounded-full transition-all duration-1000 ease-out"
                     style={{
                       width: `${barWidth}%`,
-                      backgroundColor: isTop3 ? MEDAL_COLORS[i] : "#FF5722",
+                      backgroundColor: isTop3 ? MEDAL_COLORS[i] : "#D97706",
                       opacity: isTop3 ? 1 : 0.6,
                     }}
                   />

@@ -27,7 +27,7 @@ export function ParetoChart() {
   }));
 
   const getBarColor = (cls: string) => {
-    if (cls === "A") return "#FF5722";
+    if (cls === "A") return "#4F46E5";
     if (cls === "B") return "#FFB300";
     return "#64748b";
   };
@@ -42,7 +42,7 @@ export function ParetoChart() {
           </p>
         </div>
         <div className="flex items-center gap-3 text-[10px]">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#FF5722]" />A</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#4F46E5]" />A</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#FFB300]" />B</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#64748b]" />C</span>
         </div>
@@ -97,7 +97,7 @@ export function ParetoChart() {
             yAxisId="revenue"
             dataKey="revenue"
             radius={[4, 4, 0, 0]}
-            fill="#FF5722"
+            fill="#4F46E5"
             shape={(props: any) => {
               const { x, y, width, height, payload } = props;
               return (

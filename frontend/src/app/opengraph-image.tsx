@@ -52,7 +52,7 @@ export default async function Image() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#FF5722",
+              color: "#D97706",
               fontSize: "28px",
               fontWeight: "bold",
             }}
@@ -63,7 +63,7 @@ export default async function Image() {
             style={{
               fontSize: "36px",
               fontWeight: "bold",
-              color: "#FF5722",
+              color: "#D97706",
             }}
           >
             DataPulse

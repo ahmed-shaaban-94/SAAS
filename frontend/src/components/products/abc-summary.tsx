@@ -6,7 +6,7 @@ import { LoadingCard } from "@/components/loading-card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
-const CLASS_COLORS = { A: "#FF5722", B: "#FFB300", C: "#64748b" };
+const CLASS_COLORS = { A: "#4F46E5", B: "#FFB300", C: "#64748b" };
 
 export function ABCSummary() {
   const { data, isLoading } = useABCAnalysis("product");

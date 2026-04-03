@@ -9,12 +9,12 @@ import { Users } from "lucide-react";
 
 // RFM segment descriptions and colors
 const SEGMENT_META: Record<string, { label: string; color: string; emoji: string; description: string }> = {
-  Champions: { label: "Champions", color: "#FF5722", emoji: "★", description: "Best customers - high R, F, M" },
+  Champions: { label: "Champions", color: "#4F46E5", emoji: "★", description: "Best customers - high R, F, M" },
   "Loyal Customers": { label: "Loyal", color: "#2196F3", emoji: "♦", description: "Buy often, good spenders" },
   "Potential Loyalist": { label: "Potential Loyalist", color: "#8BC34A", emoji: "↑", description: "Recent, moderate frequency" },
   "New Customers": { label: "New", color: "#FFB300", emoji: "●", description: "Bought recently, first time" },
   "Promising": { label: "Promising", color: "#FF9800", emoji: "◆", description: "Recent but low frequency" },
-  "Need Attention": { label: "Need Attention", color: "#FF5722", emoji: "!", description: "Above avg but slipping" },
+  "Need Attention": { label: "Need Attention", color: "#D97706", emoji: "!", description: "Above avg but slipping" },
   "About To Sleep": { label: "About to Sleep", color: "#E91E63", emoji: "⌛", description: "Below avg recency & frequency" },
   "At Risk": { label: "At Risk", color: "#F44336", emoji: "⚠", description: "Spent big, absent for a while" },
   "Cant Lose Them": { label: "Can't Lose", color: "#9C27B0", emoji: "★", description: "High value, disappearing" },
