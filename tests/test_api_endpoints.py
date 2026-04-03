@@ -54,27 +54,68 @@ def _make_kpi_summary() -> KPISummary:
 
 
 def test_health_endpoint(api_client):
-    """GET /health returns 200 with status info."""
+    """GET /health returns 200 with status and component checks."""
     client, mock_repo, mock_detail_repo = api_client
-    with patch("datapulse.api.routes.health.get_engine") as mock_engine:
+    with (
+        patch("datapulse.api.routes.health.get_engine") as mock_engine,
+        patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),
+        patch("datapulse.api.routes.health._check_celery", return_value={"status": "ok", "workers": 1}),
+    ):
         mock_conn = MagicMock()
         mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
         mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
         resp = client.get("/health")
     assert resp.status_code == 200
-    assert "status" in resp.json()
+    data = resp.json()
+    assert data["status"] == "healthy"
+    assert "checks" in data
+    assert data["checks"]["database"]["status"] == "ok"
 
 
 def test_health_endpoint_degraded(api_client):
     """GET /health returns 503 when database is unreachable."""
     client, mock_repo, mock_detail_repo = api_client
-    with patch("datapulse.api.routes.health.get_engine") as mock_engine:
+    with (
+        patch("datapulse.api.routes.health.get_engine") as mock_engine,
+        patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),
+        patch("datapulse.api.routes.health._check_celery", return_value={"status": "ok", "workers": 1}),
+    ):
         mock_engine.return_value.connect.side_effect = Exception("connection refused")
         resp = client.get("/health")
     assert resp.status_code == 503
     data = resp.json()
-    assert data["status"] == "degraded"
-    assert data["db"] == "disconnected"
+    assert data["status"] == "unhealthy"
+    assert data["checks"]["database"]["status"] == "error"
+
+
+def test_health_liveness(api_client):
+    """GET /health/live returns 200 always."""
+    client, _, _ = api_client
+    resp = client.get("/health/live")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+
+
+def test_health_readiness_ok(api_client):
+    """GET /health/ready returns 200 when DB is reachable."""
+    client, _, _ = api_client
+    with patch("datapulse.api.routes.health.get_engine") as mock_engine:
+        mock_conn = MagicMock()
+        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+        resp = client.get("/health/ready")
+    assert resp.status_code == 200
+    assert resp.json()["ready"] is True
+
+
+def test_health_readiness_down(api_client):
+    """GET /health/ready returns 503 when DB is down."""
+    client, _, _ = api_client
+    with patch("datapulse.api.routes.health.get_engine") as mock_engine:
+        mock_engine.return_value.connect.side_effect = Exception("down")
+        resp = client.get("/health/ready")
+    assert resp.status_code == 503
+    assert resp.json()["ready"] is False
 
 
 def test_summary_endpoint(api_client):

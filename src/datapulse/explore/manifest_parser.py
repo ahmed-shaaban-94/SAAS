@@ -14,6 +14,8 @@ The parser reads:
 from __future__ import annotations
 
 import re
+import threading
+import time as _time
 from pathlib import Path
 
 import yaml  # type: ignore[import-untyped]
@@ -195,3 +197,35 @@ def build_catalog(dbt_models_dir: str | Path) -> ExploreCatalog:
     )
 
     return ExploreCatalog(models=all_models)
+
+
+# ---------------------------------------------------------------------------
+# Thread-safe cached catalog singleton
+# ---------------------------------------------------------------------------
+_catalog_lock = threading.Lock()
+_cached_catalog: ExploreCatalog | None = None
+_catalog_built_at: float = 0.0
+_CATALOG_TTL: float = 300.0  # 5 minutes
+
+
+def get_catalog(models_dir: str | Path) -> ExploreCatalog:
+    """Return a cached catalog, rebuilding if TTL expired (thread-safe)."""
+    global _cached_catalog, _catalog_built_at  # noqa: PLW0603
+    now = _time.monotonic()
+    if _cached_catalog is not None and (now - _catalog_built_at) < _CATALOG_TTL:
+        return _cached_catalog
+    with _catalog_lock:
+        # Double-check after acquiring lock (another thread may have rebuilt)
+        if _cached_catalog is not None and (_time.monotonic() - _catalog_built_at) < _CATALOG_TTL:
+            return _cached_catalog
+        _cached_catalog = build_catalog(models_dir)
+        _catalog_built_at = _time.monotonic()
+        return _cached_catalog
+
+
+def invalidate_catalog() -> None:
+    """Force the next ``get_catalog`` call to rebuild."""
+    global _cached_catalog, _catalog_built_at  # noqa: PLW0603
+    with _catalog_lock:
+        _cached_catalog = None
+        _catalog_built_at = 0.0

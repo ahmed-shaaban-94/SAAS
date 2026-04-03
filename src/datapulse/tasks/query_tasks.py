@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import text
 
 from datapulse.core.db import get_session_factory
@@ -17,7 +18,13 @@ from datapulse.tasks.celery_app import celery_app
 log = get_logger(__name__)
 
 
-@celery_app.task(bind=True, name="datapulse.execute_query", max_retries=1)
+@celery_app.task(
+    bind=True,
+    name="datapulse.execute_query",
+    max_retries=1,
+    time_limit=300,  # 5 min hard kill per query task
+    soft_time_limit=280,  # 4:40 soft warning
+)
 def execute_query(
     self,
     sql: str,
@@ -51,6 +58,7 @@ def execute_query(
     session = get_session_factory()()
     try:
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
+        session.execute(text("SET LOCAL statement_timeout = '270s'"))
 
         result = session.execute(text(sql), params or {})
         columns = list(result.keys())
@@ -77,6 +85,18 @@ def execute_query(
             "rows": rows,
             "row_count": len(rows),
             "truncated": truncated,
+            "duration_ms": duration_ms,
+        }
+    except SoftTimeLimitExceeded:
+        session.rollback()
+        duration_ms = round((time.perf_counter() - start) * 1000, 1)
+        log.warning("query_timed_out", duration_ms=duration_ms)
+        return {
+            "columns": [],
+            "rows": [],
+            "row_count": 0,
+            "truncated": False,
+            "error": "Query timed out after 280 seconds",
             "duration_ms": duration_ms,
         }
     except Exception as exc:

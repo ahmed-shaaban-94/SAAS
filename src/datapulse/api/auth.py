@@ -103,8 +103,8 @@ def get_current_user(
                 "sub": "api-key-user",
                 "email": "",
                 "preferred_username": "api-key",
-                "tenant_id": "1",
-                "roles": ["admin"],
+                "tenant_id": settings.default_tenant_id,
+                "roles": list(settings.api_key_roles),
                 "raw_claims": {},
             }
         raise HTTPException(status_code=401, detail="Authentication failed")

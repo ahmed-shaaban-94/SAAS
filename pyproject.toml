@@ -34,6 +34,7 @@ dependencies = [
     "statsmodels>=0.14,<1",
     "numpy>=1.24,<3",
     "stripe>=8.0,<12",
+    "openpyxl>=3.0,<4",
 ]
 
 [project.optional-dependencies]

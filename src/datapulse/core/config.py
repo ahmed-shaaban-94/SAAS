@@ -53,6 +53,11 @@ class Settings(BaseSettings):
 
     # API security
     api_key: str = ""
+    api_key_roles: list[str] = ["api-reader"]
+    default_tenant_id: str = "1"
+
+    # Embed token signing
+    embed_secret: str = ""
 
     # Auth0 OIDC (replaces Keycloak — see Wild Wolf beta release plan)
     auth0_domain: str = ""  # e.g. "datapulse.us.auth0.com"

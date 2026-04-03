@@ -123,7 +123,7 @@ class TestGetCurrentUser:
         assert result["roles"] == []
 
     def test_api_key_fallback_valid(self):
-        """No Bearer token, valid API key -> returns stub claims."""
+        """No Bearer token, valid API key -> returns stub claims with configured roles."""
         result = get_current_user(
             credentials=None,
             api_key="secret123",
@@ -131,7 +131,25 @@ class TestGetCurrentUser:
         )
         assert result["sub"] == "api-key-user"
         assert result["tenant_id"] == "1"
-        assert "admin" in result["roles"]
+        assert "api-reader" in result["roles"]  # default role, not admin
+
+    def test_api_key_custom_roles(self):
+        """API key roles can be customised via settings."""
+        result = get_current_user(
+            credentials=None,
+            api_key="secret123",
+            settings=_settings(api_key="secret123", api_key_roles=["viewer", "export"]),
+        )
+        assert result["roles"] == ["viewer", "export"]
+
+    def test_api_key_custom_tenant(self):
+        """API key tenant_id uses default_tenant_id from settings."""
+        result = get_current_user(
+            credentials=None,
+            api_key="secret123",
+            settings=_settings(api_key="secret123", default_tenant_id="42"),
+        )
+        assert result["tenant_id"] == "42"
 
     def test_api_key_fallback_invalid(self):
         """No Bearer token, invalid API key -> 401."""

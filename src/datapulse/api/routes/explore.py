@@ -18,7 +18,8 @@ from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.config import get_settings
-from datapulse.explore.manifest_parser import build_catalog
+from datapulse.explore.manifest_parser import get_catalog as _get_cached_catalog
+from datapulse.explore.manifest_parser import invalidate_catalog
 from datapulse.explore.models import (
     ExploreCatalog,
     ExploreModel,
@@ -36,24 +37,15 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)],
 )
 
-# In-memory catalog singleton (refreshed on demand)
-_catalog: ExploreCatalog | None = None
-
-
 def _get_catalog() -> ExploreCatalog:
-    """Return the cached explore catalog, building it on first access."""
-    global _catalog  # noqa: PLW0603
-    if _catalog is None:
-        settings = get_settings()
-        dbt_models_dir = f"{settings.dbt_project_dir}/models"
-        _catalog = build_catalog(dbt_models_dir)
-    return _catalog
+    """Return the thread-safe cached explore catalog."""
+    settings = get_settings()
+    return _get_cached_catalog(f"{settings.dbt_project_dir}/models")
 
 
 def refresh_catalog() -> ExploreCatalog:
     """Force a catalog rebuild (called after pipeline completion)."""
-    global _catalog  # noqa: PLW0603
-    _catalog = None
+    invalidate_catalog()
     return _get_catalog()
 
 

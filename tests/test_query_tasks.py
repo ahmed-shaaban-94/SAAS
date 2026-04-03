@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from celery.exceptions import SoftTimeLimitExceeded
+
 from datapulse.tasks.query_tasks import _serialise, execute_query
 
 
@@ -60,8 +62,8 @@ class TestExecuteQuery:
             )
         )
 
-        # First call: SET LOCAL, second call: the actual query
-        mock_session.execute.side_effect = [MagicMock(), mock_result]
+        # First call: SET LOCAL tenant, second: statement_timeout, third: actual query
+        mock_session.execute.side_effect = [MagicMock(), MagicMock(), mock_result]
 
         result = execute_query("SELECT id, name, amount FROM sales", tenant_id="1")
 
@@ -83,7 +85,7 @@ class TestExecuteQuery:
         mock_result.keys.return_value = ["id", "name"]
         mock_result.__iter__ = MagicMock(return_value=iter(rows))
 
-        mock_session.execute.side_effect = [MagicMock(), mock_result]
+        mock_session.execute.side_effect = [MagicMock(), MagicMock(), mock_result]
 
         result = execute_query("SELECT * FROM big_table", row_limit=5)
 
@@ -95,8 +97,8 @@ class TestExecuteQuery:
         mock_session = MagicMock()
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
-        # SET LOCAL succeeds, query fails
-        mock_session.execute.side_effect = [MagicMock(), RuntimeError("SQL error")]
+        # SET LOCAL + statement_timeout succeed, query fails
+        mock_session.execute.side_effect = [MagicMock(), MagicMock(), RuntimeError("SQL error")]
 
         with pytest.raises(RuntimeError, match="SQL error"):
             execute_query("SELECT * FROM nonexistent")
@@ -113,7 +115,7 @@ class TestExecuteQuery:
         mock_result.keys.return_value = ["id"]
         mock_result.__iter__ = MagicMock(return_value=iter([(1,)]))
 
-        mock_session.execute.side_effect = [MagicMock(), mock_result]
+        mock_session.execute.side_effect = [MagicMock(), MagicMock(), mock_result]
 
         result = execute_query(
             "SELECT id FROM sales WHERE site_key = :sk",
@@ -122,3 +124,41 @@ class TestExecuteQuery:
         )
 
         assert result["row_count"] == 1
+
+    @patch("datapulse.tasks.query_tasks.get_session_factory")
+    def test_soft_time_limit_returns_error(self, mock_factory):
+        """SoftTimeLimitExceeded returns an error dict instead of raising."""
+        mock_session = MagicMock()
+        mock_factory.return_value = MagicMock(return_value=mock_session)
+
+        mock_session.execute.side_effect = [
+            MagicMock(),  # SET LOCAL tenant
+            MagicMock(),  # statement_timeout
+            SoftTimeLimitExceeded(),  # query hangs
+        ]
+
+        result = execute_query("SELECT * FROM huge_table")
+
+        assert result["row_count"] == 0
+        assert result["error"] == "Query timed out after 280 seconds"
+        mock_session.rollback.assert_called_once()
+        mock_session.close.assert_called_once()
+
+    @patch("datapulse.tasks.query_tasks.get_session_factory")
+    def test_statement_timeout_is_set(self, mock_factory):
+        """Verify statement_timeout is set via SET LOCAL."""
+        mock_session = MagicMock()
+        mock_factory.return_value = MagicMock(return_value=mock_session)
+
+        mock_result = MagicMock()
+        mock_result.keys.return_value = ["id"]
+        mock_result.__iter__ = MagicMock(return_value=iter([(1,)]))
+        mock_session.execute.side_effect = [MagicMock(), MagicMock(), mock_result]
+
+        execute_query("SELECT 1", tenant_id="1")
+
+        # Second execute call should be statement_timeout
+        calls = mock_session.execute.call_args_list
+        assert len(calls) == 3
+        timeout_sql = str(calls[1][0][0])
+        assert "statement_timeout" in timeout_sql

@@ -21,13 +21,22 @@ _ALGORITHM = "HS256"
 
 
 def _get_secret() -> str:
-    """Return the signing secret (reuse the API key or a dedicated embed secret)."""
+    """Return the signing secret for embed tokens.
+
+    Priority: EMBED_SECRET > API_KEY > raise error (no insecure fallback).
+    """
     settings = get_settings()
-    secret = settings.api_key
-    if not secret:
-        secret = "datapulse-embed-default-secret"
-        log.warning("embed_secret_fallback", detail="Using default embed secret — set API_KEY")
-    return secret
+    if settings.embed_secret:
+        return settings.embed_secret
+    if settings.api_key:
+        log.warning(
+            "embed_using_api_key",
+            detail="Using API_KEY as embed secret — set EMBED_SECRET for production",
+        )
+        return settings.api_key
+    raise ValueError(
+        "EMBED_SECRET or API_KEY must be configured for embed token signing"
+    )
 
 
 def create_embed_token(

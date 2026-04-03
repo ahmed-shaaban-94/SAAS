@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import traceback
+import uuid as _uuid
 
 import sentry_sdk
 import structlog
@@ -104,6 +105,16 @@ def create_app() -> FastAPI:
             status_code=500,
             content={"detail": "Internal server error"},
         )
+
+    # Request ID middleware — propagates correlation ID across logs
+    @app.middleware("http")
+    async def request_id_middleware(request: Request, call_next) -> Response:
+        request_id = request.headers.get("X-Request-ID") or str(_uuid.uuid4())
+        structlog.contextvars.bind_contextvars(request_id=request_id)
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        structlog.contextvars.unbind_contextvars("request_id")
+        return response
 
     # Request logging middleware
     @app.middleware("http")

@@ -48,6 +48,9 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     # Concurrency — conservative for DB-bound tasks
     worker_concurrency=4,
+    # Task timeouts — prevent hung workers
+    task_time_limit=600,  # 10 min hard kill (SIGKILL)
+    task_soft_time_limit=540,  # 9 min soft warning (SoftTimeLimitExceeded)
 )
 
 # Auto-discover task modules
