@@ -18,7 +18,7 @@ import { formatCompact } from "@/lib/formatters";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
 const STACK_COLORS = {
-  walkIn: "#FF5722",
+  walkIn: "#4F46E5",
   insurance: "#2196F3",
   other: "#9E9E9E",
 } as const;

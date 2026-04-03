@@ -12,7 +12,7 @@ function ProgressRing({ pct, size = 80 }: { pct: number; size?: number }) {
   const offset = circumference - (clampedPct / 100) * circumference;
 
   const color =
-    pct >= 100 ? "#FF5722" : pct >= 75 ? "#FFB300" : "#EF4444";
+    pct >= 100 ? "#059669" : pct >= 75 ? "#FFB300" : "#EF4444";
 
   return (
     <svg width={size} height={size} className="-rotate-90 transform">
@@ -137,7 +137,7 @@ export function TargetProgress() {
                     height: `${Math.min(pct, 100)}%`,
                     backgroundColor:
                       pct >= 100
-                        ? "#FF5722"
+                        ? "#059669"
                         : pct >= 75
                           ? "#FFB300"
                           : "#EF4444",

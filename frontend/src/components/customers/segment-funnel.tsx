@@ -21,12 +21,12 @@ const SEGMENT_ORDER = [
 ];
 
 const COLORS: Record<string, string> = {
-  Champions: "#FF5722",
+  Champions: "#4F46E5",
   "Loyal Customers": "#2196F3",
   "Potential Loyalist": "#8BC34A",
   "New Customers": "#FFB300",
   "Promising": "#FF9800",
-  "Need Attention": "#FF5722",
+  "Need Attention": "#D97706",
   "About To Sleep": "#E91E63",
   "At Risk": "#F44336",
   "Cant Lose Them": "#9C27B0",
