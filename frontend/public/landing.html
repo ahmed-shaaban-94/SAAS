@@ -223,11 +223,11 @@
         /* EFFECT 6: STAGGERED REVEAL                       */
         /* ================================================ */
         .stagger-card {
-            opacity: 0; transform: translateY(30px);
-            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            opacity: 0; transform: translateY(24px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
         }
         .stagger-card.revealed {
-            opacity: 1; transform: translateY(0);
+            opacity: 1 !important; transform: translateY(0) !important;
         }
 
         /* ================================================ */
@@ -923,9 +923,14 @@
                     }, index * 100);
                     observer.unobserve(card);
                 });
-            }, { threshold: 0.15 });
+            }, { threshold: 0, rootMargin: '0px 0px 50px 0px' });
 
             cards.forEach(function(c) { observer.observe(c); });
+
+            // Safety fallback: reveal all after 2s in case observer doesn't fire
+            setTimeout(function() {
+                cards.forEach(function(c) { c.classList.add('revealed'); });
+            }, 2000);
         }
 
         // ---- SPLASH ORCHESTRATION ----
