@@ -54,6 +54,16 @@ class TimeSeriesPoint(BaseModel):
     value: JsonDecimal
 
 
+class StatisticalAnnotation(BaseModel):
+    """Statistical confidence metadata for a metric or trend."""
+
+    model_config = ConfigDict(frozen=True)
+
+    z_score: JsonDecimal | None = None
+    cv: JsonDecimal | None = None
+    significance: str | None = None  # "significant" | "inconclusive" | "noise"
+
+
 class TrendResult(BaseModel):
     """Aggregated time-series result with summary statistics."""
 
@@ -65,6 +75,7 @@ class TrendResult(BaseModel):
     minimum: JsonDecimal
     maximum: JsonDecimal
     growth_pct: JsonDecimal | None = None
+    stats: StatisticalAnnotation | None = None
 
 
 class RankingItem(BaseModel):
@@ -105,6 +116,8 @@ class KPISummary(BaseModel):
     mtd_transactions: int = 0
     ytd_transactions: int = 0
     sparkline: list[TimeSeriesPoint] = Field(default_factory=list)
+    mom_significance: str | None = None  # "significant" | "inconclusive" | "noise"
+    yoy_significance: str | None = None
 
 
 class ProductPerformance(BaseModel):
@@ -425,3 +438,99 @@ class SegmentSummary(BaseModel):
     avg_monetary: JsonDecimal
     avg_frequency: JsonDecimal
     pct_of_customers: JsonDecimal
+
+
+# ------------------------------------------------------------------
+# Enhancement 4: Analytics Intelligence
+# ------------------------------------------------------------------
+
+
+class RevenueDriver(BaseModel):
+    """Single dimension-level driver of revenue change."""
+
+    model_config = ConfigDict(frozen=True)
+
+    dimension: str  # "product", "customer", "staff", "site"
+    entity_key: int
+    entity_name: str
+    current_value: JsonDecimal
+    previous_value: JsonDecimal
+    impact: JsonDecimal  # current - previous (signed)
+    impact_pct: JsonDecimal  # % of total change explained
+    direction: str  # "positive" or "negative"
+
+
+class WaterfallAnalysis(BaseModel):
+    """Revenue change decomposition across dimensions."""
+
+    model_config = ConfigDict(frozen=True)
+
+    current_total: JsonDecimal
+    previous_total: JsonDecimal
+    total_change: JsonDecimal
+    total_change_pct: JsonDecimal | None = None
+    drivers: list[RevenueDriver]
+    unexplained: JsonDecimal = Decimal("0")
+
+
+class CustomerHealthScore(BaseModel):
+    """Composite health score for a single customer."""
+
+    model_config = ConfigDict(frozen=True)
+
+    customer_key: int
+    customer_name: str
+    health_score: JsonDecimal
+    health_band: str  # "Thriving" | "Healthy" | "Needs Attention" | "At Risk" | "Critical"
+    recency_days: int
+    frequency_3m: int
+    monetary_3m: JsonDecimal
+    return_rate: JsonDecimal
+    product_diversity: int
+    trend: str  # "improving" | "stable" | "declining"
+
+
+class HealthDistribution(BaseModel):
+    """Distribution of customers across health bands."""
+
+    model_config = ConfigDict(frozen=True)
+
+    thriving: int = 0
+    healthy: int = 0
+    needs_attention: int = 0
+    at_risk: int = 0
+    critical: int = 0
+    total: int = 0
+
+
+class HealthMovement(BaseModel):
+    """Customer movement between health bands."""
+
+    model_config = ConfigDict(frozen=True)
+
+    customer_key: int
+    customer_name: str
+    from_band: str
+    to_band: str
+    score_change: JsonDecimal
+
+
+class AnomalyAlert(BaseModel):
+    """Detected anomaly in a metric."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int = 0
+    metric: str
+    dimension: str | None = None
+    dimension_key: int | None = None
+    dimension_name: str | None = None
+    period: date
+    actual_value: JsonDecimal
+    expected_value: JsonDecimal
+    z_score: JsonDecimal | None = None
+    severity: str  # "critical" | "high" | "medium" | "low"
+    direction: str  # "spike" | "drop"
+    is_suppressed: bool = False
+    suppression_reason: str | None = None
+    acknowledged: bool = False

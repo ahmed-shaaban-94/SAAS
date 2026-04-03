@@ -11,14 +11,18 @@ from datapulse.analytics.advanced_repository import AdvancedRepository
 from datapulse.analytics.breakdown_repository import BreakdownRepository
 from datapulse.analytics.comparison_repository import ComparisonRepository
 from datapulse.analytics.detail_repository import DetailRepository
+from datapulse.analytics.customer_health import CustomerHealthRepository
+from datapulse.analytics.diagnostics import DiagnosticsRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.models import (
     ABCAnalysis,
     AnalyticsFilter,
     BillingBreakdown,
     CustomerAnalytics,
+    CustomerHealthScore,
     CustomerTypeBreakdown,
     DashboardData,
+    HealthDistribution,
     DataDateRange,
     DateRange,
     FilterOptions,
@@ -34,6 +38,7 @@ from datapulse.analytics.models import (
     StaffPerformance,
     TopMovers,
     TrendResult,
+    WaterfallAnalysis,
 )
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.cache import cache_get, cache_set
@@ -65,6 +70,8 @@ class AnalyticsService:
         comparison_repo: ComparisonRepository | None = None,
         hierarchy_repo: HierarchyRepository | None = None,
         advanced_repo: AdvancedRepository | None = None,
+        diagnostics_repo: DiagnosticsRepository | None = None,
+        customer_health_repo: CustomerHealthRepository | None = None,
     ) -> None:
         self._repo = repo
         self._detail_repo = detail_repo
@@ -72,6 +79,8 @@ class AnalyticsService:
         self._comparison_repo = comparison_repo
         self._hierarchy_repo = hierarchy_repo
         self._advanced_repo = advanced_repo
+        self._diagnostics_repo = diagnostics_repo
+        self._customer_health_repo = customer_health_repo
 
     def get_date_range(self) -> DataDateRange:
         """Return the min/max dates of available data (cached 3600s)."""
@@ -384,3 +393,80 @@ class AnalyticsService:
         if self._advanced_repo is None:
             raise RuntimeError("AdvancedRepository not configured")
         return self._advanced_repo.get_segment_summary()
+
+    # ------------------------------------------------------------------
+    # Enhancement 4: Why Engine — Revenue Decomposition
+    # ------------------------------------------------------------------
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_why_changed(
+        self,
+        filters: AnalyticsFilter | None = None,
+        limit: int = 15,
+    ) -> WaterfallAnalysis:
+        """Decompose revenue change into dimension-level drivers (cached 300s)."""
+        if self._diagnostics_repo is None:
+            raise RuntimeError("DiagnosticsRepository not configured")
+
+        current_f = self._default_filter(filters)
+        log.info("why_changed", filters=current_f.model_dump())
+
+        # Compute previous period (same duration, shifted back)
+        if current_f.date_range is not None:
+            dr = current_f.date_range
+            duration = dr.end_date - dr.start_date
+            prev_end = dr.start_date - timedelta(days=1)
+            prev_start = prev_end - duration
+            previous_f = AnalyticsFilter(
+                date_range=DateRange(start_date=prev_start, end_date=prev_end),
+                site_key=current_f.site_key,
+                category=current_f.category,
+                brand=current_f.brand,
+                staff_key=current_f.staff_key,
+                limit=current_f.limit,
+            )
+        else:
+            _, max_date = self._repo.get_data_date_range()
+            end = max_date or date.today()
+            current_f = AnalyticsFilter(
+                date_range=DateRange(start_date=end - timedelta(days=30), end_date=end)
+            )
+            previous_f = AnalyticsFilter(
+                date_range=DateRange(
+                    start_date=end - timedelta(days=61),
+                    end_date=end - timedelta(days=31),
+                )
+            )
+
+        return self._diagnostics_repo.get_revenue_drivers(
+            current_f, previous_f, limit=limit
+        )
+
+    # ------------------------------------------------------------------
+    # Enhancement 4: Customer Health Score
+    # ------------------------------------------------------------------
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_customer_health(
+        self,
+        band: str | None = None,
+        limit: int = 50,
+    ) -> list[CustomerHealthScore]:
+        """Customer health scores, optionally filtered by band (cached 300s)."""
+        if self._customer_health_repo is None:
+            raise RuntimeError("CustomerHealthRepository not configured")
+        return self._customer_health_repo.get_health_scores(band=band, limit=limit)
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_health_distribution(self) -> HealthDistribution:
+        """Distribution of customers across health bands (cached 300s)."""
+        if self._customer_health_repo is None:
+            raise RuntimeError("CustomerHealthRepository not configured")
+        return self._customer_health_repo.get_health_distribution()
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_at_risk_customers(self, limit: int = 20) -> list[CustomerHealthScore]:
+        """At-risk and critical customers, lowest score first (cached 300s)."""
+        if self._customer_health_repo is None:
+            raise RuntimeError("CustomerHealthRepository not configured")
+        return self._customer_health_repo.get_at_risk_customers(limit=limit)

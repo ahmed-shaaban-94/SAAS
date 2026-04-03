@@ -4,9 +4,26 @@ from functools import lru_cache
 from pathlib import Path
 
 import structlog
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 logger = structlog.get_logger()
+
+
+class ForecastConfig(BaseModel):
+    """Forecasting hyperparameters — extracted from hardcoded values."""
+
+    daily_seasonality: int = 7
+    monthly_seasonality: int = 12
+    daily_horizon: int = 30
+    monthly_horizon: int = 3
+    product_horizon: int = 3
+    top_products: int = 50
+    daily_lookback_days: int = 730
+    default_confidence: float = 0.80
+    trend_threshold: float = 0.05
+    min_clamp: float = 0.01
+    sma_window: int = 30
 
 
 class Settings(BaseSettings):
@@ -85,6 +102,9 @@ class Settings(BaseSettings):
     # OpenRouter (AI-Light)
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
+
+    # Forecasting
+    forecast: ForecastConfig = ForecastConfig()
 
     # Notifications
     slack_webhook_url: str = ""

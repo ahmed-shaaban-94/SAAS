@@ -11,6 +11,7 @@ from datapulse.forecasting.methods import (
     backtest,
     holt_winters_forecast,
     seasonal_naive_forecast,
+    select_best_method,
     select_method,
     sma_forecast,
 )
@@ -122,7 +123,9 @@ class ForecastingService:
             daily_values = [v for _, v in daily_series]
             last_date = daily_series[-1][0]
             start = last_date + timedelta(days=1)
-            method_name = select_method(len(daily_values), 7)
+            method_name, daily_accuracy = select_best_method(
+                daily_values, 30, 7, monthly=False,
+            )
 
             daily_points = _run_method(
                 method_name,
@@ -131,12 +134,6 @@ class ForecastingService:
                 seasonal_periods=7,
                 start_date=start,
                 monthly=False,
-            )
-            daily_accuracy = backtest(
-                daily_values,
-                horizon=min(30, len(daily_values) // 4),
-                seasonal_periods=7,
-                method=method_name,
             )
             daily_result = ForecastResult(
                 entity_type="revenue",
@@ -170,20 +167,15 @@ class ForecastingService:
             next_month = (next_month - 1) % 12 + 1
             start = date(next_year, next_month, 1)
 
-            method_name = select_method(len(monthly_values), 12)
+            method_name, monthly_accuracy = select_best_method(
+                monthly_values, 3, 12, monthly=True,
+            )
             monthly_points = _run_method(
                 method_name,
                 monthly_values,
                 horizon=3,
                 seasonal_periods=12,
                 start_date=start,
-                monthly=True,
-            )
-            monthly_accuracy = backtest(
-                monthly_values,
-                horizon=min(3, len(monthly_values) // 4),
-                seasonal_periods=12,
-                method=method_name,
                 monthly=True,
             )
             monthly_result = ForecastResult(
@@ -217,20 +209,15 @@ class ForecastingService:
             next_month = (next_month - 1) % 12 + 1
             start = date(next_year, next_month, 1)
 
-            method_name = select_method(len(product_values), 12)
+            method_name, product_accuracy = select_best_method(
+                product_values, 3, 12, monthly=True,
+            )
             product_points = _run_method(
                 method_name,
                 product_values,
                 horizon=3,
                 seasonal_periods=12,
                 start_date=start,
-                monthly=True,
-            )
-            product_accuracy = backtest(
-                product_values,
-                horizon=min(3, len(product_values) // 4),
-                seasonal_periods=12,
-                method=method_name,
                 monthly=True,
             )
             product_result = ForecastResult(

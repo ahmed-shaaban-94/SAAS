@@ -29,12 +29,15 @@ from datapulse.analytics.models import (
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
+    CustomerHealthScore,
+    HealthDistribution,
     ReturnsTrend,
     SegmentSummary,
     SiteDetail,
     StaffPerformance,
     TopMovers,
     TrendResult,
+    WaterfallAnalysis,
 )
 from datapulse.analytics.service import AnalyticsService
 from datapulse.api.auth import get_current_user
@@ -445,3 +448,61 @@ def get_segment_summary(
     """Customer RFM segment summary."""
     _set_cache(response, 300)
     return service.get_segment_summary()
+
+
+# ------------------------------------------------------------------
+# Enhancement 4: Analytics Intelligence
+# ------------------------------------------------------------------
+
+
+@router.get("/why-changed", response_model=WaterfallAnalysis)
+@limiter.limit("60/minute")
+def get_why_changed(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+    driver_limit: Annotated[int, Query(ge=1, le=50)] = 15,
+) -> WaterfallAnalysis:
+    """Revenue change decomposition — why did revenue change?"""
+    _set_cache(response, 300)
+    return service.get_why_changed(_to_filter(params), limit=driver_limit)
+
+
+@router.get("/customer-health", response_model=list[CustomerHealthScore])
+@limiter.limit("60/minute")
+def get_customer_health(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    band: Annotated[str | None, Query(max_length=50)] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[CustomerHealthScore]:
+    """Customer health scores with optional band filter."""
+    _set_cache(response, 300)
+    return service.get_customer_health(band=band, limit=limit)
+
+
+@router.get("/customer-health/distribution", response_model=HealthDistribution)
+@limiter.limit("60/minute")
+def get_health_distribution(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> HealthDistribution:
+    """Distribution of customers across health bands."""
+    _set_cache(response, 300)
+    return service.get_health_distribution()
+
+
+@router.get("/customer-health/at-risk", response_model=list[CustomerHealthScore])
+@limiter.limit("60/minute")
+def get_at_risk_customers(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[CustomerHealthScore]:
+    """At-risk and critical customers, lowest score first."""
+    _set_cache(response, 300)
+    return service.get_at_risk_customers(limit=limit)

@@ -20,6 +20,20 @@ from datapulse.logging import get_logger
 log = get_logger(__name__)
 
 
+# Confidence z-score lookup table
+Z_TABLE: dict[float, float] = {
+    0.80: 1.2816,
+    0.90: 1.6449,
+    0.95: 1.9600,
+    0.99: 2.5758,
+}
+
+
+def _z_for_confidence(confidence: float) -> float:
+    """Return z-score for a given confidence level, defaulting to 80%."""
+    return Z_TABLE.get(confidence, Z_TABLE.get(0.80, 1.2816))
+
+
 def select_method(series_length: int, seasonal_periods: int) -> str:
     """Pick the best forecasting method based on available data.
 
@@ -31,6 +45,46 @@ def select_method(series_length: int, seasonal_periods: int) -> str:
     if series_length >= seasonal_periods:
         return "seasonal_naive"
     return "sma"
+
+
+def select_best_method(
+    series: list[float],
+    horizon: int,
+    seasonal_periods: int,
+    *,
+    monthly: bool = False,
+) -> tuple[str, "ForecastAccuracy"]:
+    """Run all eligible methods on holdout, return (best_method, accuracy).
+
+    Instead of picking based on series length alone, this function backtests
+    all eligible methods and picks the one with the lowest MAPE.
+    """
+    candidates = ["sma"]
+    n = len(series)
+    if n >= seasonal_periods:
+        candidates.append("seasonal_naive")
+    if n >= 2 * seasonal_periods:
+        candidates.append("holt_winters")
+
+    bt_horizon = min(horizon, max(n // 4, 1))
+    best_method = "sma"
+    best_mape = Decimal("999999")
+    best_acc = backtest(series, bt_horizon, seasonal_periods, "sma", monthly=monthly)
+
+    for method in candidates:
+        acc = backtest(series, bt_horizon, seasonal_periods, method, monthly=monthly)
+        if acc.mape < best_mape:
+            best_mape = acc.mape
+            best_method = method
+            best_acc = acc
+
+    log.info(
+        "forecast_method_selected",
+        method=best_method,
+        mape=float(best_mape),
+        candidates=candidates,
+    )
+    return best_method, best_acc
 
 
 def holt_winters_forecast(
@@ -66,8 +120,7 @@ def holt_winters_forecast(
         # Confidence interval via residual standard error
         residuals = fit.resid
         std_err = float(np.std(residuals))
-        # z-score for 80% CI
-        z = 1.2816
+        z = _z_for_confidence(confidence)
 
     except Exception:
         log.warning("holt_winters_fallback_to_sma", reason="fit_failed")
@@ -96,6 +149,7 @@ def sma_forecast(
     *,
     start_date: date | None = None,
     monthly: bool = False,
+    confidence: float = 0.80,
 ) -> list[ForecastPoint]:
     """Simple Moving Average forecast with expanding standard deviation bounds."""
     if not series:
@@ -105,7 +159,7 @@ def sma_forecast(
     tail = series[-effective_window:]
     mean_val = sum(tail) / len(tail)
     std_val = (sum((x - mean_val) ** 2 for x in tail) / len(tail)) ** 0.5
-    z = 1.2816  # 80% CI
+    z = _z_for_confidence(confidence)
 
     points: list[ForecastPoint] = []
     for i in range(horizon):
@@ -129,6 +183,7 @@ def seasonal_naive_forecast(
     *,
     start_date: date | None = None,
     monthly: bool = False,
+    confidence: float = 0.80,
 ) -> list[ForecastPoint]:
     """Repeat the last full seasonal cycle as the forecast.
 
@@ -148,7 +203,7 @@ def seasonal_naive_forecast(
             sum((x - sum(last_cycle) / len(last_cycle)) ** 2 for x in last_cycle) / len(last_cycle)
         ) ** 0.5
 
-    z = 1.2816
+    z = _z_for_confidence(confidence)
     points: list[ForecastPoint] = []
     for i in range(horizon):
         val = max(last_cycle[i % seasonal_periods], 0.0)

@@ -14,7 +14,9 @@ from datapulse.ai_light.service import AILightService
 from datapulse.analytics.advanced_repository import AdvancedRepository
 from datapulse.analytics.breakdown_repository import BreakdownRepository
 from datapulse.analytics.comparison_repository import ComparisonRepository
+from datapulse.analytics.customer_health import CustomerHealthRepository
 from datapulse.analytics.detail_repository import DetailRepository
+from datapulse.analytics.diagnostics import DiagnosticsRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.analytics.service import AnalyticsService
@@ -90,8 +92,11 @@ def get_analytics_service(
     comparison_repo = ComparisonRepository(session)
     hierarchy_repo = HierarchyRepository(session)
     advanced_repo = AdvancedRepository(session)
+    diagnostics_repo = DiagnosticsRepository(session)
+    customer_health_repo = CustomerHealthRepository(session)
     return AnalyticsService(
-        repo, detail_repo, breakdown_repo, comparison_repo, hierarchy_repo, advanced_repo
+        repo, detail_repo, breakdown_repo, comparison_repo,
+        hierarchy_repo, advanced_repo, diagnostics_repo, customer_health_repo,
     )
 
 

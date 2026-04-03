@@ -31,7 +31,9 @@ from datapulse.analytics.queries import (
     build_ranking,
     build_trend,
     build_where,
+    compute_z_score,
     safe_growth,
+    significance_level,
 )
 from datapulse.logging import get_logger
 
@@ -263,6 +265,10 @@ class AnalyticsRepository:
 
         sparkline = self.get_kpi_sparkline(target_date)
 
+        # Statistical significance for MoM/YoY growth
+        mom_sig = self._compute_growth_significance(target_date, "mom")
+        yoy_sig = self._compute_growth_significance(target_date, "yoy")
+
         return KPISummary(
             today_net=today_net,
             mtd_net=mtd_net,
@@ -276,7 +282,70 @@ class AnalyticsRepository:
             mtd_transactions=mtd_transactions,
             ytd_transactions=ytd_transactions,
             sparkline=sparkline,
+            mom_significance=mom_sig,
+            yoy_significance=yoy_sig,
         )
+
+    def _compute_growth_significance(self, target_date: date, kind: str) -> str | None:
+        """Compute statistical significance for MoM or YoY growth.
+
+        Looks up the last 12 monthly MTD values (for MoM) or last 5 yearly YTD
+        values (for YoY) and computes a z-score of the current growth rate vs
+        the historical distribution of growth rates.
+        """
+        if kind == "mom":
+            # Get last 12 months' MTD net amounts (same day-of-month)
+            stmt = text("""
+                SELECT mtd_net_amount
+                FROM public_marts.metrics_summary
+                WHERE EXTRACT(DAY FROM full_date) = EXTRACT(DAY FROM CAST(:td AS date))
+                  AND full_date < CAST(:td AS date)
+                ORDER BY full_date DESC
+                LIMIT 12
+            """)
+        else:  # yoy
+            stmt = text("""
+                SELECT ytd_net_amount
+                FROM public_marts.metrics_summary
+                WHERE EXTRACT(MONTH FROM full_date) = EXTRACT(MONTH FROM CAST(:td AS date))
+                  AND EXTRACT(DAY FROM full_date) = EXTRACT(DAY FROM CAST(:td AS date))
+                  AND full_date < CAST(:td AS date)
+                ORDER BY full_date DESC
+                LIMIT 5
+            """)
+
+        try:
+            rows = self._session.execute(stmt, {"td": target_date}).fetchall()
+        except Exception:
+            return None
+        if len(rows) < 3:
+            return None
+
+        values: list[Decimal] = []
+        for r in rows:
+            if r[0] is not None:
+                try:
+                    values.append(Decimal(str(r[0])))
+                except Exception:
+                    continue
+        if len(values) < 3:
+            return None
+
+        # Compute growth rates between consecutive values (reversed to chronological)
+        values.reverse()
+        growths: list[Decimal] = []
+        for i in range(1, len(values)):
+            g = safe_growth(values[i], values[i - 1])
+            if g is not None:
+                growths.append(g)
+
+        if len(growths) < 3:
+            return None
+
+        # Current growth rate (last growth in the series)
+        current_growth = growths[-1]
+        z = compute_z_score(current_growth, growths)
+        return significance_level(z)
 
     def get_kpi_sparkline(self, target_date: date, days: int = 7) -> list[TimeSeriesPoint]:
         """Last N days of daily_net_amount from metrics_summary."""

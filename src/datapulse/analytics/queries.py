@@ -7,12 +7,14 @@ ranking logic, and trend aggregation without circular imports.
 
 from __future__ import annotations
 
+import statistics as _stats
 from decimal import Decimal
 
 from datapulse.analytics.models import (
     AnalyticsFilter,
     RankingItem,
     RankingResult,
+    StatisticalAnnotation,
     TimeSeriesPoint,
     TrendResult,
 )
@@ -144,6 +146,15 @@ def build_trend(rows: list) -> TrendResult:
     if len(values) >= 2:
         growth_pct = safe_growth(values[-1], values[0])
 
+    # Statistical annotation on trend series
+    stats: StatisticalAnnotation | None = None
+    if len(values) >= 3:
+        cv = coefficient_of_variation(values)
+        # z-score of last value vs the series distribution
+        z = compute_z_score(values[-1], values)
+        sig = significance_level(z)
+        stats = StatisticalAnnotation(z_score=z, cv=cv, significance=sig)
+
     return TrendResult(
         points=points,
         total=total,
@@ -151,7 +162,63 @@ def build_trend(rows: list) -> TrendResult:
         minimum=minimum,
         maximum=maximum,
         growth_pct=growth_pct,
+        stats=stats,
     )
+
+
+def compute_z_score(current: Decimal, values: list[Decimal]) -> Decimal | None:
+    """Return z-score of *current* relative to *values* distribution.
+
+    Returns ``None`` when fewer than 3 data points or zero standard deviation.
+    """
+    floats = [float(v) for v in values]
+    if len(floats) < 3:
+        return None
+    try:
+        mean = _stats.mean(floats)
+        stdev = _stats.stdev(floats)
+    except _stats.StatisticsError:
+        return None
+    if stdev == 0:
+        return None
+    z = (float(current) - mean) / stdev
+    return Decimal(str(round(z, 4)))
+
+
+def coefficient_of_variation(values: list[Decimal]) -> Decimal | None:
+    """Return CV (stdev/mean * 100) as a percentage.
+
+    Returns ``None`` when fewer than 3 data points or zero mean.
+    """
+    floats = [float(v) for v in values]
+    if len(floats) < 3:
+        return None
+    try:
+        mean = _stats.mean(floats)
+        stdev = _stats.stdev(floats)
+    except _stats.StatisticsError:
+        return None
+    if mean == 0:
+        return None
+    cv = abs(stdev / mean) * 100
+    return Decimal(str(round(cv, 2)))
+
+
+def significance_level(z: Decimal | None) -> str:
+    """Classify z-score into significance level.
+
+    - |z| >= 1.96  ->  "significant"   (p < 0.05)
+    - |z| >= 1.28  ->  "inconclusive"  (p < 0.10)
+    - else         ->  "noise"
+    """
+    if z is None:
+        return "noise"
+    abs_z = abs(z)
+    if abs_z >= Decimal("1.96"):
+        return "significant"
+    if abs_z >= Decimal("1.28"):
+        return "inconclusive"
+    return "noise"
 
 
 def build_ranking(rows: list) -> RankingResult:

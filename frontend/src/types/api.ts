@@ -11,11 +11,19 @@ export interface KPISummary {
   mtd_transactions: number;
   ytd_transactions: number;
   sparkline?: TimeSeriesPoint[];
+  mom_significance?: "significant" | "inconclusive" | "noise" | null;
+  yoy_significance?: "significant" | "inconclusive" | "noise" | null;
 }
 
 export interface TimeSeriesPoint {
   period: string;
   value: number;
+}
+
+export interface StatisticalAnnotation {
+  z_score: number | null;
+  cv: number | null;
+  significance: "significant" | "inconclusive" | "noise" | null;
 }
 
 export interface TrendResult {
@@ -25,6 +33,7 @@ export interface TrendResult {
   minimum: number;
   maximum: number;
   growth_pct: number | null;
+  stats?: StatisticalAnnotation | null;
 }
 
 export interface RankingItem {
@@ -460,5 +469,63 @@ export interface AlertLogItem {
   metric_value: number | null;
   threshold_value: number | null;
   message: string | null;
+  acknowledged: boolean;
+}
+
+// --- Enhancement 4: Analytics Intelligence ---
+
+export interface RevenueDriver {
+  dimension: string;
+  entity_key: number;
+  entity_name: string;
+  current_value: number;
+  previous_value: number;
+  impact: number;
+  impact_pct: number;
+  direction: "positive" | "negative";
+}
+
+export interface WaterfallAnalysis {
+  current_total: number;
+  previous_total: number;
+  total_change: number;
+  total_change_pct: number | null;
+  drivers: RevenueDriver[];
+  unexplained: number;
+}
+
+export interface CustomerHealthScore {
+  customer_key: number;
+  customer_name: string;
+  health_score: number;
+  health_band: "Thriving" | "Healthy" | "Needs Attention" | "At Risk" | "Critical";
+  recency_days: number;
+  frequency_3m: number;
+  monetary_3m: number;
+  return_rate: number;
+  product_diversity: number;
+  trend: "improving" | "stable" | "declining" | "new";
+}
+
+export interface HealthDistribution {
+  thriving: number;
+  healthy: number;
+  needs_attention: number;
+  at_risk: number;
+  critical: number;
+  total: number;
+}
+
+export interface AnomalyAlertItem {
+  id: number;
+  metric: string;
+  period: string;
+  actual_value: number;
+  expected_value: number;
+  z_score: number | null;
+  severity: "critical" | "high" | "medium" | "low";
+  direction: "spike" | "drop";
+  is_suppressed: boolean;
+  suppression_reason: string | null;
   acknowledged: boolean;
 }
