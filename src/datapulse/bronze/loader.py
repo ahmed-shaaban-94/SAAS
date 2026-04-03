@@ -41,9 +41,9 @@ def _validate_columns(columns: list[str]) -> None:
 
 def discover_files(source_dir: Path) -> list[Path]:
     """Find all .xlsx files in the source directory, sorted by name."""
-    files = sorted(source_dir.glob("*.xlsx"))
+    files = sorted(source_dir.rglob("*.xlsx"))
     if not files:
-        raise FileNotFoundError(f"No .xlsx files found in {source_dir}")
+        raise FileNotFoundError(f"No .xlsx files found in {source_dir} (searched recursively)")
     log.info("discovered_files", count=len(files), dir=str(source_dir))
     return files
 
