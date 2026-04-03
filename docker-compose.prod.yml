@@ -39,20 +39,18 @@ services:
   traefik:
     profiles: ["disabled"]
 
-  # ---------- API: remove direct port ----------
+  # ---------- API: GHCR image, remove direct port ----------
   api:
+    image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
     ports: !reset []
     command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2"]
     networks:
       - backend
       - frontend-net
 
-  # ---------- Frontend: production build, remove direct port ----------
+  # ---------- Frontend: GHCR image, remove direct port ----------
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
+    image: ghcr.io/ahmed-shaaban-94/saas/frontend:${IMAGE_TAG:-latest}
     ports: !reset []
     environment:
       - NEXT_PUBLIC_API_URL=
@@ -78,6 +76,13 @@ services:
     profiles: ["dev"]
     networks:
       - backend
+
+  # ---------- Prestart + Celery: GHCR image ----------
+  prestart:
+    image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
+
+  celery-worker:
+    image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
 
   n8n:
     ports: !reset []

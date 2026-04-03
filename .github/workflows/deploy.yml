@@ -1,4 +1,4 @@
-name: Deploy Staging
+name: Deploy
 
 on:
   workflow_run:
@@ -7,11 +7,12 @@ on:
     branches: [main]
 
 concurrency:
-  group: deploy-staging
-  cancel-in-progress: true
+  group: deploy
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_TAG: latest
 
 jobs:
   gate:
@@ -19,10 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - run: echo "CI passed — proceeding with staging deploy"
+      - run: echo "CI passed — deploying to production"
 
   build-push:
-    name: Build & Push Images
+    name: Build & Push (${{ matrix.service }})
     needs: [gate]
     runs-on: ubuntu-latest
     permissions:
@@ -34,16 +35,13 @@ jobs:
           - service: api
             context: .
             target: api
-          - service: app
-            context: .
-            target: app
           - service: frontend
             context: ./frontend
             target: production
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -60,51 +58,71 @@ jobs:
           target: ${{ matrix.target }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/saas/${{ matrix.service }}:staging
+            ghcr.io/${{ github.repository_owner }}/saas/${{ matrix.service }}:latest
             ghcr.io/${{ github.repository_owner }}/saas/${{ matrix.service }}:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy to Staging
+    name: Deploy to Server
     needs: [build-push]
     runs-on: ubuntu-latest
-    environment: staging
+    permissions:
+      contents: read
+      packages: read
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy compose files to server
+      - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.prod.yml,traefik/,nginx/,migrations/"
-          target: ${{ secrets.STAGING_DEPLOY_PATH }}
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: "docker-compose.yml,docker-compose.prod.yml,nginx/,migrations/,postgres/"
+          target: ${{ secrets.PROD_DEPLOY_PATH }}
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
         with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          envs: GHCR_TOKEN,GH_ACTOR
           script: |
-            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
 
-            # Pull latest images (no git pull — compose files copied via SCP)
+            # Login to GHCR
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            # Pull latest images
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
-              pull
+              pull api frontend
 
+            # Deploy with latest images
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
               up -d --remove-orphans
 
-            # Wait for health checks
-            sleep 10
+            # Wait and verify health
+            sleep 20
+            echo "=== Container Status ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
-              ps --format json | head -20
+              ps
+
+            # Quick health check
+            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:3000 || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Health check PASSED (HTTP $HTTP_CODE)"
+            else
+              echo "::warning::Health check returned HTTP $HTTP_CODE"
+            fi

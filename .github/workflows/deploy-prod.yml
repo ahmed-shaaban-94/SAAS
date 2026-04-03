@@ -112,7 +112,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.prod.yml,traefik/,nginx/,migrations/"
+          source: "docker-compose.yml,docker-compose.prod.yml,nginx/,migrations/,postgres/"
           target: ${{ secrets.PROD_DEPLOY_PATH }}
 
       - name: Deploy via SSH
