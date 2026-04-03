@@ -9,7 +9,7 @@ import { Users } from "lucide-react";
 
 // RFM segment descriptions and colors
 const SEGMENT_META: Record<string, { label: string; color: string; emoji: string; description: string }> = {
-  Champions: { label: "Champions", color: "#00BFA5", emoji: "★", description: "Best customers - high R, F, M" },
+  Champions: { label: "Champions", color: "#FF5722", emoji: "★", description: "Best customers - high R, F, M" },
   "Loyal Customers": { label: "Loyal", color: "#2196F3", emoji: "♦", description: "Buy often, good spenders" },
   "Potential Loyalist": { label: "Potential Loyalist", color: "#8BC34A", emoji: "↑", description: "Recent, moderate frequency" },
   "New Customers": { label: "New", color: "#FFB300", emoji: "●", description: "Bought recently, first time" },

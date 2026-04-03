@@ -66,7 +66,7 @@ export function EgyptMap() {
                   cy={y}
                   r="12"
                   fill="none"
-                  stroke="#00BFA5"
+                  stroke="#FF5722"
                   strokeWidth="1"
                   opacity="0.3"
                 >
@@ -88,7 +88,7 @@ export function EgyptMap() {
                   cx={x}
                   cy={y}
                   r="6"
-                  fill="#00BFA5"
+                  fill="#FF5722"
                   stroke="white"
                   strokeWidth="2"
                 />

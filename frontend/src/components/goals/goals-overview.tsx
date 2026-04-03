@@ -17,7 +17,7 @@ function ProgressRing({ pct, size = 120 }: { pct: number; size?: number }) {
   const circumference = 2 * Math.PI * radius;
   const clampedPct = Math.min(Math.max(pct, 0), 150);
   const offset = circumference - (clampedPct / 100) * circumference;
-  const color = pct >= 100 ? "#00BFA5" : pct >= 75 ? "#FFB300" : "#EF4444";
+  const color = pct >= 100 ? "#FF5722" : pct >= 75 ? "#FFB300" : "#EF4444";
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -173,7 +173,7 @@ export function GoalsOverview() {
                 />
                 <Legend wrapperStyle={{ fontSize: "11px" }} />
                 <Bar dataKey="target" name="Target" fill={theme.gridStroke} radius={[4, 4, 0, 0]} opacity={0.5} />
-                <Bar dataKey="actual" name="Actual" fill="#00BFA5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="actual" name="Actual" fill="#FF5722" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -215,7 +215,7 @@ export function GoalsOverview() {
                           <div className="h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${Math.min(m.achievement_pct, 100)}%`,
-                              backgroundColor: m.achievement_pct >= 100 ? "#00BFA5" : m.achievement_pct >= 75 ? "#FFB300" : "#EF4444",
+                              backgroundColor: m.achievement_pct >= 100 ? "#FF5722" : m.achievement_pct >= 75 ? "#FFB300" : "#EF4444",
                             }} />
                         </div>
                       </td>

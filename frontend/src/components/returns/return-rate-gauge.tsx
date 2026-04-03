@@ -38,7 +38,7 @@ export function ReturnRateGauge() {
   const bgPath = `M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 1 1 ${bgEnd.x} ${bgEnd.y}`;
   const valPath = `M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 ${normalizedRate > 0.5 ? 1 : 0} 1 ${valEnd.x} ${valEnd.y}`;
 
-  const gaugeColor = isHealthy ? "#00BFA5" : isWarning ? "#FFB300" : "#EF4444";
+  const gaugeColor = isHealthy ? "#FF5722" : isWarning ? "#FFB300" : "#EF4444";
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
