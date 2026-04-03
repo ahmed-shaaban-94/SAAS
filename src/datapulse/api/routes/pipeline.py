@@ -25,6 +25,7 @@ from datapulse.api.deps import (
 from datapulse.cache import cache_invalidate_pattern
 from datapulse.config import get_settings
 from datapulse.logging import get_logger
+from datapulse.pipeline.checkpoint import get_completed_stages, get_last_successful_stage
 from datapulse.pipeline.executor import PipelineExecutor
 from datapulse.pipeline.models import (
     VALID_STATUSES,
@@ -37,7 +38,6 @@ from datapulse.pipeline.models import (
     TriggerRequest,
     TriggerResponse,
 )
-from datapulse.pipeline.checkpoint import get_completed_stages, get_last_successful_stage
 from datapulse.pipeline.quality import (
     VALID_STAGES,
     QualityCheckList,
@@ -313,7 +313,8 @@ def resume_run(
     if run.status != "failed":
         raise HTTPException(
             status_code=409,
-            detail=f"Cannot resume run with status '{run.status}'. Only 'failed' runs can be resumed.",
+            detail=f"Cannot resume run with status '{run.status}'."
+            " Only 'failed' runs can be resumed.",
         )
 
     last_stage = get_last_successful_stage(run.metadata)

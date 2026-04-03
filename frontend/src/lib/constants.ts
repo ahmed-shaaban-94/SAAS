@@ -22,4 +22,5 @@ export const NAV_ITEMS = [
   { label: "Pipeline", href: "/pipeline", icon: "GitBranch" },
   { label: "Alerts", href: "/alerts", icon: "Bell" },
   { label: "Insights", href: "/insights", icon: "Sparkles" },
+  { label: "Billing", href: "/billing", icon: "CreditCard" },
 ] as const;

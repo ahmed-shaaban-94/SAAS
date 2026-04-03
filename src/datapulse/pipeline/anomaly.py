@@ -7,8 +7,6 @@ metrics by comparing the latest value against a rolling 30-day window.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

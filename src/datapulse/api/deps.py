@@ -26,6 +26,10 @@ from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health
 )
 from datapulse.forecasting.repository import ForecastingRepository
 from datapulse.forecasting.service import ForecastingService
+from datapulse.billing.plans import PlanLimits, get_plan_limits
+from datapulse.billing.repository import BillingRepository
+from datapulse.billing.service import BillingService
+from datapulse.billing.stripe_client import StripeClient
 from datapulse.pipeline.executor import PipelineExecutor
 from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
@@ -125,6 +129,36 @@ def get_ai_light_service(
     """Factory for AI-Light service with analytics repo + OpenRouter client."""
     settings = get_settings()
     return AILightService(settings=settings, session=session)
+
+
+def get_billing_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> BillingService:
+    settings = get_settings()
+    repo = BillingRepository(session)
+    client = StripeClient(settings.stripe_secret_key)
+    return BillingService(
+        repo,
+        client,
+        price_to_plan=settings.stripe_price_to_plan_map,
+        base_url=settings.billing_base_url,
+    )
+
+
+def get_tenant_plan_limits(
+    user: CurrentUser,
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> PlanLimits:
+    """Dependency that returns the current tenant's plan limits.
+
+    Inject into routes that need to enforce plan limits (e.g. pipeline trigger,
+    data source creation). Raises HTTP 403 with a clear message when a limit
+    would be exceeded.
+    """
+    tenant_id = int(user.get("tenant_id", "1"))
+    repo = BillingRepository(session)
+    plan = repo.get_tenant_plan(tenant_id)
+    return get_plan_limits(plan)
 
 
 # Alias for backwards compatibility — analytics.py and ai_light.py import this name

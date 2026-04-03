@@ -42,10 +42,12 @@ export interface RankingResult {
 
 export interface ReturnAnalysis {
   drug_name: string;
+  product_name?: string;
   customer_name: string;
   return_quantity: number;
   return_amount: number;
   return_count: number;
+  return_rate?: number;
 }
 
 export interface HealthStatus {

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 
 from datapulse.logging import get_logger
 
@@ -68,12 +67,14 @@ def record_retry(
     checkpoint = {**meta.get("checkpoint", build_empty_checkpoint())}
     history = list(checkpoint.get("retry_history", []))
 
-    history.append({
-        "stage": stage,
-        "attempt": attempt,
-        "error": error[:200],
-        "timestamp": datetime.now(UTC).isoformat(),
-    })
+    history.append(
+        {
+            "stage": stage,
+            "attempt": attempt,
+            "error": error[:200],
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    )
 
     checkpoint["retry_history"] = history
     meta["checkpoint"] = checkpoint

@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 export const SITE_NAME = "DataPulse";
 export const SITE_DESCRIPTION =
   "Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. AI-powered insights, real-time dashboards, and enterprise-grade quality gates.";
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://datapulse.dev";
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://smartdatapulse.tech";
 
 export const NAV_LINKS = [
   { label: "Features", href: "#features" },
@@ -24,9 +24,8 @@ export const FOOTER_COLUMNS = [
   {
     title: "Company",
     links: [
-      { label: "About", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "About", href: "/#how-it-works" },
+      { label: "Contact", href: "mailto:support@smartdatapulse.tech" },
     ],
   },
   {
@@ -39,9 +38,7 @@ export const FOOTER_COLUMNS = [
   {
     title: "Connect",
     links: [
-      { label: "GitHub", href: "#" },
-      { label: "Twitter", href: "#" },
-      { label: "LinkedIn", href: "#" },
+      { label: "GitHub", href: "https://github.com/ahmed-shaaban-94/SAAS" },
     ],
   },
 ] as const;

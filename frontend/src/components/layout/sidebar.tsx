@@ -8,6 +8,7 @@ import {
   Activity,
   Bell,
   Compass,
+  CreditCard,
   FileBarChart,
   LayoutDashboard,
   Menu,
@@ -48,6 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   GitBranch,
   Bell,
   Sparkles,
+  CreditCard,
 };
 
 function UserInfo() {

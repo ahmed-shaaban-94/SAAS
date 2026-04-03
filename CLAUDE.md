@@ -340,8 +340,8 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - Inline comments: Arabic where helpful for clarity (mixed)
 
 ### Security
-- **Authentication**: Keycloak OIDC — backend JWT validation (`src/datapulse/api/jwt.py`), frontend NextAuth (`frontend/src/lib/auth.ts`)
-- **Auth users**: `demo-admin` (admin role) and `demo-viewer` (viewer role) via realm import
+- **Authentication**: Auth0 OIDC — backend JWT validation (`src/datapulse/api/jwt.py`), frontend NextAuth (`frontend/src/lib/auth.ts`)
+- Multi-strategy auth: Bearer JWT (primary) + API Key (service-to-service) + dev mode fallback
 - All credentials via `.env` file (never hardcoded in source)
 - Docker ports bound to `127.0.0.1` only
 - Tenant-scoped RLS on `bronze.sales`, all marts tables, agg tables, and silver view (`security_invoker=on`)
@@ -358,11 +358,11 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - ErrorBoundary wraps layout to catch React component crashes
 
 ### Testing
-- pytest + pytest-cov
-- Current coverage: 95%+ on `src/datapulse/`
-- Target: 80%+ minimum
-- Playwright E2E tests: 18+ specs across 6+ files (`frontend/e2e/`)
-- Run E2E: `docker compose exec frontend npx playwright test`
+- pytest + pytest-cov: 80 test files, ~1,179 test functions
+- Current coverage: 95%+ on `src/datapulse/` (enforced in CI via `--cov-fail-under=95`)
+- Playwright E2E tests: 11 spec files (`frontend/e2e/`)
+- Vitest + MSW + Testing Library available for frontend unit tests
+- Run tests: `make test` (Python), `docker compose exec frontend npx playwright test` (E2E)
 
 ### Frontend Features
 - **Theming**: Dark/light mode via `next-themes` (attribute="class", defaultTheme="dark"). CSS variables in globals.css, `useChartTheme` hook for Recharts SVG compatibility. Toggle in sidebar footer.
@@ -392,12 +392,50 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **The Great Fix**: Full project remediation — 10 CRITICAL + 29 HIGH findings resolved across 5 PRs (#23-#25, #28-#29). Keycloak OIDC auth, RLS enforcement, dim_site bug, fetch timeout, Docker hardening, frontend fixes. See `docs/The Great Fix.md` for full report. [DONE]
 - **Enhancement 2 — Full Stack Flex**: Dark/light theme, date range picker, detail page trend charts, print report page, mobile swipe-to-close, 14 backend tests, E2E theme tests [DONE]
 - **Phase 2.4**: File watcher (directory watcher service) [PLANNED]
-- **Phase 2.8**: AI-Light (OpenRouter free tier) — AI summaries, anomaly detection, change narratives via n8n + OpenRouter free models [PLANNED]
+- **Phase 2.8**: AI-Light (OpenRouter free tier) — AI summaries, anomaly detection, change narratives via n8n + OpenRouter free models [DONE]
+- **Enhancement 3 — Analytics Dashboard Upgrades**: ABC analysis, heatmap, RFM segments, product hierarchy, top movers, billing/customer-type breakdowns, detail pages, explore, SQL lab, targets, alerts, reports, export, embed, forecasting [DONE]
 - **Phase 3**: ~~AI-powered analysis via LangGraph~~ **CANCELLED** — replaced by Phase 2.8 AI-Light
-- **Phase 4**: Public website / landing page [PLANNED]
+- **Phase 4**: Public website / landing page [DONE] — marketing pages, SEO, waitlist
 - **Phase 5**: Multi-tenancy & Billing — tenant onboarding, Stripe subscriptions, usage metering, admin panel, limits enforcement [PLANNED]
 - **Phase 6**: Data Sources & Connectors — Google Sheets, MySQL/SQL Server/PostgreSQL, Shopify/WooCommerce, schema mapping, sync scheduler [PLANNED]
 - **Phase 7**: Self-Service Analytics — saved views, custom dashboard builder, scheduled reports, CSV/Excel/PDF export, alerts & thresholds [PLANNED]
 - **Phase 8**: AI & Intelligence — natural language queries (AR/EN), forecasting (Prophet/ARIMA), ML-based smart alerts, bilingual AI summaries v2 [PLANNED]
 - **Phase 9**: Collaboration & Teams — comments & annotations, dashboard sharing (public/embed), team workspaces, activity feed [PLANNED]
 - **Phase 10**: Scale & Infrastructure — S3/MinIO storage, Celery background jobs, Redis caching, Kubernetes, CDN, Prometheus+Grafana monitoring [PLANNED]
+
+## Team Structure & Roles
+
+5-person team, each with dedicated Claude Code skills and agents:
+
+| Role | Scope | Key Directories |
+|------|-------|----------------|
+| **Pipeline Engineer** | Bronze ingestion, dbt models, quality gates, migrations, n8n | `src/datapulse/bronze/`, `pipeline/`, `dbt/`, `migrations/`, `n8n/` |
+| **Analytics Engineer** | Analytics queries, forecasting, AI insights, targets, explore | `src/datapulse/analytics/`, `forecasting/`, `ai_light/`, `targets/`, `explore/` |
+| **Platform Engineer** | API framework, auth, caching, async tasks, Docker, CI/CD | `src/datapulse/api/`, `core/`, `cache*.py`, `tasks/`, `docker-compose.yml` |
+| **Frontend Engineer** | Dashboard pages, components, hooks, state, charts, theme | `frontend/src/` |
+| **Quality & Growth Engineer** | Testing, E2E, marketing, Android, documentation | `tests/`, `frontend/e2e/`, `frontend/src/app/(marketing)/`, `android/`, `docs/` |
+
+## Claude Code Agents
+
+Custom agents in `.claude/agents/` for common workflows:
+
+| Agent | Command | What it does |
+|-------|---------|-------------|
+| `add-dbt-model` | `/add-dbt-model agg <name>` | Scaffold dbt model + schema YAML + run + test |
+| `add-migration` | `/add-migration <desc>` | Idempotent migration + RLS + apply |
+| `add-analytics-endpoint` | `/add-analytics-endpoint <name>` | Model → Repo → Service (cached) → Route → Test |
+| `add-docker-service` | `/add-docker-service <name> <image>` | Add to 3 compose files + healthcheck + env |
+| `add-page` | `/add-page <name>` | Next.js page + loading + hook + component + nav |
+| `add-chart` | `/add-chart <type> <name>` | Recharts component + theme + ChartCard |
+| `coverage-check` | `/coverage-check [module]` | Run tests → analyze gaps → suggest/write tests |
+
+## Architecture Documentation
+
+See `docs/ARCHITECTURE.md` for:
+- System architecture (Mermaid diagrams)
+- Data flow diagram
+- Request flow sequence diagram
+- Database ERD
+- Module dependency map
+- Deployment architecture
+- Security architecture
