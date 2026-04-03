@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/api/auth",
   "/api/dev-login", // TEMP: dev bypass
   "/",           // Marketing landing page
+  "/landing",    // Static landing page
   "/terms",
   "/privacy",
 ];
@@ -72,5 +73,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!_next/static|_next/image|favicon.ico).*)",
+  matcher: "/((?!_next/static|_next/image|favicon.ico|.*\\.html$).*)",
 };
