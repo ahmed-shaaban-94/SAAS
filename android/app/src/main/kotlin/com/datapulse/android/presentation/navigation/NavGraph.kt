@@ -10,14 +10,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.datapulse.android.presentation.screen.alerts.AlertsScreen
 import com.datapulse.android.presentation.screen.customers.CustomersScreen
 import com.datapulse.android.presentation.screen.dashboard.DashboardScreen
+import com.datapulse.android.presentation.screen.explore.ExploreScreen
+import com.datapulse.android.presentation.screen.goals.GoalsScreen
+import com.datapulse.android.presentation.screen.insights.InsightsScreen
 import com.datapulse.android.presentation.screen.login.LoginScreen
 import com.datapulse.android.presentation.screen.pipeline.PipelineScreen
 import com.datapulse.android.presentation.screen.products.ProductsScreen
+import com.datapulse.android.presentation.screen.reports.ReportsScreen
 import com.datapulse.android.presentation.screen.returns.ReturnsScreen
 import com.datapulse.android.presentation.screen.sites.SitesScreen
 import com.datapulse.android.presentation.screen.settings.SettingsScreen
+import com.datapulse.android.presentation.screen.sqllab.SqlLabScreen
 import com.datapulse.android.presentation.screen.staff.StaffScreen
 
 @Composable
@@ -35,6 +41,12 @@ fun DataPulseNavGraph(
         NavRoute.Returns::class.qualifiedName -> NavRoute.Returns
         NavRoute.Pipeline::class.qualifiedName -> NavRoute.Pipeline
         NavRoute.Settings::class.qualifiedName -> NavRoute.Settings
+        NavRoute.Goals::class.qualifiedName -> NavRoute.Goals
+        NavRoute.Alerts::class.qualifiedName -> NavRoute.Alerts
+        NavRoute.Insights::class.qualifiedName -> NavRoute.Insights
+        NavRoute.SqlLab::class.qualifiedName -> NavRoute.SqlLab
+        NavRoute.Reports::class.qualifiedName -> NavRoute.Reports
+        NavRoute.Explore::class.qualifiedName -> NavRoute.Explore
         else -> null
     }
 
@@ -78,6 +90,12 @@ fun DataPulseNavGraph(
             composable<NavRoute.Sites> { SitesScreen() }
             composable<NavRoute.Returns> { ReturnsScreen() }
             composable<NavRoute.Pipeline> { PipelineScreen() }
+            composable<NavRoute.Goals> { GoalsScreen() }
+            composable<NavRoute.Alerts> { AlertsScreen() }
+            composable<NavRoute.Insights> { InsightsScreen() }
+            composable<NavRoute.SqlLab> { SqlLabScreen() }
+            composable<NavRoute.Reports> { ReportsScreen() }
+            composable<NavRoute.Explore> { ExploreScreen() }
             composable<NavRoute.Settings> {
                 SettingsScreen(
                     onLoggedOut = {
