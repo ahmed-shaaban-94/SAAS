@@ -76,11 +76,24 @@ _STAGE_TABLE: dict[str, tuple[str, str]] = {
 }
 
 # Allowed column names for dynamic SQL in quality checks
-_ALLOWED_COLUMNS = frozenset({
-    "reference_no", "date", "net_sales", "quantity", "gross_sales",
-    "material", "customer", "site", "personel_number", "billing_type",
-    "material_desc", "customer_name", "brand", "category",
-})
+_ALLOWED_COLUMNS = frozenset(
+    {
+        "reference_no",
+        "date",
+        "net_sales",
+        "quantity",
+        "gross_sales",
+        "material",
+        "customer",
+        "site",
+        "personel_number",
+        "billing_type",
+        "material_desc",
+        "customer_name",
+        "brand",
+        "category",
+    }
+)
 
 
 def _check_row_count(
@@ -164,7 +177,8 @@ def _check_null_rate(
         severity="error",
         passed=passed,
         message=(
-            None if passed
+            None
+            if passed
             else f"High null rate in: {list(failing.keys())} (threshold {threshold}%)"
         ),
         details={"columns": null_pcts, "threshold": threshold},
@@ -226,10 +240,7 @@ def _check_freshness(
         stage=stage,
         severity="warn",
         passed=passed,
-        message=(
-            None if passed
-            else f"Data is {age_hours:.1f} hours old (max: {max_age_hours}h)"
-        ),
+        message=(None if passed else f"Data is {age_hours:.1f} hours old (max: {max_age_hours}h)"),
         details={
             "max_date": str(max_date),
             "age_hours": round(age_hours, 1),
@@ -324,26 +335,30 @@ def run_configurable_checks(
 
         checker = CHECK_REGISTRY.get(check_name)
         if checker is None:
-            results.append(QualityCheckResult(
-                check_name=check_name,
-                stage=stage,
-                severity=severity,
-                passed=False,
-                message=f"Unknown check: {check_name}",
-            ))
+            results.append(
+                QualityCheckResult(
+                    check_name=check_name,
+                    stage=stage,
+                    severity=severity,
+                    passed=False,
+                    message=f"Unknown check: {check_name}",
+                )
+            )
             continue
 
         try:
             result = checker(session, stage, config)
             # Override severity from rule definition
-            results.append(QualityCheckResult(
-                check_name=result.check_name,
-                stage=result.stage,
-                severity=severity,
-                passed=result.passed,
-                message=result.message,
-                details=result.details,
-            ))
+            results.append(
+                QualityCheckResult(
+                    check_name=result.check_name,
+                    stage=result.stage,
+                    severity=severity,
+                    passed=result.passed,
+                    message=result.message,
+                    details=result.details,
+                )
+            )
         except Exception as exc:
             log.error(
                 "quality_check_error",
@@ -351,13 +366,15 @@ def run_configurable_checks(
                 stage=stage,
                 error=str(exc),
             )
-            results.append(QualityCheckResult(
-                check_name=check_name,
-                stage=stage,
-                severity=severity,
-                passed=False,
-                message=f"Check failed with error: {str(exc)[:100]}",
-            ))
+            results.append(
+                QualityCheckResult(
+                    check_name=check_name,
+                    stage=stage,
+                    severity=severity,
+                    passed=False,
+                    message=f"Check failed with error: {str(exc)[:100]}",
+                )
+            )
 
     all_passed = all(r.passed for r in results) if results else True
     gate_passed = all(r.passed for r in results if r.severity == "error") if results else True

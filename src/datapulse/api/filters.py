@@ -7,7 +7,7 @@ into structured filter conditions that can be applied to SQLAlchemy queries.
 from __future__ import annotations
 
 import re
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, field_validator
@@ -18,18 +18,35 @@ from datapulse.logging import get_logger
 log = get_logger(__name__)
 
 # Allowed fields for filtering — prevents SQL injection via field names
-ALLOWED_FIELDS = frozenset({
-    "date", "category", "brand", "site_name", "staff_name",
-    "customer_name", "net_sales", "quantity", "product_name",
-    "billing_type", "return_rate", "revenue", "date_key",
-    "year_month", "product_key", "customer_key", "staff_key",
-    "site_key", "run_type", "status",
-})
+ALLOWED_FIELDS = frozenset(
+    {
+        "date",
+        "category",
+        "brand",
+        "site_name",
+        "staff_name",
+        "customer_name",
+        "net_sales",
+        "quantity",
+        "product_name",
+        "billing_type",
+        "return_rate",
+        "revenue",
+        "date_key",
+        "year_month",
+        "product_key",
+        "customer_key",
+        "staff_key",
+        "site_key",
+        "run_type",
+        "status",
+    }
+)
 
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
-class FilterOp(str, Enum):
+class FilterOp(StrEnum):
     """Supported filter operators."""
 
     EQ = "eq"

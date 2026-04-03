@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import functools
 import time
-from typing import Any, Callable, Type
+from collections.abc import Callable
+from typing import Any
 
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 
-TRANSIENT_EXCEPTIONS: tuple[Type[Exception], ...] = (
+TRANSIENT_EXCEPTIONS: tuple[type[Exception], ...] = (
     ConnectionError,
     TimeoutError,
     OSError,
@@ -35,7 +36,7 @@ def with_retry(
     max_attempts: int = 3,
     base_delay: float = 2.0,
     backoff_factor: float = 2.0,
-    retryable: tuple[Type[Exception], ...] = TRANSIENT_EXCEPTIONS,
+    retryable: tuple[type[Exception], ...] = TRANSIENT_EXCEPTIONS,
 ) -> Callable:
     """Retry decorator with exponential backoff for pipeline stages.
 

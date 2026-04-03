@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from datetime import UTC
+from unittest.mock import MagicMock
 from uuid import uuid4
-
-import pytest
 
 from datapulse.pipeline.quality_engine import (
     CHECK_REGISTRY,
@@ -51,29 +50,41 @@ class TestCheckNullRate:
         session = MagicMock()
         # Return 0% null for all columns
         session.execute.return_value.fetchone.return_value = [0.0, 0.0, 0.0, 0.0]
-        result = _check_null_rate(session, "bronze", {
-            "threshold": 5.0,
-            "columns": ["reference_no", "date", "net_sales", "quantity"],
-        })
+        result = _check_null_rate(
+            session,
+            "bronze",
+            {
+                "threshold": 5.0,
+                "columns": ["reference_no", "date", "net_sales", "quantity"],
+            },
+        )
         assert result.passed is True
 
     def test_fails_when_above_threshold(self):
         session = MagicMock()
         # 10% null on first column
         session.execute.return_value.fetchone.return_value = [10.0, 0.0, 0.0, 0.0]
-        result = _check_null_rate(session, "bronze", {
-            "threshold": 5.0,
-            "columns": ["reference_no", "date", "net_sales", "quantity"],
-        })
+        result = _check_null_rate(
+            session,
+            "bronze",
+            {
+                "threshold": 5.0,
+                "columns": ["reference_no", "date", "net_sales", "quantity"],
+            },
+        )
         assert result.passed is False
 
     def test_custom_threshold(self):
         session = MagicMock()
         session.execute.return_value.fetchone.return_value = [8.0]
-        result = _check_null_rate(session, "bronze", {
-            "threshold": 10.0,
-            "columns": ["reference_no"],
-        })
+        result = _check_null_rate(
+            session,
+            "bronze",
+            {
+                "threshold": 10.0,
+                "columns": ["reference_no"],
+            },
+        )
         assert result.passed is True
 
     def test_unknown_stage(self):
@@ -84,26 +95,32 @@ class TestCheckNullRate:
     def test_filters_unsafe_columns(self):
         session = MagicMock()
         session.execute.return_value.fetchone.return_value = []
-        result = _check_null_rate(session, "bronze", {
-            "columns": ["DROP TABLE; --", "unsafe_col"],
-        })
+        result = _check_null_rate(
+            session,
+            "bronze",
+            {
+                "columns": ["DROP TABLE; --", "unsafe_col"],
+            },
+        )
         # Should return True because no valid columns to check
         assert result.passed is True
 
 
 class TestCheckFreshness:
     def test_passes_when_recent(self):
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
+
         session = MagicMock()
-        recent_date = datetime.now(timezone.utc) - timedelta(hours=1)
+        recent_date = datetime.now(UTC) - timedelta(hours=1)
         session.execute.return_value.scalar_one.return_value = recent_date
         result = _check_freshness(session, "bronze", {"max_age_hours": 48, "date_column": "date"})
         assert result.passed is True
 
     def test_fails_when_stale(self):
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
+
         session = MagicMock()
-        old_date = datetime.now(timezone.utc) - timedelta(hours=100)
+        old_date = datetime.now(UTC) - timedelta(hours=100)
         session.execute.return_value.scalar_one.return_value = old_date
         result = _check_freshness(session, "bronze", {"max_age_hours": 48, "date_column": "date"})
         assert result.passed is False
@@ -117,10 +134,14 @@ class TestCheckFreshness:
 
     def test_rejects_unsafe_date_column(self):
         session = MagicMock()
-        result = _check_freshness(session, "bronze", {
-            "max_age_hours": 48,
-            "date_column": "DROP TABLE; --",
-        })
+        result = _check_freshness(
+            session,
+            "bronze",
+            {
+                "max_age_hours": 48,
+                "date_column": "DROP TABLE; --",
+            },
+        )
         assert result.passed is False
         assert "Invalid date column" in result.message
 
@@ -129,38 +150,54 @@ class TestCheckCustomSQL:
     def test_passes_when_result_matches_expected(self):
         session = MagicMock()
         session.execute.return_value.scalar_one.return_value = 0
-        result = _check_custom_sql(session, "bronze", {
-            "query": "SELECT COUNT(*) FROM bronze.sales WHERE quantity < 0",
-            "expected": "0",
-        })
+        result = _check_custom_sql(
+            session,
+            "bronze",
+            {
+                "query": "SELECT COUNT(*) FROM bronze.sales WHERE quantity < 0",
+                "expected": "0",
+            },
+        )
         assert result.passed is True
 
     def test_fails_when_result_differs(self):
         session = MagicMock()
         session.execute.return_value.scalar_one.return_value = 42
-        result = _check_custom_sql(session, "bronze", {
-            "query": "SELECT COUNT(*) FROM bronze.sales WHERE quantity < 0",
-            "expected": "0",
-        })
+        result = _check_custom_sql(
+            session,
+            "bronze",
+            {
+                "query": "SELECT COUNT(*) FROM bronze.sales WHERE quantity < 0",
+                "expected": "0",
+            },
+        )
         assert result.passed is False
         assert "Expected 0, got 42" in result.message
 
     def test_rejects_non_select_queries(self):
         session = MagicMock()
-        result = _check_custom_sql(session, "bronze", {
-            "query": "DELETE FROM bronze.sales",
-            "expected": "0",
-        })
+        result = _check_custom_sql(
+            session,
+            "bronze",
+            {
+                "query": "DELETE FROM bronze.sales",
+                "expected": "0",
+            },
+        )
         assert result.passed is False
         assert "SELECT" in result.message
 
     def test_handles_sql_error(self):
         session = MagicMock()
         session.execute.side_effect = Exception("syntax error")
-        result = _check_custom_sql(session, "bronze", {
-            "query": "SELECT invalid_syntax",
-            "expected": "0",
-        })
+        result = _check_custom_sql(
+            session,
+            "bronze",
+            {
+                "query": "SELECT invalid_syntax",
+                "expected": "0",
+            },
+        )
         assert result.passed is False
         assert "syntax error" in result.message
 
@@ -196,14 +233,19 @@ class TestRunConfigurableChecks:
         session = MagicMock()
         session.execute.return_value.scalar_one.return_value = 1000
 
-        from datetime import datetime, timedelta, timezone
-        old_date = datetime.now(timezone.utc) - timedelta(hours=100)
+        from datetime import datetime, timedelta
+
+        old_date = datetime.now(UTC) - timedelta(hours=100)
         session.execute.return_value.scalar_one.side_effect = [1000, old_date]
 
         run_id = uuid4()
         rules = [
             {"check_name": "row_count", "severity": "error", "config": {"min_rows": 1}},
-            {"check_name": "freshness", "severity": "warn", "config": {"max_age_hours": 48, "date_column": "date"}},
+            {
+                "check_name": "freshness",
+                "severity": "warn",
+                "config": {"max_age_hours": 48, "date_column": "date"},
+            },
         ]
         report = run_configurable_checks(session, run_id, "bronze", rules)
 

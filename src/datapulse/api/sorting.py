@@ -17,13 +17,31 @@ from datapulse.logging import get_logger
 log = get_logger(__name__)
 
 # Allowed sort fields — prevents SQL injection
-ALLOWED_SORT_FIELDS = frozenset({
-    "date", "date_key", "net_sales", "quantity", "revenue",
-    "name", "product_name", "customer_name", "staff_name", "site_name",
-    "rank", "key", "pct_of_total", "return_rate", "return_quantity",
-    "started_at", "finished_at", "duration_seconds", "rows_loaded",
-    "status", "year_month",
-})
+ALLOWED_SORT_FIELDS = frozenset(
+    {
+        "date",
+        "date_key",
+        "net_sales",
+        "quantity",
+        "revenue",
+        "name",
+        "product_name",
+        "customer_name",
+        "staff_name",
+        "site_name",
+        "rank",
+        "key",
+        "pct_of_total",
+        "return_rate",
+        "return_quantity",
+        "started_at",
+        "finished_at",
+        "duration_seconds",
+        "rows_loaded",
+        "status",
+        "year_month",
+    }
+)
 
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 

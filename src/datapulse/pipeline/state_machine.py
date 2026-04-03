@@ -6,10 +6,10 @@ and validates that transitions follow the allowed paths.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class PipelineStage(str, Enum):
+class PipelineStage(StrEnum):
     """Valid stages in a pipeline run lifecycle."""
 
     PENDING = "pending"

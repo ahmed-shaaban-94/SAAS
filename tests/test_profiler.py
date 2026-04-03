@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, PropertyMock
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 import pytest
 
 from datapulse.pipeline.profiler import (
+    _STAGE_TABLE,
     ColumnProfile,
     TableProfile,
-    _STAGE_TABLE,
     profile_table,
 )
 
@@ -98,7 +98,6 @@ class TestProfileTable:
         num_row.__getitem__ = lambda self, i: ["0", "1000", 500.0, 200.0][i]
 
         # Complex mock setup for multiple execute calls
-        call_count = [0]
         execute_results = []
 
         # 1st call: row count
