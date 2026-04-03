@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from datapulse.api.pagination import (
     CursorPage,
@@ -29,6 +30,7 @@ class TestEncodeDecode:
 
     def test_decode_invalid_json_raises(self):
         import base64
+
         bad = base64.urlsafe_b64encode(b"not json").decode()
         with pytest.raises(ValueError, match="Invalid cursor"):
             decode_cursor(bad)
@@ -87,5 +89,5 @@ class TestBuildCursorPage:
 class TestCursorPage:
     def test_frozen_model(self):
         page = CursorPage(items=[], has_next=False, has_prev=False)
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             page.items = [1, 2, 3]  # type: ignore

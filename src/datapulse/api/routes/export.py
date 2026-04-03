@@ -13,9 +13,9 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
+from datapulse.analytics.service import AnalyticsService
 from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_analytics_service
-from datapulse.analytics.service import AnalyticsService
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
@@ -63,8 +63,10 @@ def _to_xlsx_bytes(data: list[dict[str, Any]], sheet_name: str = "Export") -> io
     """Generate an Excel file in memory using openpyxl."""
     try:
         from openpyxl import Workbook
-    except ImportError:
-        raise ImportError("openpyxl is required for Excel export. Install with: pip install openpyxl")
+    except ImportError as err:
+        raise ImportError(
+            "openpyxl is required for Excel export. Install with: pip install openpyxl"
+        ) from err
 
     wb = Workbook()
     ws = wb.active
@@ -117,7 +119,12 @@ def export_products(
 ) -> StreamingResponse:
     """Export top products data as CSV or Excel."""
     from datapulse.analytics.models import AnalyticsFilter
-    f = AnalyticsFilter(date_range=(start_date, end_date) if start_date else None, category=category, limit=limit)
+
+    f = AnalyticsFilter(
+        date_range=(start_date, end_date) if start_date else None,
+        category=category,
+        limit=limit,
+    )
     result = service.get_product_insights(f)
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []
     return _export_response(data, "products", format)
@@ -133,6 +140,7 @@ def export_customers(
 ) -> StreamingResponse:
     """Export top customers data as CSV or Excel."""
     from datapulse.analytics.models import AnalyticsFilter
+
     f = AnalyticsFilter(date_range=(start_date, end_date) if start_date else None, limit=limit)
     result = service.get_customer_insights(f)
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []
@@ -149,6 +157,7 @@ def export_staff(
 ) -> StreamingResponse:
     """Export staff performance data as CSV or Excel."""
     from datapulse.analytics.models import AnalyticsFilter
+
     f = AnalyticsFilter(date_range=(start_date, end_date) if start_date else None, limit=limit)
     result = service.get_staff_leaderboard(f)
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []

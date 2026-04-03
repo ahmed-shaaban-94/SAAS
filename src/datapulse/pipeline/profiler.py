@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -74,9 +73,7 @@ def profile_table(session: Session, stage: str) -> TableProfile:
     log.info("profiler_start", schema=schema, table=table)
 
     # Get row count
-    row_count: int = session.execute(
-        text(f"SELECT COUNT(*) FROM {schema}.{table}")
-    ).scalar_one()
+    row_count: int = session.execute(text(f"SELECT COUNT(*) FROM {schema}.{table}")).scalar_one()
 
     # Get column metadata
     col_meta_stmt = text("""
@@ -153,20 +150,22 @@ def profile_table(session: Session, stage: str) -> TableProfile:
         mc_rows = session.execute(mc_stmt).fetchall()
         most_common = [(r._mapping["val"], r._mapping["cnt"]) for r in mc_rows]
 
-        columns.append(ColumnProfile(
-            column_name=col_name,
-            data_type=data_type,
-            total_rows=row_count,
-            null_count=null_count,
-            null_rate=null_rate,
-            unique_count=unique_count,
-            cardinality=cardinality,
-            min_value=min_val,
-            max_value=max_val,
-            mean=mean_val,
-            stddev=stddev_val,
-            most_common=most_common,
-        ))
+        columns.append(
+            ColumnProfile(
+                column_name=col_name,
+                data_type=data_type,
+                total_rows=row_count,
+                null_count=null_count,
+                null_rate=null_rate,
+                unique_count=unique_count,
+                cardinality=cardinality,
+                min_value=min_val,
+                max_value=max_val,
+                mean=mean_val,
+                stddev=stddev_val,
+                most_common=most_common,
+            )
+        )
 
     profile = TableProfile(
         schema_name=schema,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-from uuid import uuid4
 
 from datapulse.pipeline.anomaly import (
     MONITORED_METRICS,
@@ -152,16 +151,23 @@ class TestDetectAnomalies:
 
         # All metrics return normal values
         latest_row = MagicMock()
-        latest_row._mapping = {"date_key": "2024-01-15", "daily_net": 300000,
-                               "daily_quantity": 1000, "daily_transactions": 500}
+        latest_row._mapping = {
+            "date_key": "2024-01-15",
+            "daily_net": 300000,
+            "daily_quantity": 1000,
+            "daily_transactions": 500,
+        }
 
         stats_row = MagicMock()
         stats_row._mapping = {"mean_val": 300000, "stddev_val": 50000}
 
         session.execute.return_value.fetchone.side_effect = [
-            latest_row, stats_row,
-            latest_row, stats_row,
-            latest_row, stats_row,
+            latest_row,
+            stats_row,
+            latest_row,
+            stats_row,
+            latest_row,
+            stats_row,
         ]
 
         result = detect_anomalies(session)
