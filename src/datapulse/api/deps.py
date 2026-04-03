@@ -19,6 +19,10 @@ from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.analytics.service import AnalyticsService
 from datapulse.api.auth import get_current_user, require_api_key
+from datapulse.billing.plans import PlanLimits, get_plan_limits
+from datapulse.billing.repository import BillingRepository
+from datapulse.billing.service import BillingService
+from datapulse.billing.stripe_client import StripeClient
 from datapulse.config import get_settings
 from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
     get_engine,
@@ -26,10 +30,6 @@ from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health
 )
 from datapulse.forecasting.repository import ForecastingRepository
 from datapulse.forecasting.service import ForecastingService
-from datapulse.billing.plans import PlanLimits, get_plan_limits
-from datapulse.billing.repository import BillingRepository
-from datapulse.billing.service import BillingService
-from datapulse.billing.stripe_client import StripeClient
 from datapulse.pipeline.executor import PipelineExecutor
 from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService

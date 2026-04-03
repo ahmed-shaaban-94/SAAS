@@ -53,7 +53,7 @@ class BreakdownRepository:
                         WHEN billing_way LIKE '%% Return' THEN REPLACE(billing_way, ' Return', '')
                         ELSE billing_way
                     END AS base_billing_way,
-                    CASE WHEN billing_way LIKE '%% Return' THEN TRUE ELSE FALSE END AS is_return_type,
+                    billing_way LIKE '%% Return' AS is_return_type,
                     SUM(transaction_count) AS txn_count,
                     SUM(return_count)      AS ret_count,
                     SUM(total_net_amount)  AS net_amount
