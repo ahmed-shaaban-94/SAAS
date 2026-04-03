@@ -395,3 +395,9 @@ docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/da
 - **Phase 2.8**: AI-Light (OpenRouter free tier) — AI summaries, anomaly detection, change narratives via n8n + OpenRouter free models [PLANNED]
 - **Phase 3**: ~~AI-powered analysis via LangGraph~~ **CANCELLED** — replaced by Phase 2.8 AI-Light
 - **Phase 4**: Public website / landing page [PLANNED]
+- **Phase 5**: Multi-tenancy & Billing — tenant onboarding, Stripe subscriptions, usage metering, admin panel, limits enforcement [PLANNED]
+- **Phase 6**: Data Sources & Connectors — Google Sheets, MySQL/SQL Server/PostgreSQL, Shopify/WooCommerce, schema mapping, sync scheduler [PLANNED]
+- **Phase 7**: Self-Service Analytics — saved views, custom dashboard builder, scheduled reports, CSV/Excel/PDF export, alerts & thresholds [PLANNED]
+- **Phase 8**: AI & Intelligence — natural language queries (AR/EN), forecasting (Prophet/ARIMA), ML-based smart alerts, bilingual AI summaries v2 [PLANNED]
+- **Phase 9**: Collaboration & Teams — comments & annotations, dashboard sharing (public/embed), team workspaces, activity feed [PLANNED]
+- **Phase 10**: Scale & Infrastructure — S3/MinIO storage, Celery background jobs, Redis caching, Kubernetes, CDN, Prometheus+Grafana monitoring [PLANNED]
