@@ -12,9 +12,9 @@
   --divider: #D8DEE4;
   --text-primary: #1F2328;
   --text-secondary: #57606A;
-  --accent-color: #00897B;
+  --accent-color: #FF4500;
   --chart-blue: #1976D2;
-  --chart-amber: #F9A825;
+  --chart-amber: #F59E0B;
   --growth-green: #2E7D32;
   --growth-red: #C62828;
 
@@ -25,19 +25,19 @@
   --card-foreground: 215 28% 14%;
   --popover: 0 0% 100%;
   --popover-foreground: 215 28% 14%;
-  --primary: 168 100% 27%;
+  --primary: 16 100% 50%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 15% 90%;
   --secondary-foreground: 215 28% 14%;
   --muted: 210 15% 93%;
   --muted-foreground: 215 10% 40%;
-  --accent: 168 100% 27%;
+  --accent: 16 100% 50%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 47%;
   --destructive-foreground: 0 0% 100%;
   --border: 210 15% 83%;
   --input: 210 15% 83%;
-  --ring: 168 100% 27%;
+  --ring: 16 100% 50%;
   --radius: 0.5rem;
 }
 
@@ -51,7 +51,7 @@
   --divider: #21262D;
   --text-primary: #E6EDF3;
   --text-secondary: #A8B3BD;
-  --accent-color: #00BFA5;
+  --accent-color: #FF5722;
   --chart-blue: #2196F3;
   --chart-amber: #FFB300;
   --growth-green: #4CAF50;
@@ -64,19 +64,19 @@
   --card-foreground: 210 25% 91%;
   --popover: 215 22% 11%;
   --popover-foreground: 210 25% 91%;
-  --primary: 168 100% 37%;
-  --primary-foreground: 215 28% 7%;
+  --primary: 14 100% 57%;
+  --primary-foreground: 0 0% 100%;
   --secondary: 215 14% 16%;
   --secondary-foreground: 210 25% 91%;
   --muted: 215 14% 16%;
   --muted-foreground: 210 10% 70%;
-  --accent: 168 100% 37%;
-  --accent-foreground: 215 28% 7%;
+  --accent: 14 100% 57%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 47%;
   --destructive-foreground: 210 25% 91%;
   --border: 215 14% 21%;
   --input: 215 14% 21%;
-  --ring: 168 100% 37%;
+  --ring: 14 100% 57%;
   --radius: 0.5rem;
 }
 
@@ -146,7 +146,7 @@ html {
    Gradient text for hero headlines
    ═══════════════════════════════════════════════ */
 .gradient-text {
-  background: linear-gradient(135deg, #00BFA5, #2196F3);
+  background: linear-gradient(135deg, #FF5722, #2196F3);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -221,7 +221,7 @@ html {
   right: -1rem;
   width: 2rem;
   height: 2px;
-  background: linear-gradient(90deg, #00BFA5, #2196F3);
+  background: linear-gradient(90deg, #FF5722, #2196F3);
 }
 
 .pipeline-connector:last-child::after {
