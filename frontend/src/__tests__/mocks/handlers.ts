@@ -1,0 +1,167 @@
+import { http, HttpResponse } from "msw";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "";
+
+export const mockKPISummary = {
+  today_net: 125000,
+  mtd_net: 3500000,
+  ytd_net: 42000000,
+  growth_pct: 12.5,
+  daily_transactions: 1250,
+  daily_quantity: 8500,
+  avg_basket_value: 100,
+  prev_day_net: 110000,
+  prev_mtd_net: 3200000,
+  prev_ytd_net: 38000000,
+  sparkline: [
+    { period: "2024-01-01", value: 100000 },
+    { period: "2024-01-02", value: 110000 },
+    { period: "2024-01-03", value: 125000 },
+  ],
+};
+
+export const mockTrendResult = {
+  points: [
+    { period: "2024-01-01", value: 100000 },
+    { period: "2024-01-02", value: 120000 },
+    { period: "2024-01-03", value: 115000 },
+  ],
+  total: 335000,
+  average: 111667,
+  min: 100000,
+  max: 120000,
+  growth_pct: 15.0,
+};
+
+export const mockRankingResult = {
+  items: [
+    { rank: 1, key: 101, name: "Product A", value: 500000, pct_of_total: 35.2 },
+    { rank: 2, key: 102, name: "Product B", value: 300000, pct_of_total: 21.1 },
+    { rank: 3, key: 103, name: "Product C", value: 200000, pct_of_total: 14.1 },
+  ],
+  total: 1420000,
+};
+
+export const mockReturns = [
+  {
+    product_key: 1,
+    product_name: "Drug X",
+    customer_key: 10,
+    customer_name: "Customer A",
+    return_quantity: 50,
+    return_value: 5000,
+    return_rate: 3.2,
+  },
+];
+
+export const mockHealthy = { status: "healthy", database: "connected", timestamp: "2024-01-01T00:00:00Z" };
+export const mockUnhealthy = { status: "unhealthy", database: "disconnected" };
+
+export const mockPipelineRuns = {
+  items: [
+    {
+      id: "run-uuid-1",
+      tenant_id: 1,
+      run_type: "full",
+      status: "success",
+      trigger_source: "webhook",
+      started_at: "2024-01-01T10:00:00Z",
+      finished_at: "2024-01-01T10:05:00Z",
+      duration_seconds: 300,
+      rows_loaded: 50000,
+      error_message: null,
+      metadata: {},
+    },
+    {
+      id: "run-uuid-2",
+      tenant_id: 1,
+      run_type: "full",
+      status: "failed",
+      trigger_source: "manual",
+      started_at: "2024-01-02T10:00:00Z",
+      finished_at: "2024-01-02T10:01:00Z",
+      duration_seconds: 60,
+      rows_loaded: 0,
+      error_message: "dbt timeout",
+      metadata: {},
+    },
+  ],
+  total: 2,
+  offset: 0,
+  limit: 50,
+};
+
+export const mockDashboardData = {
+  kpi: mockKPISummary,
+  daily_trend: mockTrendResult,
+  monthly_trend: mockTrendResult,
+  top_products: mockRankingResult,
+  top_customers: mockRankingResult,
+  top_staff: mockRankingResult,
+  filter_options: { categories: ["Pharma"], brands: ["BrandA"], sites: [], staff: [] },
+};
+
+export const handlers = [
+  http.get(`${API}/health`, () => HttpResponse.json(mockHealthy)),
+
+  http.get(`${API}/api/v1/analytics/dashboard`, () => HttpResponse.json(mockDashboardData)),
+  http.get(`${API}/api/v1/analytics/summary`, () => HttpResponse.json(mockKPISummary)),
+  http.get(`${API}/api/v1/analytics/date-range`, () =>
+    HttpResponse.json({ min_date: "2023-01-01", max_date: "2025-12-31" }),
+  ),
+  http.get(`${API}/api/v1/analytics/filters/options`, () =>
+    HttpResponse.json({ categories: ["Pharma", "OTC"], brands: ["BrandA"], sites: [], staff: [] }),
+  ),
+  http.get(`${API}/api/v1/analytics/trends/daily`, () => HttpResponse.json(mockTrendResult)),
+  http.get(`${API}/api/v1/analytics/trends/monthly`, () => HttpResponse.json(mockTrendResult)),
+  http.get(`${API}/api/v1/analytics/products/top`, () => HttpResponse.json(mockRankingResult)),
+  http.get(`${API}/api/v1/analytics/customers/top`, () => HttpResponse.json(mockRankingResult)),
+  http.get(`${API}/api/v1/analytics/staff/top`, () => HttpResponse.json(mockRankingResult)),
+  http.get(`${API}/api/v1/analytics/sites`, () => HttpResponse.json(mockRankingResult)),
+  http.get(`${API}/api/v1/analytics/returns`, () => HttpResponse.json(mockReturns)),
+  http.get(`${API}/api/v1/analytics/billing-breakdown`, () =>
+    HttpResponse.json({ items: [], total: 0 }),
+  ),
+  http.get(`${API}/api/v1/analytics/customer-type-breakdown`, () =>
+    HttpResponse.json({ items: [], total: 0 }),
+  ),
+  http.get(`${API}/api/v1/analytics/top-movers`, () =>
+    HttpResponse.json({ gainers: [], losers: [], entity_type: "product" }),
+  ),
+  http.get(`${API}/api/v1/analytics/abc-analysis`, () =>
+    HttpResponse.json({ items: [], entity_type: "product" }),
+  ),
+  http.get(`${API}/api/v1/analytics/heatmap`, () =>
+    HttpResponse.json({ cells: [], year: 2024 }),
+  ),
+  http.get(`${API}/api/v1/analytics/returns/trend`, () =>
+    HttpResponse.json({ points: [] }),
+  ),
+  http.get(`${API}/api/v1/analytics/segments/summary`, () => HttpResponse.json([])),
+
+  http.get(`${API}/api/v1/pipeline/runs`, () => HttpResponse.json(mockPipelineRuns)),
+  http.get(`${API}/api/v1/pipeline/runs/latest`, () =>
+    HttpResponse.json(mockPipelineRuns.items[0]),
+  ),
+  http.post(`${API}/api/v1/pipeline/trigger`, () =>
+    HttpResponse.json({ run_id: "new-run-uuid", status: "pending" }),
+  ),
+
+  http.get(`${API}/api/v1/forecasting/summary`, () =>
+    HttpResponse.json({ forecasts: [] }),
+  ),
+  http.get(`${API}/api/v1/targets/summary`, () =>
+    HttpResponse.json({ year: 2024, months: [] }),
+  ),
+  http.get(`${API}/api/v1/targets/alerts/log`, () => HttpResponse.json([])),
+
+  http.get(`${API}/api/v1/ai-light/status`, () =>
+    HttpResponse.json({ enabled: false, provider: null }),
+  ),
+  http.get(`${API}/api/v1/ai-light/summary`, () =>
+    HttpResponse.json({ summary: "", generated_at: null }),
+  ),
+  http.get(`${API}/api/v1/ai-light/anomalies`, () =>
+    HttpResponse.json({ anomalies: [], checked_at: null }),
+  ),
+];

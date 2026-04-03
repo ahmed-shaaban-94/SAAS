@@ -12,4 +12,10 @@ sealed interface NavRoute {
     @Serializable data object Returns : NavRoute
     @Serializable data object Pipeline : NavRoute
     @Serializable data object Settings : NavRoute
+    @Serializable data object Goals : NavRoute
+    @Serializable data object Alerts : NavRoute
+    @Serializable data object Insights : NavRoute
+    @Serializable data object SqlLab : NavRoute
+    @Serializable data object Reports : NavRoute
+    @Serializable data object Explore : NavRoute
 }

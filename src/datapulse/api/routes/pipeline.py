@@ -37,6 +37,7 @@ from datapulse.pipeline.models import (
     TriggerRequest,
     TriggerResponse,
 )
+from datapulse.pipeline.checkpoint import get_completed_stages, get_last_successful_stage
 from datapulse.pipeline.quality import (
     VALID_STAGES,
     QualityCheckList,
@@ -45,6 +46,7 @@ from datapulse.pipeline.quality import (
 )
 from datapulse.pipeline.quality_service import QualityService
 from datapulse.pipeline.service import PipelineService
+from datapulse.pipeline.state_machine import get_resume_stage
 
 log = get_logger(__name__)
 
@@ -289,6 +291,67 @@ def trigger_pipeline(
         )
 
     return TriggerResponse(run_id=run.id, status=run.status)
+
+
+@router.post(
+    "/runs/{run_id}/resume",
+    response_model=PipelineRunResponse,
+    dependencies=[Depends(require_pipeline_token)],
+)
+def resume_run(
+    service: ServiceDep,
+    run_id: UUID,
+) -> PipelineRunResponse:
+    """Resume a failed pipeline run from the last successful checkpoint.
+
+    Reads the checkpoint from metadata, determines the next stage,
+    and resets the run to 'running' status so n8n can pick it up.
+    """
+    run = service.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    if run.status != "failed":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot resume run with status '{run.status}'. Only 'failed' runs can be resumed.",
+        )
+
+    last_stage = get_last_successful_stage(run.metadata)
+    if last_stage is None:
+        raise HTTPException(
+            status_code=409,
+            detail="No checkpoint found. Cannot resume — trigger a new run instead.",
+        )
+
+    resume_from = get_resume_stage(last_stage)
+    if resume_from is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Run already completed stage '{last_stage}'. Nothing to resume.",
+        )
+
+    completed = get_completed_stages(run.metadata)
+
+    update = PipelineRunUpdate(
+        status="running",
+        error_message=None,
+        metadata={
+            **run.metadata,
+            "resumed_from": resume_from.value,
+            "skipped_stages": completed,
+        },
+    )
+    result = service.update_status(run_id, update)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    log.info(
+        "pipeline_resumed",
+        run_id=str(run_id),
+        resumed_from=resume_from.value,
+        skipped=completed,
+    )
+    return result
 
 
 @router.post(
