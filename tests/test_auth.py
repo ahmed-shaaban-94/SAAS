@@ -153,6 +153,22 @@ class TestGetCurrentUser:
         assert result["tenant_id"] == "99"
         assert result["roles"] == []
 
+    def test_jwt_namespaced_tenant_id_accepted(self):
+        """Auth0 namespaced claim https://datapulse.tech/tenant_id is accepted."""
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {
+            "sub": "user123",
+            "https://datapulse.tech/tenant_id": 7,
+        }
+        with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
+            result = get_current_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key"),
+            )
+        assert result["tenant_id"] == "7"
+
     def test_api_key_fallback_valid(self):
         """No Bearer token, valid API key -> returns stub claims with configured roles."""
         result = get_current_user(

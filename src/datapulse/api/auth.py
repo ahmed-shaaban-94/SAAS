@@ -86,8 +86,12 @@ def get_current_user(
     # 1. Try JWT Bearer token first
     if credentials is not None:
         claims = verify_jwt(credentials.credentials, settings)
-        # Extract tenant_id — require it in JWT claims (no silent fallback)
-        tenant_id = claims.get("tenant_id") or claims.get("tid")
+        # Extract tenant_id — check namespaced Auth0 claim first, then fallback
+        tenant_id = (
+            claims.get("https://datapulse.tech/tenant_id")
+            or claims.get("tenant_id")
+            or claims.get("tid")
+        )
         if not tenant_id:
             raise HTTPException(
                 status_code=401,
