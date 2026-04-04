@@ -10,8 +10,8 @@ from typing import Any
 from datapulse.analytics.advanced_repository import AdvancedRepository
 from datapulse.analytics.breakdown_repository import BreakdownRepository
 from datapulse.analytics.comparison_repository import ComparisonRepository
-from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.customer_health import CustomerHealthRepository
+from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.diagnostics import DiagnosticsRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.models import (
@@ -22,10 +22,10 @@ from datapulse.analytics.models import (
     CustomerHealthScore,
     CustomerTypeBreakdown,
     DashboardData,
-    HealthDistribution,
     DataDateRange,
     DateRange,
     FilterOptions,
+    HealthDistribution,
     HeatmapData,
     KPISummary,
     ProductHierarchy,

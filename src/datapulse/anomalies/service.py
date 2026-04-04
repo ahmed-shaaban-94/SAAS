@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from decimal import Decimal
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -95,7 +94,7 @@ class AnomalyService:
         current_row = rows[-1]
         history_rows = rows[:-1]
 
-        for col_idx, (col_name, metric_label) in enumerate(_METRICS, start=1):
+        for col_idx, (_col_name, metric_label) in enumerate(_METRICS, start=1):
             history_values = [float(r[col_idx]) for r in history_rows if r[col_idx] is not None]
             current_value = float(current_row[col_idx]) if current_row[col_idx] is not None else 0.0
 

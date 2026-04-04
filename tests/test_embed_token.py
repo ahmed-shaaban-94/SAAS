@@ -57,17 +57,15 @@ class TestGetSecret:
         with patch(
             "datapulse.embed.token.get_settings",
             return_value=_mock_settings(api_key="", embed_secret=""),
-        ):
-            with pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"):
-                _get_secret()
+        ), pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"):
+            _get_secret()
 
     def test_raises_when_both_none(self):
         with patch(
             "datapulse.embed.token.get_settings",
             return_value=_mock_settings(api_key=None, embed_secret=None),
-        ):
-            with pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"):
-                _get_secret()
+        ), pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"):
+            _get_secret()
 
 
 # ---------------------------------------------------------------------------

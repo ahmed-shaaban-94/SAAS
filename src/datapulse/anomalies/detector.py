@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import statistics as _stats
+from datetime import date
 from decimal import Decimal
 
 from datapulse.anomalies.models import AnomalyDetectionConfig, DetectedAnomaly
@@ -24,13 +25,12 @@ class AnomalyDetector:
         values: list[float],
         current: float,
         metric: str,
-        period: "date",
+        period: date,
     ) -> DetectedAnomaly | None:
         """Detect anomaly using Z-score method.
 
         Returns an anomaly if |z| exceeds the low threshold (2.0).
         """
-        from datetime import date as date_type
 
         if len(values) < self._config.min_data_points:
             return None
@@ -69,7 +69,7 @@ class AnomalyDetector:
         values: list[float],
         current: float,
         metric: str,
-        period: "date",
+        period: date,
     ) -> DetectedAnomaly | None:
         """Detect anomaly using Interquartile Range method.
 
@@ -95,10 +95,7 @@ class AnomalyDetector:
         # Compute pseudo z-score for severity classification
         median = _stats.median(values)
         mad = _stats.median([abs(v - median) for v in values])
-        if mad > 0:
-            pseudo_z = abs(current - median) / (mad * 1.4826)
-        else:
-            pseudo_z = 3.0  # default to high
+        pseudo_z = abs(current - median) / (mad * 1.4826) if mad > 0 else 3.0
 
         severity = self._classify_severity(pseudo_z)
         direction = "spike" if current > upper else "drop"
@@ -120,7 +117,7 @@ class AnomalyDetector:
         values: list[float],
         current: float,
         metric: str,
-        period: "date",
+        period: date,
     ) -> DetectedAnomaly | None:
         """Combined detection — flag only if BOTH Z-score and IQR agree.
 

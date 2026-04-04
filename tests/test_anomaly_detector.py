@@ -1,7 +1,6 @@
 """Tests for anomaly detection algorithms."""
 
 from datetime import date
-from decimal import Decimal
 
 import pytest
 
@@ -80,9 +79,8 @@ class TestCustomConfig:
     def test_stricter_thresholds(self):
         config = AnomalyDetectionConfig(low_z=3.0, medium_z=3.5, high_z=4.0, critical_z=5.0)
         detector = AnomalyDetector(config)
-        series = [100.0] * 15
         # z=2.5 should NOT trigger with stricter thresholds
-        result = detector.detect_zscore(
+        _result = detector.detect_zscore(
             [100.0, 105.0, 98.0, 102.0, 97.0, 103.0, 99.0,
              101.0, 104.0, 96.0, 100.0, 103.0, 98.0, 101.0, 99.0],
             115.0, "test", date(2026, 1, 1)

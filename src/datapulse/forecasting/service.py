@@ -8,11 +8,9 @@ from typing import Any
 
 from datapulse.cache_decorator import cached
 from datapulse.forecasting.methods import (
-    backtest,
     holt_winters_forecast,
     seasonal_naive_forecast,
     select_best_method,
-    select_method,
     sma_forecast,
 )
 from datapulse.forecasting.models import (

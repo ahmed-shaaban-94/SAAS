@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from datapulse.analytics.models import (
     CustomerHealthScore,
     HealthDistribution,
-    HealthMovement,
 )
 from datapulse.logging import get_logger
 

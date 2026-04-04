@@ -2,8 +2,6 @@
 
 from decimal import Decimal
 
-import pytest
-
 from datapulse.analytics.queries import (
     coefficient_of_variation,
     compute_z_score,

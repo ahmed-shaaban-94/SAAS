@@ -156,7 +156,11 @@ class BillingRepository:
         return {"data_sources_count": row[0], "total_rows": row[1]}
 
     def upsert_usage(
-        self, tenant_id: int, *, data_sources_count: int | None = None, total_rows: int | None = None
+        self,
+        tenant_id: int,
+        *,
+        data_sources_count: int | None = None,
+        total_rows: int | None = None,
     ) -> None:
         now = datetime.now(UTC)
         existing = self._session.execute(
@@ -175,14 +179,18 @@ class BillingRepository:
                 params["tr"] = total_rows
             updates.append("updated_at = :now")
             self._session.execute(
-                text(f"UPDATE public.usage_metrics SET {', '.join(updates)} WHERE tenant_id = :tid"),
+                text(
+                    f"UPDATE public.usage_metrics SET {', '.join(updates)}"
+                    " WHERE tenant_id = :tid"
+                ),
                 params,
             )
         else:
             self._session.execute(
                 text(
-                    "INSERT INTO public.usage_metrics (tenant_id, data_sources_count, total_rows, updated_at) "
-                    "VALUES (:tid, :dsc, :tr, :now)"
+                    "INSERT INTO public.usage_metrics"
+                    " (tenant_id, data_sources_count, total_rows, updated_at)"
+                    " VALUES (:tid, :dsc, :tr, :now)"
                 ),
                 {
                     "tid": tenant_id,
