@@ -64,8 +64,7 @@ class Settings(BaseSettings):
     # API base URL (used by watcher and internal services)
     api_base_url: str = "http://localhost:8000"
 
-    # n8n
-    n8n_webhook_url: str = "http://n8n:5678/webhook/"
+    # n8n removed — orchestration via datapulse.scheduler
     pipeline_webhook_secret: str = ""
 
     # API security

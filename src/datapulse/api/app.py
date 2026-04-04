@@ -37,6 +37,16 @@ logger = structlog.get_logger()
 
 
 def create_app() -> FastAPI:
+    from contextlib import asynccontextmanager
+
+    from datapulse.scheduler import start_scheduler, stop_scheduler
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        start_scheduler()
+        yield
+        stop_scheduler()
+
     settings = get_settings()
     setup_logging(log_format=settings.log_format)
 
@@ -54,6 +64,7 @@ def create_app() -> FastAPI:
         title="DataPulse API",
         description="Sales analytics API for DataPulse",
         version="0.1.0",
+        lifespan=lifespan,
     )
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]

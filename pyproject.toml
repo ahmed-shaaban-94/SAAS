@@ -27,7 +27,7 @@ dependencies = [
     "cffi>=1.15",
     "PyJWT[crypto]>=2.8,<3",
     "redis>=5.0,<6",
-    # celery removed — async queries now use asyncio.to_thread + Redis directly
+    "apscheduler>=3.10,<4",
     "sqlparse>=0.5,<1",
     "pyyaml>=6.0,<7",
     "sentry-sdk[fastapi]>=2.0,<3",

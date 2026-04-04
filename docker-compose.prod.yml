@@ -86,8 +86,7 @@ services:
 
   # celery-worker removed — async queries now run in-process
 
-  n8n:
-    ports: !reset []
+  # n8n removed — orchestration now in-process via datapulse.scheduler
 
   app:
     ports: !reset []

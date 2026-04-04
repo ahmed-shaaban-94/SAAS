@@ -13,7 +13,6 @@ from functools import partial
 from typing import Annotated
 from uuid import UUID
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
@@ -245,17 +244,16 @@ def update_run(
     status_code=202,
     dependencies=[Depends(require_pipeline_token)],
 )
-def trigger_pipeline(
+async def trigger_pipeline(
     service: ServiceDep,
     body: TriggerRequest | None = None,
 ) -> TriggerResponse:
     """Trigger a full pipeline run.
 
-    Creates a pipeline_run record (pending), then notifies n8n
-    via webhook to begin orchestration. Returns immediately.
+    Creates a pipeline_run record (pending), then starts the pipeline
+    orchestrator in the background. Returns immediately.
     """
     req = body or TriggerRequest()
-    settings = get_settings()
 
     # 1. Create the run record
     run = service.start_run(
@@ -267,29 +265,16 @@ def trigger_pipeline(
         tenant_id=req.tenant_id,
     )
 
-    # 2. Notify n8n (best-effort — run exists even if n8n is down)
-    webhook_url = f"{settings.n8n_webhook_url}pipeline-trigger"
-    headers: dict[str, str] = {}
-    if settings.pipeline_webhook_secret:
-        headers["X-Pipeline-Token"] = settings.pipeline_webhook_secret
-    try:
-        httpx.post(
-            webhook_url,
-            json={
-                "run_id": str(run.id),
-                "source_dir": req.source_dir,
-                "tenant_id": req.tenant_id,
-            },
-            headers=headers,
-            timeout=10.0,
-            follow_redirects=True,
+    # 2. Run pipeline in background (replaces n8n webhook)
+    from datapulse.scheduler import run_pipeline
+
+    asyncio.create_task(
+        run_pipeline(
+            run_id=run.id,
+            source_dir=req.source_dir,
+            tenant_id=req.tenant_id,
         )
-    except (httpx.HTTPError, httpx.TimeoutException, OSError) as exc:
-        log.warning(
-            "n8n_webhook_failed",
-            webhook_url=webhook_url,
-            error=str(exc),
-        )
+    )
 
     return TriggerResponse(run_id=run.id, status=run.status)
 
