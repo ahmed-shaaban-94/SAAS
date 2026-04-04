@@ -6,6 +6,7 @@ so the application continues using direct database queries.
 
 from __future__ import annotations
 
+import contextvars
 import json
 import time
 from typing import Any
@@ -15,6 +16,13 @@ import structlog
 from datapulse.config import get_settings
 
 logger = structlog.get_logger()
+
+# Context variable holding the current tenant_id.  Set by ``get_tenant_session``
+# in ``datapulse.api.deps`` so that cache keys are automatically scoped per
+# tenant without requiring explicit passing through every service method.
+current_tenant_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "current_tenant_id", default=""
+)
 
 _redis_client = None
 _last_attempt: float = 0

@@ -41,7 +41,7 @@ from datapulse.analytics.models import (
     WaterfallAnalysis,
 )
 from datapulse.analytics.repository import AnalyticsRepository
-from datapulse.cache import cache_get, cache_set
+from datapulse.cache import cache_get, cache_set, current_tenant_id
 from datapulse.cache_decorator import cached
 from datapulse.logging import get_logger
 
@@ -51,12 +51,14 @@ _CACHE_PREFIX = "datapulse:analytics"
 
 
 def _cache_key(method: str, params: dict[str, Any] | None = None) -> str:
-    """Build a deterministic cache key from method name and parameters."""
+    """Build a deterministic, tenant-scoped cache key."""
+    tid = current_tenant_id.get("")
+    tenant_segment = f"t{tid}" if tid else "t0"
     if params:
         raw = json.dumps(params, sort_keys=True, default=str)
         h = hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()[:12]
-        return f"{_CACHE_PREFIX}:{method}:{h}"
-    return f"{_CACHE_PREFIX}:{method}"
+        return f"{_CACHE_PREFIX}:{tenant_segment}:{method}:{h}"
+    return f"{_CACHE_PREFIX}:{tenant_segment}:{method}"
 
 
 class AnalyticsService:

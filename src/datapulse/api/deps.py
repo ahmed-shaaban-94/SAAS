@@ -25,6 +25,7 @@ from datapulse.billing.plans import PlanLimits, get_plan_limits
 from datapulse.billing.repository import BillingRepository
 from datapulse.billing.service import BillingService
 from datapulse.billing.stripe_client import StripeClient
+from datapulse.cache import current_tenant_id
 from datapulse.config import get_settings
 from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
     get_engine,
@@ -66,6 +67,7 @@ def get_tenant_session(
     so that PostgreSQL RLS policies filter data automatically.
     """
     tenant_id = user.get("tenant_id", "1")
+    current_tenant_id.set(str(tenant_id))
     session = get_session_factory()()
     try:
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})

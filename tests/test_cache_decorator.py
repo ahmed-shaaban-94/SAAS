@@ -6,7 +6,18 @@ import hashlib
 import json
 from unittest.mock import patch
 
+import pytest
+
+from datapulse.cache import current_tenant_id
 from datapulse.cache_decorator import _build_cache_key, cached
+
+
+@pytest.fixture(autouse=True)
+def _clear_tenant_context():
+    """Ensure tenant context is reset for each test."""
+    token = current_tenant_id.set("")
+    yield
+    current_tenant_id.reset(token)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,13 +53,13 @@ class TestBuildCacheKey:
 
     def test_no_args_returns_prefix_and_method(self):
         key = _build_cache_key("analytics", "get_summary", (), {})
-        assert key == "analytics:get_summary"
+        assert key == "analytics:t0:get_summary"
 
     def test_self_is_skipped(self):
         """When the only positional arg is `self`, it should be skipped."""
         self_obj = _FakeSelf()
         key = _build_cache_key("pfx", "do_thing", (self_obj,), {})
-        assert key == "pfx:do_thing"
+        assert key == "pfx:t0:do_thing"
 
     def test_positional_args_produce_consistent_hash(self):
         self_obj = _FakeSelf()
@@ -58,7 +69,7 @@ class TestBuildCacheKey:
 
         expected_parts = {"arg0": "a", "arg1": 42}
         h = _expected_hash(expected_parts)
-        assert key1 == f"p:m:{h}"
+        assert key1 == f"p:t0:m:{h}"
 
     def test_different_args_produce_different_keys(self):
         self_obj = _FakeSelf()
@@ -72,7 +83,7 @@ class TestBuildCacheKey:
         assert key1 == key2
 
         h = _expected_hash({"limit": 10, "offset": 0})
-        assert key1 == f"p:m:{h}"
+        assert key1 == f"p:t0:m:{h}"
 
     def test_kwargs_order_does_not_matter(self):
         key1 = _build_cache_key("p", "m", (), {"a": 1, "b": 2})
@@ -86,7 +97,7 @@ class TestBuildCacheKey:
 
         expected_parts = {"arg0": {"start": "2024-01-01", "end": "2024-12-31"}}
         h = _expected_hash(expected_parts)
-        assert key == f"a:fn:{h}"
+        assert key == f"a:t0:fn:{h}"
 
     def test_pydantic_model_kwarg(self):
         model = _FakePydanticModel({"x": 1})
@@ -94,7 +105,7 @@ class TestBuildCacheKey:
 
         expected_parts = {"filters": {"x": 1}}
         h = _expected_hash(expected_parts)
-        assert key == f"a:fn:{h}"
+        assert key == f"a:t0:fn:{h}"
 
     def test_mixed_args_and_kwargs(self):
         self_obj = _FakeSelf()
@@ -102,7 +113,7 @@ class TestBuildCacheKey:
 
         expected_parts = {"arg0": "v1", "k": "v2"}
         h = _expected_hash(expected_parts)
-        assert key == f"p:m:{h}"
+        assert key == f"p:t0:m:{h}"
 
 
 # ===================================================================
