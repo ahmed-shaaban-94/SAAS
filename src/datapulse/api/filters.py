@@ -145,7 +145,26 @@ def apply_filters(
         elif f.op == FilterOp.BETWEEN:
             parts = str(f.value).split(",", 1)
             if len(parts) == 2:
-                conditions.append(col.between(parts[0].strip(), parts[1].strip()))
+                low, high = parts[0].strip(), parts[1].strip()
+                if not low or not high:
+                    log.warning(
+                        "filter_between_invalid",
+                        field=f.field,
+                        value=f.value,
+                        reason="both low and high values required",
+                    )
+                    continue
+                # Ensure low <= high to prevent reversed ranges
+                if low > high:
+                    low, high = high, low
+                conditions.append(col.between(low, high))
+            else:
+                log.warning(
+                    "filter_between_invalid",
+                    field=f.field,
+                    value=f.value,
+                    reason="expected two comma-separated values",
+                )
         elif f.op == FilterOp.LIKE:
             conditions.append(col.ilike(f"%{f.value}%"))
         elif f.op == FilterOp.IS_NULL:
