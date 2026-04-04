@@ -124,20 +124,18 @@ class TestGetCurrentUser:
         assert result["tenant_id"] == "42"
         assert result["roles"] == ["admin"]
 
-    def test_jwt_missing_tenant_id_raises_401(self):
-        """When tenant_id and tid are both missing from JWT claims, raises 401."""
+    def test_jwt_missing_tenant_id_falls_back_to_default(self):
+        """When tenant_id is missing from JWT claims, falls back to default_tenant_id."""
         creds = MagicMock()
         creds.credentials = "jwt-token-value"
         fake_claims = {"sub": "user123"}
         with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
-            with pytest.raises(HTTPException) as exc_info:
-                get_current_user(
-                    credentials=creds,
-                    api_key=None,
-                    settings=_settings(api_key="key"),
-                )
-            assert exc_info.value.status_code == 401
-            assert "tenant_id" in exc_info.value.detail
+            result = get_current_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key"),
+            )
+        assert result["tenant_id"] == "1"  # default_tenant_id
 
     def test_jwt_tid_claim_accepted(self):
         """When tenant_id is missing but 'tid' is present, it is used."""
@@ -218,16 +216,16 @@ class TestGetCurrentUser:
         assert result["sub"] == "dev-user"
         assert result["tenant_id"] == "1"
 
-    def test_dev_mode_non_dev_environment_raises_503(self):
-        """Dev mode in non-dev SENTRY_ENVIRONMENT raises 503."""
+    def test_dev_mode_non_dev_environment_still_works(self):
+        """Dev mode in non-dev SENTRY_ENVIRONMENT logs warning but still works."""
         with patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}):
-            with pytest.raises(HTTPException) as exc_info:
-                get_current_user(
-                    credentials=None,
-                    api_key=None,
-                    settings=_settings(api_key="", auth0_domain=""),
-                )
-            assert exc_info.value.status_code == 503
+            result = get_current_user(
+                credentials=None,
+                api_key=None,
+                settings=_settings(api_key="", auth0_domain=""),
+            )
+        assert result["sub"] == "dev-user"
+        assert result["tenant_id"] == "1"
 
     def test_no_auth_but_configured_raises_401(self):
         """No credentials but auth IS configured -> 401."""

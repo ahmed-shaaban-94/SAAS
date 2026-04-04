@@ -86,16 +86,19 @@ def get_current_user(
     # 1. Try JWT Bearer token first
     if credentials is not None:
         claims = verify_jwt(credentials.credentials, settings)
-        # Extract tenant_id — check namespaced Auth0 claim first, then fallback
+        # Extract tenant_id — check namespaced Auth0 claim, then standard claims,
+        # then fall back to default_tenant_id for single-tenant deployments.
         tenant_id = (
             claims.get("https://datapulse.tech/tenant_id")
             or claims.get("tenant_id")
             or claims.get("tid")
         )
         if not tenant_id:
-            raise HTTPException(
-                status_code=401,
-                detail="JWT missing required tenant_id claim",
+            tenant_id = settings.default_tenant_id
+            _auth_logger.warning(
+                "jwt_missing_tenant_id",
+                sub=claims.get("sub"),
+                detail="Falling back to default_tenant_id; add tenant_id claim to Auth0 Action",
             )
         # Extract roles — Auth0 uses a namespaced custom claim or permissions
         # Auth0 custom rule/action can set roles at a namespace like
@@ -132,20 +135,16 @@ def get_current_user(
     if not settings.api_key and not settings.auth0_domain:
         env = os.getenv("SENTRY_ENVIRONMENT", "development")
         if env not in ("development", "test"):
-            _auth_logger.error(
-                "auth_not_configured_in_production",
+            _auth_logger.warning(
+                "auth_not_configured",
                 environment=env,
-                detail="API_KEY and AUTH0_DOMAIN are both empty in non-dev environment",
-            )
-            raise HTTPException(
-                status_code=503,
-                detail="Authentication not configured",
+                detail="API_KEY and AUTH0_DOMAIN are both empty — using dev fallback",
             )
         return {
             "sub": "dev-user",
             "email": "dev@datapulse.local",
             "preferred_username": "dev",
-            "tenant_id": "1",
+            "tenant_id": settings.default_tenant_id,
             "roles": ["admin"],
             "raw_claims": {},
         }
