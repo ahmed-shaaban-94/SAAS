@@ -3,12 +3,14 @@
 import { useForecastSummary } from "@/hooks/use-forecast";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 import { TrendingUp, TrendingDown, Brain } from "lucide-react";
 
 export function ForecastCard() {
-  const { data, isLoading } = useForecastSummary();
+  const { data, isLoading, error } = useForecastSummary();
 
   if (isLoading) return <LoadingCard className="h-48" />;
+  if (error) return <ErrorRetry message="Failed to load forecast" />;
 
   if (!data) {
     return (

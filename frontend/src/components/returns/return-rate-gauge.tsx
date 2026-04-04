@@ -3,12 +3,14 @@
 import { useReturnsTrend } from "@/hooks/use-returns-trend";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 
 export function ReturnRateGauge() {
-  const { data, isLoading } = useReturnsTrend();
+  const { data, isLoading, error } = useReturnsTrend();
 
   if (isLoading) return <LoadingCard className="h-48" />;
+  if (error) return <ErrorRetry message="Failed to load return rate" />;
   if (!data) return null;
 
   const rate = data.avg_return_rate;
