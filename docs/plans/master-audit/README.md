@@ -2,56 +2,61 @@
 
 ## Context
 
-A 15-phase comprehensive audit of DataPulse — a pharmaceutical sales analytics SaaS platform. Quick scan identified **4 CRITICAL, 8 HIGH, 12 MEDIUM, 6 LOW** severity findings. This plan expands each session with the **full audit checklist**, **creative improvements**, **tests**, and **tool recommendations** from the original 1300-line audit prompt.
+A 15-phase comprehensive audit of DataPulse — a pharmaceutical sales analytics SaaS platform. This plan maps 15 audit phases into **8 focused sessions**, each with full checklists, creative improvements, tests, and tool recommendations.
 
-**8 sessions, ordered by business risk.** Each session is self-contained — start any session in a new conversation with:
+**IMPORTANT — Verify-First Approach**: This plan was created from a point-in-time scan (2026-04-04). Some findings may already be fixed (e.g., by "The Great Fix" or subsequent PRs). For EVERY finding below:
+1. **Read the current code first** — do NOT assume the issue still exists
+2. **Verify** the issue is present in the current codebase
+3. **Skip** anything already fixed — mark as "VERIFIED OK" and move on
+4. **Fix** only confirmed issues
+5. **Discover** new issues not in this list — the checklists are the real work, findings are just hints
 
-```
-Read docs/plans/master-audit/README.md — execute Session [N]: [Title]
-```
+**8 sessions, ordered by business risk.** Each session is self-contained — start any session in a new conversation.
 
 ---
 
-## Quick Scan Findings Summary
+## Potential Findings to Verify
 
-### CRITICAL (Fix Before Production)
+These were flagged during a quick scan. **Some may already be fixed.** Read the code first.
 
-| # | Finding | Location | Risk |
-|---|---------|----------|------|
-| C1 | Dev mode auth bypass grants admin to unauthenticated requests | `api/auth.py:134-150` | Full data access |
-| C2 | SQL injection risk in Explore via catalog manipulation | `api/routes/explore.py:95` | Code execution |
-| C3 | PII leakage — customer/product names sent to OpenRouter | `ai_light/service.py:67-75` | Privacy violation |
-| C4 | Currency formatting uses `en-US` instead of `ar-EG` | `frontend/src/lib/formatters.ts:15` | Wrong display |
+### CRITICAL (Verify First)
 
-### HIGH
+| # | Check For | Where to Look | Risk if Present |
+|---|-----------|---------------|-----------------|
+| C1 | Dev mode auth bypass granting admin without auth configured | `src/datapulse/api/auth.py` — look for fallback when neither API_KEY nor AUTH0_DOMAIN set | Full data access |
+| C2 | SQL injection in Explore/SQL Lab via identifier injection | `src/datapulse/api/routes/explore.py` + `src/datapulse/explore/sql_builder.py` | Code execution |
+| C3 | PII (customer/product names) sent to external AI (OpenRouter) | `src/datapulse/ai_light/service.py` — trace what data goes into prompts | Privacy violation |
+| C4 | Currency formatting using wrong locale (en-US instead of ar-EG) | `frontend/src/lib/formatters.ts` — check formatCurrency function | Wrong display for Egyptian market |
 
-| # | Finding | Location |
-|---|---------|----------|
-| H1 | Production image tag fallback to `latest` | `docker-compose.prod.yml` |
-| H2 | Pipeline webhook auth defaults to disabled | `api/auth.py:55-65` |
-| H3 | Memory OOM risk — 2.27M rows loaded at once | `bronze/loader.py:59-89` |
-| H4 | SSE stream missing tenant validation | `api/routes/pipeline.py:134-136` |
-| H5 | mypy `continue-on-error: true` in CI | `.github/workflows/ci.yml` |
-| H6 | No i18n infrastructure — hardcoded English strings | `frontend/src/` |
-| H7 | Tenant-scoped RLS policies not implemented | `migrations/002` |
-| H8 | No frontend component unit tests | `frontend/src/__tests__/` |
+### HIGH (Verify First)
 
-### MEDIUM (12 items)
+| # | Check For | Where to Look |
+|---|-----------|---------------|
+| H1 | Production Docker images using `latest` tag fallback | `docker-compose.prod.yml` — look for `${IMAGE_TAG:-latest}` |
+| H2 | Pipeline webhook secret defaulting to empty/disabled | `src/datapulse/api/auth.py` — look for PIPELINE_WEBHOOK_SECRET handling |
+| H3 | Bronze loader loading all rows at once (OOM risk) | `src/datapulse/bronze/loader.py` — check if chunked/batched |
+| H4 | SSE stream endpoint not checking tenant_id ownership | `src/datapulse/api/routes/pipeline.py` — stream_run_progress function |
+| H5 | mypy set to continue-on-error in CI | `.github/workflows/ci.yml` — search for `continue-on-error` |
+| H6 | No i18n infrastructure (hardcoded English strings) | `frontend/src/` — check if next-intl or similar is set up |
+| H7 | Tenant-scoped RLS policies not implemented | `migrations/` — check if tenant-level USING clauses exist |
+| H8 | No frontend component unit tests | `frontend/src/__tests__/` — check for vitest component tests |
 
-| # | Finding | Location |
-|---|---------|----------|
+### MEDIUM (Verify First)
+
+| # | Check For | Where to Look |
+|---|-----------|---------------|
 | M1 | Missing HSTS header | `nginx/default.conf` |
-| M2 | CSP `unsafe-inline` in production | `frontend/src/middleware.ts` |
-| M3 | Audit log missing user_id | `migrations/008` |
-| M4 | E2E tests not in CI | `.github/workflows/ci.yml` |
-| M5 | AI response JSON not validated | `ai_light/service.py:155-172` |
-| M6 | No min series length for forecasting | `forecasting/service.py:119-138` |
-| M7 | Custom SQL check no timeout | `pipeline/quality_engine.py:252-297` |
-| M8 | BETWEEN filter no type validation | `api/filters.py:145-148` |
-| M9 | No backward pagination (prev_cursor) | `api/pagination.py:77` |
-| M10 | Accessibility: 25 aria labels for 78 components | `frontend/src/components/` |
-| M11 | Slicer panel 347 lines | `frontend/src/components/filters/slicer-panel.tsx` |
-| M12 | Architecture docs missing | `docs/ARCHITECTURE.md` |
+| M2 | CSP allows unsafe-inline in production | `frontend/src/middleware.ts` |
+| M3 | Audit log table missing user_id column | Check audit_log table schema |
+| M4 | E2E tests not in CI pipeline | `.github/workflows/ci.yml` |
+| M5 | AI response JSON not validated against schema | `src/datapulse/ai_light/service.py` |
+| M6 | Forecasting has no minimum series length check | `src/datapulse/forecasting/service.py` |
+| M7 | Custom SQL quality check has no execution timeout | `src/datapulse/pipeline/quality_engine.py` |
+| M8 | BETWEEN filter values not type-validated | `src/datapulse/api/filters.py` |
+| M9 | No backward pagination (prev_cursor) | `src/datapulse/api/pagination.py` |
+| M10 | Low ARIA label coverage across frontend components | `frontend/src/components/` |
+| M11 | Large component files (>300 lines) needing split | `frontend/src/components/filters/slicer-panel.tsx` |
+| M12 | Architecture documentation missing or outdated | `docs/ARCHITECTURE.md` |
 
 ---
 
@@ -156,20 +161,20 @@ Redis cache contents
 - [ ] API request logs safe (no sensitive query params)?
 - [ ] Sentry captures PII in error reports?
 
-### Fixes from Scan
+### Verify and Fix (read code first — skip if already fixed)
 
-| Task | Severity | Files |
-|------|----------|-------|
-| Fix dev mode auth bypass — require auth in production | C1 | `api/auth.py` |
-| Fix SQL injection in explore route — validate identifiers | C2 | `api/routes/explore.py`, `explore/sql_builder.py` |
-| Add PII anonymization layer before AI calls | C3 | `ai_light/service.py`, new `ai_light/anonymizer.py` |
-| Enforce pipeline webhook secret in production | H2 | `api/auth.py` |
-| Add tenant_id check to SSE stream | H4 | `api/routes/pipeline.py` |
-| Add HSTS header to nginx | M1 | `nginx/default.conf` |
-| Remove CSP `unsafe-inline` in production | M2 | `frontend/src/middleware.ts` |
-| Add user_id column to audit_log | M3 | new `migrations/014_add_audit_user_id.sql` |
-| Validate AI response JSON with Pydantic | M5 | `ai_light/service.py`, `ai_light/models.py` |
-| Add execution timeout to custom SQL checks | M7 | `pipeline/quality_engine.py` |
+| Verify | If Present, Fix | Where to Look |
+|--------|----------------|---------------|
+| C1: Auth bypass in dev mode? | Require at least one auth method in production | `src/datapulse/api/auth.py` |
+| C2: SQL injection in explore? | Add identifier validation before text() parsing | `src/datapulse/api/routes/explore.py`, `explore/sql_builder.py` |
+| C3: PII in AI prompts? | Add anonymization layer (replace names with codes) | `src/datapulse/ai_light/service.py` |
+| H2: Webhook secret optional? | Make required in production | `src/datapulse/api/auth.py` |
+| H4: SSE stream no tenant check? | Add tenant_id ownership verification | `src/datapulse/api/routes/pipeline.py` |
+| M1: No HSTS header? | Add Strict-Transport-Security | `nginx/default.conf` |
+| M2: CSP unsafe-inline in prod? | Remove for production builds | `frontend/src/middleware.ts` |
+| M3: Audit log no user_id? | Add user_id column via migration | Check audit_log schema |
+| M5: AI response unvalidated? | Add Pydantic model for AI response | `src/datapulse/ai_light/service.py` |
+| M7: Custom SQL no timeout? | Add execution timeout (5s default) | `src/datapulse/pipeline/quality_engine.py` |
 
 ### Creative Improvements
 
@@ -253,17 +258,17 @@ src/datapulse/analytics/ (repository layer — SQL queries)
 - [ ] Quality fails: pipeline stops? Notifies?
 - [ ] Data freshness checks?
 
-### Fixes from Scan
+### Verify and Fix (read code first — skip if already fixed)
 
-| Task | Severity | Files |
-|------|----------|-------|
-| Implement chunked bronze loader (100K batch) | H3 | `bronze/loader.py` |
-| Add migration chain rollback on failure | M | `bronze/loader.py` |
-| Add path traversal validation in file discovery | M | `bronze/loader.py` |
-| Add unknown billing_type quality check | M | `pipeline/quality.py` |
-| Add fct_sales unknown dimension (-1) dbt test | M | `dbt/models/marts/facts/_facts__models.yml` |
-| Validate BETWEEN filter values | M8 | `api/filters.py` |
-| Add forecasting min series length check | M6 | `forecasting/service.py` |
+| Verify | If Present, Fix | Where to Look |
+|--------|----------------|---------------|
+| H3: All rows loaded at once? | Implement chunked read-write (100K batches) | `src/datapulse/bronze/loader.py` |
+| Migration rollback on failure? | Add chain rollback mechanism | `src/datapulse/bronze/loader.py` |
+| File discovery path traversal? | Add depth limit and path validation | `src/datapulse/bronze/loader.py` |
+| Unknown billing_type silently ignored? | Add quality check for unmapped values | `src/datapulse/pipeline/quality.py` |
+| fct_sales unknown dim (-1) untested? | Add dbt test: count < 5% of total | `dbt/models/marts/facts/` schema YAML |
+| M8: BETWEEN filter unvalidated? | Add type coercion and validation | `src/datapulse/api/filters.py` |
+| M6: Forecast no min length? | Add check for minimum series length | `src/datapulse/forecasting/service.py` |
 
 ### Creative Improvements
 
@@ -344,18 +349,18 @@ src/datapulse/core/ (logging), structlog, n8n workflows
 - [ ] Slow queries logged (>1s)
 - [ ] Business metrics tracked (tenants, uploads, errors)
 
-### Fixes from Scan
+### Verify and Fix (read code first — skip if already fixed)
 
-| Task | Severity | Files |
-|------|----------|-------|
-| Pin production image tags | H1 | `docker-compose.prod.yml` |
-| Enforce mypy in CI | H5 | `.github/workflows/ci.yml` |
-| Add E2E tests to CI | M4 | `.github/workflows/ci.yml` |
-| Add Trivy scanning | M | `.github/workflows/security.yml` |
-| Fix AUTH0 vars to `${VAR:?}` | M | `docker-compose.prod.yml` |
-| Add `/health/deep` endpoint | M | `api/routes/health.py` |
-| Correlation ID logging | M | `api/app.py` |
-| Document .env variables | M | `.env.example` |
+| Verify | If Present, Fix | Where to Look |
+|--------|----------------|---------------|
+| H1: Prod images use `latest`? | Pin to semver, remove fallback | `docker-compose.prod.yml` |
+| H5: mypy continue-on-error? | Set to false | `.github/workflows/ci.yml` |
+| M4: E2E tests in CI? | Add Playwright step | `.github/workflows/ci.yml` |
+| Trivy scanning in CI? | Add image scan step | `.github/workflows/security.yml` |
+| AUTH0 vars default empty? | Use `${VAR:?}` in prod | `docker-compose.prod.yml` |
+| `/health/deep` exists? | Add deep check endpoint | `src/datapulse/api/routes/health.py` |
+| Request correlation ID? | Add to structured logging | `src/datapulse/api/app.py` |
+| .env.example complete? | Document all vars | `.env.example` |
 
 ### Creative Improvements
 
@@ -429,17 +434,17 @@ src/datapulse/targets/, reports/, export/, embed/
 - [ ] AI cached, token limits, fallback
 - [ ] SQL Lab: DROP/DELETE blocked, timeout, tenant scoping
 
-### Fixes from Scan
+### Verify and Fix (read code first — skip if already fixed)
 
-| Task | Severity | Files |
-|------|----------|-------|
-| Backward pagination (prev_cursor) | M9 | `api/pagination.py` |
-| Date range validation | M | `api/routes/analytics.py` |
-| AI client timeout | M | `ai_light/client.py` |
-| Actionable error messages | M | Multiple routes |
-| Min series length check | M6 | `forecasting/service.py` |
-| AI response validation | M5 | `ai_light/service.py` |
-| BETWEEN filter validation | M8 | `api/filters.py` |
+| Verify | If Present, Fix | Where to Look |
+|--------|----------------|---------------|
+| M9: No backward pagination? | Implement prev_cursor | `src/datapulse/api/pagination.py` |
+| Date range accepts future? | Add validation, reject future dates | `src/datapulse/api/routes/analytics.py` |
+| AI client no timeout? | Add timeout parameter | `src/datapulse/ai_light/client.py` |
+| Generic error messages? | Make actionable (WHAT/WHERE/HOW) | Multiple route files |
+| M6: Forecast no min length? | Add series length check | `src/datapulse/forecasting/service.py` |
+| M5: AI response unvalidated? | Add Pydantic response model | `src/datapulse/ai_light/service.py` |
+| M8: BETWEEN unvalidated? | Add type coercion | `src/datapulse/api/filters.py` |
 
 ### Creative Improvements
 
@@ -521,16 +526,16 @@ frontend/src/contexts/, lib/, globals.css, tailwind.config.ts
 - [ ] Focus indicators
 - [ ] RTL support
 
-### Fixes from Scan
+### Verify and Fix (read code first — skip if already fixed)
 
-| Task | Severity | Files |
-|------|----------|-------|
-| Fix EGP formatting (`ar-EG`) | C4 | `lib/formatters.ts` |
-| Add aria labels | M10 | Multiple components |
-| Split slicer-panel | M11 | `filters/slicer-panel.tsx` |
-| Loading skeletons | M | Data pages |
-| Empty state guidance | M | Multiple |
-| Metric tooltips | L | `dashboard/kpi-card.tsx` |
+| Verify | If Present, Fix | Where to Look |
+|--------|----------------|---------------|
+| C4: Currency uses en-US? | Change to ar-EG locale for EGP | `frontend/src/lib/formatters.ts` |
+| M10: Low aria label coverage? | Add to all interactive elements | `frontend/src/components/` |
+| M11: slicer-panel >300 lines? | Split into sub-components | `frontend/src/components/filters/slicer-panel.tsx` |
+| Pages missing loading skeletons? | Add skeleton states | Dashboard, products, customers pages |
+| Empty states say "No data"? | Add helpful guidance | Multiple components |
+| Metrics have no tooltips? | Add `?` icon with explanation | `frontend/src/components/dashboard/kpi-card.tsx` |
 
 ### Creative Improvements (UX Gems)
 
@@ -678,17 +683,17 @@ Business analysis (strategic, no code)
 - [ ] MLP for paid launch
 - [ ] Unit economics (cost per tenant at 10/100/1000)
 
-### Fixes
+### Verify and Fix (read code first — skip if already implemented)
 
-| Task | Severity | Files |
-|------|----------|-------|
-| Set up next-intl | H6 | `package.json`, new `messages/` |
-| Arabic + English translations | H | `messages/ar.json`, `en.json` |
-| Locale switcher | M | `layout/sidebar.tsx` |
-| RTL support | M | `layout.tsx`, `globals.css` |
-| Date formatting | M | `lib/date-utils.ts` |
-| Landing page improvement | M | `marketing/hero-section.tsx` |
-| SEO JSON-LD | L | `marketing/json-ld.tsx` |
+| Verify | If Missing, Implement | Where to Look |
+|--------|----------------------|---------------|
+| H6: i18n library installed? | Set up next-intl | `frontend/package.json` |
+| Translation files exist? | Create ar.json + en.json | `frontend/messages/` or `frontend/locales/` |
+| Locale switcher in UI? | Add to sidebar | `frontend/src/components/layout/sidebar.tsx` |
+| RTL layout support? | Add dir="rtl" + CSS | `frontend/src/app/layout.tsx`, `globals.css` |
+| Dates use Egyptian locale? | Update date formatting | `frontend/src/lib/date-utils.ts` |
+| Landing page compelling? | Improve value proposition | `frontend/src/components/marketing/hero-section.tsx` |
+| SEO structured data? | Add JSON-LD | `frontend/src/components/marketing/json-ld.tsx` |
 
 ### Creative Improvements
 
@@ -779,18 +784,18 @@ Code comments, error messages quality
 - [ ] Incident runbook
 - [ ] Break Glass document
 
-### Fixes
+### Verify and Fix (read code first — skip if already implemented)
 
-| Task | Severity | Files |
-|------|----------|-------|
-| Tenant-scoped RLS policies | H7 | new migration |
-| DR runbook | M | new `docs/disaster-recovery.md` |
-| Architecture docs | M12 | `docs/ARCHITECTURE.md` |
-| Tenant provisioning API | M | new endpoint |
-| Per-tenant rate limiting | L | `api/limiter.py` |
-| Onboarding guide | L | `README.md` |
-| ADRs | L | new `docs/adr/` |
-| Incident runbook | L | new `docs/runbook.md` |
+| Verify | If Missing, Implement | Where to Look |
+|--------|----------------------|---------------|
+| H7: Tenant RLS policies exist? | Add tenant-scoped USING clauses | `migrations/` — check all RLS policies |
+| DR runbook exists? | Create step-by-step procedures | `docs/disaster-recovery.md` |
+| M12: Architecture docs current? | Update or create | `docs/ARCHITECTURE.md` |
+| Tenant provisioning API? | Add self-serve endpoint | `src/datapulse/api/routes/` |
+| Per-tenant rate limiting? | Implement tier-based limits | `src/datapulse/api/limiter.py` |
+| Onboarding guide for devs? | Add "zero to working" guide | `README.md` |
+| ADRs documented? | Create key decision records | `docs/adr/` |
+| Incident runbook? | Create common incident procedures | `docs/runbook.md` |
 
 ### Creative Improvements
 
@@ -895,23 +900,17 @@ Session 8: DR, Multi-Tenancy & DX      [LOWER]    ████████   ~3h
 
 ## How to Start Each Session
 
-```
-Read docs/plans/master-audit/README.md
+**IMPORTANT**: This plan was created from a point-in-time scan. Some findings may already be fixed. Always verify before fixing.
 
-Execute Session [N]: [Title]
-
-Rules:
-1. Read every file in scope before making any judgment
-2. Work through the audit checklist item by item
-3. Every fix must have a corresponding test
-4. Group changes into atomic commits: fix/feat/refactor: [description]
-5. Run `make test` after each group of changes
-6. For each issue found, report:
-   - [SEVERITY] Issue Title
-   - Location: file:line
-   - Problem: What's wrong
-   - Impact: What could go wrong
-   - Fix: Specific code change
-   - Test: How to verify
-7. At the end, list creative improvements attempted and remaining
-```
+### Approach per Session
+1. Read the session's **Scope** files in the current codebase
+2. Work through the **Audit Checklist** item by item — these are the primary work
+3. For each item in **Verify and Fix** table:
+   - Read the current code at the location specified
+   - If the issue is ALREADY FIXED: mark as "VERIFIED OK" and move on
+   - If the issue STILL EXISTS: fix it and write a test
+   - If you find NEW issues not in the table: report and fix them too
+4. Group changes into atomic commits
+5. Run `make test` after each group
+6. Attempt creative improvements from the list where feasible
+7. Report findings in table format
