@@ -2,8 +2,6 @@
 
 from decimal import Decimal
 
-import pytest
-
 from datapulse.forecasting.methods import (
     Z_TABLE,
     _z_for_confidence,

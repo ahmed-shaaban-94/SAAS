@@ -1,4 +1,4 @@
-"""Authentication and authorization dependencies for the FastAPI API.
+"""Authentication and authorization for the FastAPI API.
 
 Provides:
 - ``get_current_user``: JWT Bearer token auth (primary) with API-key fallback.

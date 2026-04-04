@@ -72,24 +72,24 @@ export function WaterfallChart({ data }: WaterfallChartProps) {
 
       <ResponsiveContainer width="100%" height={Math.max(300, chartData.length * 40)}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.gridStroke} />
           <XAxis
             type="number"
             tickFormatter={(v: number) => formatCurrency(v)}
-            stroke={theme.text}
+            stroke={theme.tickFill}
             fontSize={11}
           />
           <YAxis
             type="category"
             dataKey="name"
             width={150}
-            stroke={theme.text}
+            stroke={theme.tickFill}
             fontSize={11}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: theme.tooltip,
-              border: "1px solid " + theme.grid,
+              backgroundColor: theme.tooltipBg,
+              border: "1px solid " + theme.gridStroke,
               borderRadius: 8,
               fontSize: 12,
             }}
@@ -102,7 +102,7 @@ export function WaterfallChart({ data }: WaterfallChartProps) {
               return item?.fullName || label;
             }}
           />
-          <ReferenceLine x={0} stroke={theme.text} strokeWidth={1} />
+          <ReferenceLine x={0} stroke={theme.tickFill} strokeWidth={1} />
           <Bar dataKey="impact" radius={[0, 4, 4, 0]}>
             {chartData.map((entry, index) => (
               <Cell

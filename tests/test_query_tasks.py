@@ -7,7 +7,6 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from celery.exceptions import SoftTimeLimitExceeded
 
 from datapulse.tasks.query_tasks import _serialise, execute_query

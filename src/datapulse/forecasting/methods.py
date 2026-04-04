@@ -53,7 +53,7 @@ def select_best_method(
     seasonal_periods: int,
     *,
     monthly: bool = False,
-) -> tuple[str, "ForecastAccuracy"]:
+) -> tuple[str, ForecastAccuracy]:
     """Run all eligible methods on holdout, return (best_method, accuracy).
 
     Instead of picking based on series length alone, this function backtests

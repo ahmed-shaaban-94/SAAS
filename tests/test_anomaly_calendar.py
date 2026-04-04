@@ -2,8 +2,6 @@
 
 from datetime import date
 
-import pytest
-
 from datapulse.anomalies.calendar import (
     is_eid,
     is_fixed_holiday,
