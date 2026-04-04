@@ -320,13 +320,14 @@ class AnalyticsService:
     # Phase 3: Comparative Analytics
     # ------------------------------------------------------------------
 
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_top_movers(
         self,
         entity_type: str,
         filters: AnalyticsFilter | None = None,
         limit: int = 5,
     ) -> TopMovers:
-        """Top gainers and losers vs previous period."""
+        """Top gainers and losers vs previous period (cached 300s)."""
         if self._comparison_repo is None:
             raise RuntimeError("ComparisonRepository not configured")
 

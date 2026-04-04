@@ -235,7 +235,7 @@ def render_report(
                     RenderedSection(
                         section_type=SectionType.text,
                         title=section.title,
-                        text=f"Error executing query: {exc}",
+                        text="Error executing report section. Please try again or contact support.",
                     )
                 )
 

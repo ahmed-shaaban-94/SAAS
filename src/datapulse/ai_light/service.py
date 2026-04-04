@@ -156,8 +156,16 @@ class AILightService:
                 if not isinstance(ai_results, list):
                     ai_results = [ai_results] if isinstance(ai_results, dict) else []
                 for item in ai_results:
+                    if not isinstance(item, dict):
+                        continue
+                    ai_date = str(item.get("date", "")).strip()
+                    ai_severity = str(item.get("severity", "low")).strip().lower()
+                    ai_description = str(item.get("description", "AI-detected anomaly")).strip()
+                    if ai_severity not in ("low", "medium", "high"):
+                        ai_severity = "low"
+                    if not ai_date:
+                        continue
                     # Only add AI anomalies not already found statistically
-                    ai_date = item.get("date", "")
                     if not any(a.date == ai_date for a in stat_anomalies):
                         stat_anomalies.append(
                             Anomaly(
@@ -166,8 +174,8 @@ class AILightService:
                                 actual_value=Decimal("0"),
                                 expected_range_low=Decimal(str(round(avg - 2 * std, 2))),
                                 expected_range_high=Decimal(str(round(avg + 2 * std, 2))),
-                                severity=item.get("severity", "low"),
-                                description=item.get("description", "AI-detected anomaly"),
+                                severity=ai_severity,
+                                description=ai_description[:500],
                             )
                         )
             except Exception as exc:
