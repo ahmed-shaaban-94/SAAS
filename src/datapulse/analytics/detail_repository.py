@@ -84,7 +84,6 @@ class DetailRepository:
                 p.drug_category,
                 SUM(a.total_quantity)        AS total_quantity,
                 SUM(a.total_sales)           AS total_sales,
-                SUM(a.total_sales)      AS total_sales,
                 COALESCE(
                     SUM(a.return_count)::NUMERIC
                     / NULLIF(SUM(a.transaction_count), 0), 0
@@ -119,9 +118,8 @@ class DetailRepository:
             drug_category=str(row[4]),
             total_quantity=Decimal(str(row[5])),
             total_sales=Decimal(str(row[6])),
-            total_sales=Decimal(str(row[7])),
-            return_rate=Decimal(str(row[8])),
-            unique_customers=int(row[9]),
+            return_rate=Decimal(str(row[7])),
+            unique_customers=int(row[8]),
             monthly_trend=trend,
         )
 
