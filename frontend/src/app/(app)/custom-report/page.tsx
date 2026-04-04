@@ -13,8 +13,9 @@ import { useExploreModels } from "@/hooks/use-explore-models";
 import { useExploreQuery } from "@/hooks/use-explore-query";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
-import { Play, RotateCcw } from "lucide-react";
+import { Play, RotateCcw, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ReportSummary } from "@/components/custom-report/report-summary";
 import type { ReportTemplate, ChartType } from "@/components/custom-report/report-config";
 import type { ExploreQueryRequest } from "@/types/api";
 
@@ -122,6 +123,24 @@ export default function CustomReportPage() {
         {/* Configuration Panel */}
         {model && (
           <div className="rounded-xl border border-border bg-card p-5 space-y-6">
+            {/* Guided hint for From Scratch */}
+            {selectedTemplate === "from-scratch" &&
+              selectedMetrics.length === 0 &&
+              selectedDimensions.length === 0 && (
+                <div className="flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                  <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">
+                      Build your own report
+                    </p>
+                    <p className="mt-0.5 text-xs text-text-secondary">
+                      Pick at least one metric below (e.g. Total Revenue) and a
+                      grouping (e.g. Month or Product) to get started.
+                    </p>
+                  </div>
+                </div>
+              )}
+
             <MeasureSelector
               availableMetrics={model.metrics}
               selected={selectedMetrics}
@@ -179,8 +198,13 @@ export default function CustomReportPage() {
           </div>
         )}
 
-        {/* Results */}
-        {result && <ReportResults result={result} chartType={chartType} />}
+        {/* Summary KPIs + Results */}
+        {result && (
+          <>
+            <ReportSummary result={result} />
+            <ReportResults result={result} chartType={chartType} />
+          </>
+        )}
 
         {/* Empty state */}
         {!result && !queryLoading && !error && (

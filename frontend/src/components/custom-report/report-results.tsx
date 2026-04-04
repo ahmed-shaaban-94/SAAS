@@ -34,10 +34,26 @@ function toChartData(result: ExploreResult): Record<string, unknown>[] {
   });
 }
 
-function formatCell(value: unknown): string {
+/** Metrics that represent money amounts */
+const CURRENCY_COLS = new Set([
+  "total_net_sales",
+  "total_gross_sales",
+  "total_tax",
+  "total_paid",
+  "avg_order_value",
+  "avg_unit_price",
+]);
+
+function formatCell(value: unknown, colName?: string): string {
   if (value === null || value === undefined) return "\u2014";
   if (typeof value === "number") {
-    return value.toLocaleString("en-EG", { maximumFractionDigits: 2 });
+    if (colName && CURRENCY_COLS.has(colName)) {
+      return value.toLocaleString("en-EG", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+    return value.toLocaleString("en-EG", { maximumFractionDigits: 1 });
   }
   return String(value);
 }
@@ -69,7 +85,7 @@ function ResultTable({ result }: { result: ExploreResult }) {
                   key={j}
                   className="px-4 py-2.5 text-sm text-text-primary whitespace-nowrap"
                 >
-                  {formatCell(cell)}
+                  {formatCell(cell, result.columns[j])}
                 </td>
               ))}
             </tr>
