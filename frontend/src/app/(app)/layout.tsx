@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Providers } from "@/components/providers";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
-import { initSentry } from "@/lib/sentry";
 import { useAIAnomalies } from "@/hooks/use-ai-anomalies";
 import { useAlertLog } from "@/hooks/use-alerts";
 
@@ -27,8 +25,6 @@ function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  useEffect(() => { initSentry(); }, []);
-
   return (
     <Providers>
       <ErrorBoundary>
