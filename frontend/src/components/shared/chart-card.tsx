@@ -11,7 +11,8 @@ interface ChartCardProps {
 
 export function ChartCard({ title, subtitle, badge, actions, children, className }: ChartCardProps) {
   return (
-    <div
+    <section
+      aria-label={title}
       className={cn(
         "group rounded-xl border border-border bg-card p-5",
         "transition-all duration-300 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5",
@@ -35,6 +36,6 @@ export function ChartCard({ title, subtitle, badge, actions, children, className
         </div>
       </div>
       {children}
-    </div>
+    </section>
   );
 }

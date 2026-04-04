@@ -84,16 +84,18 @@ export function CalendarHeatmap() {
           <button
             onClick={() => setYear((y) => y - 1)}
             className="rounded px-2 py-0.5 text-xs text-text-secondary hover:bg-divider"
+            aria-label={`Previous year (${year - 1})`}
           >
             &larr;
           </button>
-          <span className="w-10 text-center text-xs font-medium text-text-primary">
+          <span className="w-10 text-center text-xs font-medium text-text-primary" aria-live="polite">
             {year}
           </span>
           <button
             onClick={() => setYear((y) => Math.min(y + 1, currentYear))}
             disabled={year >= currentYear}
             className="rounded px-2 py-0.5 text-xs text-text-secondary hover:bg-divider disabled:opacity-30"
+            aria-label={`Next year (${Math.min(year + 1, currentYear)})`}
           >
             &rarr;
           </button>

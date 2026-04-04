@@ -8,9 +8,10 @@ import type { FilterParams } from "@/types/filters";
  */
 export interface DashboardData {
   kpi: {
-    today_net: number;
-    mtd_net: number;
-    ytd_net: number;
+    today_gross: number;
+    mtd_gross: number;
+    ytd_gross: number;
+    today_discount: number;
     mom_growth_pct: number | null;
     yoy_growth_pct: number | null;
     daily_transactions: number;

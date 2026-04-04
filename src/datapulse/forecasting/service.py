@@ -115,9 +115,14 @@ class ForecastingService:
         results: list[ForecastResult] = []
         stats: dict[str, Any] = {}
 
+        # Minimum data points needed for each granularity
+        # Holt-Winters needs at least 2 * seasonal_periods observations
+        min_daily_points = 2 * 7  # 14 days for weekly seasonality
+        min_monthly_points = 2 * 12  # 24 months for yearly seasonality
+
         # --- 1. Daily revenue ---
         daily_series = self._repo.get_daily_revenue_series(lookback_days=730)
-        if daily_series:
+        if daily_series and len(daily_series) >= min_daily_points:
             daily_values = [v for _, v in daily_series]
             last_date = daily_series[-1][0]
             start = last_date + timedelta(days=1)
@@ -156,9 +161,17 @@ class ForecastingService:
                 mape=float(daily_accuracy.mape),
             )
 
+        if daily_series and len(daily_series) < min_daily_points:
+            log.warning(
+                "forecast_daily_skipped",
+                reason="insufficient_data",
+                points=len(daily_series),
+                min_required=min_daily_points,
+            )
+
         # --- 2. Monthly revenue ---
         monthly_series = self._repo.get_monthly_revenue_series()
-        if monthly_series:
+        if monthly_series and len(monthly_series) >= min_monthly_points:
             monthly_values = [v for _, v in monthly_series]
             last_period = monthly_series[-1][0]
             # Parse "YYYY-MM" to get start of next month
@@ -197,6 +210,14 @@ class ForecastingService:
                 "mape": float(monthly_accuracy.mape),
             }
             log.info("forecast_monthly_revenue_done", method=method_name)
+
+        if monthly_series and len(monthly_series) < min_monthly_points:
+            log.warning(
+                "forecast_monthly_skipped",
+                reason="insufficient_data",
+                points=len(monthly_series),
+                min_required=min_monthly_points,
+            )
 
         # --- 3. Product demand (top 50) ---
         top_products = self._repo.get_top_products_by_revenue(limit=50)

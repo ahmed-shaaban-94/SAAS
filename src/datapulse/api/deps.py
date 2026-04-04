@@ -43,11 +43,32 @@ logger = structlog.get_logger()
 
 
 def get_db_session() -> Generator[Session, None, None]:
-    """Create a DB session with tenant_id='1' (legacy, for non-authenticated use)."""
+    """Create a DB session with tenant_id='1' (legacy, for non-authenticated use).
+
+    .. deprecated::
+        Use ``get_tenant_session`` instead.  This function bypasses authentication
+        and hardcodes tenant_id='1', which is unsafe for multi-tenant deployments.
+        It is kept only for backward compatibility in test overrides.
+    """
+    import os
+    import warnings
+
+    env = os.getenv("SENTRY_ENVIRONMENT", "development")
+    if env not in ("development", "test"):
+        logger.error(
+            "get_db_session_called_in_production",
+            environment=env,
+            detail="get_db_session bypasses auth and hardcodes tenant_id='1' "
+            "— use get_tenant_session instead",
+        )
+    warnings.warn(
+        "get_db_session() is deprecated — use get_tenant_session() for auth-scoped access",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     session = get_session_factory()()
     try:
-        # Execute inside the auto-begun transaction so SET LOCAL persists
-        # for the entire request lifetime
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": "1"})
         yield session
         session.commit()

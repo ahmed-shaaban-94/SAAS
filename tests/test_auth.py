@@ -216,16 +216,18 @@ class TestGetCurrentUser:
         assert result["sub"] == "dev-user"
         assert result["tenant_id"] == "1"
 
-    def test_dev_mode_non_dev_environment_still_works(self):
-        """Dev mode in non-dev SENTRY_ENVIRONMENT logs warning but still works."""
-        with patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}):
-            result = get_current_user(
+    def test_dev_mode_non_dev_environment_raises_503(self):
+        """Dev mode in non-dev SENTRY_ENVIRONMENT raises 503 (security hardening)."""
+        with (
+            patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            get_current_user(
                 credentials=None,
                 api_key=None,
                 settings=_settings(api_key="", auth0_domain=""),
             )
-        assert result["sub"] == "dev-user"
-        assert result["tenant_id"] == "1"
+        assert exc_info.value.status_code == 503
 
     def test_no_auth_but_configured_raises_401(self):
         """No credentials but auth IS configured -> 401."""

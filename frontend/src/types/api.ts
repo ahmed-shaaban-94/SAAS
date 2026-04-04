@@ -1,7 +1,11 @@
 export interface KPISummary {
-  today_net: number;
-  mtd_net: number;
-  ytd_net: number;
+  // Gross sales (primary — net deliberately excluded)
+  today_gross: number;
+  mtd_gross: number;
+  ytd_gross: number;
+  // Discount (kept for forecasting)
+  today_discount: number;
+  // Growth (based on gross)
   mom_growth_pct: number | null;
   yoy_growth_pct: number | null;
   daily_transactions: number;

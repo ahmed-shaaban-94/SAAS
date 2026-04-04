@@ -60,12 +60,12 @@ class ComparisonRepository:
         filters: AnalyticsFilter,
         limit: int,
     ) -> dict[int, tuple[str, Decimal]]:
-        """Return {key: (name, total_net_amount)} for top entities."""
+        """Return {key: (name, total_sales)} for top entities."""
         where, params = build_where(filters, use_year_month=True)
         params["limit"] = limit
 
         stmt = text(f"""
-            SELECT {key_col}, {name_col}, SUM(total_net_amount) AS value
+            SELECT {key_col}, {name_col}, SUM(total_sales) AS value
             FROM {table}
             WHERE {where}
             GROUP BY {key_col}, {name_col}

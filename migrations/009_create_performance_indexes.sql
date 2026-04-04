@@ -8,10 +8,6 @@
 
 BEGIN;
 
-INSERT INTO public.schema_migrations (filename)
-VALUES ('009_create_performance_indexes.sql')
-ON CONFLICT DO NOTHING;
-
 -- ============================================================
 -- Dimension table indexes (JOIN acceleration)
 -- ============================================================

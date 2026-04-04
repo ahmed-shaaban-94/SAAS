@@ -34,8 +34,8 @@ function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
     end: numericValue ?? 0,
     duration: 1400,
     decimals: isPercent ? 1 : 0,
-    prefix: isCurrency ? "EGP " : "",
-    suffix: isPercent ? "%" : "",
+    prefix: "",
+    suffix: isCurrency ? " EGP" : isPercent ? "%" : "",
     separator: ",",
   });
 

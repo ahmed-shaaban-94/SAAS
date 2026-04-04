@@ -35,10 +35,6 @@ services:
       - frontend-net
       - backend
 
-  # ---------- Disable Traefik from base compose ----------
-  traefik:
-    profiles: ["disabled"]
-
   # ---------- API: GHCR image, remove direct port ----------
   api:
     image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
@@ -60,7 +56,7 @@ services:
       - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-}
       - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET must be set in production}
       - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}
       - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
     labels: []

@@ -13,8 +13,11 @@ import { useExploreModels } from "@/hooks/use-explore-models";
 import { useExploreQuery } from "@/hooks/use-explore-query";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
-import { Play, RotateCcw } from "lucide-react";
+import { Play, RotateCcw, Sparkles, X } from "lucide-react";
+import { DateRangePicker } from "@/components/filters/date-range-picker";
+import { getDatePresets, formatDateParam } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
+import { ReportSummary } from "@/components/custom-report/report-summary";
 import type { ReportTemplate, ChartType } from "@/components/custom-report/report-config";
 import type { ExploreQueryRequest } from "@/types/api";
 
@@ -33,6 +36,10 @@ export default function CustomReportPage() {
   const [selectedDimensions, setSelectedDimensions] = useState<string[]>([]);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
   const [chartType, setChartType] = useState<ChartType>("table");
+  const [startDate, setStartDate] = useState<string | undefined>();
+  const [endDate, setEndDate] = useState<string | undefined>();
+
+  const datePresets = getDatePresets();
 
   const model = catalog?.models.find((m) => m.name === selectedModel);
 
@@ -63,17 +70,46 @@ export default function CustomReportPage() {
   const handleGenerate = useCallback(async () => {
     if (selectedDimensions.length === 0 && selectedMetrics.length === 0) return;
 
+    const filters: ExploreQueryRequest["filters"] = [];
+    if (startDate) {
+      filters.push({ field: "full_date", operator: "gte", value: startDate });
+    }
+    if (endDate) {
+      filters.push({ field: "full_date", operator: "lte", value: endDate });
+    }
+
     const query: ExploreQueryRequest = {
       model: selectedModel,
       dimensions: selectedDimensions,
       metrics: selectedMetrics,
-      filters: [],
+      filters,
       sorts: [],
       limit: 500,
     };
 
     await execute(query);
-  }, [selectedModel, selectedDimensions, selectedMetrics, execute]);
+  }, [selectedModel, selectedDimensions, selectedMetrics, startDate, endDate, execute]);
+
+  const handleDateChange = useCallback(
+    (start: string | undefined, end: string | undefined) => {
+      setStartDate(start);
+      setEndDate(end);
+    },
+    [],
+  );
+
+  const handlePreset = useCallback(
+    (preset: { startDate: Date; endDate: Date }) => {
+      setStartDate(formatDateParam(preset.startDate));
+      setEndDate(formatDateParam(preset.endDate));
+    },
+    [],
+  );
+
+  const clearDates = useCallback(() => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  }, []);
 
   const handleReset = useCallback(() => {
     setSelectedTemplate(null);
@@ -81,6 +117,8 @@ export default function CustomReportPage() {
     setSelectedDimensions([]);
     setSelectedMetrics([]);
     setChartType("table");
+    setStartDate(undefined);
+    setEndDate(undefined);
     reset();
   }, [reset]);
 
@@ -122,6 +160,24 @@ export default function CustomReportPage() {
         {/* Configuration Panel */}
         {model && (
           <div className="rounded-xl border border-border bg-card p-5 space-y-6">
+            {/* Guided hint for From Scratch */}
+            {selectedTemplate === "from-scratch" &&
+              selectedMetrics.length === 0 &&
+              selectedDimensions.length === 0 && (
+                <div className="flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                  <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">
+                      Build your own report
+                    </p>
+                    <p className="mt-0.5 text-xs text-text-secondary">
+                      Pick at least one metric below (e.g. Total Revenue) and a
+                      grouping (e.g. Month or Product) to get started.
+                    </p>
+                  </div>
+                </div>
+              )}
+
             <MeasureSelector
               availableMetrics={model.metrics}
               selected={selectedMetrics}
@@ -139,6 +195,55 @@ export default function CustomReportPage() {
             <div className="border-t border-border" />
 
             <ChartTypePicker value={chartType} onChange={setChartType} />
+          </div>
+        )}
+
+        {/* Date Filter */}
+        {model && (
+          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+            <h4 className="text-sm font-semibold text-text-primary">
+              Date range{" "}
+              <span className="font-normal text-text-secondary text-xs">
+                (optional — defaults to all data)
+              </span>
+            </h4>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Quick presets */}
+              {datePresets.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => handlePreset(p)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                    startDate === formatDateParam(p.startDate) &&
+                      endDate === formatDateParam(p.endDate)
+                      ? "bg-accent text-white"
+                      : "bg-card border border-border text-text-secondary hover:border-border-hover hover:text-text-primary",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+
+              {/* Calendar picker */}
+              <DateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                onRangeChange={handleDateChange}
+              />
+
+              {/* Clear dates */}
+              {startDate && endDate && (
+                <button
+                  onClick={clearDates}
+                  className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:border-border-hover transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -179,8 +284,13 @@ export default function CustomReportPage() {
           </div>
         )}
 
-        {/* Results */}
-        {result && <ReportResults result={result} chartType={chartType} />}
+        {/* Summary KPIs + Results */}
+        {result && (
+          <>
+            <ReportSummary result={result} />
+            <ReportResults result={result} chartType={chartType} />
+          </>
+        )}
 
         {/* Empty state */}
         {!result && !queryLoading && !error && (

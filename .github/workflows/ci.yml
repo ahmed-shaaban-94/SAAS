@@ -73,7 +73,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
-        run: pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=88
+        run: pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=95
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4

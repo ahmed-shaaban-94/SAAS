@@ -14,16 +14,20 @@
 }}
 
 -- Silver layer: cleaned sales data
--- Drops 19 columns from bronze, deduplicates, trims text, renames for clarity
+-- Deduplicates, trims text, renames for clarity
 -- Cleans NULLs, masked values (#), normalizes drug_status, standardizes billing
 --
--- Dropped from bronze (16):
---   billing_document, fi_document_no, crm_order, knumv, item_no,
---   mat_group, mat_group_short, cosm_mg,
---   dis_tax, tax, kzwi1, add_dis,
---   certification, assignment, ref_return_date, ref_return
+-- Financial: keeps gross_sales (as sales) + subtotal5_discount (as discount)
+-- net_sales deliberately NOT passed to silver — use gross for all KPIs
+-- subtotal5_discount is NEGATIVE in the ERP (e.g. -13.2 = EGP 13.2 discount)
 --
--- Dropped from silver (4): id (surrogate), sales_not_tax, paid, net_sales
+-- Dropped from bronze (ERP-internal / redundant / net):
+--   net_sales, sales_not_tax, paid, dis_tax, tax, add_dis, kzwi1,
+--   billing_document, fi_document_no, crm_order, knumv, item_no,
+--   mat_group, mat_group_short, cosm_mg, certification, assignment,
+--   ref_return_date, ref_return
+--
+-- Dropped from silver: id (surrogate)
 
 WITH source AS (
     SELECT
@@ -60,7 +64,7 @@ WITH source AS (
         person_name,
         position,
         area_mg,
-        -- Financial
+        -- Financial (gross + discount only; net_sales deliberately not passed to silver)
         quantity,
         gross_sales,
         subtotal5_discount,
@@ -147,11 +151,11 @@ SELECT
     COALESCE(NULLIF(TRIM(position), ''), 'Unknown')        AS staff_position,
     COALESCE(NULLIF(TRIM(area_mg), ''), 'Unknown')         AS area_manager,
 
-    -- Financial (0 for NULLs)
+    -- Financial: gross sales + discount only (net_sales deliberately dropped)
+    -- NOTE: subtotal5_discount is NEGATIVE in the ERP (e.g. -13.2 means 13.2 discount)
     COALESCE(quantity, 0)               AS quantity,
     COALESCE(gross_sales, 0)            AS sales,
     COALESCE(subtotal5_discount, 0)     AS discount,
-    COALESCE(gross_sales, 0) - COALESCE(subtotal5_discount, 0)  AS net_amount,
 
     -- Derived: date parts (faster grouping in dashboards)
     EXTRACT(YEAR FROM date)::INT        AS invoice_year,

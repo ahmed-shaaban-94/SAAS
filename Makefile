@@ -46,7 +46,7 @@ status:
 
 pipeline:
 	@echo "Triggering full pipeline run..."
-	@curl -s -X POST http://localhost:80/api/v1/pipeline/trigger \
+	@curl -s -X POST http://localhost:8000/api/v1/pipeline/trigger \
 		-H "Content-Type: application/json" \
 		-H "X-Pipeline-Token: $${PIPELINE_WEBHOOK_SECRET}" \
 		-d '{}' | python -m json.tool 2>/dev/null || echo "(requires running services + valid token)"

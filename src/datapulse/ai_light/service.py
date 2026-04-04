@@ -76,9 +76,9 @@ class AILightService:
         )
 
         prompt = SUMMARY_PROMPT.format(
-            today_net=f"{kpi.today_net:,.0f}",
-            mtd_net=f"{kpi.mtd_net:,.0f}",
-            ytd_net=f"{kpi.ytd_net:,.0f}",
+            today_gross=f"{kpi.today_gross:,.0f}",
+            mtd_gross=f"{kpi.mtd_gross:,.0f}",
+            ytd_gross=f"{kpi.ytd_gross:,.0f}",
             mom_growth=f"{kpi.mom_growth_pct or 0:.1f}",
             yoy_growth=f"{kpi.yoy_growth_pct or 0:.1f}",
             daily_transactions=kpi.daily_transactions,
@@ -211,9 +211,9 @@ class AILightService:
             )
 
         deltas = [
-            _delta("Daily Net Sales", kpi_current.today_net, kpi_previous.today_net),
-            _delta("MTD Net Sales", kpi_current.mtd_net, kpi_previous.mtd_net),
-            _delta("YTD Net Sales", kpi_current.ytd_net, kpi_previous.ytd_net),
+            _delta("Daily Gross Sales", kpi_current.today_gross, kpi_previous.today_gross),
+            _delta("MTD Gross Sales", kpi_current.mtd_gross, kpi_previous.mtd_gross),
+            _delta("YTD Gross Sales", kpi_current.ytd_gross, kpi_previous.ytd_gross),
             _delta(
                 "Daily Transactions",
                 Decimal(kpi_current.daily_transactions),
@@ -233,10 +233,10 @@ class AILightService:
                 prompt = CHANGES_PROMPT.format(
                     current_period=current.isoformat(),
                     previous_period=previous.isoformat(),
-                    current_net=f"{kpi_current.today_net:,.0f}",
+                    current_net=f"{kpi_current.today_gross:,.0f}",
                     current_txns=kpi_current.daily_transactions,
                     current_customers=kpi_current.daily_customers,
-                    previous_net=f"{kpi_previous.today_net:,.0f}",
+                    previous_net=f"{kpi_previous.today_gross:,.0f}",
                     previous_txns=kpi_previous.daily_transactions,
                     previous_customers=kpi_previous.daily_customers,
                     top_movers="(product-level detail not available for this comparison)",

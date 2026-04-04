@@ -26,8 +26,8 @@ describe("RankingTable", () => {
 
   it("renders revenue values as EGP currency", () => {
     render(<RankingTable items={mockItems} entityLabel="Product" />);
-    // Check that formatted currency appears
-    const kpiValues = screen.getAllByText(/EGP/);
+    // Currency uses ar-EG locale — symbol is "ج.م." (Arabic) not "EGP"
+    const kpiValues = screen.getAllByText(/ج\.م\./);
     expect(kpiValues.length).toBeGreaterThanOrEqual(4);
   });
 

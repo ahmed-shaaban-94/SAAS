@@ -10,9 +10,20 @@ from defaults only (no .env file). Tests that need a custom Settings object
 patch get_settings() locally within the test.
 """
 
+import os
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
+
+
+def pytest_configure(config):
+    """Set minimal env vars so modules with eager Settings() calls can import.
+
+    This runs before test collection, fixing collection errors in modules
+    like celery_app.py that call get_settings() at module level.
+    """
+    os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
+
 
 from datapulse.api.limiter import limiter
 from datapulse.config import Settings, get_settings

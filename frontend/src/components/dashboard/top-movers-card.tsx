@@ -61,10 +61,12 @@ export function TopMoversCard() {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
           Top Movers
         </h3>
-        <div className="flex gap-1 rounded-lg bg-background p-1">
+        <div className="flex gap-1 rounded-lg bg-background p-1" role="tablist" aria-label="Entity type">
           {ENTITY_TABS.map((tab) => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={entityType === tab.key}
               onClick={() => setEntityType(tab.key)}
               className={cn(
                 "rounded-md px-3 py-1 text-xs font-medium transition-all",

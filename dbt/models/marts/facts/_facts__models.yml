@@ -32,6 +32,10 @@ models:
               field: date_key
       - name: product_key
         description: "FK to dim_product (-1 = Unknown)"
+        meta:
+          metrics:
+            unique_products:
+              type: count_distinct
         tests:
           - not_null
           - relationships:
@@ -39,6 +43,10 @@ models:
               field: product_key
       - name: customer_key
         description: "FK to dim_customer (-1 = Unknown)"
+        meta:
+          metrics:
+            unique_customers:
+              type: count_distinct
         tests:
           - not_null
           - relationships:
@@ -67,6 +75,10 @@ models:
               field: billing_key
       - name: invoice_id
         description: "Degenerate dimension — invoice reference number"
+        meta:
+          metrics:
+            transaction_count:
+              type: count_distinct
       - name: billing_way
         description: "Degenerate dimension — billing type text (also resolved via billing_key)"
       - name: quantity
@@ -75,18 +87,14 @@ models:
           metrics:
             total_quantity:
               type: sum
-            avg_quantity:
-              type: average
         tests:
           - not_null
       - name: sales
         description: "Gross sales amount before discount. Rounded to 2 decimals."
         meta:
           metrics:
-            total_sales:
+            total_gross_sales:
               type: sum
-            avg_sales:
-              type: average
         tests:
           - not_null
       - name: discount
@@ -95,17 +103,15 @@ models:
           metrics:
             total_discount:
               type: sum
-            avg_discount:
-              type: average
         tests:
           - not_null
       - name: net_amount
         description: "Net amount = sales - discount. Rounded to 2 decimals."
         meta:
           metrics:
-            total_net_amount:
+            total_net_sales:
               type: sum
-            avg_net_amount:
+            avg_order_value:
               type: average
         tests:
           - not_null

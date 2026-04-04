@@ -79,29 +79,37 @@ export function SortableTable<T>({
       <table className="w-full min-w-[500px] text-left text-sm">
         <thead>
           <tr className="border-b border-border text-text-secondary">
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className={cn(
-                  "pb-3 pr-4 font-medium last:pr-0",
-                  col.align === "right" && "text-right",
-                  col.sortable !== false && "cursor-pointer select-none",
-                )}
-              >
-                {col.sortable !== false ? (
-                  <button
-                    onClick={() => handleSort(col.key)}
-                    className="inline-flex items-center gap-1 transition-colors hover:text-text-primary"
-                    aria-label={`Sort by ${col.label}`}
-                  >
-                    {col.label}
-                    <SortIcon colKey={col.key} />
-                  </button>
-                ) : (
-                  col.label
-                )}
-              </th>
-            ))}
+            {columns.map((col) => {
+              const isSorted = sortKey === col.key && sortDir !== null;
+              return (
+                <th
+                  key={col.key}
+                  className={cn(
+                    "pb-3 pr-4 font-medium last:pr-0",
+                    col.align === "right" && "text-right",
+                    col.sortable !== false && "cursor-pointer select-none",
+                  )}
+                  aria-sort={
+                    isSorted
+                      ? sortDir === "asc" ? "ascending" : "descending"
+                      : undefined
+                  }
+                >
+                  {col.sortable !== false ? (
+                    <button
+                      onClick={() => handleSort(col.key)}
+                      className="inline-flex items-center gap-1 transition-colors hover:text-text-primary"
+                      aria-label={`Sort by ${col.label}${isSorted ? `, currently ${sortDir === "asc" ? "ascending" : "descending"}` : ""}`}
+                    >
+                      {col.label}
+                      <SortIcon colKey={col.key} />
+                    </button>
+                  ) : (
+                    col.label
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

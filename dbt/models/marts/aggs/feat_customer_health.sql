@@ -37,7 +37,7 @@ recent_activity AS (
         c.customer_key,
         c.customer_name,
         COUNT(DISTINCT f.date_key) AS frequency_3m,
-        COALESCE(SUM(f.net_amount), 0) AS monetary_3m,
+        COALESCE(SUM(f.sales), 0) AS monetary_3m,
         COUNT(DISTINCT f.product_key) AS product_diversity,
         SUM(CASE WHEN f.is_return THEN 1 ELSE 0 END) AS return_count_3m,
         COUNT(*) AS total_txn_3m
@@ -55,7 +55,7 @@ prior_activity AS (
     SELECT
         f.customer_key,
         COUNT(DISTINCT f.date_key) AS frequency_prev,
-        COALESCE(SUM(f.net_amount), 0) AS monetary_prev
+        COALESCE(SUM(f.sales), 0) AS monetary_prev
     FROM {{ ref('fct_sales') }} f
     CROSS JOIN date_bounds db
     JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key

@@ -38,11 +38,12 @@ class TestGetSecret:
     """Tests for _get_secret helper."""
 
     def test_prefers_embed_secret(self):
+        long_secret = "a" * 32  # Meets minimum length requirement
         with patch(
             "datapulse.embed.token.get_settings",
-            return_value=_mock_settings(api_key="api-key", embed_secret="dedicated"),
+            return_value=_mock_settings(api_key="api-key", embed_secret=long_secret),
         ):
-            assert _get_secret() == "dedicated"
+            assert _get_secret() == long_secret
 
     def test_falls_back_to_api_key(self):
         with patch(
