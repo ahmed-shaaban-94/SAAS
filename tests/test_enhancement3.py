@@ -81,7 +81,7 @@ def test_billing_breakdown_empty(breakdown_repo):
     assert isinstance(result, BillingBreakdown)
     assert result.items == []
     assert result.total_transactions == 0
-    assert result.total_net_amount == Decimal("0")
+    assert result.total_sales == Decimal("0")
 
 
 def test_billing_breakdown_pct_of_total(breakdown_repo):
@@ -94,7 +94,7 @@ def test_billing_breakdown_pct_of_total(breakdown_repo):
     result = repo.get_billing_breakdown(AnalyticsFilter())
     assert len(result.items) == 3
     assert result.total_transactions == 100
-    assert result.total_net_amount == Decimal("10000")
+    assert result.total_sales == Decimal("10000")
     # Verify percentages sum to ~100
     total_pct = sum(item.pct_of_total for item in result.items)
     assert abs(total_pct - Decimal("100")) < Decimal("0.1")
@@ -200,7 +200,7 @@ def test_product_hierarchy_nesting(hierarchy_repo):
     # Categories sorted by total desc: Analgesic (10000) > Antibiotic (4000)
     analgesic = result.categories[0]
     assert analgesic.category == "Analgesic"
-    assert analgesic.total_net_amount == Decimal("10000")
+    assert analgesic.total_sales == Decimal("10000")
     assert len(analgesic.brands) == 2
 
     # Brands sorted by total desc: BrandA (8000) > BrandB (2000)
@@ -251,7 +251,7 @@ def test_get_site_detail_with_data(detail_repo):
     assert result.site_key == 1
     assert result.site_name == "Main Pharmacy"
     assert result.area_manager == "John Manager"
-    assert result.total_net_amount == Decimal("500000")
+    assert result.total_sales == Decimal("500000")
     assert result.transaction_count == 2000
     assert result.unique_customers == 800
 
@@ -267,7 +267,7 @@ def test_service_get_billing_breakdown(analytics_service, mock_breakdown_repo):
     mock_breakdown_repo.get_billing_breakdown.return_value = BillingBreakdown(
         items=[],
         total_transactions=0,
-        total_net_amount=Decimal("0"),
+        total_sales=Decimal("0"),
     )
     result = analytics_service.get_billing_breakdown()
     assert isinstance(result, BillingBreakdown)

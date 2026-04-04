@@ -249,7 +249,6 @@ def test_product_detail_found(api_client):
         drug_category="Analgesic",
         total_quantity=Decimal("500"),
         total_sales=Decimal("10000"),
-        total_sales=Decimal("9000"),
         return_rate=Decimal("0.02"),
         unique_customers=50,
     )
