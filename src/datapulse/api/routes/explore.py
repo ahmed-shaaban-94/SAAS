@@ -112,11 +112,19 @@ def execute_explore_query(
             duration_ms=duration_ms,
         )
 
+        # Only expose generated SQL in development — prevents schema leakage
+        import os
+
+        show_sql = os.getenv("SENTRY_ENVIRONMENT", "development") in (
+            "development",
+            "test",
+        )
+
         return ExploreResult(
             columns=columns,
             rows=rows,
             row_count=len(rows),
-            sql=sql,
+            sql=sql if show_sql else "",
             truncated=truncated,
         )
     except Exception as exc:

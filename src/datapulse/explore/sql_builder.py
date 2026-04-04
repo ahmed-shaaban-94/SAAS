@@ -271,7 +271,8 @@ def build_sql(
         sql_parts.append(group_by)
     if order_by:
         sql_parts.append(order_by)
-    sql_parts.append(f"LIMIT {query.limit}")
+    sql_parts.append("LIMIT :_limit")
+    bind_params["_limit"] = query.limit
 
     sql = "\n".join(sql_parts)
 

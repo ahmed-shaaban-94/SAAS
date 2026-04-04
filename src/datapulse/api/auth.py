@@ -135,10 +135,15 @@ def get_current_user(
     if not settings.api_key and not settings.auth0_domain:
         env = os.getenv("SENTRY_ENVIRONMENT", "development")
         if env not in ("development", "test"):
-            _auth_logger.warning(
-                "auth_not_configured",
+            _auth_logger.error(
+                "auth_not_configured_in_production",
                 environment=env,
-                detail="API_KEY and AUTH0_DOMAIN are both empty — using dev fallback",
+                detail="API_KEY and AUTH0_DOMAIN are both empty in non-dev environment "
+                "— refusing to return dev fallback with admin roles",
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Authentication not configured. Contact the administrator.",
             )
         return {
             "sub": "dev-user",
