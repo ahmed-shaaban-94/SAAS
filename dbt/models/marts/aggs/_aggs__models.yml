@@ -11,14 +11,33 @@ models:
         description: "Foreign key to dim_date"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
       - name: site_key
         description: "Foreign key to dim_site"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_site')
+              field: site_key
       - name: billing_way
         description: "Billing method (Credit, Cash, etc.)"
         tests:
           - not_null
+          - accepted_values:
+              values:
+                - 'Cash'
+                - 'Credit'
+                - 'Insurance'
+                - 'Delivery'
+                - 'Pick-Up'
+                - 'Cash Return'
+                - 'Credit Return'
+                - 'Delivery Return'
+                - 'Delivery Credit'
+                - 'Delivery Credit Return'
+                - 'Pick-Up Return'
       - name: total_quantity
         description: "Sum of item quantities sold"
         meta:
