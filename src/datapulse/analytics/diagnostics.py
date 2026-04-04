@@ -138,13 +138,13 @@ class DiagnosticsRepository:
 
         stmt = text(f"""
             WITH current_period AS (
-                SELECT {key_col}, {name_col}, SUM(total_net_amount) AS net
+                SELECT {key_col}, {name_col}, SUM(total_sales) AS net
                 FROM {table}
                 WHERE {c_where_prefixed}
                 GROUP BY {key_col}, {name_col}
             ),
             previous_period AS (
-                SELECT {key_col}, {name_col}, SUM(total_net_amount) AS net
+                SELECT {key_col}, {name_col}, SUM(total_sales) AS net
                 FROM {table}
                 WHERE {p_where_prefixed}
                 GROUP BY {key_col}, {name_col}
@@ -167,11 +167,11 @@ class DiagnosticsRepository:
 
         # Also get totals for this dimension
         c_total_stmt = text(f"""
-            SELECT COALESCE(SUM(total_net_amount), 0)
+            SELECT COALESCE(SUM(total_sales), 0)
             FROM {table} WHERE {c_where_prefixed}
         """)
         p_total_stmt = text(f"""
-            SELECT COALESCE(SUM(total_net_amount), 0)
+            SELECT COALESCE(SUM(total_sales), 0)
             FROM {table} WHERE {p_where_prefixed}
         """)
         c_total = Decimal(str(self._session.execute(c_total_stmt, c_params_prefixed).scalar() or 0))

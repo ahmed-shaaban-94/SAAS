@@ -28,14 +28,13 @@ WITH customer_monthly AS (
         SUM(f.quantity)::NUMERIC(18,4)                    AS total_quantity,
         ROUND(SUM(f.sales), 2)                            AS total_sales,
         ROUND(SUM(f.discount), 2)                         AS total_discount,
-        ROUND(SUM(f.net_amount), 2)                       AS total_net_amount,
         COUNT(*)::INT                                     AS transaction_count,
         COUNT(*) FILTER (WHERE f.is_return)::INT          AS return_count,
         COUNT(DISTINCT f.product_key)::INT                AS unique_products,
         COUNT(*) FILTER (WHERE f.is_walk_in)::INT         AS walk_in_count,
         COUNT(*) FILTER (WHERE f.has_insurance)::INT      AS insurance_count,
         ROUND(
-            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                 AS avg_basket_size
     FROM {{ ref('fct_sales') }} f
@@ -54,7 +53,6 @@ SELECT
     cm.total_quantity,
     cm.total_sales,
     cm.total_discount,
-    cm.total_net_amount,
     cm.transaction_count,
     cm.return_count,
     cm.unique_products,

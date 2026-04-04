@@ -129,7 +129,7 @@ class TargetsRepository:
         stmt = text("""
             WITH monthly_actuals AS (
                 SELECT year || '-' || LPAD(month::TEXT, 2, '0') AS period,
-                       SUM(total_net_amount) AS actual_value
+                       SUM(total_sales) AS actual_value
                 FROM public_marts.agg_sales_monthly
                 WHERE year = :year
                 GROUP BY year, month

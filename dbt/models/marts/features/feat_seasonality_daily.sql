@@ -23,7 +23,7 @@ WITH daily_with_dow AS (
         d.day_of_week,
         d.day_name,
         d.is_weekend,
-        m.daily_net_amount,
+        m.daily_gross_amount,
         m.daily_transactions,
         m.daily_unique_customers
     FROM {{ ref('metrics_summary') }} m
@@ -36,10 +36,10 @@ dow_stats AS (
         day_of_week,
         MIN(day_name)                                  AS day_name,
         BOOL_OR(is_weekend)                            AS is_weekend,
-        ROUND(AVG(daily_net_amount), 2)                AS avg_revenue_by_dow,
+        ROUND(AVG(daily_gross_amount), 2)              AS avg_revenue_by_dow,
         ROUND(AVG(daily_transactions), 2)              AS avg_txn_by_dow,
         ROUND(AVG(daily_unique_customers), 2)          AS avg_customers_by_dow,
-        ROUND(STDDEV_POP(daily_net_amount), 2)         AS stddev_revenue_by_dow,
+        ROUND(STDDEV_POP(daily_gross_amount), 2)       AS stddev_revenue_by_dow,
         COUNT(*)::INT                                  AS sample_count
     FROM daily_with_dow
     GROUP BY tenant_id, day_of_week
@@ -48,8 +48,8 @@ dow_stats AS (
 overall AS (
     SELECT
         tenant_id,
-        ROUND(AVG(daily_net_amount), 2)   AS grand_avg_revenue,
-        ROUND(AVG(daily_transactions), 2) AS grand_avg_txn
+        ROUND(AVG(daily_gross_amount), 2)   AS grand_avg_revenue,
+        ROUND(AVG(daily_transactions), 2)  AS grand_avg_txn
     FROM daily_with_dow
     GROUP BY tenant_id
 )

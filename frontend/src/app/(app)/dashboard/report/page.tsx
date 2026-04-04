@@ -60,9 +60,9 @@ export default function PrintReportPage() {
             Key Performance Indicators
           </h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <KPICell label="Today Net" value={formatCurrency(summary.today_net)} />
-            <KPICell label="MTD Net" value={formatCurrency(summary.mtd_net)} />
-            <KPICell label="YTD Net" value={formatCurrency(summary.ytd_net)} />
+            <KPICell label="Today Gross" value={formatCurrency(summary.today_gross)} />
+            <KPICell label="MTD Gross" value={formatCurrency(summary.mtd_gross)} />
+            <KPICell label="YTD Gross" value={formatCurrency(summary.ytd_gross)} />
             <KPICell label="Daily Transactions" value={formatNumber(summary.daily_transactions)} />
             <KPICell label="Daily Customers" value={formatNumber(summary.daily_customers)} />
             <KPICell
