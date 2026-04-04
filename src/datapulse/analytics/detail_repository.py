@@ -54,7 +54,7 @@ class DetailRepository:
         key_col: str,
         key_value: int,
     ) -> list[TimeSeriesPoint]:
-        """Return monthly net_amount trend for a given entity."""
+        """Return monthly sales trend for a given entity."""
         if table not in self._ALLOWED_TABLES:
             raise ValueError(f"Invalid table: {table}")
         if key_col not in self._ALLOWED_KEY_COLS:
@@ -62,7 +62,7 @@ class DetailRepository:
         stmt = text(f"""
             SELECT
                 TO_CHAR(a.month, 'YYYY-MM') AS period,
-                SUM(a.total_net_amount)      AS value
+                SUM(a.total_sales)      AS value
             FROM {table} a
             WHERE a.{key_col} = :key_value
             GROUP BY a.month
@@ -84,7 +84,7 @@ class DetailRepository:
                 p.drug_category,
                 SUM(a.total_quantity)        AS total_quantity,
                 SUM(a.total_sales)           AS total_sales,
-                SUM(a.total_net_amount)      AS total_net_amount,
+                SUM(a.total_sales)      AS total_sales,
                 COALESCE(
                     SUM(a.return_count)::NUMERIC
                     / NULLIF(SUM(a.transaction_count), 0), 0
@@ -119,7 +119,7 @@ class DetailRepository:
             drug_category=str(row[4]),
             total_quantity=Decimal(str(row[5])),
             total_sales=Decimal(str(row[6])),
-            total_net_amount=Decimal(str(row[7])),
+            total_sales=Decimal(str(row[7])),
             return_rate=Decimal(str(row[8])),
             unique_customers=int(row[9]),
             monthly_trend=trend,
@@ -135,7 +135,7 @@ class DetailRepository:
                 c.customer_id,
                 c.customer_name,
                 SUM(a.total_quantity)        AS total_quantity,
-                SUM(a.total_net_amount)      AS total_net_amount,
+                SUM(a.total_sales)      AS total_sales,
                 SUM(a.transaction_count)     AS transaction_count,
                 -- NOTE: SUM of unique counts across months is an approximation;
                 -- entities active in multiple months are counted more than once.
@@ -162,7 +162,7 @@ class DetailRepository:
             customer_id=str(row[1]),
             customer_name=str(row[2]),
             total_quantity=Decimal(str(row[3])),
-            total_net_amount=Decimal(str(row[4])),
+            total_sales=Decimal(str(row[4])),
             transaction_count=int(row[5]),
             unique_products=int(row[6]),
             return_count=int(row[7]),
@@ -179,9 +179,9 @@ class DetailRepository:
                 s.staff_id,
                 s.staff_name,
                 s.position,
-                SUM(a.total_net_amount)      AS total_net_amount,
+                SUM(a.total_sales)      AS total_sales,
                 SUM(a.transaction_count)     AS transaction_count,
-                SUM(a.total_net_amount)
+                SUM(a.total_sales)
                     / NULLIF(SUM(a.transaction_count), 0)
                                              AS avg_transaction_value,
                 -- NOTE: SUM(unique_customers) across monthly aggregates is an
@@ -209,7 +209,7 @@ class DetailRepository:
             staff_id=str(row[1]),
             staff_name=str(row[2]),
             staff_position=str(row[3]),
-            total_net_amount=Decimal(str(row[4])),
+            total_sales=Decimal(str(row[4])),
             transaction_count=int(row[5]),
             avg_transaction_value=(Decimal(str(row[6])) if row[6] is not None else Decimal("0")),
             unique_customers=int(row[7]),
@@ -226,7 +226,7 @@ class DetailRepository:
                 s.site_code,
                 s.site_name,
                 s.area_manager,
-                SUM(a.total_net_amount)      AS total_net_amount,
+                SUM(a.total_sales)      AS total_sales,
                 SUM(a.transaction_count)     AS transaction_count,
                 SUM(a.unique_customers)      AS unique_customers,
                 SUM(a.unique_staff)          AS unique_staff,
@@ -263,7 +263,7 @@ class DetailRepository:
             site_code=str(row[1]) if row[1] else "",
             site_name=str(row[2]),
             area_manager=str(row[3]) if row[3] else "",
-            total_net_amount=Decimal(str(row[4])),
+            total_sales=Decimal(str(row[4])),
             transaction_count=int(row[5]),
             unique_customers=int(row[6]),
             unique_staff=int(row[7]),

@@ -29,7 +29,7 @@ WITH product_quarterly AS (
         drug_category,
         year,
         CEIL(month / 3.0)::INT AS quarter,
-        SUM(total_net_amount)  AS quarterly_revenue,
+        SUM(total_sales)       AS quarterly_revenue,
         SUM(total_quantity)    AS quarterly_quantity,
         SUM(transaction_count) AS quarterly_txn
     FROM {{ ref('agg_sales_by_product') }}

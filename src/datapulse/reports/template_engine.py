@@ -58,7 +58,7 @@ BUILTIN_TEMPLATES: list[ReportTemplate] = [
                 section_type=SectionType.query,
                 title="Monthly KPIs",
                 sql="""
-                    SELECT total_net_amount, transaction_count, unique_customers,
+                    SELECT total_sales, transaction_count, unique_customers,
                            unique_products, return_rate, mom_growth_pct, yoy_growth_pct
                     FROM public_marts.agg_sales_monthly
                     WHERE year = :year AND month = :month
@@ -69,10 +69,10 @@ BUILTIN_TEMPLATES: list[ReportTemplate] = [
                 section_type=SectionType.query,
                 title="Top 10 Products",
                 sql="""
-                    SELECT drug_name, total_net_amount, transaction_count, unique_customers
+                    SELECT drug_name, total_sales, transaction_count, unique_customers
                     FROM public_marts.agg_sales_by_product
                     WHERE year = :year AND month = :month
-                    ORDER BY total_net_amount DESC
+                    ORDER BY total_sales DESC
                     LIMIT 10
                 """,
                 chart_type="horizontal-bar",
@@ -81,10 +81,10 @@ BUILTIN_TEMPLATES: list[ReportTemplate] = [
                 section_type=SectionType.query,
                 title="Top 10 Customers",
                 sql="""
-                    SELECT customer_name, total_net_amount, transaction_count
+                    SELECT customer_name, total_sales, transaction_count
                     FROM public_marts.agg_sales_by_customer
                     WHERE year = :year AND month = :month
-                    ORDER BY total_net_amount DESC
+                    ORDER BY total_sales DESC
                     LIMIT 10
                 """,
                 chart_type="bar",
@@ -113,7 +113,7 @@ BUILTIN_TEMPLATES: list[ReportTemplate] = [
                 section_type=SectionType.query,
                 title="Monthly Trend",
                 sql="""
-                    SELECT year, month, month_name, total_net_amount,
+                    SELECT year, month, month_name, total_sales,
                            transaction_count, unique_customers, return_rate
                     FROM public_marts.agg_sales_by_product
                     WHERE drug_name ILIKE :drug_name

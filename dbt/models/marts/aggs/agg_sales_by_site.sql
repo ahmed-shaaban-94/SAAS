@@ -30,7 +30,6 @@ WITH site_monthly AS (
         ROUND(SUM(f.quantity)::NUMERIC, 2)              AS total_quantity,
         ROUND(SUM(f.sales)::NUMERIC, 2)                 AS total_sales,
         ROUND(SUM(f.discount)::NUMERIC, 2)              AS total_discount,
-        ROUND(SUM(f.net_amount)::NUMERIC, 2)            AS total_net_amount,
         COUNT(*)                                         AS transaction_count,
 
         -- Diversity
@@ -76,7 +75,6 @@ SELECT
     s.total_quantity,
     s.total_sales,
     s.total_discount,
-    s.total_net_amount,
     s.transaction_count,
     s.unique_customers,
     s.unique_products,

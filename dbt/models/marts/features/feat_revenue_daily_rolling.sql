@@ -29,7 +29,7 @@ WITH base_daily AS (
         d.month,
         d.year,
         d.year_month,
-        m.daily_net_amount,
+        m.daily_gross_amount,
         m.daily_transactions,
         m.daily_unique_customers
     FROM {{ ref('metrics_summary') }} m
@@ -40,18 +40,18 @@ with_rolling AS (
     SELECT
         b.*,
         -- Revenue moving averages
-        ROUND(AVG(b.daily_net_amount) OVER w7, 2)   AS ma_7d_revenue,
-        ROUND(AVG(b.daily_net_amount) OVER w30, 2)  AS ma_30d_revenue,
-        ROUND(AVG(b.daily_net_amount) OVER w90, 2)  AS ma_90d_revenue,
+        ROUND(AVG(b.daily_gross_amount) OVER w7, 2)   AS ma_7d_revenue,
+        ROUND(AVG(b.daily_gross_amount) OVER w30, 2)  AS ma_30d_revenue,
+        ROUND(AVG(b.daily_gross_amount) OVER w90, 2)  AS ma_90d_revenue,
         -- Transaction moving averages
         ROUND(AVG(b.daily_transactions) OVER w7, 2)  AS ma_7d_txn,
         ROUND(AVG(b.daily_transactions) OVER w30, 2) AS ma_30d_txn,
         ROUND(AVG(b.daily_transactions) OVER w90, 2) AS ma_90d_txn,
         -- Volatility (30-day standard deviation)
-        ROUND(STDDEV_POP(b.daily_net_amount) OVER w30, 2) AS volatility_30d,
+        ROUND(STDDEV_POP(b.daily_gross_amount) OVER w30, 2) AS volatility_30d,
         -- Rolling sums
-        ROUND(SUM(b.daily_net_amount) OVER w7, 2)   AS sum_7d_revenue,
-        ROUND(SUM(b.daily_net_amount) OVER w30, 2)  AS sum_30d_revenue
+        ROUND(SUM(b.daily_gross_amount) OVER w7, 2)   AS sum_7d_revenue,
+        ROUND(SUM(b.daily_gross_amount) OVER w30, 2)  AS sum_30d_revenue
     FROM base_daily b
     WINDOW
         w7  AS (PARTITION BY b.tenant_id ORDER BY b.full_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),
@@ -68,7 +68,7 @@ SELECT
     r.month,
     r.year,
     r.year_month,
-    r.daily_net_amount,
+    r.daily_gross_amount,
     r.daily_transactions,
     r.daily_unique_customers,
     -- Moving averages
@@ -88,14 +88,14 @@ SELECT
     ROUND(r.ma_30d_revenue / NULLIF(r.ma_90d_revenue, 0), 4) AS trend_ratio_30d_90d,
     -- Deviation from 30-day moving average
     ROUND(
-        (r.daily_net_amount - r.ma_30d_revenue) / NULLIF(r.ma_30d_revenue, 0),
+        (r.daily_gross_amount - r.ma_30d_revenue) / NULLIF(r.ma_30d_revenue, 0),
         4
     ) AS deviation_from_ma30,
     -- Lag comparisons
-    LAG(r.daily_net_amount, 7) OVER (
+    LAG(r.daily_gross_amount, 7) OVER (
         PARTITION BY r.tenant_id ORDER BY r.full_date
     ) AS same_day_last_week,
-    LAG(r.daily_net_amount, 364) OVER (
+    LAG(r.daily_gross_amount, 364) OVER (
         PARTITION BY r.tenant_id ORDER BY r.full_date
     ) AS same_day_last_year
 FROM with_rolling r
