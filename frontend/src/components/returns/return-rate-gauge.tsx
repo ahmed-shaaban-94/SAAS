@@ -52,7 +52,7 @@ export function ReturnRateGauge() {
       </div>
 
       <div className="flex items-center gap-4">
-        <svg width="160" height="110" viewBox="0 0 160 110" className="flex-shrink-0">
+        <svg width="160" height="110" viewBox="0 0 160 110" className="flex-shrink-0" role="img" aria-label={`Return rate gauge: ${rate.toFixed(1)}% — ${isHealthy ? "healthy" : isWarning ? "needs attention" : "critical"}`}>
           {/* Background arc */}
           <path d={bgPath} fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="text-divider" />
           {/* Value arc */}

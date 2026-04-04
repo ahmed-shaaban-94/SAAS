@@ -1,6 +1,12 @@
+/**
+ * Format currency for Egyptian pharmaceutical sales context.
+ * Uses "ar-EG" locale with EGP currency — outputs "١٬٢٣٤ ج.م.‏" natively,
+ * but we use "en-u-nu-latn" numbering to keep Latin digits (1,234 EGP)
+ * since the pharma sales data itself uses Latin numerals.
+ */
 export function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return "N/A";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("ar-EG-u-nu-latn", {
     style: "currency",
     currency: "EGP",
     minimumFractionDigits: 0,
@@ -15,7 +21,7 @@ export function formatPercent(value: number | null | undefined): string {
 
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return "N/A";
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat("ar-EG-u-nu-latn").format(value);
 }
 
 export function truncate(str: string, maxLen: number = 20): string {
