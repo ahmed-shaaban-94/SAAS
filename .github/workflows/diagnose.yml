@@ -1,0 +1,37 @@
+name: Diagnose
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    name: Check Droplet
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Run diagnostics via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            echo "=== Container Status ==="
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+
+            echo ""
+            echo "=== API Logs (last 50 lines) ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml logs api --tail=50 2>&1
+
+            echo ""
+            echo "=== Health Check ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api curl -s http://localhost:8000/health 2>&1 || echo "HEALTH CHECK FAILED"
+
+            echo ""
+            echo "=== Dashboard API Test ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:8000/api/v1/analytics/dashboard 2>&1 || echo "DASHBOARD API FAILED"
+
+            echo ""
+            echo "=== Frontend -> API Rewrite Test ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T frontend wget -q -O - http://api:8000/health 2>&1 || echo "FRONTEND->API FAILED"
