@@ -7,6 +7,7 @@ FastAPI-specific dependencies.
 
 from __future__ import annotations
 
+import os
 import threading
 
 import structlog
@@ -17,6 +18,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from datapulse.core.config import get_settings
 
 logger = structlog.get_logger()
+
+
+def _validate_database_url(url: str) -> None:
+    """Warn if production DB connection does not use SSL."""
+    env = os.getenv("SENTRY_ENVIRONMENT", "development")
+    if env not in ("development", "test") and "sslmode=" not in url:
+        logger.warning(
+            "db_no_ssl",
+            detail="DATABASE_URL does not include sslmode parameter in non-dev environment",
+            environment=env,
+        )
 
 _engine: Engine | None = None
 _session_factory: sessionmaker[Session] | None = None
@@ -34,6 +46,7 @@ def get_engine() -> Engine:
         with _init_lock:
             if _engine is None:
                 settings = get_settings()
+                _validate_database_url(settings.database_url)
                 _engine = create_engine(
                     settings.database_url,
                     pool_pre_ping=True,

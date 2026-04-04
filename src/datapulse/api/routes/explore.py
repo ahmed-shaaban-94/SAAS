@@ -119,7 +119,7 @@ def execute_explore_query(
             truncated=truncated,
         )
     except Exception as exc:
-        log.error("explore_query_failed", error=str(exc), sql=sql)
+        log.error("explore_query_failed", error=str(exc), model=body.model)
         raise HTTPException(
             status_code=500,
             detail="Query execution failed. Check the server logs for details.",

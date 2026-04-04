@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -58,7 +59,22 @@ class TestRequireApiKey:
 
 class TestRequirePipelineToken:
     def test_dev_mode_skips(self):
-        require_pipeline_token(token=None, settings=_settings(pipeline_webhook_secret=""))
+        """Empty secret + PIPELINE_AUTH_DISABLED=true -> dev mode, should pass."""
+        with patch.dict(os.environ, {"PIPELINE_AUTH_DISABLED": "true"}):
+            require_pipeline_token(token=None, settings=_settings(pipeline_webhook_secret=""))
+
+    def test_empty_secret_without_opt_in_raises_503(self):
+        """Empty secret without PIPELINE_AUTH_DISABLED raises 503."""
+        with patch.dict(os.environ, {}, clear=False):
+            # Ensure PIPELINE_AUTH_DISABLED is not set
+            env = os.environ.copy()
+            env.pop("PIPELINE_AUTH_DISABLED", None)
+            with patch.dict(os.environ, env, clear=True):
+                with pytest.raises(HTTPException) as exc_info:
+                    require_pipeline_token(
+                        token=None, settings=_settings(pipeline_webhook_secret="")
+                    )
+                assert exc_info.value.status_code == 503
 
     def test_valid_token(self):
         require_pipeline_token(token="tok123", settings=_settings(pipeline_webhook_secret="tok123"))
@@ -108,18 +124,33 @@ class TestGetCurrentUser:
         assert result["tenant_id"] == "42"
         assert result["roles"] == ["admin"]
 
-    def test_jwt_fallback_tenant_id(self):
-        """When tenant_id not in claims, falls back to '1'."""
+    def test_jwt_missing_tenant_id_raises_401(self):
+        """When tenant_id and tid are both missing from JWT claims, raises 401."""
         creds = MagicMock()
         creds.credentials = "jwt-token-value"
         fake_claims = {"sub": "user123"}
+        with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
+            with pytest.raises(HTTPException) as exc_info:
+                get_current_user(
+                    credentials=creds,
+                    api_key=None,
+                    settings=_settings(api_key="key"),
+                )
+            assert exc_info.value.status_code == 401
+            assert "tenant_id" in exc_info.value.detail
+
+    def test_jwt_tid_claim_accepted(self):
+        """When tenant_id is missing but 'tid' is present, it is used."""
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {"sub": "user123", "tid": "99"}
         with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
             result = get_current_user(
                 credentials=creds,
                 api_key=None,
                 settings=_settings(api_key="key"),
             )
-        assert result["tenant_id"] == "1"
+        assert result["tenant_id"] == "99"
         assert result["roles"] == []
 
     def test_api_key_fallback_valid(self):
@@ -170,6 +201,17 @@ class TestGetCurrentUser:
         )
         assert result["sub"] == "dev-user"
         assert result["tenant_id"] == "1"
+
+    def test_dev_mode_non_dev_environment_raises_503(self):
+        """Dev mode in non-dev SENTRY_ENVIRONMENT raises 503."""
+        with patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}):
+            with pytest.raises(HTTPException) as exc_info:
+                get_current_user(
+                    credentials=None,
+                    api_key=None,
+                    settings=_settings(api_key="", auth0_domain=""),
+                )
+            assert exc_info.value.status_code == 503
 
     def test_no_auth_but_configured_raises_401(self):
         """No credentials but auth IS configured -> 401."""

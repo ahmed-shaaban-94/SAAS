@@ -30,7 +30,6 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -101,12 +100,12 @@ jobs:
       - name: Type check
         working-directory: frontend
         run: npx tsc --noEmit
+      - name: Unit tests
+        working-directory: frontend
+        run: npx vitest run --coverage
       - name: Build
         working-directory: frontend
         run: npm run build
-
-  # E2E tests disabled — requires running API server (docker-compose in CI)
-  # TODO: Re-enable when CI has docker-compose support for full-stack E2E
 
   docker-build:
     name: Docker Build (${{ matrix.service }})

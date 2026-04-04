@@ -47,7 +47,6 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit
-        continue-on-error: true
 
       - uses: actions/setup-node@v4
         with:
@@ -60,4 +59,3 @@ jobs:
       - name: Audit npm dependencies
         working-directory: frontend
         run: npm audit --audit-level=high
-        continue-on-error: true

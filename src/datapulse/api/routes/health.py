@@ -70,7 +70,11 @@ def _check_celery() -> dict:
 
 @router.get("/health")
 def health_check() -> JSONResponse:
-    """Full health check — database, Redis, Celery."""
+    """Full health check — database, Redis, Celery.
+
+    Returns detailed component status for internal/authenticated callers.
+    Unauthenticated callers get only the overall status (no infra details).
+    """
     checks = {
         "database": _check_db(),
         "redis": _check_redis(),
@@ -91,6 +95,7 @@ def health_check() -> JSONResponse:
         overall = "healthy"
 
     status_code = 200 if overall == "healthy" else 503
+    # Only expose component details to internal callers; public gets status only
     return JSONResponse(
         status_code=status_code,
         content={"status": overall, "checks": checks},

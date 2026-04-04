@@ -13,7 +13,7 @@ export default defineConfig({
       provider: "v8",
       include: ["src/components/**", "src/hooks/**", "src/lib/**"],
       exclude: ["src/__tests__/**"],
-      thresholds: { statements: 50 },
+      thresholds: { statements: 70, branches: 60, functions: 60 },
     },
   },
   resolve: {

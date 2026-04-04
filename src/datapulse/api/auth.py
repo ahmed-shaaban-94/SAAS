@@ -11,14 +11,18 @@ When the corresponding config value is empty, the guard is skipped (dev mode).
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
+import structlog
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from datapulse.api.jwt import verify_jwt
 from datapulse.config import Settings, get_settings
 from datapulse.core.security import compare_secrets
+
+_auth_logger = structlog.get_logger()
 
 # Header schemes (auto_error=False so we control the error message)
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -49,7 +53,13 @@ def require_pipeline_token(
     Skips validation when ``settings.pipeline_webhook_secret`` is empty.
     """
     if not settings.pipeline_webhook_secret:
-        return  # dev mode — no token required
+        if os.getenv("PIPELINE_AUTH_DISABLED", "").lower() != "true":
+            _auth_logger.error(
+                "pipeline_auth_unconfigured",
+                detail="PIPELINE_WEBHOOK_SECRET is empty and PIPELINE_AUTH_DISABLED is not set",
+            )
+            raise HTTPException(status_code=503, detail="Pipeline auth not configured")
+        return  # explicitly opted-in to no auth
     if not token or not compare_secrets(token, settings.pipeline_webhook_secret):
         raise HTTPException(status_code=403, detail="Authentication failed")
 
@@ -76,8 +86,13 @@ def get_current_user(
     # 1. Try JWT Bearer token first
     if credentials is not None:
         claims = verify_jwt(credentials.credentials, settings)
-        # Extract tenant_id from custom claim, fallback to "1"
-        tenant_id = claims.get("tenant_id") or claims.get("tid") or "1"
+        # Extract tenant_id — require it in JWT claims (no silent fallback)
+        tenant_id = claims.get("tenant_id") or claims.get("tid")
+        if not tenant_id:
+            raise HTTPException(
+                status_code=401,
+                detail="JWT missing required tenant_id claim",
+            )
         # Extract roles — Auth0 uses a namespaced custom claim or permissions
         # Auth0 custom rule/action can set roles at a namespace like
         # "https://datapulse.tech/roles" or in the "permissions" claim.
@@ -111,6 +126,17 @@ def get_current_user(
 
     # 3. Dev mode — both auth mechanisms unconfigured
     if not settings.api_key and not settings.auth0_domain:
+        env = os.getenv("SENTRY_ENVIRONMENT", "development")
+        if env not in ("development", "test"):
+            _auth_logger.error(
+                "auth_not_configured_in_production",
+                environment=env,
+                detail="API_KEY and AUTH0_DOMAIN are both empty in non-dev environment",
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Authentication not configured",
+            )
         return {
             "sub": "dev-user",
             "email": "dev@datapulse.local",

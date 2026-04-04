@@ -148,6 +148,10 @@ class Settings(BaseSettings):
 
     def warn_if_auth_disabled(self) -> None:
         """Log warnings when authentication secrets are not configured."""
+        import os
+
+        env = os.getenv("SENTRY_ENVIRONMENT", "development")
+
         if not self.api_key:
             logger.warning(
                 "auth_disabled",
@@ -163,6 +167,16 @@ class Settings(BaseSettings):
                 "auth_disabled",
                 detail="AUTH0_DOMAIN is empty — JWT authentication is disabled",
             )
+
+        # Warn about localhost CORS in non-dev environments
+        if env not in ("development", "test"):
+            localhost_origins = [o for o in self.cors_origins if "localhost" in o]
+            if localhost_origins:
+                logger.warning(
+                    "cors_localhost_in_production",
+                    origins=localhost_origins,
+                    detail="CORS allows localhost origins in non-dev environment",
+                )
 
 
 @lru_cache(maxsize=1)

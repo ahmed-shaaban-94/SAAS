@@ -29,6 +29,11 @@ def _get_secret() -> str:
     if settings.embed_secret:
         return settings.embed_secret
     if settings.api_key:
+        env = __import__("os").getenv("SENTRY_ENVIRONMENT", "development")
+        if env not in ("development", "test"):
+            raise ValueError(
+                "EMBED_SECRET must be configured separately from API_KEY in production"
+            )
         log.warning(
             "embed_using_api_key",
             detail="Using API_KEY as embed secret — set EMBED_SECRET for production",
