@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
+import { isRtl } from "@/i18n/config";
+import type { Locale } from "@/i18n/config";
 import "@fontsource-variable/inter";
 import "./globals.css";
 
@@ -23,18 +27,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = (await getLocale()) as Locale;
+  const messages = await getMessages();
+  const dir = isRtl(locale) ? "rtl" : "ltr";
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <body className="bg-page font-sans text-text-primary antialiased">
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>
-        {children}
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );
