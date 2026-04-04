@@ -70,6 +70,33 @@ def _check_query_executor() -> dict:
         return {"status": "error", "error": str(exc)[:100]}
 
 
+def _check_pool() -> dict:
+    """Check database connection pool saturation."""
+    try:
+        engine = get_engine()
+        pool = engine.pool
+        size = pool.size()
+        checked_out = pool.checkedout()
+        overflow = pool.overflow()
+        max_total = size + pool._max_overflow
+        saturation = checked_out / max(max_total, 1)
+        status = "ok"
+        if saturation > 0.95:
+            status = "critical"
+        elif saturation > 0.8:
+            status = "warning"
+        return {
+            "status": status,
+            "size": size,
+            "checked_out": checked_out,
+            "overflow": overflow,
+            "saturation_pct": round(saturation * 100, 1),
+        }
+    except Exception as exc:
+        logger.error("health_pool_error", error=str(exc))
+        return {"status": "error", "error": str(exc)[:100]}
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -86,6 +113,7 @@ def health_check() -> JSONResponse:
         "database": _check_db(),
         "redis": _check_redis(),
         "query_executor": _check_query_executor(),
+        "connection_pool": _check_pool(),
     }
 
     # Determine overall status

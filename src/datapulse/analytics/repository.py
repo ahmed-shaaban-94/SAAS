@@ -159,12 +159,12 @@ class AnalyticsRepository:
         """Return executive KPI snapshot for *target_date*.
 
         Uses a single unified CTE query to fetch daily KPIs, basket size,
-        and previous-period comparisons in ONE database round-trip.
-        Sparkline is a separate lightweight query.
+        previous-period comparisons, AND sparkline in ONE database round-trip.
         """
         log.info("get_kpi_summary", target_date=str(target_date))
 
         date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
+        sparkline_start = target_date - timedelta(days=7)
 
         stmt = text("""
             WITH daily AS (
@@ -196,6 +196,14 @@ class AnalyticsRepository:
                 WHERE full_date = CAST(
                     CAST(:target_date AS date) - INTERVAL '1 year'
                 AS date)
+            ),
+            sparkline AS (
+                SELECT json_agg(
+                    json_build_object('period', full_date, 'value', daily_gross_amount)
+                    ORDER BY full_date
+                ) AS points
+                FROM public_marts.metrics_summary
+                WHERE full_date BETWEEN :sparkline_start AND :target_date
             )
             SELECT
                 d.daily_gross_amount,
@@ -209,15 +217,24 @@ class AnalyticsRepository:
                 d.ytd_transactions,
                 b.avg_basket_size,
                 pm.mtd_gross_amount AS prev_month_mtd,
-                py.ytd_gross_amount AS prev_year_ytd
+                py.ytd_gross_amount AS prev_year_ytd,
+                sp.points AS sparkline_points
             FROM daily d
             LEFT JOIN basket b ON TRUE
             LEFT JOIN prev_month pm ON TRUE
             LEFT JOIN prev_year py ON TRUE
+            LEFT JOIN sparkline sp ON TRUE
         """)
 
         row = (
-            self._session.execute(stmt, {"target_date": target_date, "date_key": date_key})
+            self._session.execute(
+                stmt,
+                {
+                    "target_date": target_date,
+                    "date_key": date_key,
+                    "sparkline_start": sparkline_start,
+                },
+            )
             .mappings()
             .fetchone()
         )
@@ -268,7 +285,18 @@ class AnalyticsRepository:
         if row["prev_year_ytd"] is not None:
             yoy_growth = safe_growth(ytd_gross, Decimal(str(row["prev_year_ytd"])))
 
-        sparkline = self.get_kpi_sparkline(target_date)
+        # Parse sparkline from JSON aggregate
+        sparkline: list[TimeSeriesPoint] = []
+        if row["sparkline_points"] is not None:
+            raw_points = row["sparkline_points"]
+            # Handle both pre-parsed list and raw JSON string
+            if isinstance(raw_points, str):
+                import json
+                raw_points = json.loads(raw_points)
+            sparkline = [
+                TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))
+                for p in raw_points
+            ]
 
         # Statistical significance for MoM/YoY growth
         mom_sig = self._compute_growth_significance(target_date, "mom")
@@ -409,6 +437,14 @@ class AnalyticsRepository:
                 WHERE full_date BETWEEN
                     CAST(:start_date AS date) - (:end_date - :start_date + 1) * INTERVAL '1 day'
                     AND CAST(:start_date AS date) - INTERVAL '1 day'
+            ),
+            sparkline AS (
+                SELECT json_agg(
+                    json_build_object('period', full_date, 'value', daily_gross_amount)
+                    ORDER BY full_date
+                ) AS points
+                FROM public_marts.metrics_summary
+                WHERE full_date BETWEEN :sparkline_start AND :end_date
             )
             SELECT
                 r.period_net,
@@ -420,13 +456,16 @@ class AnalyticsRepository:
                 l.mtd_transactions,
                 l.ytd_transactions,
                 b.avg_basket_size,
-                p.prev_net
+                p.prev_net,
+                sp.points AS sparkline_points
             FROM range_agg r
             LEFT JOIN last_day l ON TRUE
             LEFT JOIN basket b ON TRUE
             LEFT JOIN prev_period p ON TRUE
+            LEFT JOIN sparkline sp ON TRUE
         """)
 
+        sparkline_start = end - timedelta(days=7)
         start_key = start.year * 10000 + start.month * 100 + start.day
         end_key = end.year * 10000 + end.month * 100 + end.day
 
@@ -438,6 +477,7 @@ class AnalyticsRepository:
                     "end_date": end,
                     "start_key": start_key,
                     "end_key": end_key,
+                    "sparkline_start": sparkline_start,
                 },
             )
             .mappings()
@@ -478,7 +518,17 @@ class AnalyticsRepository:
             prev_net = Decimal(str(row["prev_net"]))
             mom_growth = safe_growth(period_net, prev_net)
 
-        sparkline = self.get_kpi_sparkline(end)
+        # Parse sparkline from JSON aggregate
+        sparkline: list[TimeSeriesPoint] = []
+        if row["sparkline_points"] is not None:
+            raw_points = row["sparkline_points"]
+            if isinstance(raw_points, str):
+                import json
+                raw_points = json.loads(raw_points)
+            sparkline = [
+                TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))
+                for p in raw_points
+            ]
 
         return KPISummary(
             today_gross=period_net,

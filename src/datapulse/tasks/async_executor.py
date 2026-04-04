@@ -89,8 +89,8 @@ def _run_query_sync(
         log.error("job_no_redis", job_id=job_id)
         return
 
-    # Mark as running
-    _set_job(client, job_id, {"status": "running"})
+    # Mark as running with submission timestamp for staleness detection
+    _set_job(client, job_id, {"status": "running", "submitted_at": time.time()})
 
     start = time.perf_counter()
     session = get_session_factory()()
@@ -139,15 +139,22 @@ def _run_query_sync(
             error_msg = "Query timed out after 270 seconds"
 
         log.error("query_failed", job_id=job_id, error=error_msg, duration_ms=duration_ms)
-        _set_job(
-            client,
-            job_id,
-            {
-                "status": "failed",
-                "error": error_msg[:500],
-                "duration_ms": duration_ms,
-            },
-        )
+        try:
+            _set_job(
+                client,
+                job_id,
+                {
+                    "status": "failed",
+                    "error": error_msg[:500],
+                    "duration_ms": duration_ms,
+                },
+            )
+        except Exception as redis_exc:
+            log.error(
+                "job_redis_write_error",
+                job_id=job_id,
+                error=str(redis_exc),
+            )
     finally:
         session.close()
 
@@ -182,7 +189,12 @@ async def submit_query(
 
 
 def get_job_result(job_id: str) -> dict | None:
-    """Get the current state of a query job from Redis."""
+    """Get the current state of a query job from Redis.
+
+    Includes a staleness check: if a job has been "running" for longer
+    than ``_QUERY_TIMEOUT + 60`` seconds, return a synthetic "failed"
+    result so clients don't poll forever.
+    """
     client = _get_job_client()
     if client is None:
         return None
@@ -190,7 +202,37 @@ def get_job_result(job_id: str) -> dict | None:
         raw = client.get(f"datapulse:query:{job_id}")
         if raw is None:
             return None
-        return json.loads(raw)
+        data = json.loads(raw)
+
+        # Staleness detection: if running too long, mark as failed
+        if data.get("status") == "running":
+            submitted_at = data.get("submitted_at")
+            if submitted_at is not None:
+                elapsed = time.time() - submitted_at
+                stale_threshold = _QUERY_TIMEOUT + 60
+                if elapsed > stale_threshold:
+                    log.warning(
+                        "stale_job_detected",
+                        job_id=job_id,
+                        elapsed_seconds=round(elapsed, 1),
+                    )
+                    failed_data = {
+                        "status": "failed",
+                        "error": (
+                            f"Job appears stale — running for {round(elapsed)}s"
+                            f" (threshold {stale_threshold}s). The worker may"
+                            " have crashed."
+                        ),
+                    }
+                    # Best-effort update in Redis so subsequent polls
+                    # also see the failed state.
+                    try:
+                        _set_job(client, job_id, failed_data)
+                    except Exception:
+                        pass
+                    return failed_data
+
+        return data
     except Exception as exc:
         log.error("job_get_error", job_id=job_id, error=str(exc))
         return None

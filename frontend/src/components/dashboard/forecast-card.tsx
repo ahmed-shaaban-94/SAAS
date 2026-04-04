@@ -31,9 +31,9 @@ export const ForecastCard = memo(function ForecastCard() {
 
   const trendIcon =
     data.revenue_trend === "up" ? (
-      <TrendingUp className="h-4 w-4 text-green-500" />
+      <TrendingUp className="h-4 w-4 text-growth-green" />
     ) : data.revenue_trend === "down" ? (
-      <TrendingDown className="h-4 w-4 text-red-500" />
+      <TrendingDown className="h-4 w-4 text-growth-red" />
     ) : null;
 
   return (
@@ -74,7 +74,7 @@ export const ForecastCard = memo(function ForecastCard() {
         <div className="mt-4 grid grid-cols-2 gap-3">
           {data.top_growing_products.length > 0 && (
             <div>
-              <p className="mb-1 text-[10px] font-medium text-green-500">
+              <p className="mb-1 text-[10px] font-medium text-growth-green">
                 Growing
               </p>
               {data.top_growing_products.slice(0, 3).map((p) => (
@@ -85,7 +85,7 @@ export const ForecastCard = memo(function ForecastCard() {
                   <span className="max-w-[120px] truncate text-text-secondary">
                     {p.drug_name}
                   </span>
-                  <span className="font-medium text-green-500">
+                  <span className="font-medium text-growth-green">
                     +{formatPercent(p.forecast_change_pct)}
                   </span>
                 </div>
@@ -94,7 +94,7 @@ export const ForecastCard = memo(function ForecastCard() {
           )}
           {data.top_declining_products.length > 0 && (
             <div>
-              <p className="mb-1 text-[10px] font-medium text-red-500">
+              <p className="mb-1 text-[10px] font-medium text-growth-red">
                 Declining
               </p>
               {data.top_declining_products.slice(0, 3).map((p) => (
@@ -105,7 +105,7 @@ export const ForecastCard = memo(function ForecastCard() {
                   <span className="max-w-[120px] truncate text-text-secondary">
                     {p.drug_name}
                   </span>
-                  <span className="font-medium text-red-500">
+                  <span className="font-medium text-growth-red">
                     {formatPercent(p.forecast_change_pct)}
                   </span>
                 </div>
