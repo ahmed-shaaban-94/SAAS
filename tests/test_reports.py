@@ -332,8 +332,9 @@ class TestRenderReport:
         section = report.sections[0]
         # Error sections are rendered as text type
         assert section.section_type == SectionType.text
-        assert "Error executing query" in section.text
-        assert "DB connection lost" in section.text
+        assert "Error executing report section" in section.text
+        # Error details should NOT be exposed to the client
+        assert "DB connection lost" not in section.text
 
     def test_kpi_section_executes_like_query(self):
         session = _make_mock_session(

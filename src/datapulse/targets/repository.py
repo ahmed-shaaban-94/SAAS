@@ -70,7 +70,8 @@ class TargetsRepository:
             .mappings()
             .fetchone()
         )
-        assert row is not None  # INSERT RETURNING always returns a row
+        if row is None:
+            raise RuntimeError("INSERT RETURNING unexpectedly returned no row")
         return TargetResponse(**row)
 
     def list_targets(
@@ -86,28 +87,23 @@ class TargetsRepository:
             granularity=granularity,
             period_prefix=period_prefix,
         )
-        clauses: list[str] = ["1=1"]
-        params: dict[str, str | None] = {}
-
-        if target_type is not None:
-            clauses.append("target_type = :target_type")
-            params["target_type"] = target_type
-        if granularity is not None:
-            clauses.append("granularity = :granularity")
-            params["granularity"] = granularity
-        if period_prefix is not None:
-            clauses.append("period LIKE :period_prefix || '%'")
-            params["period_prefix"] = period_prefix
-
-        where = " AND ".join(clauses)
-        stmt = text(f"""
+        stmt = text("""
             SELECT id, target_type, granularity, period, target_value,
                    entity_type, entity_key, created_at, updated_at
             FROM public.sales_targets
-            WHERE {where}
+            WHERE (:target_type IS NULL OR target_type = :target_type)
+              AND (:granularity IS NULL OR granularity = :granularity)
+              AND (:period_prefix IS NULL OR period LIKE :period_prefix || '%')
             ORDER BY period
         """)
-        rows = self._session.execute(stmt, params).mappings().fetchall()
+        rows = self._session.execute(
+            stmt,
+            {
+                "target_type": target_type,
+                "granularity": granularity,
+                "period_prefix": period_prefix,
+            },
+        ).mappings().fetchall()
         return [TargetResponse(**r) for r in rows]
 
     def delete_target(self, target_id: int) -> bool:
@@ -238,7 +234,8 @@ class TargetsRepository:
             .mappings()
             .fetchone()
         )
-        assert row is not None
+        if row is None:
+            raise RuntimeError("INSERT RETURNING unexpectedly returned no row")
         return AlertConfigResponse(**row)
 
     def update_alert_config(self, alert_id: int, enabled: bool) -> AlertConfigResponse | None:
@@ -270,16 +267,17 @@ class TargetsRepository:
     ) -> list[AlertLogResponse]:
         """Return recent alert log entries, optionally filtered to unacknowledged."""
         log.info("list_alert_logs", limit=limit, unacknowledged_only=unacknowledged_only)
-        ack_filter = "AND acknowledged = FALSE" if unacknowledged_only else ""
-        stmt = text(f"""
+        stmt = text("""
             SELECT id, alert_config_id, alert_name, fired_at,
                    metric_value, threshold_value, message, acknowledged
             FROM public.alert_logs
-            WHERE 1=1 {ack_filter}
+            WHERE (:ack_only = FALSE OR acknowledged = FALSE)
             ORDER BY fired_at DESC
             LIMIT :limit
         """)
-        rows = self._session.execute(stmt, {"limit": limit}).mappings().fetchall()
+        rows = self._session.execute(
+            stmt, {"limit": limit, "ack_only": unacknowledged_only}
+        ).mappings().fetchall()
         return [AlertLogResponse(**r) for r in rows]
 
     def acknowledge_alert(self, alert_id: int) -> bool:
