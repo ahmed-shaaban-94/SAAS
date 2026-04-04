@@ -20,7 +20,6 @@ import pytest
 
 from datapulse.api.filters import FilterCondition, FilterOp, apply_filters, parse_filters
 
-
 # ---------------------------------------------------------------------------
 # Bronze loader: path traversal validation
 # ---------------------------------------------------------------------------
@@ -177,7 +176,7 @@ class TestBetweenFilter:
         col = MagicMock()
         # Wrap in a mock query
         query = MagicMock()
-        result = apply_filters(query, [f], {"date": col})
+        apply_filters(query, [f], {"date": col})
         # query.where should NOT be called (no valid BETWEEN condition)
         query.where.assert_not_called()
 
@@ -186,7 +185,7 @@ class TestBetweenFilter:
         f = FilterCondition(field="date", op=FilterOp.BETWEEN, value=",2024-12-31")
         col = MagicMock()
         query = MagicMock()
-        result = apply_filters(query, [f], {"date": col})
+        apply_filters(query, [f], {"date": col})
         query.where.assert_not_called()
 
     def test_between_reversed_range_swapped(self):
@@ -286,9 +285,7 @@ class TestForecastingMinSeriesLength:
         service = ForecastingService(repo)
 
         # Only 10 daily data points (need 14 for weekly seasonality)
-        repo.get_daily_revenue_series.return_value = [
-            ("2024-01-01", 100.0 + i) for i in range(10)
-        ]
+        repo.get_daily_revenue_series.return_value = [("2024-01-01", 100.0 + i) for i in range(10)]
         repo.get_monthly_revenue_series.return_value = []
         repo.get_top_products_by_revenue.return_value = []
         repo.save_forecasts.return_value = 0
@@ -306,7 +303,6 @@ class TestForecastingMinSeriesLength:
         from datetime import date
 
         from datapulse.forecasting.models import ForecastAccuracy
-
         from datapulse.forecasting.service import ForecastingService
 
         repo = MagicMock()

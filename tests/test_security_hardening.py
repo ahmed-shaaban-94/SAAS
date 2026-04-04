@@ -11,6 +11,7 @@ Also includes PII leak prevention tests.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import warnings
 from unittest.mock import MagicMock, patch
@@ -173,10 +174,8 @@ class TestC3DeprecatedDbSession:
             assert len(dep_warnings) >= 1
             assert "deprecated" in str(dep_warnings[0].message).lower()
 
-            try:
+            with contextlib.suppress(StopIteration):
                 gen.send(None)
-            except StopIteration:
-                pass
 
 
 # =========================================================================

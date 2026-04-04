@@ -37,11 +37,11 @@ def _parse_date(value: str | None, name: str) -> date | None:
         return None
     try:
         return date.fromisoformat(value)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=422,
             detail=f"Invalid {name}: expected YYYY-MM-DD format, got '{value}'",
-        )
+        ) from exc
 
 
 def _stream_csv(data: list[dict[str, Any]], filename: str) -> StreamingResponse:
@@ -168,7 +168,7 @@ def export_products(
         result = service.get_product_insights(f)
     except Exception as exc:
         log.error("export_products_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail="Failed to generate product export.")
+        raise HTTPException(status_code=500, detail="Failed to generate product export.") from exc
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []
     return _export_response(data, "products", format)
 
@@ -189,7 +189,7 @@ def export_customers(
         result = service.get_customer_insights(f)
     except Exception as exc:
         log.error("export_customers_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail="Failed to generate customer export.")
+        raise HTTPException(status_code=500, detail="Failed to generate customer export.") from exc
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []
     return _export_response(data, "customers", format)
 
@@ -210,6 +210,6 @@ def export_staff(
         result = service.get_staff_leaderboard(f)
     except Exception as exc:
         log.error("export_staff_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail="Failed to generate staff export.")
+        raise HTTPException(status_code=500, detail="Failed to generate staff export.") from exc
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []
     return _export_response(data, "staff", format)

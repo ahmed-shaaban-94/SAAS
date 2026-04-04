@@ -96,14 +96,18 @@ class TargetsRepository:
               AND (:period_prefix IS NULL OR period LIKE :period_prefix || '%')
             ORDER BY period
         """)
-        rows = self._session.execute(
-            stmt,
-            {
-                "target_type": target_type,
-                "granularity": granularity,
-                "period_prefix": period_prefix,
-            },
-        ).mappings().fetchall()
+        rows = (
+            self._session.execute(
+                stmt,
+                {
+                    "target_type": target_type,
+                    "granularity": granularity,
+                    "period_prefix": period_prefix,
+                },
+            )
+            .mappings()
+            .fetchall()
+        )
         return [TargetResponse(**r) for r in rows]
 
     def delete_target(self, target_id: int) -> bool:
@@ -275,9 +279,11 @@ class TargetsRepository:
             ORDER BY fired_at DESC
             LIMIT :limit
         """)
-        rows = self._session.execute(
-            stmt, {"limit": limit, "ack_only": unacknowledged_only}
-        ).mappings().fetchall()
+        rows = (
+            self._session.execute(stmt, {"limit": limit, "ack_only": unacknowledged_only})
+            .mappings()
+            .fetchall()
+        )
         return [AlertLogResponse(**r) for r in rows]
 
     def acknowledge_alert(self, alert_id: int) -> bool:

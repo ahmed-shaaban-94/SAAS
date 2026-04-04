@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -96,6 +96,7 @@ class TestTargetsRepositorySafety:
     def test_list_targets_no_dynamic_fstring(self):
         """Ensure list_targets uses parameterized WHERE, not f-string."""
         import inspect
+
         from datapulse.targets.repository import TargetsRepository
 
         source = inspect.getsource(TargetsRepository.list_targets)
@@ -107,6 +108,7 @@ class TestTargetsRepositorySafety:
     def test_list_alert_logs_no_dynamic_fstring(self):
         """Ensure list_alert_logs uses parameterized filter, not f-string."""
         import inspect
+
         from datapulse.targets.repository import TargetsRepository
 
         source = inspect.getsource(TargetsRepository.list_alert_logs)
@@ -117,6 +119,7 @@ class TestTargetsRepositorySafety:
     def test_create_target_no_assert(self):
         """Ensure production code uses proper error handling, not assert."""
         import inspect
+
         from datapulse.targets.repository import TargetsRepository
 
         source = inspect.getsource(TargetsRepository.create_target)
@@ -126,6 +129,7 @@ class TestTargetsRepositorySafety:
     def test_create_alert_config_no_assert(self):
         """Ensure production code uses proper error handling, not assert."""
         import inspect
+
         from datapulse.targets.repository import TargetsRepository
 
         source = inspect.getsource(TargetsRepository.create_alert_config)
@@ -144,6 +148,7 @@ class TestReportsInfoDisclosure:
     def test_error_message_is_generic(self):
         """Ensure rendered error text doesn't include exception details."""
         import inspect
+
         from datapulse.reports.template_engine import render_report
 
         source = inspect.getsource(render_report)
@@ -181,6 +186,7 @@ class TestAIResponseValidation:
     def test_detect_anomalies_validates_ai_items(self):
         """AI service normalizes severity and skips invalid items."""
         import inspect
+
         from datapulse.ai_light.service import AILightService
 
         source = inspect.getsource(AILightService.detect_anomalies)
@@ -203,6 +209,7 @@ class TestForecastingMinSeries:
     def test_min_daily_points_defined(self):
         """Daily forecast requires min_daily_points threshold."""
         import inspect
+
         from datapulse.forecasting.service import ForecastingService
 
         source = inspect.getsource(ForecastingService.run_all_forecasts)
@@ -211,6 +218,7 @@ class TestForecastingMinSeries:
     def test_short_daily_series_skipped(self):
         """Daily forecast should be skipped when series is too short."""
         import inspect
+
         from datapulse.forecasting.service import ForecastingService
 
         source = inspect.getsource(ForecastingService.run_all_forecasts)
@@ -220,6 +228,7 @@ class TestForecastingMinSeries:
     def test_short_monthly_series_skipped(self):
         """Monthly forecast should be skipped when series is too short."""
         import inspect
+
         from datapulse.forecasting.service import ForecastingService
 
         source = inspect.getsource(ForecastingService.run_all_forecasts)
@@ -237,7 +246,6 @@ class TestBetweenFilterValidation:
 
     def test_between_valid_range(self):
         """Valid BETWEEN with two comma-separated values should call col.between()."""
-        from unittest.mock import MagicMock
 
         from sqlalchemy import column
 
@@ -247,13 +255,14 @@ class TestBetweenFilterValidation:
         query = MagicMock()
         query.where = MagicMock(return_value=query)
 
-        filters = [FilterCondition(field="date", op=FilterOp.BETWEEN, value="2024-01-01,2024-12-31")]
-        result = apply_filters(query, filters, {"date": col})
+        filters = [
+            FilterCondition(field="date", op=FilterOp.BETWEEN, value="2024-01-01,2024-12-31")
+        ]
+        apply_filters(query, filters, {"date": col})
         query.where.assert_called_once()
 
     def test_between_single_value_skipped(self):
         """BETWEEN with only one value should be skipped (not crash)."""
-        from unittest.mock import MagicMock
 
         from sqlalchemy import column
 
@@ -263,12 +272,11 @@ class TestBetweenFilterValidation:
         query = MagicMock()
 
         filters = [FilterCondition(field="date", op=FilterOp.BETWEEN, value="2024-01-01")]
-        result = apply_filters(query, filters, {"date": col})
+        apply_filters(query, filters, {"date": col})
         query.where.assert_not_called()
 
     def test_between_empty_bound_skipped(self):
         """BETWEEN with an empty bound should be skipped."""
-        from unittest.mock import MagicMock
 
         from sqlalchemy import column
 
@@ -278,12 +286,11 @@ class TestBetweenFilterValidation:
         query = MagicMock()
 
         filters = [FilterCondition(field="date", op=FilterOp.BETWEEN, value=",2024-12-31")]
-        result = apply_filters(query, filters, {"date": col})
+        apply_filters(query, filters, {"date": col})
         query.where.assert_not_called()
 
     def test_between_reversed_range_auto_swaps(self):
         """BETWEEN with reversed range should auto-swap and still apply filter."""
-        from unittest.mock import MagicMock
 
         from sqlalchemy import column
 
@@ -296,7 +303,7 @@ class TestBetweenFilterValidation:
         filters = [
             FilterCondition(field="date", op=FilterOp.BETWEEN, value="2024-12-31,2024-01-01")
         ]
-        result = apply_filters(query, filters, {"date": col})
+        apply_filters(query, filters, {"date": col})
         # Should still apply filter (auto-swapped), not skip it
         query.where.assert_called_once()
 
@@ -360,6 +367,7 @@ class TestAnalyticsCaching:
     def test_top_movers_is_cached(self):
         """get_top_movers should have the @cached decorator."""
         import inspect
+
         from datapulse.analytics.service import AnalyticsService
 
         # Check that the method source or decorators include cached
