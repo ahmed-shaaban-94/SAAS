@@ -46,30 +46,42 @@ class ForecastingRepository:
         rows = self._session.execute(stmt, {"lookback": lookback_days}).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
-    def get_monthly_revenue_series(self) -> list[tuple[str, float]]:
-        """Monthly net revenue summed across all sites, ordered chronologically."""
+    def get_monthly_revenue_series(self, max_months: int = 120) -> list[tuple[str, float]]:
+        """Monthly net revenue summed across all sites, ordered chronologically.
+
+        Limited to the most recent *max_months* (default 10 years) to prevent
+        unbounded memory usage.
+        """
         stmt = text("""
-            SELECT
-                year || '-' || LPAD(month::TEXT, 2, '0') AS period,
-                SUM(total_sales) AS total
-            FROM public_marts.agg_sales_monthly
-            GROUP BY year, month
-            ORDER BY year, month
+            SELECT period, total FROM (
+                SELECT
+                    year || '-' || LPAD(month::TEXT, 2, '0') AS period,
+                    SUM(total_sales) AS total
+                FROM public_marts.agg_sales_monthly
+                GROUP BY year, month
+                ORDER BY year DESC, month DESC
+                LIMIT :max_months
+            ) sub ORDER BY period
         """)
-        rows = self._session.execute(stmt).fetchall()
+        rows = self._session.execute(stmt, {"max_months": max_months}).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
-    def get_product_monthly_series(self, product_key: int) -> list[tuple[str, float]]:
-        """Monthly net revenue for a specific product."""
+    def get_product_monthly_series(
+        self, product_key: int, max_months: int = 120,
+    ) -> list[tuple[str, float]]:
+        """Monthly net revenue for a specific product (capped at max_months)."""
         stmt = text("""
-            SELECT
-                year || '-' || LPAD(month::TEXT, 2, '0') AS period,
-                total_sales
-            FROM public_marts.agg_sales_by_product
-            WHERE product_key = :product_key
-            ORDER BY year, month
+            SELECT period, total_sales FROM (
+                SELECT
+                    year || '-' || LPAD(month::TEXT, 2, '0') AS period,
+                    total_sales
+                FROM public_marts.agg_sales_by_product
+                WHERE product_key = :product_key
+                ORDER BY year DESC, month DESC
+                LIMIT :max_months
+            ) sub ORDER BY period
         """)
-        rows = self._session.execute(stmt, {"product_key": product_key}).fetchall()
+        rows = self._session.execute(stmt, {"product_key": product_key, "max_months": max_months}).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
     def get_top_products_by_revenue(self, limit: int = 50) -> list[tuple[int, str]]:

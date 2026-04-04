@@ -14,7 +14,10 @@ def _make_limiter() -> Limiter:
         from datapulse.core.config import get_settings
 
         redis_url = get_settings().redis_url
-    except Exception:
+    except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).warning("limiter_config_error: %s — falling back to memory", exc)
         redis_url = ""
 
     storage_uri = redis_url if redis_url else "memory://"

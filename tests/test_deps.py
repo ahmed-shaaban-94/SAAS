@@ -27,7 +27,7 @@ class TestGetDbSession:
         session = next(gen)
 
         assert session is mock_session
-        mock_session.execute.assert_called_once()  # SET LOCAL
+        assert mock_session.execute.call_count == 2  # SET LOCAL tenant_id + statement_timeout
 
         # Exhaust generator (finally block)
         with contextlib.suppress(StopIteration):

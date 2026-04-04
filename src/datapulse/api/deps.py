@@ -70,6 +70,7 @@ def get_db_session() -> Generator[Session, None, None]:
     session = get_session_factory()()
     try:
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": "1"})
+        session.execute(text("SET LOCAL statement_timeout = '30s'"))
         yield session
         session.commit()
     except Exception:
