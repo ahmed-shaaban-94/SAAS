@@ -226,10 +226,10 @@ def get_job_result(job_id: str) -> dict | None:
                     }
                     # Best-effort update in Redis so subsequent polls
                     # also see the failed state.
-                    try:
+                    import contextlib
+
+                    with contextlib.suppress(Exception):
                         _set_job(client, job_id, failed_data)
-                    except Exception:
-                        pass
                     return failed_data
 
         return data
