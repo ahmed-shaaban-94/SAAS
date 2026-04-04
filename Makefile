@@ -18,12 +18,11 @@ dev:
 	docker compose up -d --build
 	@echo ""
 	@echo "DataPulse is running:"
-	@echo "  App:      http://localhost:80"
-	@echo "  API:      http://localhost:80/api/v1/"
-	@echo "  Health:   http://localhost:80/health"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  API:      http://localhost:8000/api/v1/"
+	@echo "  Health:   http://localhost:8000/health"
 	@echo "  pgAdmin:  http://localhost:5050"
 	@echo "  n8n:      http://localhost:5678"
-	@echo "  Keycloak: http://localhost:8080"
 	@echo ""
 
 status:
@@ -32,7 +31,7 @@ status:
 
 pipeline:
 	@echo "Triggering full pipeline run..."
-	@curl -s -X POST http://localhost:80/api/v1/pipeline/trigger \
+	@curl -s -X POST http://localhost:8000/api/v1/pipeline/trigger \
 		-H "Content-Type: application/json" \
 		-H "X-Pipeline-Token: $${PIPELINE_WEBHOOK_SECRET}" \
 		-d '{}' | python -m json.tool 2>/dev/null || echo "(requires running services + valid token)"

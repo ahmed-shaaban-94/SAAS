@@ -44,6 +44,8 @@ def setup_logging(log_level: str = "INFO", log_format: str = "console") -> None:
             structlog.contextvars.merge_contextvars,
             _mask_sensitive_fields,  # type: ignore[list-item]
             structlog.processors.add_log_level,
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
             structlog.processors.TimeStamper(fmt="iso"),
             renderer,
         ],
