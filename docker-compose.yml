@@ -275,6 +275,30 @@ services:
     networks:
       - backend
 
+  # ---------- n8n Workflow Auto-Import ----------
+  # One-shot service that imports all workflow JSON files into n8n
+  # on first boot. Idempotent — skips already-imported workflows.
+  n8n-init:
+    image: python:3.11-slim
+    container_name: datapulse-n8n-init
+    depends_on:
+      n8n:
+        condition: service_healthy
+    volumes:
+      - ./n8n/init.sh:/init.sh:ro
+      - ./n8n/workflows:/workflows:ro
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      N8N_URL: http://n8n:5678
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+    networks:
+      - backend
+
   # ---------- Lightdash REMOVED — Next.js dashboard replaces it (Wild Wolf beta) ----------
   # ---------- Keycloak REMOVED — migrated to Auth0 (Wild Wolf beta) ----------
   # Auth0 is a managed SaaS service — no container needed.
