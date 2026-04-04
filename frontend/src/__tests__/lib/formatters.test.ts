@@ -2,9 +2,22 @@ import { describe, it, expect } from "vitest";
 import { formatCurrency, formatPercent, formatNumber, formatCompact, formatDuration, truncate } from "@/lib/formatters";
 
 describe("formatCurrency", () => {
-  it("formats positive numbers with EGP prefix", () => {
-    expect(formatCurrency(1500000)).toContain("1,500,000");
-    expect(formatCurrency(1500000)).toContain("EGP");
+  it("formats positive numbers with Egyptian locale", () => {
+    const result = formatCurrency(1500000);
+    // Must contain the digits in grouped form
+    expect(result).toContain("1,500,000");
+    // Must contain Arabic currency symbol (ج.م.)
+    expect(result).toMatch(/ج\.م\./);
+  });
+
+  it("places currency after the number (Egyptian convention)", () => {
+    const result = formatCurrency(1234);
+    // Strip invisible RLM characters for position check
+    const clean = result.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "");
+    const digitIndex = clean.search(/\d/);
+    const currencyIndex = clean.indexOf("\u062C"); // ج
+    expect(currencyIndex).toBeGreaterThan(-1);
+    expect(digitIndex).toBeLessThan(currencyIndex);
   });
 
   it("formats zero", () => {
