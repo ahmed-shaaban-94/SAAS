@@ -51,10 +51,10 @@ async def run_pipeline(
     from datapulse.core.db import get_session_factory
     from datapulse.notifications import notify_pipeline_failure, notify_pipeline_success
     from datapulse.pipeline.executor import PipelineExecutor
+    from datapulse.pipeline.models import PipelineRunUpdate
+    from datapulse.pipeline.quality_repository import QualityRepository
     from datapulse.pipeline.quality_service import QualityService
     from datapulse.pipeline.repository import PipelineRepository
-    from datapulse.pipeline.quality_repository import QualityRepository
-    from datapulse.pipeline.models import PipelineRunUpdate
 
     settings = get_settings()
     executor = PipelineExecutor(settings=settings)
@@ -95,7 +95,11 @@ async def run_pipeline(
         ("silver_complete", "silver", None),  # quality check
         (None, "dbt-marts", lambda: executor.run_dbt(run_id=run_id, selector="marts")),
         ("gold_complete", "gold", None),  # quality check
-        (None, "forecasting", lambda: executor.run_forecasting(run_id=run_id, tenant_id=str(tenant_id))),
+        (
+            None,
+            "forecasting",
+            lambda: executor.run_forecasting(run_id=run_id, tenant_id=str(tenant_id)),
+        ),
     ]
 
     log.info("pipeline_start", run_id=run_id_str)
@@ -110,11 +114,18 @@ async def run_pipeline(
                 if not result.success:
                     _update_status("failed", error_message=result.error)
                     notify_pipeline_failure(run_id_str, stage, result.error or "Unknown error")
-                    log.error("pipeline_stage_failed", run_id=run_id_str, stage=stage, error=result.error)
+                    log.error(
+                        "pipeline_stage_failed", run_id=run_id_str, stage=stage, error=result.error
+                    )
                     return
                 if result.rows_loaded:
                     total_rows = result.rows_loaded
-                log.info("pipeline_stage_done", run_id=run_id_str, stage=stage, duration=result.duration_seconds)
+                log.info(
+                    "pipeline_stage_done",
+                    run_id=run_id_str,
+                    stage=stage,
+                    duration=result.duration_seconds,
+                )
             elif status_name:
                 # Update status + run quality check
                 _update_status(status_name)
@@ -156,10 +167,12 @@ async def _health_check() -> None:
 
     if db["status"] != "ok":
         from datapulse.notifications import notify_health_failure
+
         notify_health_failure(db["status"], db.get("error", "unknown"))
         log.error("health_check_failed", component="database", status=db["status"])
     elif redis["status"] not in ("ok", "disabled"):
         from datapulse.notifications import notify_health_failure
+
         notify_health_failure(redis["status"], redis.get("error", "unknown"))
         log.error("health_check_failed", component="redis", status=redis["status"])
     else:
@@ -210,7 +223,11 @@ async def _ai_digest() -> None:
     from datapulse.notifications import notify_ai_digest
 
     settings = get_settings()
-    api_base = f"http://localhost:{settings.api_port}" if hasattr(settings, "api_port") else "http://localhost:8000"
+    api_base = (
+        f"http://localhost:{settings.api_port}"
+        if hasattr(settings, "api_port")
+        else "http://localhost:8000"
+    )
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -247,12 +264,20 @@ def start_scheduler() -> None:
     if scheduler.running:
         return
 
-    scheduler.add_job(_health_check, IntervalTrigger(minutes=5), id="health_check", replace_existing=True)
-    scheduler.add_job(_quality_digest, CronTrigger(hour=18, minute=0), id="quality_digest", replace_existing=True)
-    scheduler.add_job(_ai_digest, CronTrigger(hour=9, minute=0), id="ai_digest", replace_existing=True)
+    scheduler.add_job(
+        _health_check, IntervalTrigger(minutes=5), id="health_check", replace_existing=True
+    )
+    scheduler.add_job(
+        _quality_digest, CronTrigger(hour=18, minute=0), id="quality_digest", replace_existing=True
+    )
+    scheduler.add_job(
+        _ai_digest, CronTrigger(hour=9, minute=0), id="ai_digest", replace_existing=True
+    )
 
     scheduler.start()
-    log.info("scheduler_started", jobs=["health_check(5m)", "quality_digest(18:00)", "ai_digest(09:00)"])
+    log.info(
+        "scheduler_started", jobs=["health_check(5m)", "quality_digest(18:00)", "ai_digest(09:00)"]
+    )
 
 
 def stop_scheduler() -> None:

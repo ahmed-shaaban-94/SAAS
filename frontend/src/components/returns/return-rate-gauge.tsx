@@ -10,7 +10,7 @@ export function ReturnRateGauge() {
   const { data, isLoading, error } = useReturnsTrend();
 
   if (isLoading) return <LoadingCard className="h-48" />;
-  if (error) return <ErrorRetry message="Failed to load return rate" />;
+  if (error) return <ErrorRetry description="Failed to load return rate" />;
   if (!data) return null;
 
   const rate = data.avg_return_rate;

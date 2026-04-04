@@ -68,11 +68,7 @@ def notify_pipeline_failure(
 
 def notify_health_failure(status: str, details: str) -> None:
     """Send health check failure alert."""
-    text = (
-        f":warning: *DataPulse API health check FAILED*\n"
-        f"Status: {status}\n"
-        f"Details: {details}"
-    )
+    text = f":warning: *DataPulse API health check FAILED*\nStatus: {status}\nDetails: {details}"
     _send_slack("#datapulse-alerts", text, ":warning:")
 
 

@@ -44,10 +44,7 @@ def _get_job_client():
 
         base = settings.redis_url
         parts = base.rsplit("/", 1)
-        if len(parts) == 2 and parts[1].isdigit():
-            url = f"{parts[0]}/2"
-        else:
-            url = f"{base.rstrip('/')}/2"
+        url = f"{parts[0]}/2" if len(parts) == 2 and parts[1].isdigit() else f"{base.rstrip('/')}/2"
 
         return redis.from_url(url, decode_responses=True, socket_timeout=2)
     except Exception as exc:
@@ -114,16 +111,26 @@ def _run_query_sync(
 
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
 
-        log.info("query_executed", job_id=job_id, row_count=len(rows), truncated=truncated, duration_ms=duration_ms)
+        log.info(
+            "query_executed",
+            job_id=job_id,
+            row_count=len(rows),
+            truncated=truncated,
+            duration_ms=duration_ms,
+        )
 
-        _set_job(client, job_id, {
-            "status": "complete",
-            "columns": columns,
-            "rows": rows,
-            "row_count": len(rows),
-            "truncated": truncated,
-            "duration_ms": duration_ms,
-        })
+        _set_job(
+            client,
+            job_id,
+            {
+                "status": "complete",
+                "columns": columns,
+                "rows": rows,
+                "row_count": len(rows),
+                "truncated": truncated,
+                "duration_ms": duration_ms,
+            },
+        )
     except Exception as exc:
         session.rollback()
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
@@ -132,11 +139,15 @@ def _run_query_sync(
             error_msg = "Query timed out after 270 seconds"
 
         log.error("query_failed", job_id=job_id, error=error_msg, duration_ms=duration_ms)
-        _set_job(client, job_id, {
-            "status": "failed",
-            "error": error_msg[:500],
-            "duration_ms": duration_ms,
-        })
+        _set_job(
+            client,
+            job_id,
+            {
+                "status": "failed",
+                "error": error_msg[:500],
+                "duration_ms": duration_ms,
+            },
+        )
     finally:
         session.close()
 

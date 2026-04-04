@@ -23,7 +23,6 @@ from datapulse.api.deps import (
     get_quality_service,
 )
 from datapulse.cache import cache_invalidate_pattern
-from datapulse.config import get_settings
 from datapulse.logging import get_logger
 from datapulse.pipeline.checkpoint import get_completed_stages, get_last_successful_stage
 from datapulse.pipeline.executor import PipelineExecutor

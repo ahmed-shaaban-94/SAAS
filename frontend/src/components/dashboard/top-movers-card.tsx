@@ -55,7 +55,7 @@ export function TopMoversCard() {
   const { data, isLoading, error } = useTopMovers(entityType, filters);
 
   if (isLoading) return <LoadingCard lines={8} className="h-96" />;
-  if (error) return <ErrorRetry message="Failed to load top movers" />;
+  if (error) return <ErrorRetry description="Failed to load top movers" />;
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">

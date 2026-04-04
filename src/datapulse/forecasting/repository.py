@@ -67,7 +67,9 @@ class ForecastingRepository:
         return [(row[0], float(row[1])) for row in rows]
 
     def get_product_monthly_series(
-        self, product_key: int, max_months: int = 120,
+        self,
+        product_key: int,
+        max_months: int = 120,
     ) -> list[tuple[str, float]]:
         """Monthly net revenue for a specific product (capped at max_months)."""
         stmt = text("""
@@ -81,7 +83,9 @@ class ForecastingRepository:
                 LIMIT :max_months
             ) sub ORDER BY period
         """)
-        rows = self._session.execute(stmt, {"product_key": product_key, "max_months": max_months}).fetchall()
+        rows = self._session.execute(
+            stmt, {"product_key": product_key, "max_months": max_months}
+        ).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
     def get_top_products_by_revenue(self, limit: int = 50) -> list[tuple[int, str]]:

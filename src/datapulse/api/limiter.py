@@ -17,7 +17,9 @@ def _make_limiter() -> Limiter:
     except Exception as exc:
         import logging
 
-        logging.getLogger(__name__).warning("limiter_config_error: %s — falling back to memory", exc)
+        logging.getLogger(__name__).warning(
+            "limiter_config_error: %s — falling back to memory", exc
+        )
         redis_url = ""
 
     storage_uri = redis_url if redis_url else "memory://"

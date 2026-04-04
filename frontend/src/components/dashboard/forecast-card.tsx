@@ -10,7 +10,7 @@ export function ForecastCard() {
   const { data, isLoading, error } = useForecastSummary();
 
   if (isLoading) return <LoadingCard className="h-48" />;
-  if (error) return <ErrorRetry message="Failed to load forecast" />;
+  if (error) return <ErrorRetry description="Failed to load forecast" />;
 
   if (!data) {
     return (
