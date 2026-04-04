@@ -37,20 +37,23 @@ class AnomalyRepository:
                      :lower, :upper, :z, :severity, :direction,
                      :suppressed, :reason)
             """)
-            self._session.execute(stmt, {
-                "tid": tenant_id,
-                "metric": alert.metric,
-                "period": alert.period,
-                "actual": float(alert.actual_value),
-                "expected": float(alert.expected_value),
-                "lower": float(alert.lower_bound),
-                "upper": float(alert.upper_bound),
-                "z": float(alert.z_score) if alert.z_score is not None else None,
-                "severity": alert.severity,
-                "direction": alert.direction,
-                "suppressed": alert.is_suppressed,
-                "reason": alert.suppression_reason,
-            })
+            self._session.execute(
+                stmt,
+                {
+                    "tid": tenant_id,
+                    "metric": alert.metric,
+                    "period": alert.period,
+                    "actual": float(alert.actual_value),
+                    "expected": float(alert.expected_value),
+                    "lower": float(alert.lower_bound),
+                    "upper": float(alert.upper_bound),
+                    "z": float(alert.z_score) if alert.z_score is not None else None,
+                    "severity": alert.severity,
+                    "direction": alert.direction,
+                    "suppressed": alert.is_suppressed,
+                    "reason": alert.suppression_reason,
+                },
+            )
             rows_written += 1
 
         self._session.flush()

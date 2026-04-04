@@ -21,9 +21,7 @@ from datapulse.embed.token import (
 # ---------------------------------------------------------------------------
 
 
-def _mock_settings(
-    api_key: str = "test-secret-key", embed_secret: str = ""
-) -> MagicMock:
+def _mock_settings(api_key: str = "test-secret-key", embed_secret: str = "") -> MagicMock:
     """Return a Settings-like object with the given secrets."""
     settings = MagicMock()
     settings.api_key = api_key
@@ -54,17 +52,23 @@ class TestGetSecret:
             assert _get_secret() == "my-secret"
 
     def test_raises_when_no_secret_configured(self):
-        with patch(
-            "datapulse.embed.token.get_settings",
-            return_value=_mock_settings(api_key="", embed_secret=""),
-        ), pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"):
+        with (
+            patch(
+                "datapulse.embed.token.get_settings",
+                return_value=_mock_settings(api_key="", embed_secret=""),
+            ),
+            pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"),
+        ):
             _get_secret()
 
     def test_raises_when_both_none(self):
-        with patch(
-            "datapulse.embed.token.get_settings",
-            return_value=_mock_settings(api_key=None, embed_secret=None),
-        ), pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"):
+        with (
+            patch(
+                "datapulse.embed.token.get_settings",
+                return_value=_mock_settings(api_key=None, embed_secret=None),
+            ),
+            pytest.raises(ValueError, match="EMBED_SECRET or API_KEY must be configured"),
+        ):
             _get_secret()
 
 

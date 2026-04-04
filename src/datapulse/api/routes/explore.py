@@ -37,6 +37,7 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)],
 )
 
+
 def _get_catalog() -> ExploreCatalog:
     """Return the thread-safe cached explore catalog."""
     settings = get_settings()

@@ -174,12 +174,8 @@ class DiagnosticsRepository:
             SELECT COALESCE(SUM(total_net_amount), 0)
             FROM {table} WHERE {p_where_prefixed}
         """)
-        c_total = Decimal(str(
-            self._session.execute(c_total_stmt, c_params_prefixed).scalar() or 0
-        ))
-        p_total = Decimal(str(
-            self._session.execute(p_total_stmt, p_params_prefixed).scalar() or 0
-        ))
+        c_total = Decimal(str(self._session.execute(c_total_stmt, c_params_prefixed).scalar() or 0))
+        p_total = Decimal(str(self._session.execute(p_total_stmt, p_params_prefixed).scalar() or 0))
 
         drivers = [
             RevenueDriver(

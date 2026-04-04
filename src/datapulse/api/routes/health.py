@@ -22,6 +22,7 @@ logger = structlog.get_logger()
 # Component checks
 # ---------------------------------------------------------------------------
 
+
 def _check_db() -> dict:
     """Ping PostgreSQL and return status + latency."""
     try:
@@ -68,6 +69,7 @@ def _check_celery() -> dict:
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/health")
 def health_check() -> JSONResponse:
     """Full health check — database, Redis, Celery.
@@ -83,9 +85,7 @@ def health_check() -> JSONResponse:
 
     # Determine overall status
     db_ok = checks["database"]["status"] == "ok"
-    all_ok = all(
-        c["status"] in ("ok", "disabled") for c in checks.values()
-    )
+    all_ok = all(c["status"] in ("ok", "disabled") for c in checks.values())
 
     if not db_ok:
         overall = "unhealthy"

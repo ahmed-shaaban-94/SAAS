@@ -30,6 +30,7 @@ def _validate_database_url(url: str) -> None:
             environment=env,
         )
 
+
 _engine: Engine | None = None
 _session_factory: sessionmaker[Session] | None = None
 _init_lock = threading.Lock()

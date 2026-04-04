@@ -463,9 +463,7 @@ class AnalyticsService:
                 )
             )
 
-        return self._diagnostics_repo.get_revenue_drivers(
-            current_f, previous_f, limit=limit
-        )
+        return self._diagnostics_repo.get_revenue_drivers(current_f, previous_f, limit=limit)
 
     # ------------------------------------------------------------------
     # Enhancement 4: Customer Health Score

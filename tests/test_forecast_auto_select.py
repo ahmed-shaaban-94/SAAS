@@ -41,9 +41,7 @@ class TestSelectMethod:
 class TestSelectBestMethod:
     def test_returns_tuple(self):
         series = list(range(1, 31))  # 30 data points
-        method, acc = select_best_method(
-            [float(x) for x in series], 7, 7
-        )
+        method, acc = select_best_method([float(x) for x in series], 7, 7)
         assert method in ("sma", "seasonal_naive", "holt_winters")
         assert hasattr(acc, "mape")
 
@@ -60,6 +58,7 @@ class TestSelectBestMethod:
     def test_long_series_includes_all_candidates(self):
         # Generate a seasonal series with noise
         import random
+
         random.seed(42)
         series = [float(100 + 20 * (i % 7) + random.gauss(0, 5)) for i in range(50)]
         method, acc = select_best_method(series, 7, 7)

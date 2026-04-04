@@ -122,7 +122,10 @@ class ForecastingService:
             last_date = daily_series[-1][0]
             start = last_date + timedelta(days=1)
             method_name, daily_accuracy = select_best_method(
-                daily_values, 30, 7, monthly=False,
+                daily_values,
+                30,
+                7,
+                monthly=False,
             )
 
             daily_points = _run_method(
@@ -166,7 +169,10 @@ class ForecastingService:
             start = date(next_year, next_month, 1)
 
             method_name, monthly_accuracy = select_best_method(
-                monthly_values, 3, 12, monthly=True,
+                monthly_values,
+                3,
+                12,
+                monthly=True,
             )
             monthly_points = _run_method(
                 method_name,
@@ -208,7 +214,10 @@ class ForecastingService:
             start = date(next_year, next_month, 1)
 
             method_name, product_accuracy = select_best_method(
-                product_values, 3, 12, monthly=True,
+                product_values,
+                3,
+                12,
+                monthly=True,
             )
             product_points = _run_method(
                 method_name,

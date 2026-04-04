@@ -35,9 +35,7 @@ class BillingRepository:
 
     def set_stripe_customer_id(self, tenant_id: int, customer_id: str) -> None:
         self._session.execute(
-            text(
-                "UPDATE bronze.tenants SET stripe_customer_id = :cid WHERE tenant_id = :tid"
-            ),
+            text("UPDATE bronze.tenants SET stripe_customer_id = :cid WHERE tenant_id = :tid"),
             {"cid": customer_id, "tid": tenant_id},
         )
 
@@ -50,9 +48,7 @@ class BillingRepository:
 
     def get_tenant_by_stripe_customer(self, stripe_customer_id: str) -> int | None:
         row = self._session.execute(
-            text(
-                "SELECT tenant_id FROM bronze.tenants WHERE stripe_customer_id = :cid"
-            ),
+            text("SELECT tenant_id FROM bronze.tenants WHERE stripe_customer_id = :cid"),
             {"cid": stripe_customer_id},
         ).fetchone()
         return row[0] if row else None
@@ -72,10 +68,7 @@ class BillingRepository:
     ) -> None:
         now = datetime.now(UTC)
         existing = self._session.execute(
-            text(
-                "SELECT id FROM public.subscriptions "
-                "WHERE stripe_subscription_id = :sid"
-            ),
+            text("SELECT id FROM public.subscriptions WHERE stripe_subscription_id = :sid"),
             {"sid": stripe_subscription_id},
         ).fetchone()
 
@@ -180,8 +173,7 @@ class BillingRepository:
             updates.append("updated_at = :now")
             self._session.execute(
                 text(
-                    f"UPDATE public.usage_metrics SET {', '.join(updates)}"
-                    " WHERE tenant_id = :tid"
+                    f"UPDATE public.usage_metrics SET {', '.join(updates)} WHERE tenant_id = :tid"
                 ),
                 params,
             )

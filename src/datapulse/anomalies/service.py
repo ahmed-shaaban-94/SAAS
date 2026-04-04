@@ -77,9 +77,7 @@ class AnomalyService:
             WHERE full_date BETWEEN :start AND :end
             ORDER BY full_date
         """)
-        rows = self._session.execute(
-            stmt, {"start": lookback_start, "end": target_date}
-        ).fetchall()
+        rows = self._session.execute(stmt, {"start": lookback_start, "end": target_date}).fetchall()
 
         if len(rows) < self._config.min_data_points:
             log.warning("anomaly_insufficient_data", count=len(rows))

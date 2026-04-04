@@ -95,8 +95,14 @@ def get_analytics_service(
     diagnostics_repo = DiagnosticsRepository(session)
     customer_health_repo = CustomerHealthRepository(session)
     return AnalyticsService(
-        repo, detail_repo, breakdown_repo, comparison_repo,
-        hierarchy_repo, advanced_repo, diagnostics_repo, customer_health_repo,
+        repo,
+        detail_repo,
+        breakdown_repo,
+        comparison_repo,
+        hierarchy_repo,
+        advanced_repo,
+        diagnostics_repo,
+        customer_health_repo,
     )
 
 

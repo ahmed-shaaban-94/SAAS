@@ -442,14 +442,10 @@ class AnalyticsRepository:
 
         period_net = Decimal(str(row["period_net"]))
         mtd_net = (
-            Decimal(str(row["mtd_net_amount"]))
-            if row["mtd_net_amount"] is not None
-            else _ZERO
+            Decimal(str(row["mtd_net_amount"])) if row["mtd_net_amount"] is not None else _ZERO
         )
         ytd_net = (
-            Decimal(str(row["ytd_net_amount"]))
-            if row["ytd_net_amount"] is not None
-            else _ZERO
+            Decimal(str(row["ytd_net_amount"])) if row["ytd_net_amount"] is not None else _ZERO
         )
         total_transactions = int(row["total_transactions"] or 0)
         total_returns = int(row["total_returns"] or 0)

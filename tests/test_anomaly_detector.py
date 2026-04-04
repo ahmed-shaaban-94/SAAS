@@ -16,8 +16,23 @@ def detector():
 @pytest.fixture
 def normal_series():
     """A stable series with mean ~100, std ~5."""
-    return [100.0, 105.0, 98.0, 102.0, 97.0, 103.0, 99.0,
-            101.0, 104.0, 96.0, 100.0, 103.0, 98.0, 101.0, 99.0]
+    return [
+        100.0,
+        105.0,
+        98.0,
+        102.0,
+        97.0,
+        103.0,
+        99.0,
+        101.0,
+        104.0,
+        96.0,
+        100.0,
+        103.0,
+        98.0,
+        101.0,
+        99.0,
+    ]
 
 
 class TestZScoreDetection:
@@ -81,9 +96,26 @@ class TestCustomConfig:
         detector = AnomalyDetector(config)
         # z=2.5 should NOT trigger with stricter thresholds
         _result = detector.detect_zscore(
-            [100.0, 105.0, 98.0, 102.0, 97.0, 103.0, 99.0,
-             101.0, 104.0, 96.0, 100.0, 103.0, 98.0, 101.0, 99.0],
-            115.0, "test", date(2026, 1, 1)
+            [
+                100.0,
+                105.0,
+                98.0,
+                102.0,
+                97.0,
+                103.0,
+                99.0,
+                101.0,
+                104.0,
+                96.0,
+                100.0,
+                103.0,
+                98.0,
+                101.0,
+                99.0,
+            ],
+            115.0,
+            "test",
+            date(2026, 1, 1),
         )
         # With low_z=3.0, moderate deviation may not trigger
         # This tests the configurable threshold behavior

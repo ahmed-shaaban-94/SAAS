@@ -39,9 +39,7 @@ def _get_secret() -> str:
             detail="Using API_KEY as embed secret — set EMBED_SECRET for production",
         )
         return settings.api_key
-    raise ValueError(
-        "EMBED_SECRET or API_KEY must be configured for embed token signing"
-    )
+    raise ValueError("EMBED_SECRET or API_KEY must be configured for embed token signing")
 
 
 def create_embed_token(
