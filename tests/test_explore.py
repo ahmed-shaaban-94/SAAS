@@ -436,8 +436,8 @@ class TestBuildSql:
         assert "SELECT fct_sales.brand" in sql
         assert "FROM public_marts.fct_sales AS fct_sales" in sql
         assert "GROUP BY" not in sql
-        assert "LIMIT 500" in sql
-        assert params == {}
+        assert "LIMIT :_limit" in sql
+        assert params == {"_limit": 500}
 
     def test_metrics_only(self):
         metric = _make_metric()
@@ -634,5 +634,6 @@ class TestBuildSql:
             limit=100,
         )
 
-        sql, _ = build_sql(query, catalog)
-        assert "LIMIT 100" in sql
+        sql, params = build_sql(query, catalog)
+        assert "LIMIT :_limit" in sql
+        assert params["_limit"] == 100
