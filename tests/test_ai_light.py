@@ -154,9 +154,9 @@ def _mock_kpi(today=1000, mtd=10000, ytd=100000, mom=5.0, yoy=10.0, txns=50, cus
     from datapulse.analytics.models import KPISummary
 
     return KPISummary(
-        today_net=Decimal(str(today)),
-        mtd_net=Decimal(str(mtd)),
-        ytd_net=Decimal(str(ytd)),
+        today_gross=Decimal(str(today)),
+        mtd_gross=Decimal(str(mtd)),
+        ytd_gross=Decimal(str(ytd)),
         mom_growth_pct=Decimal(str(mom)),
         yoy_growth_pct=Decimal(str(yoy)),
         daily_transactions=txns,

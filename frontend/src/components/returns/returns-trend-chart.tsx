@@ -16,7 +16,7 @@ export function ReturnsTrendChart() {
   const theme = useChartTheme();
 
   if (isLoading) return <LoadingCard className="h-72" />;
-  if (!data || data.points.length === 0) return <EmptyState title="No returns trend data" />;
+  if (!data?.points?.length) return <EmptyState title="No returns trend data" />;
 
   const chartData = data.points.map((p) => ({
     period: p.period,

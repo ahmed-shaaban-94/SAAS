@@ -16,7 +16,7 @@ export function ProductHierarchyView() {
   const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 
   if (isLoading) return <LoadingCard lines={10} className="h-96" />;
-  if (!data || data.categories.length === 0)
+  if (!data?.categories?.length)
     return <EmptyState title="No product hierarchy data" />;
 
   const toggleCat = (cat: string) => {

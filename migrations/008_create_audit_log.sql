@@ -3,12 +3,9 @@
 
 BEGIN;
 
-INSERT INTO public.schema_migrations (filename)
-VALUES ('008_create_audit_log.sql')
-ON CONFLICT (filename) DO NOTHING;
-
 CREATE TABLE IF NOT EXISTS public.audit_log (
     id BIGSERIAL PRIMARY KEY,
+    tenant_id INT NOT NULL DEFAULT 1 REFERENCES bronze.tenants(tenant_id),
     action TEXT NOT NULL,
     endpoint TEXT NOT NULL,
     method TEXT NOT NULL,

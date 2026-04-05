@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_customer_year_month ON {{ this }} (year, month)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_customer_customer_key ON {{ this }} (customer_key)"
         ]
@@ -28,14 +28,13 @@ WITH customer_monthly AS (
         SUM(f.quantity)::NUMERIC(18,4)                    AS total_quantity,
         ROUND(SUM(f.sales), 2)                            AS total_sales,
         ROUND(SUM(f.discount), 2)                         AS total_discount,
-        ROUND(SUM(f.net_amount), 2)                       AS total_net_amount,
         COUNT(*)::INT                                     AS transaction_count,
         COUNT(*) FILTER (WHERE f.is_return)::INT          AS return_count,
         COUNT(DISTINCT f.product_key)::INT                AS unique_products,
         COUNT(*) FILTER (WHERE f.is_walk_in)::INT         AS walk_in_count,
         COUNT(*) FILTER (WHERE f.has_insurance)::INT      AS insurance_count,
         ROUND(
-            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                 AS avg_basket_size
     FROM {{ ref('fct_sales') }} f
@@ -54,7 +53,6 @@ SELECT
     cm.total_quantity,
     cm.total_sales,
     cm.total_discount,
-    cm.total_net_amount,
     cm.transaction_count,
     cm.return_count,
     cm.unique_products,

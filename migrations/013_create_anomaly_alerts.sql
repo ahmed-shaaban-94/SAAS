@@ -48,7 +48,4 @@ CREATE INDEX IF NOT EXISTS idx_anomaly_alerts_tenant_period
 CREATE INDEX IF NOT EXISTS idx_anomaly_alerts_severity
     ON public.anomaly_alerts(tenant_id, severity, acknowledged);
 
--- Track migration
-INSERT INTO public.schema_migrations (version, description)
-VALUES ('013', 'Create anomaly_alerts table')
-ON CONFLICT (version) DO NOTHING;
+-- Note: migration tracking is handled by prestart.sh — no self-insert needed.

@@ -27,7 +27,7 @@ class TestGetDbSession:
         session = next(gen)
 
         assert session is mock_session
-        mock_session.execute.assert_called_once()  # SET LOCAL
+        assert mock_session.execute.call_count == 2  # SET LOCAL tenant_id + statement_timeout
 
         # Exhaust generator (finally block)
         with contextlib.suppress(StopIteration):
@@ -64,9 +64,12 @@ class TestGetTenantSession:
         session = next(gen)
 
         assert session is mock_session
-        # Verify SET LOCAL was called with tenant_id=42
-        call_args = mock_session.execute.call_args
-        assert "42" in str(call_args)
+        # Verify SET LOCAL was called with tenant_id and statement_timeout
+        assert mock_session.execute.call_count == 2
+        tenant_call = mock_session.execute.call_args_list[0]
+        assert tenant_call.args[1] == {"tid": "42"}
+        timeout_call = mock_session.execute.call_args_list[1]
+        assert "statement_timeout" in timeout_call.args[0].text
 
         with contextlib.suppress(StopIteration):
             next(gen)
@@ -83,8 +86,8 @@ class TestGetTenantSession:
         gen = get_tenant_session(user=user)
         next(gen)
 
-        call_args = mock_session.execute.call_args
-        assert "1" in str(call_args)
+        tenant_call = mock_session.execute.call_args_list[0]
+        assert tenant_call.args[1] == {"tid": "1"}
 
         with contextlib.suppress(StopIteration):
             next(gen)

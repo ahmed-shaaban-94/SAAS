@@ -20,9 +20,9 @@ from datapulse.analytics.models import (
 
 def _kpi():
     return KPISummary(
-        today_net=Decimal("500"),
-        mtd_net=Decimal("3000"),
-        ytd_net=Decimal("30000"),
+        today_gross=Decimal("500"),
+        mtd_gross=Decimal("3000"),
+        ytd_gross=Decimal("30000"),
         daily_transactions=20,
         daily_customers=10,
     )
@@ -101,7 +101,6 @@ class TestDetailEndpoints:
             drug_category="Pain",
             total_quantity=Decimal("500"),
             total_sales=Decimal("10000"),
-            total_net_amount=Decimal("9000"),
             return_rate=Decimal("0.05"),
             unique_customers=42,
         )
@@ -121,7 +120,7 @@ class TestDetailEndpoints:
             customer_id="C001",
             customer_name="Customer A",
             total_quantity=Decimal("300"),
-            total_net_amount=Decimal("15000"),
+            total_sales=Decimal("15000"),
             transaction_count=120,
             unique_products=25,
             return_count=3,
@@ -142,7 +141,7 @@ class TestDetailEndpoints:
             staff_id="S001",
             staff_name="Staff A",
             staff_position="Pharmacist",
-            total_net_amount=Decimal("50000"),
+            total_sales=Decimal("50000"),
             transaction_count=500,
             avg_transaction_value=Decimal("100"),
             unique_customers=200,
@@ -163,7 +162,7 @@ class TestDetailEndpoints:
             site_code="SITE01",
             site_name="Main",
             area_manager="Mgr A",
-            total_net_amount=Decimal("100000"),
+            total_sales=Decimal("100000"),
             transaction_count=1000,
             unique_customers=500,
             unique_staff=50,

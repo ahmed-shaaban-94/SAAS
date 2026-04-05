@@ -21,14 +21,14 @@ import inspect
 import json
 from typing import Any, TypeVar
 
-from datapulse.cache import cache_get, cache_set
+from datapulse.cache import cache_get, cache_set, current_tenant_id
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 
 F = TypeVar("F")
 
-_DEFAULT_PREFIX = "datapulse"
+_DEFAULT_PREFIX = "datapulse:analytics"
 
 
 def _build_cache_key(prefix: str, method_name: str, args: tuple, kwargs: dict) -> str:
@@ -54,11 +54,15 @@ def _build_cache_key(prefix: str, method_name: str, args: tuple, kwargs: dict) -
         else:
             parts[k] = v
 
+    # Include tenant_id in the cache key to prevent cross-tenant leakage.
+    tid = current_tenant_id.get("")
+    tenant_segment = f"t{tid}" if tid else "t0"
+
     if parts:
         raw = json.dumps(parts, sort_keys=True, default=str)
         h = hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()[:12]
-        return f"{prefix}:{method_name}:{h}"
-    return f"{prefix}:{method_name}"
+        return f"{prefix}:{tenant_segment}:{method_name}:{h}"
+    return f"{prefix}:{tenant_segment}:{method_name}"
 
 
 def cached(ttl: int = 300, prefix: str = _DEFAULT_PREFIX):

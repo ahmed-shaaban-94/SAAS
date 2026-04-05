@@ -249,6 +249,9 @@ def _check_freshness(
     )
 
 
+_CUSTOM_SQL_TIMEOUT_MS = 30_000  # 30 seconds max for custom quality checks
+
+
 def _check_custom_sql(
     session: Session,
     stage: str,
@@ -258,9 +261,11 @@ def _check_custom_sql(
 
     The query must return a single scalar value. Passes if result equals expected.
     Only SELECT queries are allowed (no DDL/DML).
+    A statement timeout prevents slow queries from blocking the pipeline.
     """
     query = config.get("query", "")
     expected = config.get("expected", "0")
+    timeout_ms = config.get("timeout_ms", _CUSTOM_SQL_TIMEOUT_MS)
 
     # Safety: only allow SELECT statements
     normalized = query.strip().upper()
@@ -274,6 +279,8 @@ def _check_custom_sql(
         )
 
     try:
+        # Set a per-statement timeout to prevent slow queries from hanging
+        session.execute(text(f"SET LOCAL statement_timeout = {int(timeout_ms)}"))
         result = session.execute(text(query)).scalar_one()
         actual = str(result)
         passed = actual == str(expected)
@@ -286,12 +293,15 @@ def _check_custom_sql(
             details={"query": query[:200], "expected": str(expected), "actual": actual},
         )
     except Exception as exc:
+        error_msg = str(exc)[:100]
+        if "canceling statement due to statement timeout" in str(exc):
+            error_msg = f"Custom SQL timed out after {timeout_ms}ms"
         return QualityCheckResult(
             check_name="custom_sql",
             stage=stage,
             severity="warn",
             passed=False,
-            message=f"Custom SQL failed: {str(exc)[:100]}",
+            message=f"Custom SQL failed: {error_msg}",
             details={"query": query[:200], "error": str(exc)[:200]},
         )
 

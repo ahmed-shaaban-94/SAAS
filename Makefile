@@ -1,4 +1,4 @@
-.PHONY: up down build test lint fmt dbt logs clean dev status pipeline demo help
+.PHONY: up down build test lint fmt dbt logs clean dev status pipeline demo help setup backup restore
 
 ## Docker
 up:
@@ -13,18 +13,32 @@ build:
 logs:
 	docker compose logs -f
 
-## Development (Phase 1.3)
+## Development
 dev:
 	docker compose up -d --build
 	@echo ""
 	@echo "DataPulse is running:"
-	@echo "  App:      http://localhost:80"
-	@echo "  API:      http://localhost:80/api/v1/"
-	@echo "  Health:   http://localhost:80/health"
-	@echo "  pgAdmin:  http://localhost:5050"
-	@echo "  n8n:      http://localhost:5678"
-	@echo "  Keycloak: http://localhost:8080"
+	@echo "  Dashboard: http://localhost:3000"
+	@echo "  API:       http://localhost:8000/docs"
+	@echo "  Health:    http://localhost:8000/health"
+	@echo "  pgAdmin:   http://localhost:5050"
+	@echo "  n8n:       http://localhost:5678"
 	@echo ""
+
+setup:
+	@echo "=== DataPulse Setup ==="
+	@test -f .env || (cp .env.example .env && echo "[setup] Created .env from .env.example — edit with your passwords")
+	docker compose up -d --build
+	@echo "Waiting for services..."
+	@sleep 10
+	@echo ""
+	@echo "Setup complete. Services:"
+	@docker compose ps --format "table {{.Name}}\t{{.Status}}"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  make load    # Import raw data"
+	@echo "  make dbt     # Build silver/gold layers"
+	@echo "  make demo    # Or do both at once"
 
 status:
 	@echo "=== DataPulse Service Status ==="
@@ -32,7 +46,7 @@ status:
 
 pipeline:
 	@echo "Triggering full pipeline run..."
-	@curl -s -X POST http://localhost:80/api/v1/pipeline/trigger \
+	@curl -s -X POST http://localhost:8000/api/v1/pipeline/trigger \
 		-H "Content-Type: application/json" \
 		-H "X-Pipeline-Token: $${PIPELINE_WEBHOOK_SECRET}" \
 		-d '{}' | python -m json.tool 2>/dev/null || echo "(requires running services + valid token)"
@@ -55,6 +69,7 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Docker:"
+	@echo "  setup     Zero-to-working: copy .env + build + start"
 	@echo "  up        Build and start all services"
 	@echo "  down      Stop all services"
 	@echo "  build     Build Docker images"
@@ -76,6 +91,10 @@ help:
 	@echo "  dbt       Run dbt build (staging + marts)"
 	@echo "  dbt-test  Run dbt tests"
 	@echo "  pipeline  Trigger full pipeline via API"
+	@echo ""
+	@echo "Backup:"
+	@echo "  backup    Create compressed PostgreSQL backup"
+	@echo "  restore   Restore from backup (BACKUP_FILE=path)"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean     Stop services, remove volumes and caches"
@@ -104,6 +123,13 @@ dbt-test:
 ## Data
 load:
 	docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales
+
+## Backup / Restore
+backup:
+	@bash scripts/backup.sh
+
+restore:
+	@bash scripts/restore.sh $(BACKUP_FILE)
 
 ## Cleanup
 clean:

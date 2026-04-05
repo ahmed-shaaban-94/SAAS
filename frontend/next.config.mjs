@@ -1,3 +1,8 @@
+import { withSentryConfig } from "@sentry/nextjs";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
@@ -55,4 +60,16 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+const sentryConfig = withSentryConfig(withNextIntl(nextConfig), {
+  // Suppress source map upload logs in CI
+  silent: true,
+  // Hide source maps from client bundles
+  hideSourceMaps: true,
+  // Disable telemetry
+  telemetry: false,
+});
+
+// Only wrap with Sentry if DSN is configured
+export default process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? sentryConfig
+  : withNextIntl(nextConfig);

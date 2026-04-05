@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -125,16 +125,10 @@ class TestStreamRunProgress:
         assert "event: error" in resp.text
 
 
-class TestTriggerWebhookFailure:
-    @patch("datapulse.api.routes.pipeline.httpx")
-    def test_trigger_n8n_failure_still_returns(self, mock_httpx):
-        """When n8n webhook call fails, trigger still returns 202."""
-        import httpx
-
-        mock_httpx.post.side_effect = httpx.TimeoutException("timeout")
-        mock_httpx.HTTPError = httpx.HTTPError
-        mock_httpx.TimeoutException = httpx.TimeoutException
-
+class TestTriggerPipelineOrchestrator:
+    @patch("datapulse.scheduler.run_pipeline", new_callable=AsyncMock)
+    def test_trigger_returns_202(self, mock_run):
+        """Trigger returns 202 and starts pipeline in background."""
         client, mock_repo, _, _ = _make_pipeline_client()
         run = _make_response(status="pending")
         mock_repo.create_run.return_value = run

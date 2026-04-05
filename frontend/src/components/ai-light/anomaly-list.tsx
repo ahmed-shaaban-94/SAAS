@@ -29,7 +29,7 @@ export function AnomalyList() {
     );
   }
 
-  if (!data || data.anomalies.length === 0) {
+  if (!data || !data.anomalies || data.anomalies.length === 0) {
     return (
       <EmptyState
         title="No anomalies detected"

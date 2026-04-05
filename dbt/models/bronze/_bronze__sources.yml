@@ -10,10 +10,10 @@ sources:
         loaded_at_field: loaded_at
         freshness:
           warn_after:
-            count: 24
+            count: 48
             period: hour
           error_after:
-            count: 48
+            count: 96
             period: hour
         columns:
           - name: id

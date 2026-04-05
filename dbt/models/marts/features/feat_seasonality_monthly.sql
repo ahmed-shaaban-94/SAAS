@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))"
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)"
         ]
     )
 }}
@@ -22,9 +22,9 @@ WITH monthly_totals AS (
         tenant_id,
         month,
         MIN(month_name)                         AS month_name,
-        ROUND(AVG(total_net_amount), 2)         AS avg_monthly_revenue,
+        ROUND(AVG(total_sales), 2)              AS avg_monthly_revenue,
         ROUND(AVG(transaction_count), 2)        AS avg_monthly_txn,
-        ROUND(STDDEV_POP(total_net_amount), 2)  AS stddev_monthly_revenue,
+        ROUND(STDDEV_POP(total_sales), 2)       AS stddev_monthly_revenue,
         COUNT(DISTINCT year)::INT               AS years_of_data
     FROM {{ ref('agg_sales_monthly') }}
     GROUP BY tenant_id, month
@@ -33,7 +33,7 @@ WITH monthly_totals AS (
 overall AS (
     SELECT
         tenant_id,
-        ROUND(AVG(total_net_amount), 2) AS grand_avg_revenue,
+        ROUND(AVG(total_sales), 2) AS grand_avg_revenue,
         ROUND(AVG(transaction_count), 2) AS grand_avg_txn
     FROM {{ ref('agg_sales_monthly') }}
     GROUP BY tenant_id

@@ -60,6 +60,7 @@ export function ActiveFilterChips() {
             type="button"
             onClick={chip.onRemove}
             className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-accent/20"
+            aria-label={`Remove ${chip.label} filter`}
           >
             <X className="h-3 w-3" />
           </button>

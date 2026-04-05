@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_feat_revenue_site_rolling_lookup ON {{ this }} (tenant_id, date_key, site_key)"
         ]
     )
@@ -24,7 +24,7 @@ WITH site_daily AS (
         a.date_key,
         a.site_key,
         d.full_date,
-        ROUND(SUM(a.total_net_amount), 2)   AS daily_net_amount,
+        ROUND(SUM(a.total_sales), 2)        AS daily_gross_amount,
         SUM(a.transaction_count)::INT        AS daily_transactions
     FROM {{ ref('agg_sales_daily') }} a
     INNER JOIN {{ ref('dim_date') }} d ON a.date_key = d.date_key
@@ -34,9 +34,9 @@ WITH site_daily AS (
 with_rolling AS (
     SELECT
         sd.*,
-        ROUND(AVG(sd.daily_net_amount) OVER w7, 2)  AS site_ma_7d,
-        ROUND(AVG(sd.daily_net_amount) OVER w30, 2) AS site_ma_30d,
-        ROUND(SUM(sd.daily_net_amount) OVER w30, 2) AS site_sum_30d
+        ROUND(AVG(sd.daily_gross_amount) OVER w7, 2)  AS site_ma_7d,
+        ROUND(AVG(sd.daily_gross_amount) OVER w30, 2) AS site_ma_30d,
+        ROUND(SUM(sd.daily_gross_amount) OVER w30, 2) AS site_sum_30d
     FROM site_daily sd
     WINDOW
         w7  AS (PARTITION BY sd.tenant_id, sd.site_key ORDER BY sd.full_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),
@@ -58,7 +58,7 @@ SELECT
     r.date_key,
     r.site_key,
     r.full_date,
-    r.daily_net_amount,
+    r.daily_gross_amount,
     r.daily_transactions,
     r.site_ma_7d,
     r.site_ma_30d,

@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_monthly_year_month ON {{ this }} (year, month)"
         ]
     )
@@ -28,7 +28,6 @@ WITH monthly_base AS (
         SUM(f.quantity)::NUMERIC(18,4)                    AS total_quantity,
         ROUND(SUM(f.sales), 2)                            AS total_sales,
         ROUND(SUM(f.discount), 2)                         AS total_discount,
-        ROUND(SUM(f.net_amount), 2)                       AS total_net_amount,
         COUNT(*)::INT                                     AS transaction_count,
         COUNT(*) FILTER (WHERE f.is_return)::INT          AS return_count,
         COUNT(DISTINCT f.customer_key)::INT               AS unique_customers,
@@ -37,7 +36,7 @@ WITH monthly_base AS (
         COUNT(*) FILTER (WHERE f.is_walk_in)::INT         AS walk_in_count,
         COUNT(*) FILTER (WHERE f.has_insurance)::INT      AS insurance_count,
         ROUND(
-            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                 AS avg_basket_size
     FROM {{ ref('fct_sales') }} f
@@ -52,12 +51,12 @@ with_growth AS (
             m.return_count::NUMERIC / NULLIF(m.transaction_count, 0),
             4
         ) AS return_rate,
-        LAG(m.total_net_amount, 1) OVER (
+        LAG(m.total_sales, 1) OVER (
             PARTITION BY m.tenant_id, m.site_key ORDER BY m.year, m.month
-        ) AS prev_month_net,
-        LAG(m.total_net_amount, 12) OVER (
+        ) AS prev_month_sales,
+        LAG(m.total_sales, 12) OVER (
             PARTITION BY m.tenant_id, m.site_key ORDER BY m.year, m.month
-        ) AS prev_year_net
+        ) AS prev_year_sales
     FROM monthly_base m
 )
 
@@ -71,7 +70,6 @@ SELECT
     g.total_quantity,
     g.total_sales,
     g.total_discount,
-    g.total_net_amount,
     g.transaction_count,
     g.return_count,
     g.unique_customers,
@@ -82,11 +80,11 @@ SELECT
     g.avg_basket_size,
     g.return_rate,
     ROUND(
-        (g.total_net_amount - g.prev_month_net) / NULLIF(g.prev_month_net, 0),
+        (g.total_sales - g.prev_month_sales) / NULLIF(g.prev_month_sales, 0),
         4
     ) AS mom_growth_pct,
     ROUND(
-        (g.total_net_amount - g.prev_year_net) / NULLIF(g.prev_year_net, 0),
+        (g.total_sales - g.prev_year_sales) / NULLIF(g.prev_year_sales, 0),
         4
     ) AS yoy_growth_pct
 FROM with_growth g

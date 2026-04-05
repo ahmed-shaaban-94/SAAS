@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_feat_customer_segments_customer_key ON {{ this }} (tenant_id, customer_key)",
             "CREATE INDEX IF NOT EXISTS idx_feat_customer_segments_segment ON {{ this }} (tenant_id, rfm_segment)"
         ]
@@ -30,13 +30,13 @@ WITH customer_rfm_raw AS (
         -- Frequency: distinct invoices
         COUNT(DISTINCT f.invoice_id)::INT                  AS frequency,
         -- Monetary: total net spend
-        ROUND(SUM(f.net_amount), 2)                        AS monetary,
+        ROUND(SUM(f.sales), 2)                              AS monetary,
         -- Additional context
         MIN(d.full_date)                                   AS first_purchase_date,
         MAX(d.full_date)                                   AS last_purchase_date,
         (MAX(d.full_date) - MIN(d.full_date))::INT         AS lifetime_days,
         ROUND(
-            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                  AS avg_basket_size,
         COUNT(DISTINCT f.product_key)::INT                 AS unique_products,

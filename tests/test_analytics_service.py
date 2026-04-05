@@ -45,9 +45,9 @@ def test_get_dashboard_summary_default_date(analytics_service, mock_repo):
     max_date = date(2025, 3, 31)
     mock_repo.get_data_date_range.return_value = (date(2023, 1, 1), max_date)
     expected = KPISummary(
-        today_net=Decimal("500"),
-        mtd_net=Decimal("3000"),
-        ytd_net=Decimal("30000"),
+        today_gross=Decimal("500"),
+        mtd_gross=Decimal("3000"),
+        ytd_gross=Decimal("30000"),
         daily_transactions=20,
         daily_customers=10,
     )
@@ -62,9 +62,9 @@ def test_get_dashboard_summary_default_date(analytics_service, mock_repo):
 def test_get_dashboard_summary_custom_date(analytics_service, mock_repo):
     """Calls repo.get_kpi_summary with the specific date provided."""
     expected = KPISummary(
-        today_net=Decimal("1000"),
-        mtd_net=Decimal("5000"),
-        ytd_net=Decimal("50000"),
+        today_gross=Decimal("1000"),
+        mtd_gross=Decimal("5000"),
+        ytd_gross=Decimal("50000"),
         daily_transactions=42,
         daily_customers=15,
     )

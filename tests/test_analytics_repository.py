@@ -138,9 +138,9 @@ def test_get_kpi_summary_no_data(analytics_repo, mock_session):
     mock_session.execute.return_value.mappings.return_value.fetchone.return_value = None
     mock_session.execute.return_value.fetchall.return_value = []
     result = analytics_repo.get_kpi_summary(date(2025, 1, 15))
-    assert result.today_net == Decimal("0")
-    assert result.mtd_net == Decimal("0")
-    assert result.ytd_net == Decimal("0")
+    assert result.today_gross == Decimal("0")
+    assert result.mtd_gross == Decimal("0")
+    assert result.ytd_gross == Decimal("0")
     assert result.daily_transactions == 0
     assert result.daily_customers == 0
     assert result.avg_basket_size == Decimal("0")
@@ -153,9 +153,10 @@ def test_get_kpi_summary_no_data(analytics_repo, mock_session):
 def test_get_kpi_summary_with_data(analytics_repo, mock_session):
     # Unified CTE returns a single row as a named mapping
     unified_row = {
-        "daily_net_amount": 1000,
-        "mtd_net_amount": 25000,
-        "ytd_net_amount": 300000,
+        "daily_gross_amount": 1000,
+        "daily_discount": 0,
+        "mtd_gross_amount": 25000,
+        "ytd_gross_amount": 300000,
         "daily_transactions": 42,
         "daily_unique_customers": 15,
         "daily_returns": 3,
@@ -175,9 +176,9 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
     mock_session.execute.return_value.fetchall.return_value = sparkline_rows
 
     result = analytics_repo.get_kpi_summary(date(2025, 6, 15))
-    assert result.today_net == Decimal("1000")
-    assert result.mtd_net == Decimal("25000")
-    assert result.ytd_net == Decimal("300000")
+    assert result.today_gross == Decimal("1000")
+    assert result.mtd_gross == Decimal("25000")
+    assert result.ytd_gross == Decimal("300000")
     assert result.daily_transactions == 42
     assert result.daily_customers == 15
     assert result.daily_returns == 3
@@ -193,9 +194,10 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
 def test_get_kpi_summary_nulls_in_optional_fields(analytics_repo, mock_session):
     """CTE returns data but optional fields (basket, prev_month, prev_year) are NULL."""
     row = {
-        "daily_net_amount": 500,
-        "mtd_net_amount": 1500,
-        "ytd_net_amount": 10000,
+        "daily_gross_amount": 500,
+        "daily_discount": None,
+        "mtd_gross_amount": 1500,
+        "ytd_gross_amount": 10000,
         "daily_transactions": 10,
         "daily_unique_customers": 5,
         "daily_returns": None,
@@ -209,7 +211,7 @@ def test_get_kpi_summary_nulls_in_optional_fields(analytics_repo, mock_session):
     mock_session.execute.return_value.fetchall.return_value = []
 
     result = analytics_repo.get_kpi_summary(date(2025, 1, 1))
-    assert result.today_net == Decimal("500")
+    assert result.today_gross == Decimal("500")
     assert result.daily_returns == 0
     assert result.mtd_transactions == 0
     assert result.ytd_transactions == 0

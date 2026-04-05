@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_product_year_month ON {{ this }} (year, month)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_product_product_key ON {{ this }} (product_key)"
         ]
@@ -29,13 +29,12 @@ WITH product_monthly AS (
         COALESCE(SUM(f.quantity) FILTER (WHERE f.is_return), 0)::NUMERIC(18,4)  AS return_quantity,
         ROUND(SUM(f.sales), 2)                                                  AS total_sales,
         ROUND(SUM(f.discount), 2)                                               AS total_discount,
-        ROUND(SUM(f.net_amount), 2)                                             AS total_net_amount,
         COUNT(*)::INT                                                           AS transaction_count,
         COUNT(*) FILTER (WHERE f.is_return)::INT                                AS return_count,
         COUNT(DISTINCT f.customer_key)::INT                                     AS unique_customers,
         COUNT(DISTINCT f.site_key)::INT                                         AS unique_sites,
         ROUND(
-            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                                       AS avg_basket_size
     FROM {{ ref('fct_sales') }} f
@@ -68,7 +67,6 @@ SELECT
     r.return_quantity,
     r.total_sales,
     r.total_discount,
-    r.total_net_amount,
     r.transaction_count,
     r.return_count,
     r.return_rate,

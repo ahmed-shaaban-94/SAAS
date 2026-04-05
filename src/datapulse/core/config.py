@@ -64,8 +64,7 @@ class Settings(BaseSettings):
     # API base URL (used by watcher and internal services)
     api_base_url: str = "http://localhost:8000"
 
-    # n8n
-    n8n_webhook_url: str = "http://n8n:5678/webhook/"
+    # n8n removed — orchestration via datapulse.scheduler
     pipeline_webhook_secret: str = ""
 
     # API security
@@ -87,10 +86,7 @@ class Settings(BaseSettings):
     redis_default_ttl: int = 300  # 5 minutes
     redis_dashboard_ttl: int = 600  # 10 minutes
 
-    # Celery (async query execution)
-    celery_broker_db: int = 1  # Redis DB index for Celery broker
-    celery_result_db: int = 2  # Redis DB index for Celery results
-    celery_worker_concurrency: int = 4
+    # Async query execution (Redis db 2 for job state)
     query_row_limit: int = 10_000  # Max rows for async queries
 
     # Embed (iframe white-label)

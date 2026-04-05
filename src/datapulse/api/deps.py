@@ -25,6 +25,7 @@ from datapulse.billing.plans import PlanLimits, get_plan_limits
 from datapulse.billing.repository import BillingRepository
 from datapulse.billing.service import BillingService
 from datapulse.billing.stripe_client import StripeClient
+from datapulse.cache import current_tenant_id
 from datapulse.config import get_settings
 from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
     get_engine,
@@ -42,12 +43,35 @@ logger = structlog.get_logger()
 
 
 def get_db_session() -> Generator[Session, None, None]:
-    """Create a DB session with tenant_id='1' (legacy, for non-authenticated use)."""
+    """Create a DB session with tenant_id='1' (legacy, for non-authenticated use).
+
+    .. deprecated::
+        Use ``get_tenant_session`` instead.  This function bypasses authentication
+        and hardcodes tenant_id='1', which is unsafe for multi-tenant deployments.
+        It is kept only for backward compatibility in test overrides.
+    """
+    import os
+    import warnings
+
+    env = os.getenv("SENTRY_ENVIRONMENT", "development")
+    if env not in ("development", "test"):
+        logger.error(
+            "get_db_session_called_in_production",
+            environment=env,
+            detail="get_db_session bypasses auth and hardcodes tenant_id='1' "
+            "— use get_tenant_session instead",
+        )
+        raise RuntimeError("get_db_session is not allowed in production — use get_tenant_session")
+    warnings.warn(
+        "get_db_session() is deprecated — use get_tenant_session() for auth-scoped access",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     session = get_session_factory()()
     try:
-        # Execute inside the auto-begun transaction so SET LOCAL persists
-        # for the entire request lifetime
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": "1"})
+        session.execute(text("SET LOCAL statement_timeout = '30s'"))
         yield session
         session.commit()
     except Exception:
@@ -66,9 +90,11 @@ def get_tenant_session(
     so that PostgreSQL RLS policies filter data automatically.
     """
     tenant_id = user.get("tenant_id", "1")
+    current_tenant_id.set(str(tenant_id))
     session = get_session_factory()()
     try:
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
+        session.execute(text("SET LOCAL statement_timeout = '30s'"))
         yield session
         session.commit()
     except Exception:

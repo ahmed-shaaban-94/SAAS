@@ -40,8 +40,19 @@ def _validate_columns(columns: list[str]) -> None:
 
 
 def discover_files(source_dir: Path) -> list[Path]:
-    """Find all .xlsx files in the source directory, sorted by name."""
-    files = sorted(source_dir.rglob("*.xlsx"))
+    """Find all .xlsx files in the source directory, sorted by name.
+
+    Validates that every discovered file resolves within the source directory
+    to prevent path traversal via symlinks.
+    """
+    resolved_root = source_dir.resolve()
+    files: list[Path] = []
+    for f in sorted(source_dir.rglob("*.xlsx")):
+        resolved = f.resolve()
+        if not str(resolved).startswith(str(resolved_root)):
+            log.warning("path_traversal_blocked", file=str(f), resolved=str(resolved))
+            continue
+        files.append(f)
     if not files:
         raise FileNotFoundError(f"No .xlsx files found in {source_dir} (searched recursively)")
     log.info("discovered_files", count=len(files), dir=str(source_dir))
@@ -56,33 +67,60 @@ def extract_quarter(filename: str) -> str:
     return Path(filename).stem
 
 
+def read_single_file(file_path: Path) -> pl.DataFrame:
+    """Read a single Excel file and add lineage tracking columns.
+
+    Raises on read failure so callers can decide per-file error policy.
+    """
+    log.info("reading_file", file=file_path.name)
+    t0 = time.perf_counter()
+
+    df = pl.read_excel(file_path, engine="calamine")
+
+    # Add source tracking columns
+    df = df.with_columns(
+        pl.lit(file_path.name).alias("source_file"),
+        pl.lit(extract_quarter(file_path.name)).alias("source_quarter"),
+    )
+
+    elapsed = time.perf_counter() - t0
+    log.info(
+        "file_read",
+        file=file_path.name,
+        rows=df.shape[0],
+        seconds=round(elapsed, 2),
+    )
+    return df
+
+
 def read_and_concat(files: list[Path]) -> pl.DataFrame:
     """Read all Excel files and concatenate into a single DataFrame.
 
     Adds source_file and source_quarter columns for lineage tracking.
+    Skips malformed files with a warning (fails if ALL files fail).
     """
     frames: list[pl.DataFrame] = []
+    errors: list[tuple[str, str]] = []
 
     for file_path in files:
-        log.info("reading_file", file=file_path.name)
-        t0 = time.perf_counter()
+        try:
+            df = read_single_file(file_path)
+            frames.append(df)
+        except Exception as exc:
+            log.error("file_read_failed", file=file_path.name, error=str(exc))
+            errors.append((file_path.name, str(exc)))
 
-        df = pl.read_excel(file_path, engine="calamine")
+    if not frames:
+        error_summary = "; ".join(f"{name}: {err}" for name, err in errors)
+        raise ValueError(f"All {len(errors)} file(s) failed to read: {error_summary}")
 
-        # Add source tracking columns
-        df = df.with_columns(
-            pl.lit(file_path.name).alias("source_file"),
-            pl.lit(extract_quarter(file_path.name)).alias("source_quarter"),
+    if errors:
+        log.warning(
+            "partial_read",
+            failed_count=len(errors),
+            success_count=len(frames),
+            failed_files=[name for name, _ in errors],
         )
-
-        elapsed = time.perf_counter() - t0
-        log.info(
-            "file_read",
-            file=file_path.name,
-            rows=df.shape[0],
-            seconds=round(elapsed, 2),
-        )
-        frames.append(df)
 
     combined = pl.concat(frames, how="diagonal_relaxed")
     log.info("concat_complete", total_rows=combined.shape[0], total_cols=combined.shape[1])
@@ -231,8 +269,14 @@ def run(
     parquet_path: Path | None = None,
     batch_size: int | None = None,
     skip_db: bool = False,
+    files_per_chunk: int = 4,
 ) -> pl.DataFrame:
     """Full bronze pipeline: Excel -> concat -> Parquet -> PostgreSQL.
+
+    Files are processed in chunks of ``files_per_chunk`` to limit peak memory
+    usage. Each chunk is read, renamed, and loaded to PostgreSQL before the
+    next chunk starts. The full DataFrame is still returned for downstream use,
+    but memory pressure during the load phase is bounded.
 
     Args:
         source_dir: Directory containing .xlsx files.
@@ -240,6 +284,8 @@ def run(
         parquet_path: Where to save the Parquet file (defaults to settings).
         batch_size: Rows per insert batch (defaults to settings).
         skip_db: If True, only create Parquet without loading to DB.
+        files_per_chunk: Number of Excel files to process together (default 4).
+            Lower values reduce peak memory; higher values reduce DB round-trips.
 
     Returns:
         The concatenated DataFrame.
@@ -250,23 +296,46 @@ def run(
 
     t0 = time.perf_counter()
 
-    # 1. Read & concat
+    # 1. Discover files
     files = discover_files(source_dir)
-    df = read_and_concat(files)
 
-    # 2. Rename columns
-    df = rename_columns(df)
-
-    # 3. Save Parquet
-    save_parquet(df, pq_path)
-
-    # 4. Load to PostgreSQL — single engine, disposed after both operations
+    engine = None
     if not skip_db:
         engine = _create_engine(db_url)
         try:
             run_migrations(engine)
-            load_to_postgres(df, engine, bs)
-        finally:
+        except Exception:
+            engine.dispose()
+            raise
+
+    # 2. Process in chunks to limit peak memory
+    all_frames: list[pl.DataFrame] = []
+    total_loaded = 0
+
+    try:
+        for chunk_start in range(0, len(files), files_per_chunk):
+            chunk_files = files[chunk_start : chunk_start + files_per_chunk]
+            log.info(
+                "processing_chunk",
+                chunk=chunk_start // files_per_chunk + 1,
+                files=[f.name for f in chunk_files],
+            )
+
+            chunk_df = read_and_concat(chunk_files)
+            chunk_df = rename_columns(chunk_df)
+            all_frames.append(chunk_df)
+
+            if engine is not None:
+                total_loaded += load_to_postgres(chunk_df, engine, bs)
+
+        # 3. Combine all chunks for Parquet and return value
+        df = pl.concat(all_frames, how="diagonal_relaxed") if len(all_frames) > 1 else all_frames[0]
+
+        # 4. Save Parquet (full dataset)
+        save_parquet(df, pq_path)
+
+    finally:
+        if engine is not None:
             engine.dispose()
 
     elapsed = time.perf_counter() - t0

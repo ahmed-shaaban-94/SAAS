@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -84,11 +84,9 @@ class TestSQLValidation:
 
 
 class TestQueryEndpoints:
-    @patch("datapulse.tasks.query_tasks.execute_query")
-    def test_submit_query(self, mock_task, client: TestClient):
-        mock_result = MagicMock()
-        mock_result.id = "task-123"
-        mock_task.apply_async.return_value = mock_result
+    @patch("datapulse.api.routes.queries.submit_query", new_callable=AsyncMock)
+    def test_submit_query(self, mock_submit, client: TestClient):
+        mock_submit.return_value = "job-123"
 
         resp = client.post(
             "/api/v1/queries",
@@ -96,8 +94,18 @@ class TestQueryEndpoints:
         )
         assert resp.status_code == 202
         data = resp.json()
-        assert data["query_id"] == "task-123"
+        assert data["query_id"] == "job-123"
         assert data["status"] == "pending"
+
+    @patch("datapulse.api.routes.queries.submit_query", new_callable=AsyncMock)
+    def test_submit_query_redis_unavailable(self, mock_submit, client: TestClient):
+        mock_submit.return_value = None
+
+        resp = client.post(
+            "/api/v1/queries",
+            json={"sql": "SELECT 1"},
+        )
+        assert resp.status_code == 503
 
     def test_submit_query_blocked_sql(self, client: TestClient):
         resp = client.post(
@@ -106,47 +114,47 @@ class TestQueryEndpoints:
         )
         assert resp.status_code == 422
 
-    @patch("datapulse.tasks.celery_app.celery_app")
-    def test_get_query_result_pending(self, mock_celery, client: TestClient):
-        mock_async = MagicMock()
-        mock_async.state = "PENDING"
-        mock_async.successful.return_value = False
-        mock_celery.AsyncResult.return_value = mock_async
+    @patch("datapulse.api.routes.queries.get_job_result")
+    def test_get_query_result_pending(self, mock_get, client: TestClient):
+        mock_get.return_value = {"status": "pending"}
 
-        resp = client.get("/api/v1/queries/task-123")
+        resp = client.get("/api/v1/queries/job-123")
         assert resp.status_code == 200
         assert resp.json()["status"] == "pending"
 
-    @patch("datapulse.tasks.celery_app.celery_app")
-    def test_get_query_result_complete(self, mock_celery, client: TestClient):
-        mock_async = MagicMock()
-        mock_async.state = "SUCCESS"
-        mock_async.successful.return_value = True
-        mock_async.result = {
+    @patch("datapulse.api.routes.queries.get_job_result")
+    def test_get_query_result_complete(self, mock_get, client: TestClient):
+        mock_get.return_value = {
+            "status": "complete",
             "columns": ["id", "name"],
             "rows": [[1, "test"]],
             "row_count": 1,
             "truncated": False,
             "duration_ms": 42,
         }
-        mock_celery.AsyncResult.return_value = mock_async
 
-        resp = client.get("/api/v1/queries/task-123")
+        resp = client.get("/api/v1/queries/job-123")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "complete"
         assert data["row_count"] == 1
 
-    @patch("datapulse.tasks.celery_app.celery_app")
-    def test_get_query_result_failed(self, mock_celery, client: TestClient):
-        mock_async = MagicMock()
-        mock_async.state = "FAILURE"
-        mock_async.successful.return_value = False
-        mock_async.result = Exception("DB error")
-        mock_celery.AsyncResult.return_value = mock_async
+    @patch("datapulse.api.routes.queries.get_job_result")
+    def test_get_query_result_failed(self, mock_get, client: TestClient):
+        mock_get.return_value = {
+            "status": "failed",
+            "error": "DB error",
+        }
 
-        resp = client.get("/api/v1/queries/task-123")
+        resp = client.get("/api/v1/queries/job-123")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "failed"
         assert "DB error" in data["error"]
+
+    @patch("datapulse.api.routes.queries.get_job_result")
+    def test_get_query_result_not_found(self, mock_get, client: TestClient):
+        mock_get.return_value = None
+
+        resp = client.get("/api/v1/queries/nonexistent")
+        assert resp.status_code == 404

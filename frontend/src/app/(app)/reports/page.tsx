@@ -244,7 +244,7 @@ export default function ReportsPage() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {section.rows.map((row, ri) => (
+                                {section.rows.slice(0, 200).map((row, ri) => (
                                   <tr key={ri} className="border-b border-border last:border-0">
                                     {row.map((cell, ci) => (
                                       <td key={ci} className="px-3 py-2 text-text-primary">
@@ -258,7 +258,9 @@ export default function ReportsPage() {
                               </tbody>
                             </table>
                             <p className="mt-1 text-xs text-text-secondary">
-                              {section.row_count} rows
+                              {section.rows.length > 200
+                                ? `Showing 200 of ${section.row_count} rows`
+                                : `${section.row_count} rows`}
                             </p>
                           </div>
                         )}

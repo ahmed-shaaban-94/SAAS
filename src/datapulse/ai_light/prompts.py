@@ -14,9 +14,9 @@ Analyze the following sales data and write a brief executive summary (3-5 senten
 with 3-5 bullet-point highlights.
 
 **KPI Snapshot:**
-- Today's Net Sales: {today_net} EGP
-- Month-to-Date: {mtd_net} EGP
-- Year-to-Date: {ytd_net} EGP
+- Today's Gross Sales: {today_gross} EGP
+- Month-to-Date: {mtd_gross} EGP
+- Year-to-Date: {ytd_gross} EGP
 - MoM Growth: {mom_growth}%
 - YoY Growth: {yoy_growth}%
 - Daily Transactions: {daily_transactions}

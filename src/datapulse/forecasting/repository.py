@@ -38,7 +38,7 @@ class ForecastingRepository:
     def get_daily_revenue_series(self, lookback_days: int = 730) -> list[tuple[date, float]]:
         """Daily net revenue from feat_revenue_daily_rolling, ordered by date."""
         stmt = text("""
-            SELECT full_date, daily_net_amount
+            SELECT full_date, daily_gross_amount
             FROM public_marts.feat_revenue_daily_rolling
             WHERE full_date >= CURRENT_DATE - :lookback
             ORDER BY full_date
@@ -46,30 +46,46 @@ class ForecastingRepository:
         rows = self._session.execute(stmt, {"lookback": lookback_days}).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
-    def get_monthly_revenue_series(self) -> list[tuple[str, float]]:
-        """Monthly net revenue summed across all sites, ordered chronologically."""
+    def get_monthly_revenue_series(self, max_months: int = 120) -> list[tuple[str, float]]:
+        """Monthly net revenue summed across all sites, ordered chronologically.
+
+        Limited to the most recent *max_months* (default 10 years) to prevent
+        unbounded memory usage.
+        """
         stmt = text("""
-            SELECT
-                year || '-' || LPAD(month::TEXT, 2, '0') AS period,
-                SUM(total_net_amount) AS total
-            FROM public_marts.agg_sales_monthly
-            GROUP BY year, month
-            ORDER BY year, month
+            SELECT period, total FROM (
+                SELECT
+                    year || '-' || LPAD(month::TEXT, 2, '0') AS period,
+                    SUM(total_sales) AS total
+                FROM public_marts.agg_sales_monthly
+                GROUP BY year, month
+                ORDER BY year DESC, month DESC
+                LIMIT :max_months
+            ) sub ORDER BY period
         """)
-        rows = self._session.execute(stmt).fetchall()
+        rows = self._session.execute(stmt, {"max_months": max_months}).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
-    def get_product_monthly_series(self, product_key: int) -> list[tuple[str, float]]:
-        """Monthly net revenue for a specific product."""
+    def get_product_monthly_series(
+        self,
+        product_key: int,
+        max_months: int = 120,
+    ) -> list[tuple[str, float]]:
+        """Monthly net revenue for a specific product (capped at max_months)."""
         stmt = text("""
-            SELECT
-                year || '-' || LPAD(month::TEXT, 2, '0') AS period,
-                total_net_amount
-            FROM public_marts.agg_sales_by_product
-            WHERE product_key = :product_key
-            ORDER BY year, month
+            SELECT period, total_sales FROM (
+                SELECT
+                    year || '-' || LPAD(month::TEXT, 2, '0') AS period,
+                    total_sales
+                FROM public_marts.agg_sales_by_product
+                WHERE product_key = :product_key
+                ORDER BY year DESC, month DESC
+                LIMIT :max_months
+            ) sub ORDER BY period
         """)
-        rows = self._session.execute(stmt, {"product_key": product_key}).fetchall()
+        rows = self._session.execute(
+            stmt, {"product_key": product_key, "max_months": max_months}
+        ).fetchall()
         return [(row[0], float(row[1])) for row in rows]
 
     def get_top_products_by_revenue(self, limit: int = 50) -> list[tuple[int, str]]:
@@ -78,7 +94,7 @@ class ForecastingRepository:
             SELECT product_key, drug_name
             FROM public_marts.agg_sales_by_product
             GROUP BY product_key, drug_name
-            ORDER BY SUM(total_net_amount) DESC
+            ORDER BY SUM(total_sales) DESC
             LIMIT :limit
         """)
         rows = self._session.execute(stmt, {"limit": limit}).fetchall()
@@ -322,7 +338,7 @@ class ForecastingRepository:
             product_actual AS (
                 SELECT product_key,
                        drug_name,
-                       SUM(total_net_amount) AS past_total
+                       SUM(total_sales) AS past_total
                 FROM public_marts.agg_sales_by_product
                 WHERE year = EXTRACT(YEAR FROM CURRENT_DATE)::INT
                 GROUP BY product_key, drug_name
@@ -351,7 +367,7 @@ class ForecastingRepository:
             product_actual AS (
                 SELECT product_key,
                        drug_name,
-                       SUM(total_net_amount) AS past_total
+                       SUM(total_sales) AS past_total
                 FROM public_marts.agg_sales_by_product
                 WHERE year = EXTRACT(YEAR FROM CURRENT_DATE)::INT
                 GROUP BY product_key, drug_name

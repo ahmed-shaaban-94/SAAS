@@ -131,11 +131,12 @@ def embed_query(
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
         log.info("embed_query_executed", row_count=len(rows), duration_ms=duration_ms)
 
+        # Never expose SQL in embed responses — these are public-facing
         return ExploreResult(
             columns=columns,
             rows=rows,
             row_count=len(rows),
-            sql=sql,
+            sql="",
             truncated=truncated,
         )
     except ValueError as exc:

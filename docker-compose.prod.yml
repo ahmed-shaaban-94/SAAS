@@ -37,19 +37,20 @@ services:
       resources:
         limits:
           memory: 64M
+          cpus: "0.25"
     networks:
       - frontend-net
       - backend
-
-  # ---------- Disable Traefik from base compose ----------
-  traefik:
-    profiles: ["disabled"]
 
   # ---------- API: GHCR image, remove direct port ----------
   api:
     image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
     ports: !reset []
-    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2"]
+    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "4"]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     networks:
       - backend
       - frontend-net
@@ -66,7 +67,7 @@ services:
       - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-}
       - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET must be set in production}
       - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}
       - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
     labels: []
@@ -87,11 +88,9 @@ services:
   prestart:
     image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
 
-  celery-worker:
-    image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
+  # celery-worker removed — async queries now run in-process
 
-  n8n:
-    ports: !reset []
+  # n8n removed — orchestration now in-process via datapulse.scheduler
 
   app:
     ports: !reset []

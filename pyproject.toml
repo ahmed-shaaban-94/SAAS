@@ -27,7 +27,7 @@ dependencies = [
     "cffi>=1.15",
     "PyJWT[crypto]>=2.8,<3",
     "redis>=5.0,<6",
-    "celery[redis]>=5.3,<6",
+    "apscheduler>=3.10,<4",
     "sqlparse>=0.5,<1",
     "pyyaml>=6.0,<7",
     "sentry-sdk[fastapi]>=2.0,<3",
@@ -62,5 +62,5 @@ pythonpath = ["src"]
 source = ["datapulse"]
 
 [tool.coverage.report]
-fail_under = 88
+fail_under = 95
 show_missing = true

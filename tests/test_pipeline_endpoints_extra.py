@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -72,8 +72,8 @@ def _make_pipeline_client():
 
 
 class TestTriggerPipeline:
-    @patch("datapulse.api.routes.pipeline.httpx")
-    def test_trigger_success(self, mock_httpx):
+    @patch("datapulse.scheduler.run_pipeline", new_callable=AsyncMock)
+    def test_trigger_success(self, mock_run):
         client, mock_repo, _, _ = _make_pipeline_client()
         run = _make_response(status="pending")
         mock_repo.create_run.return_value = run
@@ -82,8 +82,8 @@ class TestTriggerPipeline:
         data = resp.json()
         assert data["status"] == "pending"
 
-    @patch("datapulse.api.routes.pipeline.httpx")
-    def test_trigger_default_body(self, mock_httpx):
+    @patch("datapulse.scheduler.run_pipeline", new_callable=AsyncMock)
+    def test_trigger_default_body(self, mock_run):
         client, mock_repo, _, _ = _make_pipeline_client()
         run = _make_response(status="pending")
         mock_repo.create_run.return_value = run

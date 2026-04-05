@@ -31,10 +31,12 @@ export function AnomalyBanner() {
   };
 
   return (
-    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 mb-4">
+    <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 mb-4">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between text-left"
+        aria-expanded={expanded}
+        aria-label={`${alerts.length} anomalies detected. ${expanded ? "Collapse" : "Expand"} details`}
       >
         <div className="flex items-center gap-2">
           <span className="text-amber-500 text-lg">&#9888;</span>

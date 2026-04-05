@@ -104,9 +104,13 @@ class KPISummary(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    today_net: JsonDecimal
-    mtd_net: JsonDecimal
-    ytd_net: JsonDecimal
+    # Gross sales (primary — net deliberately excluded from pipeline)
+    today_gross: JsonDecimal
+    mtd_gross: JsonDecimal
+    ytd_gross: JsonDecimal
+    # Discount (kept for future forecasting)
+    today_discount: JsonDecimal = Field(default=Decimal("0"))
+    # Growth (based on gross)
     mom_growth_pct: JsonDecimal | None = None
     yoy_growth_pct: JsonDecimal | None = None
     daily_transactions: int
@@ -132,7 +136,7 @@ class ProductPerformance(BaseModel):
     drug_category: str
     total_quantity: JsonDecimal
     total_sales: JsonDecimal
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     return_rate: JsonDecimal
     unique_customers: int
     monthly_trend: list[TimeSeriesPoint] = []
@@ -147,7 +151,7 @@ class CustomerAnalytics(BaseModel):
     customer_id: str
     customer_name: str
     total_quantity: JsonDecimal
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     transaction_count: int
     unique_products: int
     return_count: int
@@ -163,7 +167,7 @@ class StaffPerformance(BaseModel):
     staff_id: str
     staff_name: str
     staff_position: str
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     transaction_count: int
     avg_transaction_value: JsonDecimal
     unique_customers: int
@@ -228,7 +232,7 @@ class BillingBreakdownItem(BaseModel):
 
     billing_group: str
     transaction_count: int
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     pct_of_total: JsonDecimal
 
 
@@ -239,7 +243,7 @@ class BillingBreakdown(BaseModel):
 
     items: list[BillingBreakdownItem]
     total_transactions: int
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
 
 
 class CustomerTypeBreakdownItem(BaseModel):
@@ -304,7 +308,7 @@ class SiteDetail(BaseModel):
     site_code: str
     site_name: str
     area_manager: str
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     transaction_count: int
     unique_customers: int
     unique_staff: int
@@ -321,7 +325,7 @@ class ProductInCategory(BaseModel):
 
     product_key: int
     drug_name: str
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     transaction_count: int
 
 
@@ -331,7 +335,7 @@ class BrandGroup(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     brand: str
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     products: list[ProductInCategory]
 
 
@@ -341,7 +345,7 @@ class CategoryGroup(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     category: str
-    total_net_amount: JsonDecimal
+    total_sales: JsonDecimal
     brands: list[BrandGroup]
 
 

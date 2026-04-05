@@ -22,7 +22,7 @@ log = get_logger(__name__)
 
 # Metrics to check from metrics_summary
 _METRICS = [
-    ("daily_net_amount", "daily_net_sales"),
+    ("daily_gross_amount", "daily_gross_sales"),
     ("daily_transactions", "daily_transactions"),
     ("daily_returns", "daily_returns"),
     ("daily_unique_customers", "daily_customers"),
@@ -71,7 +71,7 @@ class AnomalyService:
 
         # Fetch historical + current metrics
         stmt = text("""
-            SELECT full_date, daily_net_amount, daily_transactions,
+            SELECT full_date, daily_gross_amount, daily_transactions,
                    daily_returns, daily_unique_customers
             FROM public_marts.metrics_summary
             WHERE full_date BETWEEN :start AND :end

@@ -61,6 +61,12 @@ export function usePipelineStream(
     }
 
     async function connect() {
+      // Abort any previous connection before starting a new one
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
+
       const url = `${API_BASE_URL}/api/v1/pipeline/runs/${runId}/stream`;
       const controller = new AbortController();
       abortRef.current = controller;

@@ -6,6 +6,7 @@ so the application continues using direct database queries.
 
 from __future__ import annotations
 
+import contextvars
 import json
 import time
 from typing import Any
@@ -16,9 +17,16 @@ from datapulse.config import get_settings
 
 logger = structlog.get_logger()
 
+# Context variable holding the current tenant_id.  Set by ``get_tenant_session``
+# in ``datapulse.api.deps`` so that cache keys are automatically scoped per
+# tenant without requiring explicit passing through every service method.
+current_tenant_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "current_tenant_id", default=""
+)
+
 _redis_client = None
 _last_attempt: float = 0
-_RETRY_INTERVAL = 60  # seconds before retrying a failed connection
+_RETRY_INTERVAL = 15  # seconds before retrying a failed connection
 
 
 def get_redis_client():
@@ -30,7 +38,12 @@ def get_redis_client():
     global _redis_client, _last_attempt
 
     if _redis_client is not None:
-        return _redis_client
+        try:
+            _redis_client.ping()
+            return _redis_client
+        except Exception:
+            _redis_client = None
+            # fall through to reconnect
 
     now = time.monotonic()
     if _last_attempt and (now - _last_attempt) < _RETRY_INTERVAL:
@@ -50,6 +63,7 @@ def get_redis_client():
             decode_responses=True,
             socket_connect_timeout=2,
             socket_timeout=2,
+            retry_on_timeout=True,
         )
         client.ping()
         _redis_client = client
@@ -60,6 +74,9 @@ def get_redis_client():
     return _redis_client
 
 
+_CACHE_MISS = object()
+
+
 def cache_get(key: str) -> Any | None:
     """Get a value from cache. Returns None on miss or error."""
     client = get_redis_client()
@@ -68,10 +85,12 @@ def cache_get(key: str) -> Any | None:
     try:
         raw = client.get(key)
         if raw is None:
+            logger.debug("cache_miss", key=key)
             return None
+        logger.debug("cache_hit", key=key)
         return json.loads(raw)
     except Exception as exc:
-        logger.warning("cache_get_error", key=key, error=str(exc))
+        logger.error("cache_get_error", key=key, error=str(exc))
         return None
 
 
@@ -85,7 +104,7 @@ def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
     try:
         client.setex(key, ttl, json.dumps(value, default=str))
     except Exception as exc:
-        logger.warning("cache_set_error", key=key, error=str(exc))
+        logger.error("cache_set_error", key=key, error=str(exc))
 
 
 def cache_invalidate_pattern(pattern: str) -> int:
@@ -104,5 +123,5 @@ def cache_invalidate_pattern(pattern: str) -> int:
             return deleted
         return 0
     except Exception as exc:
-        logger.warning("cache_invalidate_error", pattern=pattern, error=str(exc))
+        logger.error("cache_invalidate_error", pattern=pattern, error=str(exc))
         return 0

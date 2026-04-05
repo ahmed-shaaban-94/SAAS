@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -76,10 +75,9 @@ def mock_service_and_client():
 
 
 class TestTriggerEndpoint:
-    @patch("datapulse.api.routes.pipeline.httpx")
-    def test_trigger_success(self, mock_httpx, mock_service_and_client):
+    @patch("datapulse.scheduler.run_pipeline", new_callable=AsyncMock)
+    def test_trigger_success(self, mock_run, mock_service_and_client):
         mock_service, run_id, client = mock_service_and_client
-        mock_httpx.post.return_value = MagicMock(status_code=200)
 
         resp = client.post("/api/v1/pipeline/trigger", json={})
         assert resp.status_code == 202
@@ -87,20 +85,9 @@ class TestTriggerEndpoint:
         assert data["status"] == "pending"
         assert "run_id" in data
 
-    @patch("datapulse.api.routes.pipeline.httpx")
-    def test_trigger_n8n_unreachable(self, mock_httpx, mock_service_and_client):
+    @patch("datapulse.scheduler.run_pipeline", new_callable=AsyncMock)
+    def test_trigger_custom_source(self, mock_run, mock_service_and_client):
         mock_service, run_id, client = mock_service_and_client
-        mock_httpx.HTTPError = httpx.HTTPError
-        mock_httpx.TimeoutException = httpx.TimeoutException
-        mock_httpx.post.side_effect = httpx.ConnectError("Connection refused")
-
-        resp = client.post("/api/v1/pipeline/trigger", json={})
-        assert resp.status_code == 202  # run created even if n8n is down
-
-    @patch("datapulse.api.routes.pipeline.httpx")
-    def test_trigger_custom_source(self, mock_httpx, mock_service_and_client):
-        mock_service, run_id, client = mock_service_and_client
-        mock_httpx.post.return_value = MagicMock(status_code=200)
 
         resp = client.post(
             "/api/v1/pipeline/trigger",

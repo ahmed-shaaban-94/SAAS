@@ -41,21 +41,21 @@ class HierarchyRepository:
         stmt = text(f"""
             WITH ranked AS (
                 SELECT drug_category, drug_brand, product_key, drug_name,
-                       SUM(total_net_amount)  AS total_net_amount,
+                       SUM(total_sales)  AS total_sales,
                        SUM(transaction_count) AS transaction_count,
                        ROW_NUMBER() OVER (
                            PARTITION BY drug_brand
-                           ORDER BY SUM(total_net_amount) DESC
+                           ORDER BY SUM(total_sales) DESC
                        ) AS rn
                 FROM public_marts.agg_sales_by_product
                 WHERE {where}
                 GROUP BY drug_category, drug_brand, product_key, drug_name
             )
             SELECT drug_category, drug_brand, product_key, drug_name,
-                   total_net_amount, transaction_count
+                   total_sales, transaction_count
             FROM ranked
             WHERE rn <= 10
-            ORDER BY drug_category, drug_brand, total_net_amount DESC
+            ORDER BY drug_category, drug_brand, total_sales DESC
         """)
         rows = self._session.execute(stmt, params).fetchall()
 
@@ -78,7 +78,7 @@ class HierarchyRepository:
                 ProductInCategory(
                     product_key=int(r[2]),
                     drug_name=str(r[3]),
-                    total_net_amount=amount,
+                    total_sales=amount,
                     transaction_count=int(r[5]),
                 )
             )
@@ -90,23 +90,23 @@ class HierarchyRepository:
             [
                 CategoryGroup(
                     category=cat,
-                    total_net_amount=cat_totals[cat],
+                    total_sales=cat_totals[cat],
                     brands=sorted(
                         [
                             BrandGroup(
                                 brand=brand,
-                                total_net_amount=brand_totals[(cat, brand)],
+                                total_sales=brand_totals[(cat, brand)],
                                 products=products,
                             )
                             for brand, products in brands.items()
                         ],
-                        key=lambda b: b.total_net_amount,
+                        key=lambda b: b.total_sales,
                         reverse=True,
                     ),
                 )
                 for cat, brands in cat_map.items()
             ],
-            key=lambda c: c.total_net_amount,
+            key=lambda c: c.total_sales,
             reverse=True,
         )
 

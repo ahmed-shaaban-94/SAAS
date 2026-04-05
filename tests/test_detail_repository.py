@@ -51,7 +51,6 @@ class TestGetProductDetail:
             "Pain",
             Decimal("500"),
             Decimal("10000"),
-            Decimal("9000"),
             Decimal("0.05"),
             42,
         )
@@ -64,7 +63,7 @@ class TestGetProductDetail:
         assert result is not None
         assert result.product_key == 1
         assert result.drug_name == "Aspirin"
-        assert result.total_net_amount == Decimal("9000")
+        assert result.total_sales == Decimal("10000")
 
     def test_not_found(self, detail_repo):
         repo, session = detail_repo

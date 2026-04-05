@@ -51,7 +51,7 @@ export function CustomerTypeChart() {
   const CHART_THEME = useChartTheme();
 
   if (isLoading) return <LoadingCard lines={6} className="h-80" />;
-  if (!data || data.items.length === 0)
+  if (!data?.items?.length)
     return <EmptyState title="No customer type data" />;
 
   const chartData = data.items.map((item) => ({

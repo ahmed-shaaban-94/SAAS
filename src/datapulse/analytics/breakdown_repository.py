@@ -48,17 +48,17 @@ class BreakdownRepository:
         stmt = text(f"""
             SELECT db.billing_group,
                    SUM(a.transaction_count) - 2 * SUM(a.return_count) AS transaction_count,
-                   SUM(a.total_net_amount) AS total_net_amount
+                   SUM(a.total_sales) AS total_sales
             FROM public_marts.agg_sales_daily a
             JOIN public_marts.dim_billing db ON a.billing_way = db.billing_way
             WHERE {where}
             GROUP BY db.billing_group
-            ORDER BY total_net_amount DESC
+            ORDER BY total_sales DESC
         """)
         rows = self._session.execute(stmt, params).fetchall()
 
         if not rows:
-            return BillingBreakdown(items=[], total_transactions=0, total_net_amount=_ZERO)
+            return BillingBreakdown(items=[], total_transactions=0, total_sales=_ZERO)
 
         raw = [(str(r[0]), int(r[1]), Decimal(str(r[2]))) for r in rows]
         grand_total = sum(v for _, _, v in raw) or Decimal("1")
@@ -68,7 +68,7 @@ class BreakdownRepository:
             BillingBreakdownItem(
                 billing_group=name,
                 transaction_count=count,
-                total_net_amount=amount,
+                total_sales=amount,
                 pct_of_total=(amount / grand_total * 100).quantize(Decimal("0.01")),
             )
             for name, count, amount in raw
@@ -77,7 +77,7 @@ class BreakdownRepository:
         return BillingBreakdown(
             items=items,
             total_transactions=total_txn,
-            total_net_amount=grand_total,
+            total_sales=grand_total,
         )
 
     def get_customer_type_breakdown(self, filters: AnalyticsFilter) -> CustomerTypeBreakdown:

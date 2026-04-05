@@ -3,11 +3,11 @@ import useSWR from "swr";
 import { fetchAPI, postAPI } from "@/lib/api-client";
 import type { AlertLogItem } from "@/types/api";
 
-export function useAlertLog(unacknowledgedOnly: boolean = false) {
-  const params: Record<string, string | boolean> = {};
+export function useAlertLog(unacknowledgedOnly: boolean = false, limit: number = 50) {
+  const params: Record<string, string | boolean | number> = { limit };
   if (unacknowledgedOnly) params.unacknowledged_only = true;
   const { data, error, isLoading, mutate } = useSWR<AlertLogItem[]>(
-    ["/api/v1/targets/alerts/log", unacknowledgedOnly],
+    ["/api/v1/targets/alerts/log", unacknowledgedOnly, limit],
     () => fetchAPI<AlertLogItem[]>("/api/v1/targets/alerts/log", params),
   );
 

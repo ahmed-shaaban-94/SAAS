@@ -106,7 +106,7 @@ class TestDetailRepoNotConfigured:
 
 class TestBreakdownMethods:
     def test_billing_breakdown_delegates(self, analytics_service, mock_breakdown_repo):
-        expected = BillingBreakdown(items=[], total_transactions=0, total_net_amount=Decimal("0"))
+        expected = BillingBreakdown(items=[], total_transactions=0, total_sales=Decimal("0"))
         mock_breakdown_repo.get_billing_breakdown.return_value = expected
         result = analytics_service.get_billing_breakdown()
         assert result is expected
@@ -230,7 +230,7 @@ class TestAdvancedMethods:
         mock_hierarchy_repo,
     ):
         adv_repo = create_autospec(AdvancedRepository, instance=True)
-        expected = HeatmapData(cells=[], year=2025, min_value=Decimal("0"), max_value=Decimal("0"))
+        expected = HeatmapData(cells=[], min_value=Decimal("0"), max_value=Decimal("0"))
         adv_repo.get_heatmap_data.return_value = expected
         svc = AnalyticsService(
             mock_repo,

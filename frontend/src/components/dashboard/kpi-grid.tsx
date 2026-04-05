@@ -16,12 +16,12 @@ import {
 } from "lucide-react";
 
 const TOOLTIPS = {
-  periodNet: "Total net sales for the selected date range (after returns and discounts)",
-  mtdNet: "Month-to-date cumulative net sales from the 1st of the current month",
-  ytdNet: "Year-to-date cumulative net sales from January 1st",
+  periodGross: "Total gross sales for the selected date range (before discounts and tax)",
+  mtdGross: "Month-to-date cumulative gross sales from the 1st of the current month",
+  ytdGross: "Year-to-date cumulative gross sales from January 1st",
   momGrowth: "Growth compared to the equivalent previous period",
   netTxn: "Net transactions: total invoices minus returns for the selected period",
-  avgBasket: "Average transaction value per invoice for the selected period",
+  avgBasket: "Average basket size per customer for the selected period",
 } as const;
 
 function formatPeriodLabel(startDate?: string, endDate?: string): string | null {
@@ -55,29 +55,29 @@ export function KPIGrid() {
 
   const cards = [
     {
-      label: "Period Net Sales",
-      value: formatCurrency(data.today_net),
-      numericValue: data.today_net,
+      label: "Period Gross Sales",
+      value: formatCurrency(data.today_gross),
+      numericValue: data.today_gross,
       isCurrency: true,
       icon: Zap,
-      tooltip: TOOLTIPS.periodNet,
+      tooltip: TOOLTIPS.periodGross,
       sparkline: data.sparkline,
     },
     {
-      label: "MTD Net Sales",
-      value: formatCurrency(data.mtd_net),
-      numericValue: data.mtd_net,
+      label: "MTD Gross Sales",
+      value: formatCurrency(data.mtd_gross),
+      numericValue: data.mtd_gross,
       isCurrency: true,
       icon: CalendarDays,
-      tooltip: TOOLTIPS.mtdNet,
+      tooltip: TOOLTIPS.mtdGross,
     },
     {
-      label: "YTD Net Sales",
-      value: formatCurrency(data.ytd_net),
-      numericValue: data.ytd_net,
+      label: "YTD Gross Sales",
+      value: formatCurrency(data.ytd_gross),
+      numericValue: data.ytd_gross,
       isCurrency: true,
       icon: Target,
-      tooltip: TOOLTIPS.ytdNet,
+      tooltip: TOOLTIPS.ytdGross,
     },
     {
       label: "Growth",

@@ -135,9 +135,25 @@ jobs:
               -f docker-compose.prod.yml \
               up -d --remove-orphans
 
-            # Wait and verify
-            sleep 15
+            # Wait for containers to start, then verify with retries
+            echo "=== Waiting for services ==="
+            for i in $(seq 1 6); do
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8000/health || echo "000")
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "Health check PASSED on attempt $i (HTTP $HTTP_CODE)"
+                break
+              fi
+              echo "Attempt $i: HTTP $HTTP_CODE — retrying in 10s..."
+              sleep 10
+            done
+
+            echo "=== Container Status ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
-              ps --format json | head -20
+              ps
+
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "::error::Production health check failed after 6 attempts (HTTP $HTTP_CODE)"
+              exit 1
+            fi

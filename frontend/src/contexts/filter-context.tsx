@@ -4,7 +4,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -27,6 +29,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const STORAGE_KEY = "datapulse:filters";
+  const hydratedRef = useRef(false);
+
   const filters = useMemo<FilterParams>(() => {
     const params: FilterParams = {};
     const startDate = searchParams.get("start_date");
@@ -47,6 +52,41 @@ export function FilterProvider({ children }: { children: ReactNode }) {
 
     return params;
   }, [searchParams]);
+
+  // Hydrate from sessionStorage when URL has no filter params
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    const hasUrlFilters = searchParams.toString().length > 0;
+    if (hasUrlFilters) return;
+
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      if (!stored) return;
+      const saved: FilterParams = JSON.parse(stored);
+      if (Object.keys(saved).length === 0) return;
+
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(saved)) {
+        if (value !== undefined && value !== null) {
+          params.set(key, String(value));
+        }
+      }
+      router.push(`${pathname}?${params.toString()}`);
+    } catch {
+      // Ignore corrupted sessionStorage
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist filters to sessionStorage on every change
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+    } catch {
+      // Ignore quota errors
+    }
+  }, [filters]);
 
   const setFilters = useCallback(
     (newFilters: FilterParams) => {

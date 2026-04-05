@@ -181,21 +181,17 @@ def build_sql(
     schema_prefix = f"{base.schema_name}." if base.schema_name else ""
     from_clause = f"{schema_prefix}{base.name} AS {base.name}"
 
-    # Build JOIN clauses (only include joins needed for requested dimensions)
+    # Track which joined tables are needed (dimensions + filters add to this)
     needed_joins: set[str] = {alias for alias, _ in dim_refs if alias != base.name}
-    join_clauses: list[str] = []
-    for jp in base.joins:
-        if jp.join_model in needed_joins:
-            jm = joined_models[jp.join_model]
-            if not _SAFE_IDENT.match(jp.join_model):
-                raise ValueError(f"Unsafe join model name: {jp.join_model!r}")
-            if jm.schema_name and not _SAFE_IDENT.match(jm.schema_name):
-                raise ValueError(f"Unsafe join schema name: {jm.schema_name!r}")
-            jm_schema = f"{jm.schema_name}." if jm.schema_name else ""
-            on_clause = _resolve_join_on(jp.sql_on, base.name, jp.join_model)
-            join_clauses.append(
-                f"LEFT JOIN {jm_schema}{jp.join_model} AS {jp.join_model} ON {on_clause}"
-            )
+
+    # Build lookup for resolving filter fields to their table alias
+    filter_field_lookup: dict[str, str] = {}
+    for dim in base.dimensions:
+        filter_field_lookup[dim.name] = base.name
+    for jm_name, jm in joined_models.items():
+        for dim in jm.dimensions:
+            if dim.name not in filter_field_lookup:
+                filter_field_lookup[dim.name] = jm_name
 
     # Build WHERE clause
     bind_params: dict = {}
@@ -206,19 +202,26 @@ def build_sql(
         if not _SAFE_IDENT.match(flt.field):
             raise ValueError(f"Unsafe filter field name: {flt.field!r}")
 
+        # Resolve field to the correct table alias
+        field_alias = filter_field_lookup.get(flt.field, base.name)
+        # Ensure the join is included for this filter field
+        if field_alias != base.name:
+            needed_joins.add(field_alias)
+        qualified_col = f"{field_alias}.{flt.field}"
+
         if flt.operator == "in":
             # IN clause with multiple values
             if isinstance(flt.value, list):
                 placeholders = ", ".join(f":{param_name}_{j}" for j in range(len(flt.value)))
-                where_parts.append(f"{base.name}.{flt.field} IN ({placeholders})")
+                where_parts.append(f"{qualified_col} IN ({placeholders})")
                 for j, v in enumerate(flt.value):
                     bind_params[f"{param_name}_{j}"] = v
             else:
-                where_parts.append(f"{base.name}.{flt.field} = :{param_name}")
+                where_parts.append(f"{qualified_col} = :{param_name}")
                 bind_params[param_name] = flt.value
         elif flt.operator in _FILTER_OPS:
             template = _FILTER_OPS[flt.operator]
-            where_parts.append(template.format(col=f"{base.name}.{flt.field}", param=param_name))
+            where_parts.append(template.format(col=qualified_col, param=param_name))
             bind_params[param_name] = flt.value
         else:
             raise ValueError(f"Unknown filter operator '{flt.operator}'")
@@ -241,6 +244,21 @@ def build_sql(
 
     order_by = "ORDER BY " + ", ".join(order_parts) if order_parts else ""
 
+    # Build JOIN clauses (includes joins needed by dimensions AND filters)
+    join_clauses: list[str] = []
+    for jp in base.joins:
+        if jp.join_model in needed_joins:
+            jm = joined_models[jp.join_model]
+            if not _SAFE_IDENT.match(jp.join_model):
+                raise ValueError(f"Unsafe join model name: {jp.join_model!r}")
+            if jm.schema_name and not _SAFE_IDENT.match(jm.schema_name):
+                raise ValueError(f"Unsafe join schema name: {jm.schema_name!r}")
+            jm_schema = f"{jm.schema_name}." if jm.schema_name else ""
+            on_clause = _resolve_join_on(jp.sql_on, base.name, jp.join_model)
+            join_clauses.append(
+                f"LEFT JOIN {jm_schema}{jp.join_model} AS {jp.join_model} ON {on_clause}"
+            )
+
     # Assemble the SQL
     sql_parts = [
         "SELECT " + ",\n       ".join(select_parts),
@@ -253,7 +271,8 @@ def build_sql(
         sql_parts.append(group_by)
     if order_by:
         sql_parts.append(order_by)
-    sql_parts.append(f"LIMIT {query.limit}")
+    sql_parts.append("LIMIT :_limit")
+    bind_params["_limit"] = query.limit
 
     sql = "\n".join(sql_parts)
 

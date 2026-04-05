@@ -3,6 +3,9 @@
 Provides a submit-then-poll pattern for long-running SQL queries:
 - ``POST /api/v1/queries`` — submit a query, get back a query_id
 - ``GET  /api/v1/queries/{query_id}`` — poll for results
+
+Uses a lightweight asyncio-based executor with Redis job state
+instead of Celery, reducing infrastructure complexity.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from datapulse.api.auth import get_current_user
 from datapulse.logging import get_logger
+from datapulse.tasks.async_executor import get_job_result, submit_query
 from datapulse.tasks.models import QueryResponse, QueryResult, QueryStatus, QuerySubmit
 
 log = get_logger(__name__)
@@ -54,67 +58,59 @@ def _validate_sql(sql: str) -> None:
 
 
 @router.post("", response_model=QueryResponse, status_code=202)
-def submit_query(
+async def submit_query_endpoint(
     body: QuerySubmit,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> QueryResponse:
     """Submit an async SQL query for execution.
 
     The query is validated for safety (read-only) and dispatched to a
-    Celery worker.  Returns a query_id for polling.
+    background thread. Returns a query_id for polling.
     """
     _validate_sql(body.sql)
 
     tenant_id = user.get("tenant_id", "1")
 
-    from datapulse.tasks.query_tasks import execute_query
-
-    task = execute_query.apply_async(
-        kwargs={
-            "sql": body.sql,
-            "tenant_id": tenant_id,
-            "row_limit": body.row_limit,
-        },
+    job_id = await submit_query(
+        sql=body.sql,
+        tenant_id=tenant_id,
+        row_limit=body.row_limit,
     )
 
-    log.info("query_submitted", query_id=task.id, tenant_id=tenant_id)
+    if job_id is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Query service unavailable (Redis not connected)",
+        )
+
+    log.info("query_submitted", query_id=job_id, tenant_id=tenant_id)
 
     return QueryResponse(
-        query_id=task.id,
+        query_id=job_id,
         status=QueryStatus.pending,
         submitted_at=datetime.now(UTC),
     )
 
 
 @router.get("/{query_id}", response_model=QueryResult)
-def get_query_result(query_id: str) -> QueryResult:
+def get_query_result_endpoint(query_id: str) -> QueryResult:
     """Poll for async query results.
 
     Returns the current status and, if complete, the result data.
     """
-    from datapulse.tasks.celery_app import celery_app
-
-    result = celery_app.AsyncResult(query_id)
-
-    # Map Celery states to our QueryStatus
-    status_map = {
-        "PENDING": QueryStatus.pending,
-        "STARTED": QueryStatus.running,
-        "SUCCESS": QueryStatus.complete,
-        "FAILURE": QueryStatus.failed,
-        "RETRY": QueryStatus.running,
-        "REVOKED": QueryStatus.failed,
-    }
-
-    status = status_map.get(result.state, QueryStatus.pending)
+    data = get_job_result(query_id)
     now = datetime.now(UTC)
 
-    if status == QueryStatus.complete and result.successful():
-        data = result.result
+    if data is None:
+        raise HTTPException(status_code=404, detail="Query not found or expired")
+
+    status = data.get("status", "pending")
+
+    if status == "complete":
         return QueryResult(
             query_id=query_id,
             status=QueryStatus.complete,
-            submitted_at=now,  # Celery doesn't track submission time natively
+            submitted_at=now,
             completed_at=now,
             columns=data.get("columns", []),
             rows=data.get("rows", []),
@@ -123,17 +119,18 @@ def get_query_result(query_id: str) -> QueryResult:
             duration_ms=data.get("duration_ms"),
         )
 
-    if status == QueryStatus.failed:
-        error_msg = str(result.result) if result.result else "Query execution failed"
+    if status == "failed":
         return QueryResult(
             query_id=query_id,
             status=QueryStatus.failed,
             submitted_at=now,
-            error=error_msg,
+            error=data.get("error", "Query execution failed"),
         )
 
+    # pending or running
+    mapped = QueryStatus.running if status == "running" else QueryStatus.pending
     return QueryResult(
         query_id=query_id,
-        status=status,
+        status=mapped,
         submitted_at=now,
     )

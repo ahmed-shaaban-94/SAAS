@@ -15,7 +15,7 @@ export function ParetoChart() {
   const theme = useChartTheme();
 
   if (isLoading) return <LoadingCard className="h-80" />;
-  if (!data || data.items.length === 0) return <EmptyState title="No product data available" />;
+  if (!data?.items?.length) return <EmptyState title="No product data available" />;
 
   // Take top 20 for readability
   const chartData = data.items.slice(0, 20).map((item) => ({

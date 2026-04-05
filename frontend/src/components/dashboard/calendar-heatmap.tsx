@@ -1,23 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { useHeatmap } from "@/hooks/use-heatmap";
 import { formatCurrency } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 
 function getColor(value: number, min: number, max: number, isDark: boolean): string {
-  if (max === min) return isDark ? "rgb(30, 41, 59)" : "rgb(226, 232, 240)";
+  if (max === min) return isDark ? "var(--divider)" : "var(--divider)";
   const ratio = (value - min) / (max - min);
-  if (ratio < 0.25) return isDark ? "rgb(6, 78, 59)" : "rgb(209, 250, 229)";
-  if (ratio < 0.5) return isDark ? "rgb(4, 120, 87)" : "rgb(110, 231, 183)";
-  if (ratio < 0.75) return isDark ? "rgb(5, 150, 105)" : "rgb(52, 211, 153)";
-  return isDark ? "rgb(0, 191, 165)" : "rgb(0, 191, 165)";
+  // Use opacity-based approach with growth-green for consistent theming
+  const base = isDark ? [52, 211, 153] : [5, 150, 105]; // emerald shades
+  const opacity = 0.2 + ratio * 0.8;
+  return `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${opacity})`;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = ["Mon", "", "Wed", "", "Fri", "", ""];
 
-export function CalendarHeatmap() {
+export const CalendarHeatmap = memo(function CalendarHeatmap() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const { data, isLoading } = useHeatmap(year);
@@ -84,16 +84,18 @@ export function CalendarHeatmap() {
           <button
             onClick={() => setYear((y) => y - 1)}
             className="rounded px-2 py-0.5 text-xs text-text-secondary hover:bg-divider"
+            aria-label={`Previous year (${year - 1})`}
           >
             &larr;
           </button>
-          <span className="w-10 text-center text-xs font-medium text-text-primary">
+          <span className="w-10 text-center text-xs font-medium text-text-primary" aria-live="polite">
             {year}
           </span>
           <button
             onClick={() => setYear((y) => Math.min(y + 1, currentYear))}
             disabled={year >= currentYear}
             className="rounded px-2 py-0.5 text-xs text-text-secondary hover:bg-divider disabled:opacity-30"
+            aria-label={`Next year (${Math.min(year + 1, currentYear)})`}
           >
             &rarr;
           </button>
@@ -165,13 +167,13 @@ export function CalendarHeatmap() {
           {/* Tooltip */}
           {hoveredCell && (
             <div
-              className="pointer-events-none fixed z-50 rounded-md bg-gray-900 px-2 py-1 text-xs text-white shadow-lg"
+              className="pointer-events-none fixed z-50 rounded-md bg-card border border-border px-2 py-1 text-xs text-text-primary shadow-lg"
               style={{ left: hoveredCell.x - 40, top: hoveredCell.y - 36 }}
             >
               <span className="font-medium">
                 {formatCurrency(hoveredCell.value)}
               </span>
-              <span className="ml-1 text-gray-400">{hoveredCell.date}</span>
+              <span className="ml-1 text-text-secondary">{hoveredCell.date}</span>
             </div>
           )}
         </div>
@@ -193,4 +195,4 @@ export function CalendarHeatmap() {
       </div>
     </div>
   );
-}
+});

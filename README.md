@@ -98,7 +98,7 @@ make demo
 | **Dashboard** | [`localhost:3000`](http://localhost:3000) | Next.js interactive analytics dashboard |
 | **Landing Page** | [`localhost:3000`](http://localhost:3000) | Marketing website with pricing & waitlist |
 | **API** | [`localhost:8000/docs`](http://localhost:8000/docs) | FastAPI with Swagger documentation |
-| **Keycloak** | [`localhost:8080`](http://localhost:8080) | Authentication & SSO (OAuth2/OIDC) |
+| **Auth** | Auth0 (managed) | Authentication & SSO (OAuth2/OIDC) |
 | **n8n** | [`localhost:5678`](http://localhost:5678) | Workflow automation engine |
 | **pgAdmin** | [`localhost:5050`](http://localhost:5050) | Database admin interface |
 | **PostgreSQL** | `localhost:5432` | Database (internal) |
@@ -141,13 +141,13 @@ dim_staff ────────┘                                  ├──
 | **Backend API** | FastAPI + SQLAlchemy 2.0 + Pydantic |
 | **Frontend** | Next.js 14 + TypeScript + Tailwind CSS |
 | **Charts** | Recharts |
-| **Auth** | Keycloak (OAuth2/OIDC) + NextAuth + PyJWT |
+| **Auth** | Auth0 (OAuth2/OIDC) + NextAuth + PyJWT |
 | **Automation** | n8n (6 workflows) + watchdog file watcher |
 | **AI Insights** | OpenRouter + statistical anomaly detection |
 | **BI** | Power BI Desktop (99 DAX measures) |
 | **Notifications** | Slack webhooks (success/failure/digest) |
 | **Containers** | Docker Compose (8 services) |
-| **Reverse Proxy** | Traefik (production) |
+| **Reverse Proxy** | Nginx (production, Cloudflare Full TLS) |
 | **CI/CD** | GitHub Actions (CI + staging + production deploy) |
 | **Logging** | structlog (structured JSON) |
 | **Config** | Pydantic Settings |
@@ -278,7 +278,7 @@ make clean               # Stop services, remove volumes
 
 ## Security
 
-- **Authentication**: Keycloak OIDC with JWT validation
+- **Authentication**: Auth0 OIDC with JWT validation
 - **Authorization**: Tenant-scoped Row Level Security (RLS) on all data layers
 - **API Security**: Rate limiting (60/min analytics, 5/min mutations), CORS whitelist
 - **Data Protection**: SQL column whitelist, `NUMERIC(18,4)` for financials

@@ -104,7 +104,8 @@ class QualityRepository:
                 row = self._session.execute(stmt, params).fetchone()
                 responses.append(self._row_to_response(row))
             self._session.commit()
-        except Exception:
+        except Exception as exc:
+            log.error("quality_checks_save_failed", error=str(exc))
             self._session.rollback()
             raise
         return responses

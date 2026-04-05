@@ -39,7 +39,7 @@ export function SiteOverview() {
     );
   }
 
-  if (!data || data.items.length === 0) {
+  if (!data?.items?.length) {
     return (
       <EmptyState
         title="No site data available"

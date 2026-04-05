@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from datapulse.api.limiter import limiter
 from datapulse.api.routes import (
@@ -37,6 +38,16 @@ logger = structlog.get_logger()
 
 
 def create_app() -> FastAPI:
+    from contextlib import asynccontextmanager
+
+    from datapulse.scheduler import start_scheduler, stop_scheduler
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        start_scheduler()
+        yield
+        stop_scheduler()
+
     settings = get_settings()
     setup_logging(log_format=settings.log_format)
 
@@ -54,6 +65,7 @@ def create_app() -> FastAPI:
         title="DataPulse API",
         description="Sales analytics API for DataPulse",
         version="0.1.0",
+        lifespan=lifespan,
     )
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
@@ -94,6 +106,8 @@ def create_app() -> FastAPI:
     # Global exception handler
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        if isinstance(exc, StarletteHTTPException):
+            raise exc
         logger.error(
             "unhandled_exception",
             method=request.method,

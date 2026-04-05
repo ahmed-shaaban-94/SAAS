@@ -16,6 +16,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-datapulse}
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       DB_HOST: postgres
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
     networks:
       - backend
 
@@ -31,7 +36,7 @@ services:
       prestart:
         condition: service_completed_successfully
     ports:
-      - "8888:8888"
+      - "127.0.0.1:8888:8888"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-datapulse}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-datapulse}
       DBT_HOST: postgres
@@ -91,8 +96,8 @@ services:
       STRIPE_PRICE_PRO_MONTHLY: ${STRIPE_PRICE_PRO_MONTHLY:-}
       BILLING_BASE_URL: ${BILLING_BASE_URL:-https://smartdatapulse.tech}
     ports:
-      - "8000:8000"
-    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "4"]
+      - "127.0.0.1:8000:8000"
+    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
       interval: 10s
@@ -102,7 +107,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
           cpus: "1.0"
     networks:
       - backend
@@ -113,7 +118,7 @@ services:
     container_name: datapulse-db
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-datapulse}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
@@ -143,7 +148,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@datapulse.dev}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD must be set}
@@ -172,7 +177,7 @@ services:
     container_name: datapulse-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       # NEXT_PUBLIC_API_URL is intentionally empty — browser calls use same-origin
       # paths (e.g. /api/v1/summary) that are proxied by Next.js rewrites to
@@ -187,7 +192,7 @@ services:
       - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET must be set}
-      - NEXTAUTH_DEBUG=true
+      - NEXTAUTH_DEBUG=${NEXTAUTH_DEBUG:-false}
       - NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN:-}
       - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     depends_on:
@@ -207,40 +212,9 @@ services:
     networks:
       - frontend-net
 
-  # ---------- Celery Worker (Async Query Execution) ----------
-  celery-worker:
-    build:
-      context: .
-      target: api
-    container_name: datapulse-celery-worker
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      prestart:
-        condition: service_completed_successfully
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-datapulse}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-datapulse}
-      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
-      POSTGRES_USER: ${POSTGRES_USER:-datapulse}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: ${POSTGRES_DB:-datapulse}
-    command: ["celery", "-A", "datapulse.tasks.celery_app:celery_app", "worker", "--loglevel=info", "--concurrency=4"]
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A datapulse.tasks.celery_app:celery_app inspect ping --timeout 5"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: "1.0"
-    networks:
-      - backend
+  # NOTE: Celery worker removed — async queries now run in-process via
+  # asyncio.to_thread + Redis job state (see datapulse.tasks.async_executor).
+  # This saves 512MB RAM and eliminates a separate container.
 
   redis:
     image: redis:7-alpine
@@ -262,44 +236,9 @@ services:
     networks:
       - backend
 
-  n8n:
-    image: n8nio/n8n:2.13.4
-    container_name: datapulse-n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      DB_TYPE: postgresdb
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-datapulse}
-      DB_POSTGRESDB_SCHEMA: n8n
-      DB_POSTGRESDB_USER: ${POSTGRES_USER:-datapulse}
-      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY must be set}
-      WEBHOOK_URL: http://n8n:5678/
-      N8N_EDITOR_BASE_URL: http://localhost:5678
-      EXECUTIONS_MODE: regular
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
-      PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:-}
-    volumes:
-      - n8n_data:/home/node/.n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:5678/healthz || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: "0.5"
-    networks:
-      - backend
+  # NOTE: n8n removed — pipeline orchestration + scheduling + notifications
+  # now run in-process via datapulse.scheduler (APScheduler) + datapulse.notifications.
+  # Saves 512MB RAM + eliminates n8n container + n8n-init container.
 
   # ---------- Lightdash REMOVED — Next.js dashboard replaces it (Wild Wolf beta) ----------
   # ---------- Keycloak REMOVED — migrated to Auth0 (Wild Wolf beta) ----------
@@ -309,7 +248,6 @@ services:
 volumes:
   pgdata:
   pgadmin_data:
-  n8n_data:
   redis_data:
 
 networks:

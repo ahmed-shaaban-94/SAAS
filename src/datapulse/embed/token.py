@@ -20,25 +20,45 @@ _ISSUER = "datapulse-embed"
 _ALGORITHM = "HS256"
 
 
+_MIN_SECRET_LENGTH = 32  # Minimum secret length for token signing security
+
+
 def _get_secret() -> str:
     """Return the signing secret for embed tokens.
 
-    Priority: EMBED_SECRET > API_KEY > raise error (no insecure fallback).
+    Priority: EMBED_SECRET > API_KEY (dev only) > raise error.
+    Enforces minimum secret length to prevent brute-force attacks.
     """
+    import os
+
     settings = get_settings()
+    env = os.getenv("SENTRY_ENVIRONMENT", "development")
+
     if settings.embed_secret:
+        if len(settings.embed_secret) < _MIN_SECRET_LENGTH:
+            raise ValueError(
+                f"EMBED_SECRET must be at least {_MIN_SECRET_LENGTH} characters "
+                f"(got {len(settings.embed_secret)})"
+            )
         return settings.embed_secret
+
     if settings.api_key:
-        env = __import__("os").getenv("SENTRY_ENVIRONMENT", "development")
         if env not in ("development", "test"):
             raise ValueError(
                 "EMBED_SECRET must be configured separately from API_KEY in production"
+            )
+        if len(settings.api_key) < _MIN_SECRET_LENGTH:
+            log.warning(
+                "embed_weak_secret",
+                detail=f"API_KEY used as embed secret is shorter than "
+                f"{_MIN_SECRET_LENGTH} chars — use a stronger EMBED_SECRET",
             )
         log.warning(
             "embed_using_api_key",
             detail="Using API_KEY as embed secret — set EMBED_SECRET for production",
         )
         return settings.api_key
+
     raise ValueError("EMBED_SECRET or API_KEY must be configured for embed token signing")
 
 

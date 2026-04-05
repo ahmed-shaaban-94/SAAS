@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useTargetSummary } from "@/hooks/use-targets";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
@@ -41,12 +42,12 @@ function ProgressRing({ pct, size = 80 }: { pct: number; size?: number }) {
   );
 }
 
-export function TargetProgress() {
+export const TargetProgress = memo(function TargetProgress() {
   const { data, isLoading } = useTargetSummary();
 
   if (isLoading) return <LoadingCard className="h-64" />;
 
-  if (!data || data.monthly_targets.length === 0) {
+  if (!data?.monthly_targets?.length) {
     return (
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-2">
@@ -153,4 +154,4 @@ export function TargetProgress() {
       </div>
     </div>
   );
-}
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { formatCurrency } from "@/lib/formatters";
 import Link from "next/link";
@@ -75,7 +76,7 @@ function RankingCard({
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br border text-xs font-bold",
                     RANK_COLORS[index],
                   )}>
-                    {index === 0 ? <Trophy className="h-3.5 w-3.5" /> : item.rank}
+                    {index === 0 ? <Trophy className="h-3.5 w-3.5" aria-label="First place" /> : item.rank}
                   </span>
                 ) : (
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-divider/50 text-xs font-medium text-text-secondary">
@@ -96,7 +97,14 @@ function RankingCard({
                 {formatCurrency(item.value)}
               </span>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-divider/50">
+            <div
+              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-divider/50"
+              role="progressbar"
+              aria-valuenow={Math.round(item.pct_of_total)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${item.name}: ${Math.round(item.pct_of_total)}% of total`}
+            >
               <div
                 className="h-full rounded-full bg-gradient-to-r from-accent to-accent/40 transition-all duration-700"
                 style={{ width: `${Math.min(item.pct_of_total, 100)}%` }}
@@ -109,7 +117,7 @@ function RankingCard({
   );
 }
 
-export function QuickRankings() {
+export const QuickRankings = memo(function QuickRankings() {
   const { data: dashboardData, error, isLoading } = useDashboardData();
 
   return (
@@ -134,4 +142,4 @@ export function QuickRankings() {
       />
     </div>
   );
-}
+});

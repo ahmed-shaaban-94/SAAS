@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from datapulse.api.routes.health import _check_celery, _check_db, _check_redis
+from datapulse.api.routes.health import _check_db, _check_query_executor, _check_redis
 
 
 class TestCheckDb:
@@ -47,26 +47,23 @@ class TestCheckRedis:
         assert result["status"] == "error"
 
 
-class TestCheckCelery:
-    @patch("datapulse.tasks.celery_app.celery_app")
-    def test_ok(self, mock_celery):
-        inspector = MagicMock()
-        inspector.active.return_value = {"worker1": []}
-        mock_celery.control.inspect.return_value = inspector
-        result = _check_celery()
+class TestCheckQueryExecutor:
+    @patch("datapulse.tasks.async_executor._get_job_client", return_value=None)
+    def test_disabled(self, _):
+        result = _check_query_executor()
+        assert result["status"] == "disabled"
+
+    @patch("datapulse.tasks.async_executor._get_job_client")
+    def test_ok(self, mock_get):
+        mock_client = MagicMock()
+        mock_client.ping.return_value = True
+        mock_get.return_value = mock_client
+        result = _check_query_executor()
         assert result["status"] == "ok"
-        assert result["workers"] == 1
+        assert "latency_ms" in result
 
-    @patch("datapulse.tasks.celery_app.celery_app")
-    def test_no_workers(self, mock_celery):
-        inspector = MagicMock()
-        inspector.active.return_value = None
-        mock_celery.control.inspect.return_value = inspector
-        result = _check_celery()
-        assert result["status"] == "no-workers"
-
-    @patch("datapulse.tasks.celery_app.celery_app")
-    def test_error(self, mock_celery):
-        mock_celery.control.inspect.side_effect = Exception("broker down")
-        result = _check_celery()
+    @patch("datapulse.tasks.async_executor._get_job_client")
+    def test_error(self, mock_get):
+        mock_get.side_effect = Exception("connection refused")
+        result = _check_query_executor()
         assert result["status"] == "error"

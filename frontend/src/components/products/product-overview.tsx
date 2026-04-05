@@ -41,7 +41,7 @@ export function ProductOverview() {
     );
   }
 
-  if (!data || data.items.length === 0) {
+  if (!data?.items?.length) {
     return (
       <EmptyState
         title="No product data available"

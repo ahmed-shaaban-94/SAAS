@@ -42,11 +42,11 @@ class AdvancedRepository:
         stmt = text(f"""
             WITH ranked AS (
                 SELECT {key_col} AS key, {name_col} AS name,
-                       SUM(total_net_amount) AS value
+                       SUM(total_sales) AS value
                 FROM {table}
                 WHERE {where}
                 GROUP BY {key_col}, {name_col}
-                HAVING SUM(total_net_amount) > 0
+                HAVING SUM(total_sales) > 0
                 ORDER BY value DESC
             ),
             cumulative AS (
@@ -120,7 +120,7 @@ class AdvancedRepository:
     def get_heatmap_data(self, year: int) -> HeatmapData:
         """Calendar heatmap — daily revenue for a year."""
         stmt = text("""
-            SELECT full_date, daily_net_amount
+            SELECT full_date, daily_gross_amount
             FROM public_marts.metrics_summary
             WHERE EXTRACT(YEAR FROM full_date) = :year
             ORDER BY full_date
@@ -142,7 +142,7 @@ class AdvancedRepository:
                 SELECT year || '-' || LPAD(month::TEXT, 2, '0') AS period,
                        SUM(return_count) AS return_count,
                        SUM(return_amount) AS return_amount,
-                       SUM(total_net_amount) AS total_amount
+                       SUM(total_sales) AS total_amount
                 FROM public_marts.agg_sales_monthly
                 WHERE {where}
                 GROUP BY year, month

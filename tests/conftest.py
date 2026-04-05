@@ -10,12 +10,23 @@ from defaults only (no .env file). Tests that need a custom Settings object
 patch get_settings() locally within the test.
 """
 
+import os
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 
-from datapulse.api.limiter import limiter
-from datapulse.config import Settings, get_settings
+
+def pytest_configure(config):
+    """Set minimal env vars so modules with eager Settings() calls can import.
+
+    This runs before test collection, fixing collection errors in modules
+    that call get_settings() at module level.
+    """
+    os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
+
+
+from datapulse.api.limiter import limiter  # noqa: E402
+from datapulse.config import Settings, get_settings  # noqa: E402
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -53,7 +64,7 @@ def _patch_get_settings_globally():
         patch("datapulse.api.auth.get_settings", return_value=clean_settings),
         patch("datapulse.embed.token.get_settings", return_value=clean_settings),
         patch("datapulse.api.routes.explore.get_settings", return_value=clean_settings),
-        patch("datapulse.api.routes.pipeline.get_settings", return_value=clean_settings),
+        patch("datapulse.scheduler.get_settings", return_value=clean_settings),
         patch("datapulse.cache.get_settings", return_value=clean_settings),
     ):
         yield

@@ -8,7 +8,7 @@
             "DROP POLICY IF EXISTS owner_all ON {{ this }}",
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
-            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = (SELECT NULLIF(current_setting('app.tenant_id', true), '')::INT))",
+            "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_site_year_month ON {{ this }} (year, month)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_site_site_key ON {{ this }} (site_key)"
         ]
@@ -30,7 +30,6 @@ WITH site_monthly AS (
         ROUND(SUM(f.quantity)::NUMERIC, 2)              AS total_quantity,
         ROUND(SUM(f.sales)::NUMERIC, 2)                 AS total_sales,
         ROUND(SUM(f.discount)::NUMERIC, 2)              AS total_discount,
-        ROUND(SUM(f.net_amount)::NUMERIC, 2)            AS total_net_amount,
         COUNT(*)                                         AS transaction_count,
 
         -- Diversity
@@ -76,7 +75,6 @@ SELECT
     s.total_quantity,
     s.total_sales,
     s.total_discount,
-    s.total_net_amount,
     s.transaction_count,
     s.unique_customers,
     s.unique_products,

@@ -17,7 +17,7 @@ export function GamifiedLeaderboard() {
   const { data, isLoading } = useTopStaff(filters);
 
   if (isLoading) return <LoadingCard className="h-96" />;
-  if (!data || data.items.length === 0)
+  if (!data?.items?.length)
     return <EmptyState title="No staff data available" />;
 
   const maxValue = data.items[0]?.value || 1;

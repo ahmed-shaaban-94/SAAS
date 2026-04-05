@@ -9,11 +9,11 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime
+from functools import partial
 from typing import Annotated
 from uuid import UUID
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from datapulse.api.auth import get_current_user, require_pipeline_token
@@ -23,7 +23,6 @@ from datapulse.api.deps import (
     get_quality_service,
 )
 from datapulse.cache import cache_invalidate_pattern
-from datapulse.config import get_settings
 from datapulse.logging import get_logger
 from datapulse.pipeline.checkpoint import get_completed_stages, get_last_successful_stage
 from datapulse.pipeline.executor import PipelineExecutor
@@ -116,6 +115,7 @@ def get_run(service: ServiceDep, run_id: UUID) -> PipelineRunResponse:
 async def stream_run_progress(
     service: ServiceDep,
     run_id: UUID,
+    request: Request,
 ) -> StreamingResponse:
     """SSE stream for real-time pipeline run progress.
 
@@ -123,7 +123,8 @@ async def stream_run_progress(
     - ``status_change``: when status differs from the previous poll
     - ``complete``: when the run reaches a terminal state (success/failed/cancelled)
 
-    Polls every 2 seconds. Closes automatically on terminal state or after 10 minutes.
+    Polls every 2 seconds. Closes automatically on terminal state, client
+    disconnect, or after 10 minutes.
     """
     terminal = {"success", "failed", "cancelled"}
     poll_interval = 2  # seconds
@@ -139,42 +140,51 @@ async def stream_run_progress(
         last_status = None
         elapsed = 0
 
-        while elapsed < max_duration:
-            try:
-                current = await loop.run_in_executor(None, service.get_run, run_id)
-            except Exception as exc:
-                log.error("sse_poll_error", run_id=str(run_id), error=str(exc))
-                yield _sse_event("error", {"message": "Internal error polling run status"})
-                return
+        try:
+            while elapsed < max_duration:
+                # Detect client disconnect
+                if await request.is_disconnected():
+                    log.info("sse_client_disconnected", run_id=str(run_id))
+                    return
 
-            if current is None:
-                yield _sse_event("error", {"message": "Run not found"})
-                return
+                try:
+                    current = await loop.run_in_executor(None, service.get_run, run_id)
+                except Exception as exc:
+                    log.error("sse_poll_error", run_id=str(run_id), error=str(exc))
+                    yield _sse_event("error", {"message": "Internal error polling run status"})
+                    return
 
-            data = {
-                "run_id": str(current.id),
-                "status": current.status,
-                "started_at": str(current.started_at),
-                "finished_at": (str(current.finished_at) if current.finished_at else None),
-                "duration_seconds": (
-                    float(current.duration_seconds) if current.duration_seconds else None
-                ),
-                "rows_loaded": current.rows_loaded,
-                "error_message": current.error_message,
-            }
+                if current is None:
+                    yield _sse_event("error", {"message": "Run not found"})
+                    return
 
-            if current.status != last_status:
-                yield _sse_event("status_change", data)
-                last_status = current.status
+                data = {
+                    "run_id": str(current.id),
+                    "status": current.status,
+                    "started_at": str(current.started_at),
+                    "finished_at": (str(current.finished_at) if current.finished_at else None),
+                    "duration_seconds": (
+                        float(current.duration_seconds) if current.duration_seconds else None
+                    ),
+                    "rows_loaded": current.rows_loaded,
+                    "error_message": current.error_message,
+                }
 
-            if current.status in terminal:
-                yield _sse_event("complete", data)
-                return
+                if current.status != last_status:
+                    yield _sse_event("status_change", data)
+                    last_status = current.status
 
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
+                if current.status in terminal:
+                    yield _sse_event("complete", data)
+                    return
 
-        yield _sse_event("timeout", {"message": "Stream timeout after 10 minutes"})
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+
+            yield _sse_event("timeout", {"message": "Stream timeout after 10 minutes"})
+        except asyncio.CancelledError:
+            log.info("sse_stream_cancelled", run_id=str(run_id))
+            return
 
     return StreamingResponse(
         event_generator(),
@@ -244,17 +254,16 @@ def update_run(
     status_code=202,
     dependencies=[Depends(require_pipeline_token)],
 )
-def trigger_pipeline(
+async def trigger_pipeline(
     service: ServiceDep,
     body: TriggerRequest | None = None,
 ) -> TriggerResponse:
     """Trigger a full pipeline run.
 
-    Creates a pipeline_run record (pending), then notifies n8n
-    via webhook to begin orchestration. Returns immediately.
+    Creates a pipeline_run record (pending), then starts the pipeline
+    orchestrator in the background. Returns immediately.
     """
     req = body or TriggerRequest()
-    settings = get_settings()
 
     # 1. Create the run record
     run = service.start_run(
@@ -266,29 +275,16 @@ def trigger_pipeline(
         tenant_id=req.tenant_id,
     )
 
-    # 2. Notify n8n (best-effort — run exists even if n8n is down)
-    webhook_url = f"{settings.n8n_webhook_url}pipeline-trigger"
-    headers: dict[str, str] = {}
-    if settings.pipeline_webhook_secret:
-        headers["X-Pipeline-Token"] = settings.pipeline_webhook_secret
-    try:
-        httpx.post(
-            webhook_url,
-            json={
-                "run_id": str(run.id),
-                "source_dir": req.source_dir,
-                "tenant_id": req.tenant_id,
-            },
-            headers=headers,
-            timeout=10.0,
-            follow_redirects=True,
+    # 2. Run pipeline in background (replaces n8n webhook)
+    from datapulse.scheduler import run_pipeline
+
+    asyncio.create_task(
+        run_pipeline(
+            run_id=run.id,
+            source_dir=req.source_dir,
+            tenant_id=req.tenant_id,
         )
-    except (httpx.HTTPError, httpx.TimeoutException, OSError) as exc:
-        log.warning(
-            "n8n_webhook_failed",
-            webhook_url=webhook_url,
-            error=str(exc),
-        )
+    )
 
     return TriggerResponse(run_id=run.id, status=run.status)
 
@@ -360,14 +356,16 @@ def resume_run(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
-def execute_bronze(
+async def execute_bronze(
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
-    """Run the bronze loader stage for a pipeline run."""
-    return executor.run_bronze(
-        run_id=body.run_id,
-        source_dir=body.source_dir,
+    """Run the bronze loader stage for a pipeline run.
+
+    Runs in a background thread to avoid blocking the API threadpool.
+    """
+    return await asyncio.to_thread(
+        partial(executor.run_bronze, run_id=body.run_id, source_dir=body.source_dir),
     )
 
 
@@ -376,12 +374,14 @@ def execute_bronze(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
-def execute_dbt_staging(
+async def execute_dbt_staging(
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
-    """Run dbt staging models."""
-    return executor.run_dbt(run_id=body.run_id, selector="staging")
+    """Run dbt staging models in a background thread."""
+    return await asyncio.to_thread(
+        partial(executor.run_dbt, run_id=body.run_id, selector="staging"),
+    )
 
 
 @router.post(
@@ -389,12 +389,14 @@ def execute_dbt_staging(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
-def execute_dbt_marts(
+async def execute_dbt_marts(
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
-    """Run dbt marts models."""
-    return executor.run_dbt(run_id=body.run_id, selector="marts")
+    """Run dbt marts models in a background thread."""
+    return await asyncio.to_thread(
+        partial(executor.run_dbt, run_id=body.run_id, selector="marts"),
+    )
 
 
 @router.post(
@@ -402,12 +404,14 @@ def execute_dbt_marts(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
-def execute_forecasting(
+async def execute_forecasting(
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
-    """Run the forecasting stage (after gold layer completes)."""
-    return executor.run_forecasting(run_id=body.run_id)
+    """Run the forecasting stage in a background thread."""
+    return await asyncio.to_thread(
+        partial(executor.run_forecasting, run_id=body.run_id),
+    )
 
 
 @router.get("/runs/{run_id}/quality", response_model=QualityCheckList)
