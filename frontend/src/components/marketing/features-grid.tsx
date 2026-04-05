@@ -44,10 +44,12 @@ export function FeaturesGrid() {
           {FEATURES.map((feature, i) => (
             <div
               key={feature.title}
-              className={`stagger-card ${isVisible ? "revealed" : ""}`}
+              className={`stagger-card ${isVisible ? "revealed" : ""} ${
+                i === 0 || i === 4 ? "sm:col-span-2" : ""
+              }`}
               style={{ transitionDelay: `${i * 100}ms` }}
             >
-              <FeatureCard {...feature} />
+              <FeatureCard {...feature} isBento={i === 0 || i === 4} />
             </div>
           ))}
         </div>

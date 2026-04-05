@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
 import { NetworkCanvas } from "@/components/marketing/network-canvas";
+import { StickyCTA } from "@/components/marketing/sticky-cta";
 
 export default function MarketingLayout({
   children,
@@ -21,6 +22,7 @@ export default function MarketingLayout({
       <NetworkCanvas />
       <Navbar />
       <main id="main-content" className="relative z-10">{children}</main>
+      <StickyCTA />
       <Footer />
     </div>
   );

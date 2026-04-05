@@ -18,8 +18,10 @@ function getCtaHref(name: string): string {
 export function PricingCard({
   name,
   price,
+  originalPrice,
   period,
   description,
+  badge,
   features,
   cta,
   isPopular,
@@ -39,9 +41,17 @@ export function PricingCard({
       <p className="mt-1 text-sm text-text-secondary">{description}</p>
 
       <div className="mt-6">
+        {originalPrice && (
+          <span className="mr-2 text-xl text-text-secondary line-through">{originalPrice}</span>
+        )}
         <span className="text-4xl font-bold">{price}</span>
         {period && <span className="text-text-secondary">{period}</span>}
       </div>
+      {badge && (
+        <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs font-semibold text-green-400">
+          <span>🎉</span> {badge}
+        </div>
+      )}
 
       <ul className="mt-8 flex-1 space-y-3">
         {features.map((feature) => (

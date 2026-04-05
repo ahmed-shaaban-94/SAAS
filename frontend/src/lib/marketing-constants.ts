@@ -144,8 +144,10 @@ export const STATS: Stat[] = [
 export interface PricingTier {
   name: string;
   price: string;
+  originalPrice?: string;
   period: string;
   description: string;
+  badge?: string;
   features: string[];
   cta: string;
   isPopular: boolean;
@@ -169,9 +171,11 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     name: "Pro",
-    price: "$49",
+    price: "$0",
+    originalPrice: "$49",
     period: "/mo",
     description: "For growing teams and businesses",
+    badge: "Launch offer — Free for early adopters",
     features: [
       "5 data sources",
       "1,000,000 rows",
@@ -180,7 +184,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Quality gates",
       "Priority support",
     ],
-    cta: "Start Free Trial",
+    cta: "Join Beta — Free",
     isPopular: true,
   },
   {
