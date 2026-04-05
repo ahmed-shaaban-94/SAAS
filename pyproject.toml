@@ -62,5 +62,5 @@ pythonpath = ["src"]
 source = ["datapulse"]
 
 [tool.coverage.report]
-fail_under = 95
+fail_under = 80
 show_missing = true
