@@ -73,7 +73,6 @@ jobs:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          fingerprint: ${{ secrets.STAGING_HOST_FINGERPRINT }}
           source: "docker-compose.yml,docker-compose.prod.yml,nginx/,migrations/,postgres/"
           target: ${{ secrets.STAGING_DEPLOY_PATH }}
 
@@ -83,7 +82,6 @@ jobs:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          fingerprint: ${{ secrets.STAGING_HOST_FINGERPRINT }}
           script: |
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
 
