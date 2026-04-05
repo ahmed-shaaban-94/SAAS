@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
 import { FilterBar } from "@/components/filters/filter-bar";
 import { LoadingCard } from "@/components/loading-card";
+import { CompareProvider, CompareButton, ComparePanel } from "@/components/comparison/compare-toggle";
 import dynamic from "next/dynamic";
 
 // Above-fold: regular imports (seen immediately)
@@ -69,6 +70,7 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ clas
 export default function DashboardPage() {
   return (
     <PageTransition>
+      <CompareProvider>
       <div>
         <Breadcrumbs />
         <div className="flex items-start justify-between">
@@ -77,6 +79,7 @@ export default function DashboardPage() {
             description="Sales performance at a glance"
           />
           <div className="flex items-center gap-3">
+            <CompareButton />
             <Link
               href="/dashboard/report"
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary transition-all hover:bg-accent/10 hover:text-accent"
@@ -88,6 +91,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <FilterBar />
+        <ComparePanel />
 
         {/* Client boundary: single API call provides data to KPI + trends + rankings */}
         <DashboardContent>
@@ -162,6 +166,7 @@ export default function DashboardPage() {
           </LazySection>
         </DashboardContent>
       </div>
+      </CompareProvider>
     </PageTransition>
   );
 }

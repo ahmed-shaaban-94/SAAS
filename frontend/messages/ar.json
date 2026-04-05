@@ -200,5 +200,145 @@
     "label": "اللغة",
     "en": "English",
     "ar": "العربية"
+  },
+  "app": {
+    "sidebar": {
+      "overview": "نظرة عامة",
+      "goals": "الأهداف",
+      "customReport": "تقرير مخصص",
+      "products": "المنتجات",
+      "customers": "العملاء",
+      "staff": "الموظفين",
+      "sites": "الفروع",
+      "returns": "المرتجعات",
+      "reports": "التقارير",
+      "pipeline": "خط الأنابيب",
+      "alerts": "التنبيهات",
+      "insights": "الرؤى",
+      "billing": "الفواتير",
+      "savedViews": "العروض المحفوظة",
+      "noSavedViews": "لا توجد عروض محفوظة بعد",
+      "signOut": "تسجيل الخروج"
+    },
+    "dashboard": {
+      "title": "النظرة التنفيذية",
+      "description": "أداء المبيعات في لمحة",
+      "printReport": "طباعة التقرير",
+      "compare": "مقارنة",
+      "customize": "تخصيص",
+      "sections": {
+        "trends": "الاتجاهات",
+        "distribution": "توزيع المبيعات",
+        "topPerformers": "الأفضل أداءً",
+        "topMovers": "الأكثر تغيراً",
+        "goalsAndForecast": "الأهداف والتوقعات",
+        "revenuePatterns": "أنماط الإيرادات"
+      }
+    },
+    "kpi": {
+      "todayGross": "إجمالي اليوم",
+      "mtdGross": "إجمالي الشهر",
+      "ytdGross": "إجمالي السنة",
+      "todayDiscount": "خصم اليوم",
+      "momGrowth": "نمو شهري",
+      "yoyGrowth": "نمو سنوي",
+      "dailyTransactions": "معاملات اليوم",
+      "dailyCustomers": "عملاء اليوم",
+      "avgBasket": "متوسط السلة",
+      "dailyReturns": "مرتجعات اليوم"
+    },
+    "filters": {
+      "dateRange": "نطاق التاريخ",
+      "category": "التصنيف",
+      "brand": "العلامة التجارية",
+      "site": "الفرع",
+      "staffMember": "الموظف",
+      "clearAll": "مسح الكل",
+      "saveView": "حفظ العرض",
+      "activeFilters": "الفلاتر النشطة",
+      "last7d": "آخر ٧ أيام",
+      "last30d": "آخر ٣٠ يوم",
+      "last90d": "آخر ٩٠ يوم",
+      "mtd": "من بداية الشهر",
+      "ytd": "من بداية السنة",
+      "customRange": "نطاق مخصص"
+    },
+    "tables": {
+      "rank": "#",
+      "name": "الاسم",
+      "revenue": "الإيرادات",
+      "share": "الحصة",
+      "growth": "النمو",
+      "product": "المنتج",
+      "customer": "العميل",
+      "staff": "الموظف",
+      "noData": "لا توجد بيانات"
+    },
+    "common": {
+      "loading": "جاري التحميل...",
+      "error": "حدث خطأ ما",
+      "retry": "إعادة المحاولة",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "delete": "حذف",
+      "edit": "تعديل",
+      "close": "إغلاق",
+      "search": "بحث",
+      "noResults": "لا توجد نتائج",
+      "updated": "آخر تحديث",
+      "justNow": "الآن",
+      "minutesAgo": "منذ {count} دقيقة",
+      "hoursAgo": "منذ {count} ساعة",
+      "daysAgo": "منذ {count} يوم"
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "markAllRead": "قراءة الكل",
+      "noNotifications": "لا توجد إشعارات بعد",
+      "justNow": "الآن"
+    },
+    "onboarding": {
+      "skip": "تخطي",
+      "step": "الخطوة {current} من {total}",
+      "connectData": {
+        "title": "ربط بياناتك",
+        "description": "ارفع ملفات Excel/CSV أو استخدم البيانات التجريبية للبدء.",
+        "useSample": "استخدم بيانات تجريبية",
+        "uploadLater": "سأرفع لاحقاً"
+      },
+      "firstReport": {
+        "title": "أنشئ أول تقرير",
+        "description": "اختر قالب تقرير لترى بياناتك تنبض بالحياة.",
+        "salesOverview": "نظرة عامة على المبيعات",
+        "productPerformance": "أداء المنتجات",
+        "customerAnalysis": "تحليل العملاء"
+      },
+      "firstGoal": {
+        "title": "حدد أول هدف",
+        "description": "حدد هدف إيرادات شهري لتتبع تقدمك.",
+        "monthlyTarget": "هدف الإيرادات الشهرية",
+        "setGoal": "تحديد الهدف",
+        "skipForNow": "تخطي الآن"
+      }
+    },
+    "shortcuts": {
+      "title": "اختصارات لوحة المفاتيح",
+      "search": "بحث",
+      "searchAlt": "بحث (بديل)",
+      "showShortcuts": "عرض الاختصارات",
+      "navigation": "التنقل"
+    },
+    "comparison": {
+      "title": "مقارنة الفترات",
+      "currentPeriod": "الفترة الحالية",
+      "previousPeriod": "الفترة السابقة",
+      "thisMonth": "هذا الشهر",
+      "lastMonth": "الشهر الماضي",
+      "thisQuarter": "هذا الربع",
+      "lastQuarter": "الربع الماضي",
+      "ytd": "من بداية السنة",
+      "lastYear": "السنة الماضية",
+      "trendComparison": "مقارنة اتجاه الإيرادات"
+    }
   }
 }
