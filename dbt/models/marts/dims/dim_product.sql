@@ -43,21 +43,23 @@ WITH ranked AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY tenant_id, drug_code)::INT AS product_key,
-    tenant_id,
-    drug_code,
-    drug_name,
-    drug_brand,
-    drug_cluster,
-    drug_status,
-    is_temporary,
-    drug_category,
-    drug_subcategory,
-    drug_division,
-    drug_segment,
-    buyer
-FROM ranked
-WHERE rn = 1
+    ROW_NUMBER() OVER (ORDER BY r.tenant_id, r.drug_code)::INT AS product_key,
+    r.tenant_id,
+    r.drug_code,
+    r.drug_name,
+    r.drug_brand,
+    r.drug_cluster,
+    r.drug_status,
+    r.is_temporary,
+    r.drug_category,
+    r.drug_subcategory,
+    r.drug_division,
+    r.drug_segment,
+    r.buyer,
+    COALESCE(o.origin, 'Other') AS origin
+FROM ranked r
+LEFT JOIN {{ ref('seed_division_origin') }} o ON r.drug_division = o.division
+WHERE r.rn = 1
 
 UNION ALL
 
@@ -74,4 +76,5 @@ SELECT
     'Unknown'           AS drug_subcategory,
     'Unknown'           AS drug_division,
     'Unknown'           AS drug_segment,
-    'Unknown'           AS buyer
+    'Unknown'           AS buyer,
+    'Other'             AS origin

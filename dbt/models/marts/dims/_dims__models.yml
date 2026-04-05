@@ -126,6 +126,12 @@ models:
         description: "Product segment"
       - name: buyer
         description: "Business owner of the product relationship"
+      - name: origin
+        description: "Product origin category derived from drug_division (Pharma, Non-pharma, Services, HVI, Other)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Pharma', 'Non-pharma', 'Services', 'HVI', 'Other']
 
   - name: dim_site
     description: "Site/location dimension (SCD Type 1). Includes area_manager for geographic grouping and governorate (EN/AR) for Power BI Egypt shape map. Unknown member at key=-1."

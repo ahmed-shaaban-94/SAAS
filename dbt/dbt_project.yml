@@ -12,6 +12,14 @@ clean-targets:
   - target
   - dbt_packages
 
+seeds:
+  datapulse:
+    seed_division_origin:
+      +schema: marts
+      +column_types:
+        division: varchar(50)
+        origin: varchar(20)
+
 models:
   datapulse:
     bronze:
