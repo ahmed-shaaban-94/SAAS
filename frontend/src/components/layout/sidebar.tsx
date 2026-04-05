@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { HealthIndicator } from "./health-indicator";
+import { SavedViewsMenu } from "./saved-views-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 interface SidebarProps {
@@ -212,6 +213,9 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
               <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} anomalyCount={anomalyCount} alertCount={alertCount} />
             </nav>
 
+            {/* Saved Views */}
+            <SavedViewsMenu onNavigate={() => setMobileOpen(false)} />
+
             {/* Footer */}
             <div className="border-t border-border px-4 py-4 space-y-3">
               <UserInfo />
@@ -235,6 +239,9 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
         <nav className="flex-1 space-y-1 px-3 py-4">
           <NavLinks pathname={pathname} anomalyCount={anomalyCount} alertCount={alertCount} />
         </nav>
+
+        {/* Saved Views */}
+        <SavedViewsMenu />
 
         {/* Footer */}
         <div className="border-t border-border px-4 py-4 space-y-3">

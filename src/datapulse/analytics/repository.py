@@ -292,6 +292,7 @@ class AnalyticsRepository:
             # Handle both pre-parsed list and raw JSON string
             if isinstance(raw_points, str):
                 import json
+
                 raw_points = json.loads(raw_points)
             sparkline = [
                 TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))
@@ -524,6 +525,7 @@ class AnalyticsRepository:
             raw_points = row["sparkline_points"]
             if isinstance(raw_points, str):
                 import json
+
                 raw_points = json.loads(raw_points)
             sparkline = [
                 TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))

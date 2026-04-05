@@ -533,6 +533,39 @@ html {
 }
 
 /* ═══════════════════════════════════════════════
+   Number pulse animations
+   ═══════════════════════════════════════════════ */
+.number-pulse-green {
+  animation: numberPulseGreen 0.6s ease-out;
+}
+
+.number-pulse-red {
+  animation: numberPulseRed 0.6s ease-out;
+}
+
+@keyframes numberPulseGreen {
+  0% { color: inherit; transform: scale(1); }
+  30% { color: var(--growth-green); transform: scale(1.05); }
+  100% { color: inherit; transform: scale(1); }
+}
+
+@keyframes numberPulseRed {
+  0% { color: inherit; transform: scale(1); }
+  30% { color: var(--growth-red); transform: scale(1.05); }
+  100% { color: inherit; transform: scale(1); }
+}
+
+/* Breathing animation for skeleton */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.003); opacity: 0.7; }
+}
+
+.animate-breathe {
+  animation: breathe 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════
    Reduced motion
    ═══════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
@@ -545,6 +578,10 @@ html {
     transition: none;
   }
   .gradient-text {
+    animation: none;
+  }
+  .number-pulse-green,
+  .number-pulse-red {
     animation: none;
   }
   *,

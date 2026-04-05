@@ -6,10 +6,11 @@ import { useToast } from "@/components/ui/toast";
 import { useDateRange } from "@/hooks/use-date-range";
 import { getDatePresets, formatDateParam } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
-import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { X, SlidersHorizontal, ChevronDown, Bookmark } from "lucide-react";
 import { SlicerPanel } from "./slicer-panel";
 import { ActiveFilterChips } from "./active-filter-chips";
 import { DateRangePicker } from "./date-range-picker";
+import { SaveViewDialog } from "./save-view-dialog";
 
 export function FilterBar() {
   const { filters, setFilters, updateFilter, clearFilters } = useFilters();
@@ -24,6 +25,7 @@ export function FilterBar() {
   }, [dateRange?.max_date]);
 
   const [expanded, setExpanded] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   const activeFilterCount = Object.values(filters).filter((v) => v !== undefined).length;
   const hasFilters = activeFilterCount > 0;
@@ -71,6 +73,16 @@ export function FilterBar() {
             setFilters({ ...filters, start_date: start, end_date: end })
           }
         />
+
+        {/* Save View button */}
+        <button
+          onClick={() => setSaveDialogOpen(true)}
+          aria-label="Save current view"
+          title="Save current filters as a view"
+          className="rounded-md px-2.5 py-1.5 text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+        >
+          <Bookmark className="h-4 w-4" />
+        </button>
 
         {/* More Filters toggle */}
         <button
@@ -155,6 +167,10 @@ export function FilterBar() {
           </div>
         </div>
       )}
+      <SaveViewDialog
+        open={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+      />
     </div>
   );
 }

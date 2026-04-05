@@ -1,3 +1,4 @@
+import { MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChartCardProps {
@@ -7,9 +8,13 @@ interface ChartCardProps {
   actions?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Chart identifier for the annotations feature */
+  chartId?: string;
+  /** Callback when user clicks the annotate button */
+  onAnnotate?: () => void;
 }
 
-export function ChartCard({ title, subtitle, badge, actions, children, className }: ChartCardProps) {
+export function ChartCard({ title, subtitle, badge, actions, children, className, chartId, onAnnotate }: ChartCardProps) {
   return (
     <section
       aria-label={title}
@@ -31,6 +36,15 @@ export function ChartCard({ title, subtitle, badge, actions, children, className
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {onAnnotate && (
+            <button
+              onClick={onAnnotate}
+              title="Add annotation"
+              className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-divider hover:text-accent"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </button>
+          )}
           {actions}
           {badge}
         </div>

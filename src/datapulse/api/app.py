@@ -19,17 +19,23 @@ from datapulse.api.limiter import limiter
 from datapulse.api.routes import (
     ai_light,
     analytics,
+    annotations,
     anomalies,
     billing,
+    dashboard_layouts,
     embed,
     explore,
     export,
     forecasting,
     health,
+    notifications,
+    onboarding,
     pipeline,
     queries,
     reports,
+    search,
     targets,
+    views,
 )
 from datapulse.config import get_settings
 from datapulse.logging import setup_logging
@@ -75,7 +81,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=[
             "Content-Type",
             "Authorization",
@@ -167,5 +173,11 @@ def create_app() -> FastAPI:
     app.include_router(export.router, prefix="/api/v1")
     app.include_router(billing.router, prefix="/api/v1")
     app.include_router(anomalies.router, prefix="/api/v1")
+    app.include_router(onboarding.router, prefix="/api/v1")
+    app.include_router(search.router, prefix="/api/v1")
+    app.include_router(views.router, prefix="/api/v1")
+    app.include_router(notifications.router, prefix="/api/v1")
+    app.include_router(annotations.router, prefix="/api/v1")
+    app.include_router(dashboard_layouts.router, prefix="/api/v1")
 
     return app
