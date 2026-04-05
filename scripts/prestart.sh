@@ -15,7 +15,7 @@ MIGRATIONS_DIR="${MIGRATIONS_DIR:-/app/migrations}"
 
 # Auto-generate DB_READER_PASSWORD if not provided
 if [ -z "${DB_READER_PASSWORD:-}" ]; then
-    DB_READER_PASSWORD="$(openssl rand -hex 16)"
+    DB_READER_PASSWORD="$(python -c 'import secrets; print(secrets.token_hex(16))')"
     echo "[prestart] WARNING: DB_READER_PASSWORD not set. Auto-generated a random password for datapulse_reader role."
     echo "[prestart] Set DB_READER_PASSWORD in .env to use a fixed password."
 fi
