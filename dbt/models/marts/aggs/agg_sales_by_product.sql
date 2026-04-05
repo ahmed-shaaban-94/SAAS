@@ -60,6 +60,8 @@ SELECT
     p.drug_brand,
     p.drug_category,
     p.drug_division,
+    p.drug_cluster,
+    p.origin,
     r.year,
     r.month,
     r.month_name,

@@ -29,39 +29,73 @@ class AdvancedRepository:
         self._session = session
 
     def get_abc_analysis(self, filters: AnalyticsFilter, entity: str = "product") -> ABCAnalysis:
-        """ABC/Pareto analysis — classify products (or customers) by revenue contribution."""
+        """ABC/Pareto analysis — uses drug_cluster for products, revenue-based for customers.
+
+        Products with Services or Other origin are excluded.
+        drug_cluster values: A, B, C, D, GT, N, Uncategorized, Unknown
+        Mapped to ABC: A→A, B→B, C/D/GT/N/Uncategorized/Unknown→C
+        """
         if entity == "product":
             table = "public_marts.agg_sales_by_product"
-            key_col, name_col = "product_key", "drug_name"
+            key_col, name_col = "product_key", "drug_brand"
         else:
             table = "public_marts.agg_sales_by_customer"
             key_col, name_col = "customer_key", "customer_name"
 
         where, params = build_where(filters, use_year_month=True)
 
-        stmt = text(f"""
-            WITH ranked AS (
-                SELECT {key_col} AS key, {name_col} AS name,
-                       SUM(total_sales) AS value
-                FROM {table}
-                WHERE {where}
-                GROUP BY {key_col}, {name_col}
-                HAVING SUM(total_sales) > 0
-                ORDER BY value DESC
-            ),
-            cumulative AS (
-                SELECT key, name, value,
-                       ROW_NUMBER() OVER (ORDER BY value DESC) AS rank,
-                       SUM(value) OVER () AS total,
-                       SUM(value) OVER (ORDER BY value DESC)
-                           / NULLIF(SUM(value) OVER (), 0) * 100 AS cumulative_pct
-                FROM ranked
-            )
-            SELECT key, name, value, rank, cumulative_pct, total
-            FROM cumulative
-            ORDER BY rank
-            LIMIT 200
-        """)
+        if entity == "product":
+            # Use drug_cluster for ABC class, exclude Services/Other origins
+            stmt = text(f"""
+                WITH ranked AS (
+                    SELECT {key_col} AS key, {name_col} AS name,
+                           SUM(total_sales) AS value,
+                           MAX(drug_cluster) AS cluster
+                    FROM {table}
+                    WHERE {where}
+                      AND COALESCE(origin, 'Other') NOT IN ('Services', 'Other')
+                    GROUP BY {key_col}, {name_col}
+                    HAVING SUM(total_sales) > 0
+                    ORDER BY value DESC
+                ),
+                cumulative AS (
+                    SELECT key, name, value, cluster,
+                           ROW_NUMBER() OVER (ORDER BY value DESC) AS rank,
+                           SUM(value) OVER () AS total,
+                           SUM(value) OVER (ORDER BY value DESC)
+                               / NULLIF(SUM(value) OVER (), 0) * 100 AS cumulative_pct
+                    FROM ranked
+                )
+                SELECT key, name, value, rank, cumulative_pct, total, cluster
+                FROM cumulative
+                ORDER BY rank
+                LIMIT 200
+            """)
+        else:
+            stmt = text(f"""
+                WITH ranked AS (
+                    SELECT {key_col} AS key, {name_col} AS name,
+                           SUM(total_sales) AS value
+                    FROM {table}
+                    WHERE {where}
+                    GROUP BY {key_col}, {name_col}
+                    HAVING SUM(total_sales) > 0
+                    ORDER BY value DESC
+                ),
+                cumulative AS (
+                    SELECT key, name, value,
+                           ROW_NUMBER() OVER (ORDER BY value DESC) AS rank,
+                           SUM(value) OVER () AS total,
+                           SUM(value) OVER (ORDER BY value DESC)
+                               / NULLIF(SUM(value) OVER (), 0) * 100 AS cumulative_pct
+                    FROM ranked
+                )
+                SELECT key, name, value, rank, cumulative_pct, total, NULL AS cluster
+                FROM cumulative
+                ORDER BY rank
+                LIMIT 200
+            """)
+
         rows = self._session.execute(stmt, params).fetchall()
         if not rows:
             return ABCAnalysis(
@@ -82,16 +116,29 @@ class AdvancedRepository:
 
         for r in rows:
             cum_pct = Decimal(str(r[4]))
-            if cum_pct <= 80:
+            cluster = str(r[6]) if r[6] else None
+
+            # For products: use drug_cluster; for customers: use cumulative %
+            if cluster and cluster in ("A",):
                 abc_class = "A"
-                a_count += 1
-                a_value += Decimal(str(r[2]))
+            elif cluster and cluster in ("B",):
+                abc_class = "B"
+            elif cluster:
+                abc_class = "C"
+            elif cum_pct <= 80:
+                abc_class = "A"
             elif cum_pct <= 95:
                 abc_class = "B"
+            else:
+                abc_class = "C"
+
+            if abc_class == "A":
+                a_count += 1
+                a_value += Decimal(str(r[2]))
+            elif abc_class == "B":
                 b_count += 1
                 b_value += Decimal(str(r[2]))
             else:
-                abc_class = "C"
                 c_count += 1
                 c_value += Decimal(str(r[2]))
 
