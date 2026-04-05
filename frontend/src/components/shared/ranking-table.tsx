@@ -2,10 +2,13 @@ import { cn } from "@/lib/utils";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
 import type { RankingItem } from "@/types/api";
 import { Trophy, Medal, Award } from "lucide-react";
+import { InlineSparkline } from "./inline-sparkline";
 
 interface RankingTableProps {
   items: RankingItem[];
   entityLabel: string;
+  /** Optional sparkline data keyed by item.key */
+  sparklines?: Record<number, Array<{ value: number }>>;
   className?: string;
 }
 
@@ -38,8 +41,9 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-export function RankingTable({ items, entityLabel, className }: RankingTableProps) {
+export function RankingTable({ items, entityLabel, sparklines, className }: RankingTableProps) {
   const maxValue = items.length > 0 ? Math.max(...items.map((i) => i.value)) : 1;
+  const hasSparklines = sparklines && Object.keys(sparklines).length > 0;
 
   return (
     <div className={cn("overflow-x-auto", className)}>
@@ -49,6 +53,9 @@ export function RankingTable({ items, entityLabel, className }: RankingTableProp
             <th className="pb-2.5 pr-4 text-[11px] font-semibold uppercase tracking-wider">#</th>
             <th className="pb-2.5 pr-4 text-[11px] font-semibold uppercase tracking-wider">{entityLabel}</th>
             <th className="pb-2.5 pr-4 text-right text-[11px] font-semibold uppercase tracking-wider">Revenue</th>
+            {hasSparklines && (
+              <th className="pb-2.5 pr-4 text-center text-[11px] font-semibold uppercase tracking-wider">Trend</th>
+            )}
             <th className="pb-2.5 text-right text-[11px] font-semibold uppercase tracking-wider">Share</th>
           </tr>
         </thead>
@@ -90,6 +97,11 @@ export function RankingTable({ items, entityLabel, className }: RankingTableProp
                     ({formatCompact(item.value)})
                   </span>
                 </td>
+                {hasSparklines && (
+                  <td className="py-3 pr-4 text-center">
+                    <InlineSparkline data={sparklines[item.key]} />
+                  </td>
+                )}
                 <td className="py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <div className="h-1.5 w-16 overflow-hidden rounded-full bg-divider">
