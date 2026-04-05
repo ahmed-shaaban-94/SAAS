@@ -48,7 +48,7 @@ def client(mock_service: MagicMock) -> TestClient:
 class TestBillingBreakdown:
     def test_billing_breakdown(self, client: TestClient, mock_service: MagicMock):
         mock_service.get_billing_breakdown.return_value = BillingBreakdown(
-            items=[], total_transactions=0, total_sales=Decimal("0")
+            items=[], total_transactions=0, total_net_amount=Decimal("0")
         )
         resp = client.get("/api/v1/analytics/billing-breakdown")
         assert resp.status_code == 200
@@ -125,7 +125,7 @@ class TestFilterBuildingEdgeCases:
     def test_with_filter_params(self, client: TestClient, mock_service: MagicMock):
         """Test _to_filter with actual filter parameters (covers lines 103, 113)."""
         mock_service.get_billing_breakdown.return_value = BillingBreakdown(
-            items=[], total_transactions=0, total_sales=Decimal("0")
+            items=[], total_transactions=0, total_net_amount=Decimal("0")
         )
         resp = client.get(
             "/api/v1/analytics/billing-breakdown",

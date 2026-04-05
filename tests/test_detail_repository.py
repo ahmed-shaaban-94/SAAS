@@ -72,6 +72,7 @@ class TestGetProductDetail:
         assert result.product_key == 1
         assert result.drug_name == "Aspirin"
         assert result.total_sales == Decimal("10000")
+        assert result.total_net_amount == Decimal("10000")
 
     def test_not_found(self, detail_repo):
         repo, session = detail_repo

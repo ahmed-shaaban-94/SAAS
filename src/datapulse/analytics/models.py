@@ -136,7 +136,7 @@ class ProductPerformance(BaseModel):
     drug_category: str
     total_quantity: JsonDecimal
     total_sales: JsonDecimal
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     return_rate: JsonDecimal
     unique_customers: int
     monthly_trend: list[TimeSeriesPoint] = []
@@ -151,7 +151,7 @@ class CustomerAnalytics(BaseModel):
     customer_id: str
     customer_name: str
     total_quantity: JsonDecimal
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     transaction_count: int
     unique_products: int
     return_count: int
@@ -167,7 +167,7 @@ class StaffPerformance(BaseModel):
     staff_id: str
     staff_name: str
     staff_position: str
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     transaction_count: int
     avg_transaction_value: JsonDecimal
     unique_customers: int
@@ -232,7 +232,7 @@ class BillingBreakdownItem(BaseModel):
 
     billing_group: str
     transaction_count: int
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     pct_of_total: JsonDecimal
 
 
@@ -243,7 +243,7 @@ class BillingBreakdown(BaseModel):
 
     items: list[BillingBreakdownItem]
     total_transactions: int
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
 
 
 class CustomerTypeBreakdownItem(BaseModel):
@@ -308,7 +308,7 @@ class SiteDetail(BaseModel):
     site_code: str
     site_name: str
     area_manager: str
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     transaction_count: int
     unique_customers: int
     unique_staff: int
@@ -325,7 +325,7 @@ class ProductInCategory(BaseModel):
 
     product_key: int
     drug_name: str
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     transaction_count: int
 
 
@@ -335,7 +335,7 @@ class BrandGroup(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     brand: str
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     products: list[ProductInCategory]
 
 
@@ -345,7 +345,7 @@ class CategoryGroup(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     category: str
-    total_sales: JsonDecimal
+    total_net_amount: JsonDecimal
     brands: list[BrandGroup]
 
 

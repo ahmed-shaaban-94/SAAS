@@ -58,7 +58,7 @@ class BreakdownRepository:
         rows = self._session.execute(stmt, params).fetchall()
 
         if not rows:
-            return BillingBreakdown(items=[], total_transactions=0, total_sales=_ZERO)
+            return BillingBreakdown(items=[], total_transactions=0, total_net_amount=_ZERO)
 
         raw = [(str(r[0]), int(r[1]), Decimal(str(r[2]))) for r in rows]
         grand_total = sum(v for _, _, v in raw) or Decimal("1")
@@ -68,7 +68,7 @@ class BreakdownRepository:
             BillingBreakdownItem(
                 billing_group=name,
                 transaction_count=count,
-                total_sales=amount,
+                total_net_amount=amount,
                 pct_of_total=(amount / grand_total * 100).quantize(Decimal("0.01")),
             )
             for name, count, amount in raw
@@ -77,7 +77,7 @@ class BreakdownRepository:
         return BillingBreakdown(
             items=items,
             total_transactions=total_txn,
-            total_sales=grand_total,
+            total_net_amount=grand_total,
         )
 
     def get_customer_type_breakdown(self, filters: AnalyticsFilter) -> CustomerTypeBreakdown:
