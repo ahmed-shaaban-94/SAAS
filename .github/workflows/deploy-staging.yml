@@ -81,6 +81,7 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            export IMAGE_TAG=staging
 
             # Pull latest images (no git pull — compose files copied via SCP)
             docker compose \
