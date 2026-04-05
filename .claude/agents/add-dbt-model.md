@@ -57,12 +57,12 @@ Add to `dbt/models/marts/<type>s/_<type>s__models.yml`:
 ### 4. Validate
 Run these commands:
 ```bash
-cd /home/user/SAAS && docker exec datapulse-app dbt parse
+cd /home/user/SAAS && docker exec datapulse-api dbt parse
 ```
 If parse succeeds:
 ```bash
-docker exec datapulse-app dbt run --select <name>
-docker exec datapulse-app dbt test --select <name>
+docker exec datapulse-api dbt run --select <name>
+docker exec datapulse-api dbt test --select <name>
 ```
 
 ### 5. Report results

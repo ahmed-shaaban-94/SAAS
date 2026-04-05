@@ -2,18 +2,10 @@
 # Base file (docker-compose.yml) uses bare PORT:PORT (binds 0.0.0.0).
 # Production should use docker-compose.prod.yml with 127.0.0.1 bindings.
 services:
-  app:
-    volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./data:/app/data
-      - ./notebooks:/app/notebooks
-      - ./dbt:/app/dbt
-      - ./migrations:/app/migrations
-
   api:
     volumes:
       - ./src:/app/src
+      - ./tests:/app/tests
       - ./dbt:/app/dbt
       - ./data:/app/data
       - ./migrations:/app/migrations

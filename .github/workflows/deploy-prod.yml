@@ -56,9 +56,6 @@ jobs:
           - service: api
             context: .
             target: api
-          - service: app
-            context: .
-            target: app
           - service: frontend
             context: ./frontend
             target: production

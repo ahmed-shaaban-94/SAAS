@@ -1,7 +1,7 @@
 """Session-scoped test configuration for DataPulse.
 
 Problem: The project's .env file contains extra keys (POSTGRES_USER,
-POSTGRES_PASSWORD, POSTGRES_DB, PGADMIN_EMAIL, PGADMIN_PASSWORD) that
+POSTGRES_PASSWORD, POSTGRES_DB) that
 pydantic-settings rejects as "extra_forbidden" when Settings() is called.
 
 Solution: Patch get_settings() at the session level so every call to

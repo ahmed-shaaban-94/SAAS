@@ -289,9 +289,7 @@ tests/
 
 | Service | Container | Port | Purpose |
 |---------|-----------|------|---------|
-| `app` | datapulse-app | 8888 | Python app + JupyterLab |
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
-| `pgadmin` | datapulse-pgadmin | 5050 | Database admin UI |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache for n8n |

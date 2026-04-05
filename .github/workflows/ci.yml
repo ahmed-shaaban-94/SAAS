@@ -119,10 +119,6 @@ jobs:
             context: .
             dockerfile: Dockerfile
             target: api
-          - service: app
-            context: .
-            dockerfile: Dockerfile
-            target: app
           - service: frontend
             context: ./frontend
             dockerfile: ./frontend/Dockerfile

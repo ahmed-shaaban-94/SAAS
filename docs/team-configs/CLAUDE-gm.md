@@ -132,8 +132,8 @@ cd frontend && npx tsc --noEmit        # TypeScript
 cd frontend && npm run lint            # ESLint
 
 # dbt
-docker exec datapulse-app dbt run --select <model>
-docker exec datapulse-app dbt test --select <model>
+docker exec datapulse-api dbt run --select <model>
+docker exec datapulse-api dbt test --select <model>
 
 # Docker
 docker compose up -d --build
@@ -141,7 +141,7 @@ docker compose logs -f api
 docker compose config --quiet
 
 # Pipeline
-docker exec datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales
+docker exec datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales
 
 # DB
 docker exec datapulse-db psql -U datapulse -d datapulse
@@ -201,8 +201,6 @@ Excel/CSV files
 | Logging | structlog |
 | ORM | SQLAlchemy 2.0 |
 | Containers | Docker Compose |
-| DB Admin | pgAdmin 4 |
-| Notebooks | JupyterLab |
 | Frontend | Next.js 14 + TypeScript + Tailwind CSS |
 | Charts | Recharts |
 | Data Fetching | SWR |
@@ -281,9 +279,7 @@ frontend/e2e/                    # 11 Playwright specs
 
 | Service | Container | Port | Purpose |
 |---------|-----------|------|---------|
-| `app` | datapulse-app | 8888 | Python app + JupyterLab |
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
-| `pgadmin` | datapulse-pgadmin | 5050 | Database admin UI |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache |

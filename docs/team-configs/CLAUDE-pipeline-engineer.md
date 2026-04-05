@@ -218,10 +218,10 @@ def check_null_rate(session: Session, run_id: UUID, stage: str = "bronze") -> Qu
 
 ```bash
 # Run full pipeline locally
-docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales
+docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales
 
 # Parquet only (no DB write)
-docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales --skip-db
+docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales --skip-db
 
 # Run specific dbt stage
 docker exec -it datapulse-api dbt run --select staging --project-dir /app/dbt --profiles-dir /app/dbt
@@ -309,8 +309,6 @@ Excel/CSV files
 | Logging | structlog |
 | ORM | SQLAlchemy 2.0 |
 | Containers | Docker Compose |
-| DB Admin | pgAdmin 4 |
-| Notebooks | JupyterLab |
 | Frontend | Next.js 14 + TypeScript + Tailwind CSS |
 | Charts | Recharts |
 | Data Fetching | SWR |
@@ -408,9 +406,7 @@ tests/
 
 | Service | Container | Port | Purpose |
 |---------|-----------|------|---------|
-| `app` | datapulse-app | 8888 | Python app + JupyterLab |
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
-| `pgadmin` | datapulse-pgadmin | 5050 | Database admin UI |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache for n8n |
@@ -482,10 +478,10 @@ All settings via environment variables or `.env` file (Pydantic Settings):
 
 ```bash
 # Inside Docker container
-docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales
+docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales
 
 # Parquet only (no DB)
-docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales --skip-db
+docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales --skip-db
 ```
 
 ## Conventions

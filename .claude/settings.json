@@ -21,7 +21,7 @@
       "Bash(cd /home/user/SAAS/frontend && npm run lint*)",
       "Bash(cd /home/user/SAAS/frontend && npm run build*)",
       "Bash(docker compose config*)",
-      "Bash(docker exec datapulse-app dbt*)",
+      "Bash(docker exec datapulse-api dbt*)",
       "Bash(docker exec datapulse-db psql*)",
       "Bash(ruff check*)",
       "Bash(ruff format*)",

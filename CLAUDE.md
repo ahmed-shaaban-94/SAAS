@@ -36,8 +36,6 @@ Excel/CSV files
 | Logging | structlog |
 | ORM | SQLAlchemy 2.0 |
 | Containers | Docker Compose |
-| DB Admin | pgAdmin 4 |
-| Notebooks | JupyterLab |
 | Frontend | Next.js 14 + TypeScript + Tailwind CSS |
 | Charts | Recharts |
 | Data Fetching | SWR |
@@ -71,9 +69,7 @@ tests/                  # pytest: reader, type_detector, config, validator, load
 
 | Service | Container | Port | Purpose |
 |---------|-----------|------|---------|
-| `app` | datapulse-app | 8888 | Python app + JupyterLab |
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
-| `pgadmin` | datapulse-pgadmin | 5050 | Database admin UI |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache for n8n |
@@ -104,7 +100,7 @@ docker compose up -d --build
 ## Running the Bronze Pipeline
 
 ```bash
-docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales
+docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales
 ```
 
 ## Conventions
