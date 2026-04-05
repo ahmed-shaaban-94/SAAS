@@ -9,16 +9,6 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
   },
-  // Redirect root to the static landing page (server-side 308)
-  async redirects() {
-    return [
-      {
-        source: "/",
-        destination: "/landing.html",
-        permanent: true,
-      },
-    ];
-  },
   // Proxy /api/v1/* and /health to the FastAPI backend.
   // This lets NEXT_PUBLIC_API_URL stay empty (same-origin requests from the
   // browser) while the Next.js server forwards the calls to the API container.

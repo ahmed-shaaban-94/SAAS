@@ -22,7 +22,7 @@ export function useSearch(query: string) {
   const trimmed = query.trim();
   const { data, error, isLoading } = useSWR<SearchResponse>(
     trimmed.length >= 2 ? swrKey("/search", { q: trimmed, limit: 10 }) : null,
-    () => fetchAPI<SearchResponse>("/search", { q: trimmed, limit: "10" }),
+    () => fetchAPI<SearchResponse>("/search", { q: trimmed, limit: 10 }),
     { dedupingInterval: 300, keepPreviousData: true },
   );
 

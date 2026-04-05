@@ -1,4 +1,5 @@
 import { HeroSection } from "@/components/marketing/hero-section";
+import { TrustBar } from "@/components/marketing/trust-bar";
 import { FeaturesGrid } from "@/components/marketing/features-grid";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { StatsBanner } from "@/components/marketing/stats-banner";
@@ -23,6 +24,7 @@ export default function LandingPage() {
     <>
       <JsonLd />
       <HeroSection />
+      <TrustBar />
       <FeaturesGrid />
       <HowItWorks />
       <StatsBanner />

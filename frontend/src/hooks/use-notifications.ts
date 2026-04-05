@@ -15,8 +15,8 @@ export interface Notification {
 
 export function useNotifications(limit = 20) {
   const { data, error, isLoading, mutate } = useSWR<Notification[]>(
-    swrKey("/notifications", { limit: String(limit) }),
-    () => fetchAPI<Notification[]>("/notifications", { limit: String(limit) }),
+    swrKey("/notifications", { limit }),
+    () => fetchAPI<Notification[]>("/notifications", { limit }),
     { refreshInterval: 30000 },
   );
 

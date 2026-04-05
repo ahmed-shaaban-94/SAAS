@@ -27,16 +27,10 @@ export function PricingCard({
   const href = getCtaHref(name);
   const isExternal = href.startsWith("mailto:");
 
-  return (
-    <div
-      className={`relative flex flex-col rounded-2xl border p-8 ${
-        isPopular
-          ? "border-accent bg-accent/5 shadow-lg shadow-accent/10"
-          : "border-border bg-card"
-      }`}
-    >
+  const cardContent = (
+    <>
       {isPopular && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-semibold text-page">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-semibold text-page z-10">
           Popular
         </span>
       )}
@@ -63,7 +57,7 @@ export function PricingCard({
           href={href}
           className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
             isPopular
-              ? "bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
+              ? "cta-shimmer bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
               : "border border-border bg-card text-text-primary hover:bg-divider"
           }`}
         >
@@ -74,13 +68,29 @@ export function PricingCard({
           href={href}
           className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
             isPopular
-              ? "bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
+              ? "cta-shimmer bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
               : "border border-border bg-card text-text-primary hover:bg-divider"
           }`}
         >
           {cta}
         </Link>
       )}
+    </>
+  );
+
+  if (isPopular) {
+    return (
+      <div className="rotating-border">
+        <div className="relative flex flex-col p-8 bg-accent/5">
+          {cardContent}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative flex flex-col rounded-2xl border border-border bg-card p-8 hover-lift">
+      {cardContent}
     </div>
   );
 }
