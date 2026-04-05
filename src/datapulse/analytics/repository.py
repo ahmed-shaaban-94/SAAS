@@ -71,7 +71,7 @@ class AnalyticsRepository:
         stmt = text(f"""
             SELECT {key_col}, {name_col}, SUM(total_sales) AS value
             FROM {table}
-            WHERE {where}
+            WHERE {where} AND {key_col} != -1
             GROUP BY {key_col}, {name_col}
             ORDER BY value DESC
             LIMIT :limit
