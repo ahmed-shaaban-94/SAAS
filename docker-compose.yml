@@ -16,6 +16,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-datapulse}
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       DB_HOST: postgres
+      DB_READER_PASSWORD: ${DB_READER_PASSWORD:-}
+      SKIP_FAILED_MIGRATIONS: ${SKIP_FAILED_MIGRATIONS:-0}
     deploy:
       resources:
         limits:
