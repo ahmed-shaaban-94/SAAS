@@ -2,29 +2,6 @@ services:
   # ---------- Traefik REMOVED — Nginx on host handles reverse proxy ----------
   # Saves 128MB RAM and removes double-proxy latency.
 
-  prestart:
-    build:
-      context: .
-      target: prestart
-    container_name: datapulse-prestart
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-datapulse}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      POSTGRES_DB: ${POSTGRES_DB:-datapulse}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      DB_HOST: postgres
-      DB_READER_PASSWORD: ${DB_READER_PASSWORD:-}
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: "0.25"
-    networks:
-      - backend
-
   api:
     build:
       context: .
@@ -34,8 +11,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      prestart:
-        condition: service_completed_successfully
       redis:
         condition: service_healthy
     environment:
@@ -46,6 +21,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-datapulse}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-datapulse}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      DB_HOST: postgres
+      DB_READER_PASSWORD: ${DB_READER_PASSWORD:-}
       PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:-}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-}
@@ -68,7 +46,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 45s
     deploy:
       resources:
         limits:
