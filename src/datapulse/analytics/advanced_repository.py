@@ -120,7 +120,7 @@ class AdvancedRepository:
     def get_heatmap_data(self, year: int) -> HeatmapData:
         """Calendar heatmap — daily revenue for a year."""
         stmt = text("""
-            SELECT full_date, daily_gross_amount
+            SELECT full_date, daily_net_amount
             FROM public_marts.metrics_summary
             WHERE EXTRACT(YEAR FROM full_date) = :year
             ORDER BY full_date

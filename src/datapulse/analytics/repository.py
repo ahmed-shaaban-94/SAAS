@@ -168,8 +168,8 @@ class AnalyticsRepository:
 
         stmt = text("""
             WITH daily AS (
-                SELECT daily_gross_amount, daily_discount,
-                       mtd_gross_amount, ytd_gross_amount,
+                SELECT daily_net_amount, 0 AS daily_discount,
+                       mtd_net_amount, ytd_net_amount,
                        daily_transactions, daily_unique_customers,
                        daily_returns, mtd_transactions, ytd_transactions
                 FROM public_marts.metrics_summary
@@ -184,14 +184,14 @@ class AnalyticsRepository:
                 WHERE date_key = :date_key
             ),
             prev_month AS (
-                SELECT mtd_gross_amount
+                SELECT mtd_net_amount
                 FROM public_marts.metrics_summary
                 WHERE full_date = CAST(
                     CAST(:target_date AS date) - INTERVAL '1 month'
                 AS date)
             ),
             prev_year AS (
-                SELECT ytd_gross_amount
+                SELECT ytd_net_amount
                 FROM public_marts.metrics_summary
                 WHERE full_date = CAST(
                     CAST(:target_date AS date) - INTERVAL '1 year'
@@ -199,25 +199,25 @@ class AnalyticsRepository:
             ),
             sparkline AS (
                 SELECT json_agg(
-                    json_build_object('period', full_date, 'value', daily_gross_amount)
+                    json_build_object('period', full_date, 'value', daily_net_amount)
                     ORDER BY full_date
                 ) AS points
                 FROM public_marts.metrics_summary
                 WHERE full_date BETWEEN :sparkline_start AND :target_date
             )
             SELECT
-                d.daily_gross_amount,
+                d.daily_net_amount,
                 d.daily_discount,
-                d.mtd_gross_amount,
-                d.ytd_gross_amount,
+                d.mtd_net_amount,
+                d.ytd_net_amount,
                 d.daily_transactions,
                 d.daily_unique_customers,
                 d.daily_returns,
                 d.mtd_transactions,
                 d.ytd_transactions,
                 b.avg_basket_size,
-                pm.mtd_gross_amount AS prev_month_mtd,
-                py.ytd_gross_amount AS prev_year_ytd,
+                pm.mtd_net_amount AS prev_month_mtd,
+                py.ytd_net_amount AS prev_year_ytd,
                 sp.points AS sparkline_points
             FROM daily d
             LEFT JOIN basket b ON TRUE
@@ -257,9 +257,9 @@ class AnalyticsRepository:
                 sparkline=[],
             )
 
-        today_gross = Decimal(str(row["daily_gross_amount"]))
-        mtd_gross = Decimal(str(row["mtd_gross_amount"]))
-        ytd_gross = Decimal(str(row["ytd_gross_amount"]))
+        today_gross = Decimal(str(row["daily_net_amount"]))
+        mtd_gross = Decimal(str(row["mtd_net_amount"]))
+        ytd_gross = Decimal(str(row["ytd_net_amount"]))
         today_discount = Decimal(str(row["daily_discount"])) if row["daily_discount"] else _ZERO
         daily_transactions = int(row["daily_transactions"])
         daily_customers = int(row["daily_unique_customers"])
@@ -331,7 +331,7 @@ class AnalyticsRepository:
         if kind == "mom":
             # Get last 12 months' MTD net amounts (same day-of-month)
             stmt = text("""
-                SELECT mtd_gross_amount
+                SELECT mtd_net_amount
                 FROM public_marts.metrics_summary
                 WHERE EXTRACT(DAY FROM full_date) = EXTRACT(DAY FROM CAST(:td AS date))
                   AND full_date < CAST(:td AS date)
@@ -340,7 +340,7 @@ class AnalyticsRepository:
             """)
         else:  # yoy
             stmt = text("""
-                SELECT ytd_gross_amount
+                SELECT ytd_net_amount
                 FROM public_marts.metrics_summary
                 WHERE EXTRACT(MONTH FROM full_date) = EXTRACT(MONTH FROM CAST(:td AS date))
                   AND EXTRACT(DAY FROM full_date) = EXTRACT(DAY FROM CAST(:td AS date))
@@ -411,7 +411,7 @@ class AnalyticsRepository:
         stmt = text("""
             WITH range_agg AS (
                 SELECT
-                    ROUND(SUM(daily_gross_amount), 2) AS period_net,
+                    ROUND(SUM(daily_net_amount), 2) AS period_net,
                     SUM(daily_transactions)::INT     AS total_transactions,
                     SUM(daily_returns)::INT           AS total_returns,
                     SUM(daily_unique_customers)::INT  AS total_customers
@@ -419,7 +419,7 @@ class AnalyticsRepository:
                 WHERE full_date BETWEEN :start_date AND :end_date
             ),
             last_day AS (
-                SELECT mtd_gross_amount, ytd_gross_amount,
+                SELECT mtd_net_amount, ytd_net_amount,
                        mtd_transactions, ytd_transactions
                 FROM public_marts.metrics_summary
                 WHERE full_date = :end_date
@@ -433,7 +433,7 @@ class AnalyticsRepository:
                 WHERE date_key BETWEEN :start_key AND :end_key
             ),
             prev_period AS (
-                SELECT ROUND(SUM(daily_gross_amount), 2) AS prev_net
+                SELECT ROUND(SUM(daily_net_amount), 2) AS prev_net
                 FROM public_marts.metrics_summary
                 WHERE full_date BETWEEN
                     CAST(:start_date AS date) - (:end_date - :start_date + 1) * INTERVAL '1 day'
@@ -441,7 +441,7 @@ class AnalyticsRepository:
             ),
             sparkline AS (
                 SELECT json_agg(
-                    json_build_object('period', full_date, 'value', daily_gross_amount)
+                    json_build_object('period', full_date, 'value', daily_net_amount)
                     ORDER BY full_date
                 ) AS points
                 FROM public_marts.metrics_summary
@@ -452,8 +452,8 @@ class AnalyticsRepository:
                 r.total_transactions,
                 r.total_returns,
                 r.total_customers,
-                l.mtd_gross_amount,
-                l.ytd_gross_amount,
+                l.mtd_net_amount,
+                l.ytd_net_amount,
                 l.mtd_transactions,
                 l.ytd_transactions,
                 b.avg_basket_size,
@@ -498,10 +498,10 @@ class AnalyticsRepository:
 
         period_net = Decimal(str(row["period_net"]))
         mtd_gross = (
-            Decimal(str(row["mtd_gross_amount"])) if row["mtd_gross_amount"] is not None else _ZERO
+            Decimal(str(row["mtd_net_amount"])) if row["mtd_net_amount"] is not None else _ZERO
         )
         ytd_gross = (
-            Decimal(str(row["ytd_gross_amount"])) if row["ytd_gross_amount"] is not None else _ZERO
+            Decimal(str(row["ytd_net_amount"])) if row["ytd_net_amount"] is not None else _ZERO
         )
         total_transactions = int(row["total_transactions"] or 0)
         total_returns = int(row["total_returns"] or 0)
@@ -548,10 +548,10 @@ class AnalyticsRepository:
         )
 
     def get_kpi_sparkline(self, target_date: date, days: int = 7) -> list[TimeSeriesPoint]:
-        """Last N days of daily_gross_amount from metrics_summary."""
+        """Last N days of daily_net_amount from metrics_summary."""
         start_date = target_date - timedelta(days=days)
         stmt = text("""
-            SELECT full_date AS period, daily_gross_amount AS value
+            SELECT full_date AS period, daily_net_amount AS value
             FROM public_marts.metrics_summary
             WHERE full_date BETWEEN :start_date AND :target_date
             ORDER BY full_date

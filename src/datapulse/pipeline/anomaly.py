@@ -17,8 +17,7 @@ log = get_logger(__name__)
 
 # Metrics to check for anomalies (column names in metrics_summary)
 MONITORED_METRICS = (
-    "daily_net",
-    "daily_quantity",
+    "daily_net_amount",
     "daily_transactions",
 )
 

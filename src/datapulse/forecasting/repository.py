@@ -38,7 +38,7 @@ class ForecastingRepository:
     def get_daily_revenue_series(self, lookback_days: int = 730) -> list[tuple[date, float]]:
         """Daily net revenue from feat_revenue_daily_rolling, ordered by date."""
         stmt = text("""
-            SELECT full_date, daily_gross_amount
+            SELECT full_date, daily_net_amount
             FROM public_marts.feat_revenue_daily_rolling
             WHERE full_date >= CURRENT_DATE - :lookback
             ORDER BY full_date
