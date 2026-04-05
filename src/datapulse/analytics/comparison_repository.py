@@ -31,7 +31,7 @@ _ENTITY_MAP: dict[str, tuple[str, str, str]] = {
     "product": (
         "public_marts.agg_sales_by_product",
         "product_key",
-        "drug_name",
+        "drug_brand",
     ),
     "customer": (
         "public_marts.agg_sales_by_customer",
@@ -115,10 +115,13 @@ class ComparisonRepository:
             if prev_val == _ZERO and curr_val == _ZERO:
                 continue
 
+            # Skip items that only exist in one period — not real movers
+            if prev_val == _ZERO or curr_val == _ZERO:
+                continue
+
             change = safe_growth(curr_val, prev_val)
             if change is None:
-                # New entity (not in previous) — treat as +100%
-                change = Decimal("100.00")
+                continue
 
             movers.append(
                 MoverItem(
