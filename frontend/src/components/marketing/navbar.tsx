@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Activity, Menu, X } from "lucide-react";
 import { NAV_LINKS } from "@/lib/marketing-constants";
+import { PulseLine } from "./pulse-line";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -38,10 +39,13 @@ export function Navbar() {
         className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8"
         aria-label="Main navigation"
       >
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <Activity className="h-7 w-7 text-accent" />
-          <span className="text-xl font-bold text-accent">DataPulse</span>
+        {/* Logo with ECG pulse line */}
+        <Link href="/" className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <Activity className="h-7 w-7 text-accent" />
+            <span className="text-xl font-bold text-accent">Data Pulse</span>
+          </div>
+          <PulseLine />
         </Link>
 
         {/* Desktop links */}

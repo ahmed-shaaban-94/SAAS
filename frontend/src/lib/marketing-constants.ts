@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-export const SITE_NAME = "DataPulse";
+export const SITE_NAME = "Data Pulse";
 export const SITE_DESCRIPTION =
   "Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. AI-powered insights, real-time dashboards, and enterprise-grade quality gates.";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://smartdatapulse.tech";
@@ -156,7 +156,7 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Starter",
     price: "$0",
     period: "/mo",
-    description: "Perfect for trying out DataPulse",
+    description: "Perfect for trying out Data Pulse",
     features: [
       "1 data source",
       "10,000 rows",
@@ -208,9 +208,9 @@ export interface FAQItem {
 
 export const FAQ_ITEMS: FAQItem[] = [
   {
-    question: "What data formats does DataPulse support?",
+    question: "What data formats does Data Pulse support?",
     answer:
-      "DataPulse supports Excel (.xlsx, .xls) and CSV files. Our import engine uses Polars with PyArrow for blazing-fast processing of files up to 500 MB with automatic schema detection.",
+      "Data Pulse supports Excel (.xlsx, .xls) and CSV files. Our import engine uses Polars with PyArrow for blazing-fast processing of files up to 500 MB with automatic schema detection.",
   },
   {
     question: "How does the medallion architecture work?",
@@ -225,12 +225,12 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Can I use my own AI/LLM provider?",
     answer:
-      "Yes. DataPulse uses OpenRouter which gives you access to multiple AI models. You can configure your preferred provider and model in the settings.",
+      "Yes. Data Pulse uses OpenRouter which gives you access to multiple AI models. You can configure your preferred provider and model in the settings.",
   },
   {
     question: "Is my data secure?",
     answer:
-      "Absolutely. DataPulse uses tenant-scoped Row Level Security (RLS) on all database tables, CORS protection, Content Security Policy headers, and all credentials are managed via environment variables.",
+      "Absolutely. Data Pulse uses tenant-scoped Row Level Security (RLS) on all database tables, CORS protection, Content Security Policy headers, and all credentials are managed via environment variables.",
   },
   {
     question: "How long does setup take?",

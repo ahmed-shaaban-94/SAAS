@@ -13,7 +13,7 @@ export function HowItWorks() {
       <div ref={ref} className={`animate-on-scroll ${isVisible ? "is-visible" : ""}`}>
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-bold sm:text-4xl">
-            How <span className="gradient-text">DataPulse</span> works
+            How <span className="gradient-text">Data Pulse</span> works
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
             Your data flows through four stages, each adding more value. From

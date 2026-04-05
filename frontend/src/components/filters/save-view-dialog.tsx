@@ -33,7 +33,7 @@ export function SaveViewDialog({ open, onClose }: SaveViewDialogProps) {
     try {
       const filterRecord: Record<string, string | number> = {};
       for (const [k, v] of Object.entries(filters)) {
-        if (v !== undefined) filterRecord[k] = v;
+        if (v !== undefined && typeof v !== "boolean") filterRecord[k] = v;
       }
       await createView(trimmed, pathname, filterRecord);
       success(`View "${trimmed}" saved`);

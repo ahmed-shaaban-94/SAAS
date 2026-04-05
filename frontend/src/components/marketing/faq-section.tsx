@@ -19,7 +19,7 @@ export function FAQSection() {
             <span className="gradient-text">questions</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
-            Everything you need to know about DataPulse.
+            Everything you need to know about Data Pulse.
           </p>
         </div>
 

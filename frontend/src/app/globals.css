@@ -614,23 +614,227 @@ html {
 }
 
 /* ═══════════════════════════════════════════════
+   MARKETING — Premium Effects
+   ═══════════════════════════════════════════════ */
+
+/* --- Typing cursor blink --- */
+.typing-cursor::after {
+  content: '|';
+  animation: blink 0.7s step-end infinite;
+  color: var(--accent-color);
+  font-weight: 300;
+  margin-left: 2px;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* --- Gentle float (dashboard mockup) --- */
+.float-card {
+  animation: gentleFloat 6s ease-in-out infinite;
+}
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+/* --- Shimmer CTA button --- */
+.cta-shimmer {
+  position: relative;
+  overflow: hidden;
+  animation: breatheGlow 2.5s ease-in-out infinite;
+}
+.cta-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  animation: shimmerSweep 2.5s ease-in-out infinite;
+}
+@keyframes shimmerSweep {
+  0% { left: -100%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
+}
+@keyframes breatheGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,69,0,0.3); }
+  50% { box-shadow: 0 0 35px rgba(255,69,0,0.6), 0 0 60px rgba(255,69,0,0.2); }
+}
+
+/* --- Staggered card reveal --- */
+.stagger-card {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.stagger-card.revealed {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+/* --- Rotating gradient border (Pro pricing) --- */
+.rotating-border {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+.rotating-border::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, #FF4500, #F59E0B, #3B82F6, #FF4500);
+  animation: spinBorder 4s linear infinite;
+  z-index: -2;
+}
+.rotating-border::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: calc(1rem - 2px);
+  z-index: -1;
+}
+:root .rotating-border::after {
+  background: var(--bg-card, #ffffff);
+}
+.dark .rotating-border::after {
+  background: var(--bg-card, #0f172a);
+}
+@keyframes spinBorder {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* --- Pipeline connector animated flow --- */
+@media (min-width: 768px) {
+  .pipeline-connector::after {
+    background: linear-gradient(90deg, var(--accent-color), #3B82F6) !important;
+    animation: pipelineFlow 2s ease-in-out infinite;
+  }
+}
+@keyframes pipelineFlow {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+/* --- Trust bar infinite scroll --- */
+.trust-scroll {
+  display: flex;
+  gap: 3rem;
+  animation: scrollLogos 20s linear infinite;
+  width: max-content;
+}
+.trust-scroll:hover {
+  animation-play-state: paused;
+}
+@keyframes scrollLogos {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* --- Particle canvas --- */
+#network-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* --- Marketing dark theme (always dark on landing) --- */
+.marketing-dark {
+  --bg-page: #0D1117;
+  --bg-card: #161B22;
+  --border-color: #30363D;
+  --divider: #21262D;
+  --text-primary: #E6EDF3;
+  --text-secondary: #A8B3BD;
+  --accent-color: #E5A00D;
+  --chart-blue: #2196F3;
+  --chart-amber: #FF9800;
+  --growth-green: #4CAF50;
+  --growth-red: #F44336;
+  color-scheme: dark;
+}
+
+/* --- Section reveal slide-up --- */
+.reveal-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- Gradient text shimmer (subtle) --- */
+.gradient-text-animated {
+  background: linear-gradient(90deg, #FF4500, #F59E0B, #3B82F6, #FF4500);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 6s ease-in-out infinite;
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* --- Hover lift with glow --- */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(255, 69, 0, 0.15);
+}
+
+/* ═══════════════════════════════════════════════
    Reduced motion
    ═══════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  .animate-on-scroll {
+  .animate-on-scroll,
+  .reveal-up,
+  .stagger-card {
     opacity: 1;
     transform: none;
     transition: none;
   }
-  .gradient-text {
+  .gradient-text,
+  .gradient-text-animated {
     animation: none;
   }
   .number-pulse-green,
   .number-pulse-red {
     animation: none;
+  }
+  .float-card,
+  .cta-shimmer,
+  .rotating-border::before,
+  .trust-scroll {
+    animation: none;
+  }
+  .cta-shimmer::before {
+    display: none;
+  }
+  #network-canvas {
+    display: none;
   }
   *,
   *::before,

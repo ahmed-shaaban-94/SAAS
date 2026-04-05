@@ -30,7 +30,6 @@ import { HealthIndicator } from "./health-indicator";
 import { SavedViewsMenu } from "./saved-views-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "./language-toggle";
-import { LanguageToggle } from "./language-toggle";
 
 interface SidebarProps {
   anomalyCount?: number;
