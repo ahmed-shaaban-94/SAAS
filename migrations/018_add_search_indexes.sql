@@ -4,7 +4,7 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE INDEX IF NOT EXISTS idx_dim_product_name_trgm
-    ON public_marts.dim_product USING gin (product_name gin_trgm_ops);
+    ON public_marts.dim_product USING gin (drug_name gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS idx_dim_customer_name_trgm
     ON public_marts.dim_customer USING gin (customer_name gin_trgm_ops);
