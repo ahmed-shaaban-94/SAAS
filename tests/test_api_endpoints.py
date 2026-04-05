@@ -255,6 +255,7 @@ def test_product_detail_found(api_client):
         drug_category="Analgesic",
         total_quantity=Decimal("500"),
         total_sales=Decimal("10000"),
+        total_net_amount=Decimal("10000"),
         return_rate=Decimal("0.02"),
         unique_customers=50,
     )
@@ -281,7 +282,7 @@ def test_customer_detail_found(api_client):
         customer_id="C001",
         customer_name="Pharmacy X",
         total_quantity=Decimal("1000"),
-        total_sales=Decimal("50000"),
+        total_net_amount=Decimal("50000"),
         transaction_count=200,
         unique_products=30,
         return_count=5,

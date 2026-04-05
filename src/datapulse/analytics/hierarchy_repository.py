@@ -78,7 +78,7 @@ class HierarchyRepository:
                 ProductInCategory(
                     product_key=int(r[2]),
                     drug_name=str(r[3]),
-                    total_sales=amount,
+                    total_net_amount=amount,
                     transaction_count=int(r[5]),
                 )
             )
@@ -90,23 +90,23 @@ class HierarchyRepository:
             [
                 CategoryGroup(
                     category=cat,
-                    total_sales=cat_totals[cat],
+                    total_net_amount=cat_totals[cat],
                     brands=sorted(
                         [
                             BrandGroup(
                                 brand=brand,
-                                total_sales=brand_totals[(cat, brand)],
+                                total_net_amount=brand_totals[(cat, brand)],
                                 products=products,
                             )
                             for brand, products in brands.items()
                         ],
-                        key=lambda b: b.total_sales,
+                        key=lambda b: b.total_net_amount,
                         reverse=True,
                     ),
                 )
                 for cat, brands in cat_map.items()
             ],
-            key=lambda c: c.total_sales,
+            key=lambda c: c.total_net_amount,
             reverse=True,
         )
 

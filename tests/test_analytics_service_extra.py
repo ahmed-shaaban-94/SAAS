@@ -106,7 +106,7 @@ class TestDetailRepoNotConfigured:
 
 class TestBreakdownMethods:
     def test_billing_breakdown_delegates(self, analytics_service, mock_breakdown_repo):
-        expected = BillingBreakdown(items=[], total_transactions=0, total_sales=Decimal("0"))
+        expected = BillingBreakdown(items=[], total_transactions=0, total_net_amount=Decimal("0"))
         mock_breakdown_repo.get_billing_breakdown.return_value = expected
         result = analytics_service.get_billing_breakdown()
         assert result is expected
