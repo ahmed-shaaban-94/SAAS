@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useTopMovers } from "@/hooks/use-top-movers";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
@@ -49,7 +49,7 @@ function MoverRow({ item }: { item: MoverItem }) {
   );
 }
 
-export function TopMoversCard() {
+export const TopMoversCard = memo(function TopMoversCard() {
   const [entityType, setEntityType] = useState<"product" | "customer" | "staff">("product");
   const { filters } = useFilters();
   const { data, isLoading, error } = useTopMovers(entityType, filters);
@@ -120,4 +120,4 @@ export function TopMoversCard() {
       )}
     </div>
   );
-}
+});

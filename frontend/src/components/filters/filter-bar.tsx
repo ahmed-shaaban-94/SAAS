@@ -51,6 +51,7 @@ export function FilterBar() {
           <button
             key={preset.label}
             onClick={() => handlePreset(preset)}
+            aria-pressed={isActivePreset(preset)}
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               isActivePreset(preset)

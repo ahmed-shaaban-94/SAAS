@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { memo, useId } from "react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
@@ -46,15 +46,19 @@ function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
   return <>{animated}</>;
 }
 
-export function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, subtitle, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
+export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, subtitle, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
   const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
 
+  const trendOpacity = trend !== null && trend !== undefined
+    ? Math.min(Math.abs(trend) * 3, 100) / 100
+    : 0.1;
+
   const pillBg = isPositive
-    ? "bg-growth-green/10 text-growth-green"
+    ? "text-growth-green"
     : isNegative
-      ? "bg-growth-red/10 text-growth-red"
+      ? "text-growth-red"
       : "bg-text-secondary/10 text-text-secondary";
 
   const defaultGradient = isPositive
@@ -127,6 +131,11 @@ export function KPICard({ label, value, numericValue, isCurrency, isPercent, tre
               "transition-all duration-300 group-hover:scale-105",
               pillBg,
             )}
+            style={isPositive || isNegative ? {
+              backgroundColor: isPositive
+                ? `rgba(var(--growth-green-rgb, 5, 150, 105), ${trendOpacity})`
+                : `rgba(var(--growth-red-rgb, 220, 38, 38), ${trendOpacity})`,
+            } : undefined}
           >
             <TrendIcon className="h-3 w-3" />
             {trend !== null ? `${isPositive ? "+" : ""}${trend.toFixed(1)}%` : "N/A"}
@@ -161,4 +170,4 @@ export function KPICard({ label, value, numericValue, isCurrency, isPercent, tre
       )}
     </div>
   );
-}
+});

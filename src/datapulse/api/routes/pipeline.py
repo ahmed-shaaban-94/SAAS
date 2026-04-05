@@ -13,7 +13,7 @@ from functools import partial
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from datapulse.api.auth import get_current_user, require_pipeline_token
@@ -115,6 +115,7 @@ def get_run(service: ServiceDep, run_id: UUID) -> PipelineRunResponse:
 async def stream_run_progress(
     service: ServiceDep,
     run_id: UUID,
+    request: Request,
 ) -> StreamingResponse:
     """SSE stream for real-time pipeline run progress.
 
@@ -122,7 +123,8 @@ async def stream_run_progress(
     - ``status_change``: when status differs from the previous poll
     - ``complete``: when the run reaches a terminal state (success/failed/cancelled)
 
-    Polls every 2 seconds. Closes automatically on terminal state or after 10 minutes.
+    Polls every 2 seconds. Closes automatically on terminal state, client
+    disconnect, or after 10 minutes.
     """
     terminal = {"success", "failed", "cancelled"}
     poll_interval = 2  # seconds
@@ -138,42 +140,51 @@ async def stream_run_progress(
         last_status = None
         elapsed = 0
 
-        while elapsed < max_duration:
-            try:
-                current = await loop.run_in_executor(None, service.get_run, run_id)
-            except Exception as exc:
-                log.error("sse_poll_error", run_id=str(run_id), error=str(exc))
-                yield _sse_event("error", {"message": "Internal error polling run status"})
-                return
+        try:
+            while elapsed < max_duration:
+                # Detect client disconnect
+                if await request.is_disconnected():
+                    log.info("sse_client_disconnected", run_id=str(run_id))
+                    return
 
-            if current is None:
-                yield _sse_event("error", {"message": "Run not found"})
-                return
+                try:
+                    current = await loop.run_in_executor(None, service.get_run, run_id)
+                except Exception as exc:
+                    log.error("sse_poll_error", run_id=str(run_id), error=str(exc))
+                    yield _sse_event("error", {"message": "Internal error polling run status"})
+                    return
 
-            data = {
-                "run_id": str(current.id),
-                "status": current.status,
-                "started_at": str(current.started_at),
-                "finished_at": (str(current.finished_at) if current.finished_at else None),
-                "duration_seconds": (
-                    float(current.duration_seconds) if current.duration_seconds else None
-                ),
-                "rows_loaded": current.rows_loaded,
-                "error_message": current.error_message,
-            }
+                if current is None:
+                    yield _sse_event("error", {"message": "Run not found"})
+                    return
 
-            if current.status != last_status:
-                yield _sse_event("status_change", data)
-                last_status = current.status
+                data = {
+                    "run_id": str(current.id),
+                    "status": current.status,
+                    "started_at": str(current.started_at),
+                    "finished_at": (str(current.finished_at) if current.finished_at else None),
+                    "duration_seconds": (
+                        float(current.duration_seconds) if current.duration_seconds else None
+                    ),
+                    "rows_loaded": current.rows_loaded,
+                    "error_message": current.error_message,
+                }
 
-            if current.status in terminal:
-                yield _sse_event("complete", data)
-                return
+                if current.status != last_status:
+                    yield _sse_event("status_change", data)
+                    last_status = current.status
 
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
+                if current.status in terminal:
+                    yield _sse_event("complete", data)
+                    return
 
-        yield _sse_event("timeout", {"message": "Stream timeout after 10 minutes"})
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+
+            yield _sse_event("timeout", {"message": "Stream timeout after 10 minutes"})
+        except asyncio.CancelledError:
+            log.info("sse_stream_cancelled", run_id=str(run_id))
+            return
 
     return StreamingResponse(
         event_generator(),

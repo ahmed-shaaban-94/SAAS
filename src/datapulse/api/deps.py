@@ -61,6 +61,7 @@ def get_db_session() -> Generator[Session, None, None]:
             detail="get_db_session bypasses auth and hardcodes tenant_id='1' "
             "— use get_tenant_session instead",
         )
+        raise RuntimeError("get_db_session is not allowed in production — use get_tenant_session")
     warnings.warn(
         "get_db_session() is deprecated — use get_tenant_session() for auth-scoped access",
         DeprecationWarning,

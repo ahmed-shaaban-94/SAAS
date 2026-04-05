@@ -47,7 +47,7 @@ services:
     volumes:
       - "${RAW_SALES_PATH:-./data/raw/sales}:/app/data/raw/sales"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8888')\""]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8888 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -97,9 +97,9 @@ services:
       BILLING_BASE_URL: ${BILLING_BASE_URL:-https://smartdatapulse.tech}
     ports:
       - "127.0.0.1:8000:8000"
-    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "4"]
+    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2"]
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -107,7 +107,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
           cpus: "1.0"
     networks:
       - backend

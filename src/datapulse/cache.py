@@ -26,7 +26,7 @@ current_tenant_id: contextvars.ContextVar[str] = contextvars.ContextVar(
 
 _redis_client = None
 _last_attempt: float = 0
-_RETRY_INTERVAL = 60  # seconds before retrying a failed connection
+_RETRY_INTERVAL = 15  # seconds before retrying a failed connection
 
 
 def get_redis_client():
@@ -38,7 +38,12 @@ def get_redis_client():
     global _redis_client, _last_attempt
 
     if _redis_client is not None:
-        return _redis_client
+        try:
+            _redis_client.ping()
+            return _redis_client
+        except Exception:
+            _redis_client = None
+            # fall through to reconnect
 
     now = time.monotonic()
     if _last_attempt and (now - _last_attempt) < _RETRY_INTERVAL:
@@ -58,6 +63,7 @@ def get_redis_client():
             decode_responses=True,
             socket_connect_timeout=2,
             socket_timeout=2,
+            retry_on_timeout=True,
         )
         client.ping()
         _redis_client = client

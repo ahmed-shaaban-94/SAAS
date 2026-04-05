@@ -11,14 +11,33 @@ models:
         description: "Foreign key to dim_date"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
       - name: site_key
         description: "Foreign key to dim_site"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_site')
+              field: site_key
       - name: billing_way
         description: "Billing method (Credit, Cash, etc.)"
         tests:
           - not_null
+          - accepted_values:
+              values:
+                - 'Cash'
+                - 'Credit'
+                - 'Insurance'
+                - 'Delivery'
+                - 'Pick-Up'
+                - 'Cash Return'
+                - 'Credit Return'
+                - 'Delivery Return'
+                - 'Delivery Credit'
+                - 'Delivery Credit Return'
+                - 'Pick-Up Return'
       - name: total_quantity
         description: "Sum of item quantities sold"
         meta:
@@ -110,6 +129,9 @@ models:
         description: "Foreign key to dim_site"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_site')
+              field: site_key
       - name: quarter
         description: "Calendar quarter (1-4)"
         tests:
@@ -181,6 +203,9 @@ models:
         description: "Foreign key to dim_product"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_product')
+              field: product_key
       - name: year
         description: "Calendar year"
         tests:
@@ -252,6 +277,9 @@ models:
         description: "Foreign key to dim_customer"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_key
       - name: year
         description: "Calendar year"
         tests:
@@ -315,6 +343,9 @@ models:
         description: "Foreign key to dim_site"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_site')
+              field: site_key
       - name: year
         description: "Calendar year"
         tests:
@@ -382,6 +413,9 @@ models:
         description: "Foreign key to dim_staff"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_staff')
+              field: staff_key
       - name: year
         description: "Calendar year"
         tests:
@@ -443,10 +477,16 @@ models:
         description: "Foreign key to dim_product"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_product')
+              field: product_key
       - name: customer_key
         description: "Foreign key to dim_customer"
         tests:
           - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_key
       - name: year
         description: "Calendar year"
         tests:
@@ -459,6 +499,13 @@ models:
         description: "Billing method (Credit, Cash, etc.)"
         tests:
           - not_null
+          - accepted_values:
+              values:
+                - 'Cash Return'
+                - 'Credit Return'
+                - 'Delivery Return'
+                - 'Delivery Credit Return'
+                - 'Pick-Up Return'
       - name: drug_name
         description: "Product drug name (denormalized from dim_product)"
       - name: customer_name

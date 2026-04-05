@@ -16,7 +16,9 @@
   --chart-blue: #4F46E5;
   --chart-amber: #D97706;
   --growth-green: #059669;
+  --growth-green-rgb: 5, 150, 105;
   --growth-red: #DC2626;
+  --growth-red-rgb: 220, 38, 38;
 
   /* shadcn/ui CSS variables — light */
   --background: 210 20% 98%;
@@ -55,7 +57,9 @@
   --chart-blue: #6366F1;
   --chart-amber: #E5A00D;
   --growth-green: #34D399;
+  --growth-green-rgb: 52, 211, 153;
   --growth-red: #F87171;
+  --growth-red-rgb: 248, 113, 113;
 
   /* shadcn/ui CSS variables — dark */
   --background: 215 28% 7%;
@@ -356,6 +360,9 @@ html {
 .recharts-default-tooltip {
   border-radius: 12px !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
 }
 
 .recharts-cartesian-grid-horizontal line,
@@ -468,6 +475,24 @@ html {
   0%, 100% { transform: translate(0, 0); }
   33% { transform: translate(30px, -20px); }
   66% { transform: translate(-20px, 15px); }
+}
+
+/* ═══════════════════════════════════════════════
+   Enhanced page transition
+   ═══════════════════════════════════════════════ */
+@keyframes pageFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: pageFadeSlide 0.3s ease-out forwards;
 }
 
 /* ═══════════════════════════════════════════════

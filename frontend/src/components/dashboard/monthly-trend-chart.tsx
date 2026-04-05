@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -39,7 +39,7 @@ function CustomTooltip(props: Record<string, unknown>) {
   );
 }
 
-export function MonthlyTrendChart() {
+export const MonthlyTrendChart = memo(function MonthlyTrendChart() {
   const { filters } = useFilters();
   const { data: dashboardData, error, isLoading } = useDashboardData();
   const data = dashboardData?.monthly_trend;
@@ -153,4 +153,4 @@ export function MonthlyTrendChart() {
       </ResponsiveContainer>
     </ChartCard>
   );
-}
+});

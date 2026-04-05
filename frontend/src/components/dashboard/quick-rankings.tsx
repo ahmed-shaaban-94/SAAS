@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { formatCurrency } from "@/lib/formatters";
 import Link from "next/link";
@@ -116,7 +117,7 @@ function RankingCard({
   );
 }
 
-export function QuickRankings() {
+export const QuickRankings = memo(function QuickRankings() {
   const { data: dashboardData, error, isLoading } = useDashboardData();
 
   return (
@@ -141,4 +142,4 @@ export function QuickRankings() {
       />
     </div>
   );
-}
+});

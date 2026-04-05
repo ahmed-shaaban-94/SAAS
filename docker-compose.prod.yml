@@ -46,7 +46,11 @@ services:
   api:
     image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
     ports: !reset []
-    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2"]
+    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "4"]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     networks:
       - backend
       - frontend-net

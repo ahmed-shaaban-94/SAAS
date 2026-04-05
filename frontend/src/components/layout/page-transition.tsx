@@ -9,7 +9,7 @@ interface PageTransitionProps {
 
 export function PageTransition({ children, className }: PageTransitionProps) {
   return (
-    <div className={cn("animate-fade-in", className)}>
+    <div className={cn("animate-page-enter", className)}>
       {children}
     </div>
   );

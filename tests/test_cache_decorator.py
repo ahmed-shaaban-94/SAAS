@@ -272,7 +272,7 @@ class TestCachedDecorator:
         def default_fn(self_arg):
             return {"ok": True}
 
-        assert default_fn._cache_prefix == "datapulse"
+        assert default_fn._cache_prefix == "datapulse:analytics"
         assert default_fn._cache_ttl == 300
 
     @patch("datapulse.cache_decorator.cache_set")

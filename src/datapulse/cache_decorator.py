@@ -28,7 +28,7 @@ log = get_logger(__name__)
 
 F = TypeVar("F")
 
-_DEFAULT_PREFIX = "datapulse"
+_DEFAULT_PREFIX = "datapulse:analytics"
 
 
 def _build_cache_key(prefix: str, method_name: str, args: tuple, kwargs: dict) -> str:

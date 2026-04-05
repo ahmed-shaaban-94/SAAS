@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -157,6 +157,15 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
     touchStartX.current = null;
   };
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [mobileOpen]);
+
   return (
     <>
       {/* Mobile hamburger button */}
@@ -164,13 +173,14 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
         onClick={() => setMobileOpen(true)}
         className="fixed left-4 top-4 z-50 rounded-lg bg-card p-2 text-text-primary shadow-lg border border-border lg:hidden"
         aria-label="Open navigation"
+        aria-expanded={mobileOpen}
       >
         <Menu className="h-5 w-5" />
       </button>
 
       {/* Mobile overlay + drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60"

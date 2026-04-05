@@ -7,6 +7,7 @@ in ``__init__`` and uses parameterized ``text()`` queries.
 
 from __future__ import annotations
 
+import json
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -71,202 +72,265 @@ class DetailRepository:
         rows = self._session.execute(stmt, {"key_value": key_value}).fetchall()
         return [TimeSeriesPoint(period=str(r[0]), value=Decimal(str(r[1]))) for r in rows]
 
+    @staticmethod
+    def _parse_trend_points(raw_points) -> list[TimeSeriesPoint]:
+        """Parse JSON-aggregated trend points into TimeSeriesPoint list."""
+        if raw_points is None:
+            return []
+        if isinstance(raw_points, str):
+            raw_points = json.loads(raw_points)
+        return [
+            TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))
+            for p in raw_points
+        ]
+
     def get_product_detail(self, product_key: int) -> ProductPerformance | None:
-        """Return detailed performance for a single product."""
+        """Return detailed performance for a single product (single query)."""
         log.info("get_product_detail", product_key=product_key)
 
         stmt = text("""
-            SELECT
-                a.product_key,
-                p.drug_code,
-                p.drug_name,
-                p.drug_brand,
-                p.drug_category,
-                SUM(a.total_quantity)        AS total_quantity,
-                SUM(a.total_sales)           AS total_sales,
-                COALESCE(
-                    SUM(a.return_count)::NUMERIC
-                    / NULLIF(SUM(a.transaction_count), 0), 0
-                )                            AS return_rate,
-                -- NOTE: SUM(unique_customers) across monthly aggregates is an
-                -- approximation — customers active in multiple months are counted
-                -- multiple times. A precise COUNT(DISTINCT) is not possible from
-                -- pre-aggregated data without access to the fact table.
-                SUM(a.unique_customers)      AS unique_customers
-            FROM public_marts.agg_sales_by_product a
-            INNER JOIN public_marts.dim_product p
-                ON a.product_key = p.product_key
-            WHERE a.product_key = :product_key
-            GROUP BY a.product_key, p.drug_code, p.drug_name,
-                     p.drug_brand, p.drug_category
+            WITH summary AS (
+                SELECT
+                    a.product_key,
+                    p.drug_code,
+                    p.drug_name,
+                    p.drug_brand,
+                    p.drug_category,
+                    SUM(a.total_quantity)        AS total_quantity,
+                    SUM(a.total_sales)           AS total_sales,
+                    COALESCE(
+                        SUM(a.return_count)::NUMERIC
+                        / NULLIF(SUM(a.transaction_count), 0), 0
+                    )                            AS return_rate,
+                    SUM(a.unique_customers)      AS unique_customers
+                FROM public_marts.agg_sales_by_product a
+                INNER JOIN public_marts.dim_product p
+                    ON a.product_key = p.product_key
+                WHERE a.product_key = :product_key
+                GROUP BY a.product_key, p.drug_code, p.drug_name,
+                         p.drug_brand, p.drug_category
+            ),
+            trend AS (
+                SELECT json_agg(
+                    json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
+                                      'value', t.total_sales)
+                    ORDER BY a.month
+                ) AS points
+                FROM (
+                    SELECT month, SUM(total_sales) AS total_sales
+                    FROM public_marts.agg_sales_by_product
+                    WHERE product_key = :product_key
+                    GROUP BY month
+                ) a, LATERAL (SELECT a.total_sales) t
+            )
+            SELECT s.*, tr.points AS trend_points
+            FROM summary s
+            LEFT JOIN trend tr ON TRUE
         """)
-        row = self._session.execute(stmt, {"product_key": product_key}).fetchone()
+        row = self._session.execute(stmt, {"product_key": product_key}).mappings().fetchone()
         if row is None:
             return None
 
-        trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_product",
-            "product_key",
-            product_key,
-        )
+        trend = self._parse_trend_points(row["trend_points"])
 
         return ProductPerformance(
-            product_key=int(row[0]),
-            drug_code=str(row[1]),
-            drug_name=str(row[2]),
-            drug_brand=str(row[3]),
-            drug_category=str(row[4]),
-            total_quantity=Decimal(str(row[5])),
-            total_sales=Decimal(str(row[6])),
-            return_rate=Decimal(str(row[7])),
-            unique_customers=int(row[8]),
+            product_key=int(row["product_key"]),
+            drug_code=str(row["drug_code"]),
+            drug_name=str(row["drug_name"]),
+            drug_brand=str(row["drug_brand"]),
+            drug_category=str(row["drug_category"]),
+            total_quantity=Decimal(str(row["total_quantity"])),
+            total_sales=Decimal(str(row["total_sales"])),
+            return_rate=Decimal(str(row["return_rate"])),
+            unique_customers=int(row["unique_customers"]),
             monthly_trend=trend,
         )
 
     def get_customer_detail(self, customer_key: int) -> CustomerAnalytics | None:
-        """Return detailed analytics for a single customer."""
+        """Return detailed analytics for a single customer (single query)."""
         log.info("get_customer_detail", customer_key=customer_key)
 
         stmt = text("""
-            SELECT
-                a.customer_key,
-                c.customer_id,
-                c.customer_name,
-                SUM(a.total_quantity)        AS total_quantity,
-                SUM(a.total_sales)      AS total_sales,
-                SUM(a.transaction_count)     AS transaction_count,
-                -- NOTE: SUM of unique counts across months is an approximation;
-                -- entities active in multiple months are counted more than once.
-                SUM(a.unique_products)       AS unique_products,
-                SUM(a.return_count)          AS return_count
-            FROM public_marts.agg_sales_by_customer a
-            INNER JOIN public_marts.dim_customer c
-                ON a.customer_key = c.customer_key
-            WHERE a.customer_key = :customer_key
-            GROUP BY a.customer_key, c.customer_id, c.customer_name
+            WITH summary AS (
+                SELECT
+                    a.customer_key,
+                    c.customer_id,
+                    c.customer_name,
+                    SUM(a.total_quantity)        AS total_quantity,
+                    SUM(a.total_sales)           AS total_sales,
+                    SUM(a.transaction_count)     AS transaction_count,
+                    SUM(a.unique_products)       AS unique_products,
+                    SUM(a.return_count)          AS return_count
+                FROM public_marts.agg_sales_by_customer a
+                INNER JOIN public_marts.dim_customer c
+                    ON a.customer_key = c.customer_key
+                WHERE a.customer_key = :customer_key
+                GROUP BY a.customer_key, c.customer_id, c.customer_name
+            ),
+            trend AS (
+                SELECT json_agg(
+                    json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
+                                      'value', t.total_sales)
+                    ORDER BY a.month
+                ) AS points
+                FROM (
+                    SELECT month, SUM(total_sales) AS total_sales
+                    FROM public_marts.agg_sales_by_customer
+                    WHERE customer_key = :customer_key
+                    GROUP BY month
+                ) a, LATERAL (SELECT a.total_sales) t
+            )
+            SELECT s.*, tr.points AS trend_points
+            FROM summary s
+            LEFT JOIN trend tr ON TRUE
         """)
-        row = self._session.execute(stmt, {"customer_key": customer_key}).fetchone()
+        row = self._session.execute(stmt, {"customer_key": customer_key}).mappings().fetchone()
         if row is None:
             return None
 
-        trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_customer",
-            "customer_key",
-            customer_key,
-        )
+        trend = self._parse_trend_points(row["trend_points"])
 
         return CustomerAnalytics(
-            customer_key=int(row[0]),
-            customer_id=str(row[1]),
-            customer_name=str(row[2]),
-            total_quantity=Decimal(str(row[3])),
-            total_sales=Decimal(str(row[4])),
-            transaction_count=int(row[5]),
-            unique_products=int(row[6]),
-            return_count=int(row[7]),
+            customer_key=int(row["customer_key"]),
+            customer_id=str(row["customer_id"]),
+            customer_name=str(row["customer_name"]),
+            total_quantity=Decimal(str(row["total_quantity"])),
+            total_sales=Decimal(str(row["total_sales"])),
+            transaction_count=int(row["transaction_count"]),
+            unique_products=int(row["unique_products"]),
+            return_count=int(row["return_count"]),
             monthly_trend=trend,
         )
 
     def get_staff_detail(self, staff_key: int) -> StaffPerformance | None:
-        """Return detailed performance for a single staff member."""
+        """Return detailed performance for a single staff member (single query)."""
         log.info("get_staff_detail", staff_key=staff_key)
 
         stmt = text("""
-            SELECT
-                a.staff_key,
-                s.staff_id,
-                s.staff_name,
-                s.position,
-                SUM(a.total_sales)      AS total_sales,
-                SUM(a.transaction_count)     AS transaction_count,
-                SUM(a.total_sales)
-                    / NULLIF(SUM(a.transaction_count), 0)
-                                             AS avg_transaction_value,
-                -- NOTE: SUM(unique_customers) across monthly aggregates is an
-                -- approximation — customers active in multiple months are counted
-                -- multiple times. Precise COUNT(DISTINCT) requires the fact table.
-                SUM(a.unique_customers)      AS unique_customers
-            FROM public_marts.agg_sales_by_staff a
-            INNER JOIN public_marts.dim_staff s
-                ON a.staff_key = s.staff_key
-            WHERE a.staff_key = :staff_key
-            GROUP BY a.staff_key, s.staff_id, s.staff_name, s.position
+            WITH summary AS (
+                SELECT
+                    a.staff_key,
+                    s.staff_id,
+                    s.staff_name,
+                    s.position,
+                    SUM(a.total_sales)           AS total_sales,
+                    SUM(a.transaction_count)     AS transaction_count,
+                    SUM(a.total_sales)
+                        / NULLIF(SUM(a.transaction_count), 0)
+                                                 AS avg_transaction_value,
+                    SUM(a.unique_customers)      AS unique_customers
+                FROM public_marts.agg_sales_by_staff a
+                INNER JOIN public_marts.dim_staff s
+                    ON a.staff_key = s.staff_key
+                WHERE a.staff_key = :staff_key
+                GROUP BY a.staff_key, s.staff_id, s.staff_name, s.position
+            ),
+            trend AS (
+                SELECT json_agg(
+                    json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
+                                      'value', t.total_sales)
+                    ORDER BY a.month
+                ) AS points
+                FROM (
+                    SELECT month, SUM(total_sales) AS total_sales
+                    FROM public_marts.agg_sales_by_staff
+                    WHERE staff_key = :staff_key
+                    GROUP BY month
+                ) a, LATERAL (SELECT a.total_sales) t
+            )
+            SELECT s.*, tr.points AS trend_points
+            FROM summary s
+            LEFT JOIN trend tr ON TRUE
         """)
-        row = self._session.execute(stmt, {"staff_key": staff_key}).fetchone()
+        row = self._session.execute(stmt, {"staff_key": staff_key}).mappings().fetchone()
         if row is None:
             return None
 
-        trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_staff",
-            "staff_key",
-            staff_key,
-        )
+        trend = self._parse_trend_points(row["trend_points"])
 
         return StaffPerformance(
-            staff_key=int(row[0]),
-            staff_id=str(row[1]),
-            staff_name=str(row[2]),
-            staff_position=str(row[3]),
-            total_sales=Decimal(str(row[4])),
-            transaction_count=int(row[5]),
-            avg_transaction_value=(Decimal(str(row[6])) if row[6] is not None else Decimal("0")),
-            unique_customers=int(row[7]),
+            staff_key=int(row["staff_key"]),
+            staff_id=str(row["staff_id"]),
+            staff_name=str(row["staff_name"]),
+            staff_position=str(row["position"]),
+            total_sales=Decimal(str(row["total_sales"])),
+            transaction_count=int(row["transaction_count"]),
+            avg_transaction_value=(
+                Decimal(str(row["avg_transaction_value"]))
+                if row["avg_transaction_value"] is not None
+                else Decimal("0")
+            ),
+            unique_customers=int(row["unique_customers"]),
             monthly_trend=trend,
         )
 
     def get_site_detail(self, site_key: int) -> SiteDetail | None:
-        """Return detailed metrics for a single site."""
+        """Return detailed metrics for a single site (single query)."""
         log.info("get_site_detail", site_key=site_key)
 
         stmt = text("""
-            SELECT
-                a.site_key,
-                s.site_code,
-                s.site_name,
-                s.area_manager,
-                SUM(a.total_sales)      AS total_sales,
-                SUM(a.transaction_count)     AS transaction_count,
-                SUM(a.unique_customers)      AS unique_customers,
-                SUM(a.unique_staff)          AS unique_staff,
-                COALESCE(
-                    SUM(a.walk_in_count)::NUMERIC
-                    / NULLIF(SUM(a.transaction_count), 0), 0
-                )                            AS walk_in_ratio,
-                COALESCE(
-                    SUM(a.insurance_count)::NUMERIC
-                    / NULLIF(SUM(a.transaction_count), 0), 0
-                )                            AS insurance_ratio,
-                COALESCE(
-                    SUM(a.return_count)::NUMERIC
-                    / NULLIF(SUM(a.transaction_count), 0), 0
-                )                            AS return_rate
-            FROM public_marts.agg_sales_by_site a
-            INNER JOIN public_marts.dim_site s
-                ON a.site_key = s.site_key
-            WHERE a.site_key = :site_key
-            GROUP BY a.site_key, s.site_code, s.site_name, s.area_manager
+            WITH summary AS (
+                SELECT
+                    a.site_key,
+                    s.site_code,
+                    s.site_name,
+                    s.area_manager,
+                    SUM(a.total_sales)           AS total_sales,
+                    SUM(a.transaction_count)     AS transaction_count,
+                    SUM(a.unique_customers)      AS unique_customers,
+                    SUM(a.unique_staff)          AS unique_staff,
+                    COALESCE(
+                        SUM(a.walk_in_count)::NUMERIC
+                        / NULLIF(SUM(a.transaction_count), 0), 0
+                    )                            AS walk_in_ratio,
+                    COALESCE(
+                        SUM(a.insurance_count)::NUMERIC
+                        / NULLIF(SUM(a.transaction_count), 0), 0
+                    )                            AS insurance_ratio,
+                    COALESCE(
+                        SUM(a.return_count)::NUMERIC
+                        / NULLIF(SUM(a.transaction_count), 0), 0
+                    )                            AS return_rate
+                FROM public_marts.agg_sales_by_site a
+                INNER JOIN public_marts.dim_site s
+                    ON a.site_key = s.site_key
+                WHERE a.site_key = :site_key
+                GROUP BY a.site_key, s.site_code, s.site_name, s.area_manager
+            ),
+            trend AS (
+                SELECT json_agg(
+                    json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
+                                      'value', t.total_sales)
+                    ORDER BY a.month
+                ) AS points
+                FROM (
+                    SELECT month, SUM(total_sales) AS total_sales
+                    FROM public_marts.agg_sales_by_site
+                    WHERE site_key = :site_key
+                    GROUP BY month
+                ) a, LATERAL (SELECT a.total_sales) t
+            )
+            SELECT s.*, tr.points AS trend_points
+            FROM summary s
+            LEFT JOIN trend tr ON TRUE
         """)
-        row = self._session.execute(stmt, {"site_key": site_key}).fetchone()
+        row = self._session.execute(stmt, {"site_key": site_key}).mappings().fetchone()
         if row is None:
             return None
 
-        trend = self._get_monthly_trend(
-            "public_marts.agg_sales_by_site",
-            "site_key",
-            site_key,
-        )
+        trend = self._parse_trend_points(row["trend_points"])
 
         return SiteDetail(
-            site_key=int(row[0]),
-            site_code=str(row[1]) if row[1] else "",
-            site_name=str(row[2]),
-            area_manager=str(row[3]) if row[3] else "",
-            total_sales=Decimal(str(row[4])),
-            transaction_count=int(row[5]),
-            unique_customers=int(row[6]),
-            unique_staff=int(row[7]),
-            walk_in_ratio=Decimal(str(row[8])).quantize(Decimal("0.0001")),
-            insurance_ratio=Decimal(str(row[9])).quantize(Decimal("0.0001")),
-            return_rate=Decimal(str(row[10])).quantize(Decimal("0.0001")),
+            site_key=int(row["site_key"]),
+            site_code=str(row["site_code"]) if row["site_code"] else "",
+            site_name=str(row["site_name"]),
+            area_manager=str(row["area_manager"]) if row["area_manager"] else "",
+            total_sales=Decimal(str(row["total_sales"])),
+            transaction_count=int(row["transaction_count"]),
+            unique_customers=int(row["unique_customers"]),
+            unique_staff=int(row["unique_staff"]),
+            walk_in_ratio=Decimal(str(row["walk_in_ratio"])).quantize(Decimal("0.0001")),
+            insurance_ratio=Decimal(str(row["insurance_ratio"])).quantize(Decimal("0.0001")),
+            return_rate=Decimal(str(row["return_rate"])).quantize(Decimal("0.0001")),
             monthly_trend=trend,
         )

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   PieChart,
   Pie,
@@ -34,7 +35,7 @@ function CustomTooltip(props: Record<string, unknown>) {
   );
 }
 
-export function BillingBreakdownChart() {
+export const BillingBreakdownChart = memo(function BillingBreakdownChart() {
   const { filters } = useFilters();
   const { data, isLoading } = useBillingBreakdown(filters);
   const CHART_THEME = useChartTheme();
@@ -91,4 +92,4 @@ export function BillingBreakdownChart() {
       </ResponsiveContainer>
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -37,7 +37,7 @@ function CustomTooltip(props: Record<string, unknown>) {
   );
 }
 
-export function DailyTrendChart() {
+export const DailyTrendChart = memo(function DailyTrendChart() {
   const { filters } = useFilters();
   const { data: dashboardData, error, isLoading } = useDashboardData();
   const data = dashboardData?.daily_trend;
@@ -144,4 +144,4 @@ export function DailyTrendChart() {
       </ResponsiveContainer>
     </ChartCard>
   );
-}
+});
