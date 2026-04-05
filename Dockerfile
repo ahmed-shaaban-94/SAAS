@@ -16,26 +16,21 @@ COPY src/ src/
 COPY dbt/ dbt/
 COPY migrations/ migrations/
 
-# -- Prestart stage: runs SQL migrations ──────────────────────────
-FROM base AS prestart
-
-COPY scripts/prestart.sh /app/scripts/prestart.sh
-RUN sed -i 's/\r$//' /app/scripts/prestart.sh && chmod +x /app/scripts/prestart.sh
-
-CMD ["/app/scripts/prestart.sh"]
-
 # ── API stage: production server ─────────────────────────────────
 FROM base AS api
 
 RUN pip install --no-cache-dir "."
 
-# Include prestart script so prod compose can reuse this image for migrations
+# Include migration scripts — entrypoint runs them before uvicorn
 COPY scripts/prestart.sh /app/scripts/prestart.sh
-RUN sed -i 's/\r$//' /app/scripts/prestart.sh && chmod +x /app/scripts/prestart.sh
+COPY scripts/entrypoint.sh /app/scripts/entrypoint.sh
+RUN sed -i 's/\r$//' /app/scripts/prestart.sh /app/scripts/entrypoint.sh \
+    && chmod +x /app/scripts/prestart.sh /app/scripts/entrypoint.sh
 
 RUN useradd -m -u 1000 appuser
 USER appuser
 
 EXPOSE 8000
 
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 CMD ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]

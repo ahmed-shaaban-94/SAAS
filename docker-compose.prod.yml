@@ -78,13 +78,8 @@ services:
   postgres:
     ports: !reset []
 
-  # ---------- Prestart + Celery: GHCR image ----------
-  prestart:
-    image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
-    user: root
-    command: ["/app/scripts/prestart.sh"]
-
   # celery-worker removed — async queries now run in-process
+  # prestart removed — migrations now run inside API entrypoint
 
   # n8n removed — orchestration now in-process via datapulse.scheduler
 
