@@ -112,6 +112,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
+          fingerprint: ${{ secrets.PROD_HOST_FINGERPRINT }}
           source: "docker-compose.yml,docker-compose.prod.yml,nginx/,migrations/,postgres/"
           target: ${{ secrets.PROD_DEPLOY_PATH }}
 
@@ -121,6 +122,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
+          fingerprint: ${{ secrets.PROD_HOST_FINGERPRINT }}
           script: |
             cd ${{ secrets.PROD_DEPLOY_PATH }}
 
