@@ -21,8 +21,6 @@ dev:
 	@echo "  Dashboard: http://localhost:3000"
 	@echo "  API:       http://localhost:8000/docs"
 	@echo "  Health:    http://localhost:8000/health"
-	@echo "  pgAdmin:   http://localhost:5050"
-	@echo "  n8n:       http://localhost:5678"
 	@echo ""
 
 setup:
@@ -57,9 +55,9 @@ demo:
 	@echo "Waiting for services to be healthy..."
 	@sleep 10
 	@echo "Running bronze loader..."
-	docker exec datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales || true
+	docker exec datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales || true
 	@echo "Running dbt build..."
-	docker exec datapulse-app dbt build --project-dir /app/dbt || true
+	docker exec datapulse-api dbt build --project-dir /app/dbt || true
 	@echo ""
 	@echo "Demo ready at http://localhost:80"
 
@@ -101,28 +99,28 @@ help:
 
 ## Testing
 test:
-	docker exec -it datapulse-app pytest --cov=datapulse --cov-report=term-missing
+	docker exec -it datapulse-api pytest --cov=datapulse --cov-report=term-missing
 
 test-e2e:
 	docker compose exec frontend npx playwright test
 
 ## Linting
 lint:
-	docker exec -it datapulse-app ruff check src/ tests/
+	docker exec -it datapulse-api ruff check src/ tests/
 
 fmt:
-	docker exec -it datapulse-app ruff format src/ tests/
+	docker exec -it datapulse-api ruff format src/ tests/
 
 ## dbt
 dbt:
-	docker exec -it datapulse-app dbt build --project-dir /app/dbt
+	docker exec -it datapulse-api dbt build --project-dir /app/dbt
 
 dbt-test:
-	docker exec -it datapulse-app dbt test --project-dir /app/dbt
+	docker exec -it datapulse-api dbt test --project-dir /app/dbt
 
 ## Data
 load:
-	docker exec -it datapulse-app python -m datapulse.bronze.loader --source /app/data/raw/sales
+	docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales
 
 ## Backup / Restore
 backup:

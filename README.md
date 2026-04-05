@@ -215,8 +215,6 @@ make demo
 | <img src="https://img.shields.io/badge/-Dashboard-000000?style=flat-square&logo=next.js&logoColor=white" /> | [`localhost:3000`](http://localhost:3000) | Interactive analytics dashboard |
 | <img src="https://img.shields.io/badge/-API-009688?style=flat-square&logo=fastapi&logoColor=white" /> | [`localhost:8000/docs`](http://localhost:8000/docs) | FastAPI with Swagger docs |
 | <img src="https://img.shields.io/badge/-Auth-EB5424?style=flat-square&logo=auth0&logoColor=white" /> | Auth0 (managed) | Authentication & SSO |
-| <img src="https://img.shields.io/badge/-pgAdmin-336791?style=flat-square&logo=postgresql&logoColor=white" /> | [`localhost:5050`](http://localhost:5050) | Database admin UI |
-| <img src="https://img.shields.io/badge/-Jupyter-F37626?style=flat-square&logo=jupyter&logoColor=white" /> | [`localhost:8888`](http://localhost:8888) | Notebook environment |
 | <img src="https://img.shields.io/badge/-PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white" /> | `localhost:5432` | Database (internal) |
 | <img src="https://img.shields.io/badge/-Redis-DC382D?style=flat-square&logo=redis&logoColor=white" /> | internal | Cache layer |
 

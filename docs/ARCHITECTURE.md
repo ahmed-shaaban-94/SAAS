@@ -21,8 +21,6 @@ graph TB
         REDIS[(Redis 7<br/>Cache + Broker)]
         CELERY[Celery Worker<br/>Async Queries]
         N8N[n8n Workflows<br/>:5678]
-        APP[JupyterLab<br/>:8888]
-        PGADMIN[pgAdmin<br/>:5050]
     end
 
     USER((User)) --> FE
@@ -36,8 +34,6 @@ graph TB
     N8N --> API
     N8N --> PG
     N8N --> SLACK
-    APP --> PG
-    PGADMIN --> PG
 ```
 
 ## Data Flow
