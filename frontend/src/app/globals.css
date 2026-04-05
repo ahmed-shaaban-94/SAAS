@@ -565,9 +565,7 @@ html {
   animation: breathe 2s ease-in-out infinite;
 }
 
-/* ═══════════════════════════════════════════════
-   RTL layout overrides
-   ═══════════════════════════════════════════════ */
+/* RTL layout overrides */
 [dir="rtl"] .lg\:ml-60 {
   margin-left: 0;
   margin-right: 15rem;
