@@ -84,9 +84,8 @@ services:
     networks:
       - backend
 
-  # ---------- Prestart + Celery: GHCR image ----------
-  prestart:
-    image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:-latest}
+  # ---------- Prestart: build locally (prestart stage has postgresql-client + migration script) ----------
+  # Not overriding image — uses the local build from docker-compose.yml (target: prestart)
 
   # celery-worker removed — async queries now run in-process
 
