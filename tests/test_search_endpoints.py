@@ -56,7 +56,7 @@ def client(app):
 class TestSearchEndpoint:
     def test_search_success(self, client, mock_repo):
         """GET /search?q=test returns grouped results including pages."""
-        resp = client.get("/search", params={"q": "test"})
+        resp = client.get("/api/v1/search", params={"q": "test"})
         assert resp.status_code == 200
         data = resp.json()
         assert "products" in data
@@ -68,7 +68,7 @@ class TestSearchEndpoint:
 
     def test_search_empty(self, client, mock_repo):
         """GET /search?q= returns empty results without hitting repo."""
-        resp = client.get("/search", params={"q": ""})
+        resp = client.get("/api/v1/search", params={"q": ""})
         assert resp.status_code == 200
         data = resp.json()
         assert data["products"] == []
@@ -84,7 +84,7 @@ class TestSearchEndpoint:
             "customers": [],
             "staff": [],
         }
-        resp = client.get("/search", params={"q": "Goals"})
+        resp = client.get("/api/v1/search", params={"q": "Goals"})
         assert resp.status_code == 200
         data = resp.json()
         pages = data["pages"]
@@ -93,13 +93,13 @@ class TestSearchEndpoint:
 
     def test_search_with_custom_limit(self, client, mock_repo):
         """Search passes custom limit to repo."""
-        resp = client.get("/search", params={"q": "test", "limit": 25})
+        resp = client.get("/api/v1/search", params={"q": "test", "limit": 25})
         assert resp.status_code == 200
         mock_repo.search.assert_called_once_with("test", 25)
 
     def test_search_whitespace_only(self, client, mock_repo):
         """Whitespace-only query returns empty results."""
-        resp = client.get("/search", params={"q": "   "})
+        resp = client.get("/api/v1/search", params={"q": "   "})
         assert resp.status_code == 200
         data = resp.json()
         assert data["products"] == []

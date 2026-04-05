@@ -15,7 +15,9 @@ from datapulse.views.service import ViewsService
 
 @pytest.fixture()
 def mock_repo():
-    return create_autospec(ViewsRepository, instance=True)
+    repo = create_autospec(ViewsRepository, instance=True)
+    repo.MAX_VIEWS_PER_USER = ViewsRepository.MAX_VIEWS_PER_USER
+    return repo
 
 
 @pytest.fixture()

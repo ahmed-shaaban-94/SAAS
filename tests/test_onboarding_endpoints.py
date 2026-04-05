@@ -81,7 +81,7 @@ def client(app):
 class TestGetStatus:
     def test_get_status(self, client, mock_service):
         """GET /onboarding/status returns 200 with onboarding status."""
-        resp = client.get("/onboarding/status")
+        resp = client.get("/api/v1/onboarding/status")
         assert resp.status_code == 200
         data = resp.json()
         assert data["user_id"] == "test-user"
@@ -94,7 +94,7 @@ class TestCompleteStep:
     def test_complete_step(self, client, mock_service):
         """POST /onboarding/complete-step returns 200 with updated status."""
         resp = client.post(
-            "/onboarding/complete-step",
+            "/api/v1/onboarding/complete-step",
             json={"step": "connect_data"},
         )
         assert resp.status_code == 200
@@ -105,7 +105,7 @@ class TestCompleteStep:
     def test_complete_step_invalid(self, client):
         """POST /onboarding/complete-step with invalid step returns 422."""
         resp = client.post(
-            "/onboarding/complete-step",
+            "/api/v1/onboarding/complete-step",
             json={"step": "nonexistent_step"},
         )
         assert resp.status_code == 422
@@ -114,7 +114,7 @@ class TestCompleteStep:
 class TestSkip:
     def test_skip(self, client, mock_service):
         """POST /onboarding/skip returns 200 with skipped_at set."""
-        resp = client.post("/onboarding/skip")
+        resp = client.post("/api/v1/onboarding/skip")
         assert resp.status_code == 200
         data = resp.json()
         assert data["skipped_at"] is not None
