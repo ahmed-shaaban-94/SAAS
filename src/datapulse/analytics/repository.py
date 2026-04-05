@@ -287,7 +287,7 @@ class AnalyticsRepository:
 
         # Parse sparkline from JSON aggregate
         sparkline: list[TimeSeriesPoint] = []
-        if row["sparkline_points"] is not None:
+        if row.get("sparkline_points") is not None:
             raw_points = row["sparkline_points"]
             # Handle both pre-parsed list and raw JSON string
             if isinstance(raw_points, str):
@@ -521,7 +521,7 @@ class AnalyticsRepository:
 
         # Parse sparkline from JSON aggregate
         sparkline: list[TimeSeriesPoint] = []
-        if row["sparkline_points"] is not None:
+        if row.get("sparkline_points") is not None:
             raw_points = row["sparkline_points"]
             if isinstance(raw_points, str):
                 import json

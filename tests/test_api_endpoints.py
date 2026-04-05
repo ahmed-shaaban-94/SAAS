@@ -67,6 +67,12 @@ def test_health_endpoint(api_client):
         mock_conn = MagicMock()
         mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
         mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+        mock_pool = MagicMock()
+        mock_pool.size.return_value = 5
+        mock_pool.checkedout.return_value = 1
+        mock_pool.overflow.return_value = 0
+        mock_pool._max_overflow = 10
+        mock_engine.return_value.pool = mock_pool
         resp = client.get("/health")
     assert resp.status_code == 200
     data = resp.json()
