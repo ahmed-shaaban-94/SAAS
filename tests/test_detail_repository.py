@@ -16,19 +16,13 @@ def detail_repo():
     return DetailRepository(session), session
 
 
-def _mock_mappings(session, fetchone_val=None, fetchall_val=None):
-    """Set up mock chain: session.execute().mappings().fetchone/fetchall."""
+def _mock_mappings(session, fetchone_val=None):
+    """Set up mock chain: session.execute().mappings().fetchone()."""
     mock_exec = MagicMock()
     mock_maps = MagicMock()
     mock_exec.mappings.return_value = mock_maps
-    if fetchone_val is not None:
-        mock_maps.fetchone.return_value = fetchone_val
-    else:
-        mock_maps.fetchone.return_value = None
-    if fetchall_val is not None:
-        mock_maps.fetchall.return_value = fetchall_val
+    mock_maps.fetchone.return_value = fetchone_val
     session.execute.return_value = mock_exec
-    return mock_exec
 
 
 class TestMonthlyTrend:
@@ -57,18 +51,21 @@ class TestMonthlyTrend:
 class TestGetProductDetail:
     def test_found(self, detail_repo):
         repo, session = detail_repo
-        _mock_mappings(session, fetchone_val={
-            "product_key": 1,
-            "drug_code": "D001",
-            "drug_name": "Aspirin",
-            "drug_brand": "Bayer",
-            "drug_category": "Pain",
-            "total_quantity": Decimal("500"),
-            "total_sales": Decimal("10000"),
-            "return_rate": Decimal("0.05"),
-            "unique_customers": 42,
-            "trend_points": None,
-        })
+        _mock_mappings(
+            session,
+            fetchone_val={
+                "product_key": 1,
+                "drug_code": "D001",
+                "drug_name": "Aspirin",
+                "drug_brand": "Bayer",
+                "drug_category": "Pain",
+                "total_quantity": Decimal("500"),
+                "total_sales": Decimal("10000"),
+                "return_rate": Decimal("0.05"),
+                "unique_customers": 42,
+                "trend_points": None,
+            },
+        )
 
         result = repo.get_product_detail(1)
         assert result is not None
@@ -86,17 +83,20 @@ class TestGetProductDetail:
 class TestGetCustomerDetail:
     def test_found(self, detail_repo):
         repo, session = detail_repo
-        _mock_mappings(session, fetchone_val={
-            "customer_key": 1,
-            "customer_code": "C001",
-            "customer_name": "Customer A",
-            "avg_transaction_value": Decimal("300"),
-            "total_sales": Decimal("15000"),
-            "total_transactions": 120,
-            "unique_products": 25,
-            "active_months": 3,
-            "trend_points": None,
-        })
+        _mock_mappings(
+            session,
+            fetchone_val={
+                "customer_key": 1,
+                "customer_id": "C001",
+                "customer_name": "Customer A",
+                "total_quantity": Decimal("300"),
+                "total_sales": Decimal("15000"),
+                "transaction_count": 120,
+                "unique_products": 25,
+                "return_count": 3,
+                "trend_points": None,
+            },
+        )
 
         result = repo.get_customer_detail(1)
         assert result is not None
@@ -113,17 +113,20 @@ class TestGetCustomerDetail:
 class TestGetStaffDetail:
     def test_found(self, detail_repo):
         repo, session = detail_repo
-        _mock_mappings(session, fetchone_val={
-            "staff_key": 1,
-            "staff_code": "S001",
-            "staff_name": "Staff A",
-            "role": "Pharmacist",
-            "total_sales": Decimal("50000"),
-            "total_transactions": 500,
-            "avg_transaction_value": Decimal("100"),
-            "unique_customers": 200,
-            "trend_points": None,
-        })
+        _mock_mappings(
+            session,
+            fetchone_val={
+                "staff_key": 1,
+                "staff_id": "S001",
+                "staff_name": "Staff A",
+                "position": "Pharmacist",
+                "total_sales": Decimal("50000"),
+                "transaction_count": 500,
+                "avg_transaction_value": Decimal("100"),
+                "unique_customers": 200,
+                "trend_points": None,
+            },
+        )
 
         result = repo.get_staff_detail(1)
         assert result is not None
@@ -133,17 +136,20 @@ class TestGetStaffDetail:
 
     def test_found_null_avg(self, detail_repo):
         repo, session = detail_repo
-        _mock_mappings(session, fetchone_val={
-            "staff_key": 1,
-            "staff_code": "S001",
-            "staff_name": "Staff A",
-            "role": "Pharmacist",
-            "total_sales": Decimal("50000"),
-            "total_transactions": 0,
-            "avg_transaction_value": None,
-            "unique_customers": 200,
-            "trend_points": None,
-        })
+        _mock_mappings(
+            session,
+            fetchone_val={
+                "staff_key": 1,
+                "staff_id": "S001",
+                "staff_name": "Staff A",
+                "position": "Pharmacist",
+                "total_sales": Decimal("50000"),
+                "transaction_count": 0,
+                "avg_transaction_value": None,
+                "unique_customers": 200,
+                "trend_points": None,
+            },
+        )
 
         result = repo.get_staff_detail(1)
         assert result is not None
@@ -159,20 +165,23 @@ class TestGetStaffDetail:
 class TestGetSiteDetail:
     def test_found(self, detail_repo):
         repo, session = detail_repo
-        _mock_mappings(session, fetchone_val={
-            "site_key": 1,
-            "site_code": "SITE01",
-            "site_name": "Main Branch",
-            "area_manager": "Manager A",
-            "total_sales": Decimal("100000"),
-            "total_transactions": 1000,
-            "unique_customers": 500,
-            "unique_products": 50,
-            "walk_in_ratio": Decimal("0.6"),
-            "insurance_ratio": Decimal("0.3"),
-            "return_rate": Decimal("0.02"),
-            "trend_points": None,
-        })
+        _mock_mappings(
+            session,
+            fetchone_val={
+                "site_key": 1,
+                "site_code": "SITE01",
+                "site_name": "Main Branch",
+                "area_manager": "Manager A",
+                "total_sales": Decimal("100000"),
+                "transaction_count": 1000,
+                "unique_customers": 500,
+                "unique_staff": 50,
+                "walk_in_ratio": Decimal("0.6"),
+                "insurance_ratio": Decimal("0.3"),
+                "return_rate": Decimal("0.02"),
+                "trend_points": None,
+            },
+        )
 
         result = repo.get_site_detail(1)
         assert result is not None
@@ -182,20 +191,23 @@ class TestGetSiteDetail:
 
     def test_found_null_fields(self, detail_repo):
         repo, session = detail_repo
-        _mock_mappings(session, fetchone_val={
-            "site_key": 1,
-            "site_code": None,
-            "site_name": "Main Branch",
-            "area_manager": None,
-            "total_sales": Decimal("100000"),
-            "total_transactions": 1000,
-            "unique_customers": 500,
-            "unique_products": 50,
-            "walk_in_ratio": Decimal("0.6"),
-            "insurance_ratio": Decimal("0.3"),
-            "return_rate": Decimal("0.02"),
-            "trend_points": None,
-        })
+        _mock_mappings(
+            session,
+            fetchone_val={
+                "site_key": 1,
+                "site_code": None,
+                "site_name": "Main Branch",
+                "area_manager": None,
+                "total_sales": Decimal("100000"),
+                "transaction_count": 1000,
+                "unique_customers": 500,
+                "unique_staff": 50,
+                "walk_in_ratio": Decimal("0.6"),
+                "insurance_ratio": Decimal("0.3"),
+                "return_rate": Decimal("0.02"),
+                "trend_points": None,
+            },
+        )
 
         result = repo.get_site_detail(1)
         assert result is not None
