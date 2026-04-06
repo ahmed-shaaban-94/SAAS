@@ -714,13 +714,16 @@ class AnalyticsRepository:
         params["limit"] = filters.limit
 
         stmt = text(f"""
-            SELECT drug_name, customer_name,
-                   return_quantity, return_amount,
-                   return_count
-            FROM public_marts.agg_returns
+            SELECT a.drug_name, a.drug_brand, a.customer_name,
+                   a.return_quantity, a.return_amount,
+                   a.return_count,
+                   COALESCE(p.origin, 'Other') AS origin
+            FROM public_marts.agg_returns a
+            LEFT JOIN public_marts.dim_product p
+                ON a.product_key = p.product_key AND a.tenant_id = p.tenant_id
             WHERE {where}
-              AND customer_key != -1
-            ORDER BY return_amount DESC
+              AND a.customer_key != -1
+            ORDER BY a.return_amount DESC
             LIMIT :limit
         """)
         rows = self._session.execute(stmt, params).fetchall()
@@ -732,11 +735,12 @@ class AnalyticsRepository:
         return [
             ReturnAnalysis(
                 drug_name=str(r[0]),
-                drug_brand=str(r[0]),
-                customer_name=str(r[1]),
-                return_quantity=Decimal(str(r[2])),
-                return_amount=Decimal(str(r[3])),
-                return_count=int(r[4]),
+                drug_brand=str(r[1]),
+                customer_name=str(r[2]),
+                return_quantity=Decimal(str(r[3])),
+                return_amount=Decimal(str(r[4])),
+                return_count=int(r[5]),
+                origin=str(r[6]),
             )
             for r in rows
         ]

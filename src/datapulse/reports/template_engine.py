@@ -166,6 +166,96 @@ BUILTIN_TEMPLATES: list[ReportTemplate] = [
             ),
         ],
     ),
+    ReportTemplate(
+        id="brand-report",
+        name="Brand Report",
+        description="Sales, customers, and returns analysis for a specific brand",
+        parameters=[
+            ReportParameter(
+                name="drug_brand",
+                label="Brand Name",
+                param_type=ParameterType.text,
+                default="",
+            ),
+        ],
+        sections=[
+            ReportSection(
+                section_type=SectionType.text,
+                title="Brand Analysis",
+                text="Comprehensive report for brand: :drug_brand",
+            ),
+            ReportSection(
+                section_type=SectionType.query,
+                title="Monthly Sales Trend",
+                sql="""
+                    SELECT year, month, month_name,
+                           total_sales, total_net_amount, total_discount,
+                           transaction_count, unique_customers, return_rate
+                    FROM public_marts.agg_sales_by_product
+                    WHERE drug_brand ILIKE :drug_brand
+                    GROUP BY year, month, month_name,
+                             total_sales, total_net_amount, total_discount,
+                             transaction_count, unique_customers, return_rate
+                    ORDER BY year, month
+                """,
+                chart_type="line",
+            ),
+            ReportSection(
+                section_type=SectionType.query,
+                title="Top Products in Brand",
+                sql="""
+                    SELECT drug_name,
+                           SUM(total_sales) AS total_sales,
+                           SUM(transaction_count) AS transactions,
+                           SUM(unique_customers) AS customers
+                    FROM public_marts.agg_sales_by_product
+                    WHERE drug_brand ILIKE :drug_brand
+                    GROUP BY drug_name
+                    ORDER BY total_sales DESC
+                    LIMIT 20
+                """,
+                chart_type="horizontal-bar",
+            ),
+            ReportSection(
+                section_type=SectionType.query,
+                title="Top Customers for Brand",
+                sql="""
+                    SELECT c.customer_name,
+                           SUM(f.sales) AS total_sales,
+                           COUNT(*) FILTER (WHERE NOT f.is_return) AS transactions,
+                           COUNT(*) FILTER (WHERE f.is_return) AS returns
+                    FROM public_marts.fct_sales f
+                    INNER JOIN public_marts.dim_product p
+                        ON f.product_key = p.product_key AND f.tenant_id = p.tenant_id
+                    INNER JOIN public_marts.dim_customer c
+                        ON f.customer_key = c.customer_key AND f.tenant_id = c.tenant_id
+                    WHERE p.drug_brand ILIKE :drug_brand
+                      AND c.customer_key != -1
+                    GROUP BY c.customer_name
+                    ORDER BY total_sales DESC
+                    LIMIT 15
+                """,
+                chart_type="bar",
+            ),
+            ReportSection(
+                section_type=SectionType.query,
+                title="Returns for Brand",
+                sql="""
+                    SELECT a.drug_name, a.customer_name,
+                           SUM(a.return_amount) AS return_amount,
+                           SUM(a.return_count) AS return_count
+                    FROM public_marts.agg_returns a
+                    INNER JOIN public_marts.dim_product p
+                        ON a.product_key = p.product_key AND a.tenant_id = p.tenant_id
+                    WHERE p.drug_brand ILIKE :drug_brand
+                    GROUP BY a.drug_name, a.customer_name
+                    ORDER BY return_amount DESC
+                    LIMIT 15
+                """,
+                chart_type="table",
+            ),
+        ],
+    ),
 ]
 
 

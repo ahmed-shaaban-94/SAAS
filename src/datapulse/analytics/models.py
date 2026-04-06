@@ -183,6 +183,7 @@ class ReturnAnalysis(BaseModel):
     drug_name: str
     drug_brand: str = ""
     customer_name: str
+    origin: str = ""
     return_quantity: JsonDecimal
     return_amount: JsonDecimal
     return_count: int

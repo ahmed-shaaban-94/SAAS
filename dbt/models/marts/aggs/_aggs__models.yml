@@ -546,10 +546,12 @@ models:
         description: "Calendar month number (1-12)"
         tests:
           - not_null
-      - name: daily_net_amount
-        description: "Total net sales amount for the day"
+      - name: daily_gross_amount
+        description: "Total gross sales amount for the day"
         tests:
           - not_null
+      - name: daily_net_amount
+        description: "Deprecated alias for daily_gross_amount (backward compat)"
       - name: daily_transactions
         description: "Total number of transactions for the day"
         tests:
@@ -562,18 +564,22 @@ models:
         description: "Total distinct customers for the day"
         tests:
           - not_null
-      - name: mtd_net_amount
-        description: "Month-to-date cumulative net sales amount"
+      - name: mtd_gross_amount
+        description: "Month-to-date cumulative gross sales amount"
         tests:
           - not_null
+      - name: mtd_net_amount
+        description: "Deprecated alias for mtd_gross_amount (backward compat)"
       - name: mtd_transactions
         description: "Month-to-date cumulative transaction count"
         tests:
           - not_null
-      - name: ytd_net_amount
-        description: "Year-to-date cumulative net sales amount"
+      - name: ytd_gross_amount
+        description: "Year-to-date cumulative gross sales amount"
         tests:
           - not_null
+      - name: ytd_net_amount
+        description: "Deprecated alias for ytd_gross_amount (backward compat)"
       - name: ytd_transactions
         description: "Year-to-date cumulative transaction count"
         tests:

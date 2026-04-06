@@ -141,29 +141,25 @@ export default function DashboardPage() {
             </div>
           </LazySection>
 
-          {/* Strategic Insights Section */}
-          <LazySection minHeight="300px">
-            <div className="mt-10">
-              <SectionHeader icon={Target} title="Goals & Forecast" />
-              <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-2">
-                <TargetProgress />
-                <ForecastCard />
-              </div>
+          {/* Strategic Insights Section — always visible (no lazy) */}
+          <div className="mt-10">
+            <SectionHeader icon={Target} title="Goals & Forecast" />
+            <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-2">
+              <TargetProgress />
+              <ForecastCard />
             </div>
-          </LazySection>
+          </div>
 
-          {/* Geographic & Temporal Section */}
-          <LazySection minHeight="250px">
-            <div className="mt-10">
-              <SectionHeader icon={Calendar} title="Revenue Patterns" />
-              <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <CalendarHeatmap />
-                </div>
-                <EgyptMap />
+          {/* Geographic & Temporal Section — always visible (no lazy) */}
+          <div className="mt-10">
+            <SectionHeader icon={Calendar} title="Revenue Patterns" />
+            <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <CalendarHeatmap />
               </div>
+              <EgyptMap />
             </div>
-          </LazySection>
+          </div>
         </DashboardContent>
       </div>
       </CompareProvider>

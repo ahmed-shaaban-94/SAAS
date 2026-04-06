@@ -55,6 +55,7 @@ SELECT
     t.month,
     -- Daily values (gross only — net deliberately excluded)
     t.daily_gross_amount,
+    t.daily_gross_amount AS daily_net_amount,  -- deprecated alias for backward compat
     t.daily_discount,
     t.daily_transactions,
     t.daily_returns,
@@ -68,6 +69,14 @@ SELECT
         ),
         2
     ) AS mtd_gross_amount,
+    ROUND(
+        SUM(t.daily_gross_amount) OVER (
+            PARTITION BY t.tenant_id, t.year, t.month
+            ORDER BY t.full_date
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ),
+        2
+    ) AS mtd_net_amount,  -- deprecated alias for backward compat
     SUM(t.daily_transactions) OVER (
         PARTITION BY t.tenant_id, t.year, t.month
         ORDER BY t.full_date
@@ -82,6 +91,14 @@ SELECT
         ),
         2
     ) AS ytd_gross_amount,
+    ROUND(
+        SUM(t.daily_gross_amount) OVER (
+            PARTITION BY t.tenant_id, t.year
+            ORDER BY t.full_date
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ),
+        2
+    ) AS ytd_net_amount,  -- deprecated alias for backward compat
     SUM(t.daily_transactions) OVER (
         PARTITION BY t.tenant_id, t.year
         ORDER BY t.full_date

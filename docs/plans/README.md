@@ -21,6 +21,14 @@ All completed work is consolidated into single reference documents.
 
 ---
 
+## Active Plans
+
+| Plan | Document | Priority | Summary |
+|------|----------|----------|---------|
+| **Analytics Optimization** | [Optimization Plan](./optimization-plan.md) | HIGH | Naming fix, core KPIs, forecast pacing, growth decomposition, Egyptian market intelligence |
+
+---
+
 ## Future Phases (PLANNED)
 
 Detailed expansion plans for Phases 5–10.
