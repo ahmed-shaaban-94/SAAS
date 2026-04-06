@@ -50,4 +50,6 @@ COLUMN_MAP: dict[str, str] = {
     "Area Mg": "area_mg",
     "Site Name": "site_name",
     "Site": "site",
+    # Polars auto-renames duplicate "Billing Type" headers to "Billing Type_1"
+    "Billing Type_1": "billing_type2",
 }
