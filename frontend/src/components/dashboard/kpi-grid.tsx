@@ -92,14 +92,9 @@ export function KPIGrid() {
 
   if (!data) return null;
 
-  // Total Units card (quantity — returns already negative)
+  // Units metrics
   const totalUnits = data.daily_quantity ?? 0;
-
-  // Units per Transaction
-  const unitsPerTxn =
-    data.daily_transactions > 0
-      ? totalUnits / data.daily_transactions
-      : 0;
+  const unitsPerTxn = data.daily_transactions > 0 ? totalUnits / data.daily_transactions : 0;
 
   const cards: Array<{
     label: string;
