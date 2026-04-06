@@ -5,18 +5,18 @@ import { TypingSubtitle } from "./typing-subtitle";
 
 const BAR_HEIGHTS = [38, 52, 45, 68, 55, 78, 62, 88, 72, 92, 82, 96];
 const BAR_COLORS = [
-  "from-accent/50 to-accent/90",
-  "from-chart-blue/50 to-chart-blue/90",
-  "from-accent/50 to-accent/90",
-  "from-chart-amber/50 to-chart-amber/90",
-  "from-accent/50 to-accent/90",
-  "from-chart-blue/50 to-chart-blue/90",
-  "from-accent/50 to-accent/90",
-  "from-chart-amber/50 to-chart-amber/90",
-  "from-accent/50 to-accent/90",
-  "from-chart-blue/50 to-chart-blue/90",
-  "from-accent/50 to-accent/90",
-  "from-chart-amber/50 to-chart-amber/90",
+  "from-[#E5A00D]/60 to-[#E5A00D]",
+  "from-[#3B82F6]/60 to-[#3B82F6]",
+  "from-[#E5A00D]/60 to-[#E5A00D]",
+  "from-[#FF9800]/60 to-[#FF9800]",
+  "from-[#E5A00D]/60 to-[#E5A00D]",
+  "from-[#3B82F6]/60 to-[#3B82F6]",
+  "from-[#E5A00D]/60 to-[#E5A00D]",
+  "from-[#FF9800]/60 to-[#FF9800]",
+  "from-[#E5A00D]/60 to-[#E5A00D]",
+  "from-[#3B82F6]/60 to-[#3B82F6]",
+  "from-[#E5A00D]/60 to-[#E5A00D]",
+  "from-[#FF9800]/60 to-[#FF9800]",
 ];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
