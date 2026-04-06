@@ -714,7 +714,7 @@ class AnalyticsRepository:
         params["limit"] = filters.limit
 
         stmt = text(f"""
-            SELECT drug_brand, customer_name,
+            SELECT drug_name, customer_name,
                    return_quantity, return_amount,
                    return_count
             FROM public_marts.agg_returns
