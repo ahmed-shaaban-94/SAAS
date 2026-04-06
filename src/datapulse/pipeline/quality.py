@@ -33,7 +33,7 @@ _SILVER_CRITICAL_COLUMNS = ("reference_no", "date", "sales", "quantity")
 
 # Default (bronze) for backward compatibility
 CRITICAL_COLUMNS = _BRONZE_CRITICAL_COLUMNS
-_COLUMN_ALLOWLIST = frozenset(_BRONZE_CRITICAL_COLUMNS | frozenset(_SILVER_CRITICAL_COLUMNS))
+_COLUMN_ALLOWLIST = frozenset(_BRONZE_CRITICAL_COLUMNS + _SILVER_CRITICAL_COLUMNS)
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 # Trusted schema.table mapping — never derived from user input
