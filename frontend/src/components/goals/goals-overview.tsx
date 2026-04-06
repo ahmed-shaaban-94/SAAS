@@ -52,8 +52,8 @@ function BudgetSection({ year }: { year: number }) {
   if (!data || data.monthly.length === 0) return null;
 
   // Pivot monthly data: one row per month, budget/actual per origin
-  const months = [...new Set(data.monthly.map((m) => m.month))].sort((a, b) => a - b);
-  const origins = [...new Set(data.monthly.map((m) => m.origin))];
+  const months = Array.from(new Set(data.monthly.map((m) => m.month))).sort((a, b) => a - b);
+  const origins = Array.from(new Set(data.monthly.map((m) => m.origin)));
   const chartData = months.map((mo) => {
     const row: Record<string, string | number> = {
       month: data.monthly.find((m) => m.month === mo)?.month_name ?? String(mo),
