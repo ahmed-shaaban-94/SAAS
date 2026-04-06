@@ -73,7 +73,7 @@ export function HeroSection() {
 
         {/* Animated chart visualization */}
         <div className="mx-auto mt-16 max-w-4xl float-card">
-          <div className="rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4 shadow-2xl relative overflow-hidden">
+          <div className="rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4 shadow-2xl relative overflow-hidden hero-dashboard-glow">
             {/* Top accent bar */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-chart-amber to-chart-blue" />
 
