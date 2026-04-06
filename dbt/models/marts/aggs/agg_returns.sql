@@ -44,6 +44,7 @@ SELECT
     r.tenant_id,
     r.product_key,
     p.drug_name,
+    p.drug_brand,
     r.customer_key,
     c.customer_name,
     r.year,

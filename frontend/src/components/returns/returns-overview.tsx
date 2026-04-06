@@ -22,7 +22,7 @@ export function ReturnsOverview() {
     const totalAmount = data.reduce((sum, r) => sum + r.return_amount, 0);
     const totalQuantity = data.reduce((sum, r) => sum + r.return_quantity, 0);
     const totalCount = data.reduce((sum, r) => sum + r.return_count, 0);
-    const uniqueProducts = new Set(data.map((r) => r.drug_name)).size;
+    const uniqueProducts = new Set(data.map((r) => r.drug_brand)).size;
 
     return [
       { label: "Total Return Amount", value: formatCurrency(totalAmount) },
@@ -83,7 +83,7 @@ export function ReturnsOverview() {
             </h3>
             <CsvExportButton
               data={data.map((r) => ({
-                Product: r.drug_name,
+                Product: r.drug_brand,
                 Customer: r.customer_name,
                 Quantity: r.return_quantity,
                 Amount: r.return_amount,

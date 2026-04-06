@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTargetSummary } from "@/hooks/use-targets";
+import { useBudgetSummary } from "@/hooks/use-budget";
 import { formatCurrency, formatPercent, formatCompact } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { postAPI } from "@/lib/api-client";
@@ -10,7 +11,7 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
-import { Target, Plus, TrendingUp, TrendingDown, CheckCircle2 } from "lucide-react";
+import { Target, Plus, TrendingUp, TrendingDown, CheckCircle2, Wallet } from "lucide-react";
 
 function ProgressRing({ pct, size = 120 }: { pct: number; size?: number }) {
   const radius = (size - 10) / 2;
@@ -30,6 +31,107 @@ function ProgressRing({ pct, size = 120 }: { pct: number; size?: number }) {
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-2xl font-bold text-text-primary">{formatPercent(pct)}</span>
         <span className="text-[10px] text-text-secondary">achieved</span>
+      </div>
+    </div>
+  );
+}
+
+const ORIGIN_COLORS: Record<string, string> = {
+  Pharma: "#4F46E5",
+  "Non-pharma": "#10B981",
+  HVI: "#F59E0B",
+  Services: "#6B7280",
+  Other: "#9CA3AF",
+};
+
+function BudgetSection({ year }: { year: number }) {
+  const { data, isLoading } = useBudgetSummary(year);
+  const theme = useChartTheme();
+
+  if (isLoading) return <LoadingCard className="h-64" />;
+  if (!data || data.monthly.length === 0) return null;
+
+  // Pivot monthly data: one row per month, budget/actual per origin
+  const months = [...new Set(data.monthly.map((m) => m.month))].sort((a, b) => a - b);
+  const origins = [...new Set(data.monthly.map((m) => m.origin))];
+  const chartData = months.map((mo) => {
+    const row: Record<string, string | number> = {
+      month: data.monthly.find((m) => m.month === mo)?.month_name ?? String(mo),
+    };
+    for (const origin of origins) {
+      const item = data.monthly.find((m) => m.month === mo && m.origin === origin);
+      row[`${origin}_budget`] = item?.budget ?? 0;
+      row[`${origin}_actual`] = item?.actual ?? 0;
+    }
+    return row;
+  });
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-base font-semibold text-text-primary flex items-center gap-2">
+        <Wallet className="h-4 w-4 text-accent" />
+        Budget vs Actual by Origin
+      </h3>
+
+      {/* Origin KPI Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {data.by_origin.map((o) => {
+          const met = o.ytd_actual >= o.ytd_budget;
+          return (
+            <div key={o.origin} className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-text-primary">{o.origin}</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  o.ytd_achievement_pct >= 100 ? "bg-green-500/10 text-green-500" :
+                  o.ytd_achievement_pct >= 75 ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
+                }`}>
+                  {formatPercent(o.ytd_achievement_pct)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs text-text-secondary mb-1">
+                <span>Budget: {formatCompact(o.ytd_budget)}</span>
+                <span>Actual: {formatCompact(o.ytd_actual)}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-divider overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(o.ytd_achievement_pct, 100)}%`,
+                    backgroundColor: ORIGIN_COLORS[o.origin] ?? "#6B7280",
+                  }}
+                />
+              </div>
+              <p className={`text-xs mt-1 font-medium ${met ? "text-green-500" : "text-red-500"}`}>
+                {met ? "+" : ""}{formatCompact(o.ytd_variance)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Monthly Budget vs Actual Chart — stacked by origin */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h4 className="text-sm font-semibold text-text-primary mb-4">Monthly Budget vs Actual</h4>
+        <ResponsiveContainer width="100%" height={350}>
+          <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.gridStroke} />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fill: theme.tickFill }} />
+            <YAxis tick={{ fontSize: 10, fill: theme.tickFill }} tickFormatter={(v: number) => formatCompact(v)} />
+            <Tooltip
+              contentStyle={{ backgroundColor: theme.tooltipBg, border: `1px solid ${theme.gridStroke}`, borderRadius: "8px", fontSize: "12px" }}
+              formatter={(value: number, name: string) => [formatCurrency(value), name.replace("_budget", " Budget").replace("_actual", " Actual")]}
+            />
+            <Legend wrapperStyle={{ fontSize: "11px" }} formatter={(v: string) => v.replace("_budget", " Budget").replace("_actual", " Actual")} />
+            {origins.map((origin) => (
+              <Bar key={`${origin}_budget`} dataKey={`${origin}_budget`} stackId="budget"
+                fill={ORIGIN_COLORS[origin] ?? "#6B7280"} opacity={0.3} radius={0} />
+            ))}
+            {origins.map((origin) => (
+              <Bar key={`${origin}_actual`} dataKey={`${origin}_actual`} stackId="actual"
+                fill={ORIGIN_COLORS[origin] ?? "#6B7280"} radius={0} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
@@ -227,6 +329,9 @@ export function GoalsOverview() {
           </div>
         </>
       )}
+
+      {/* Budget vs Actual section */}
+      <BudgetSection year={year} />
     </div>
   );
 }

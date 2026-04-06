@@ -26,7 +26,7 @@ export function ReturnsChart({ items, className }: ReturnsChartProps) {
       (a, b) => b.return_amount - a.return_amount,
     );
     return sorted.slice(0, CHART_MAX_ITEMS).map((item, i) => ({
-      name: truncate(item.drug_name),
+      name: truncate(item.drug_brand),
       value: item.return_amount,
       fill: CHART_COLORS[i % CHART_COLORS.length],
     }));

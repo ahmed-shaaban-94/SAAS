@@ -181,6 +181,7 @@ class ReturnAnalysis(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     drug_name: str
+    drug_brand: str = ""
     customer_name: str
     return_quantity: JsonDecimal
     return_amount: JsonDecimal

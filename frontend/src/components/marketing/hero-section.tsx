@@ -3,6 +3,26 @@
 import Link from "next/link";
 import { TypingSubtitle } from "./typing-subtitle";
 
+const BAR_HEIGHTS = [38, 52, 45, 68, 55, 78, 62, 88, 72, 92, 82, 96];
+const BAR_COLORS = [
+  "from-accent/50 to-accent/90",
+  "from-chart-blue/50 to-chart-blue/90",
+  "from-accent/50 to-accent/90",
+  "from-chart-amber/50 to-chart-amber/90",
+  "from-accent/50 to-accent/90",
+  "from-chart-blue/50 to-chart-blue/90",
+  "from-accent/50 to-accent/90",
+  "from-chart-amber/50 to-chart-amber/90",
+  "from-accent/50 to-accent/90",
+  "from-chart-blue/50 to-chart-blue/90",
+  "from-accent/50 to-accent/90",
+  "from-chart-amber/50 to-chart-amber/90",
+];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Pulse line SVG path points (smooth sine-like curve)
+const PULSE_POINTS = "M0,80 C30,60 60,90 90,50 C120,10 150,70 180,40 C210,10 240,65 270,35 C300,5 330,55 360,25 C390,45 420,15 450,55 C480,30 510,60 540,20 C570,50 600,10 630,45 C660,25 690,55 720,30";
+
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden px-4 pb-16 pt-32 sm:px-6 md:pb-24 md:pt-40 lg:px-8">
@@ -51,7 +71,7 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Dashboard mockup — floating */}
+        {/* Animated chart visualization */}
         <div className="mx-auto mt-16 max-w-4xl float-card">
           <div className="rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4 shadow-2xl relative overflow-hidden">
             {/* Top accent bar */}
@@ -86,19 +106,52 @@ export function HeroSection() {
               ))}
             </div>
 
-            {/* Chart mockup */}
-            <div className="mt-4 rounded-lg border border-border/50 bg-page/50 p-4">
-              <p className="mb-3 text-xs text-text-secondary">Revenue Trend</p>
-              <div className="flex h-32 items-end gap-1.5">
-                {[40, 55, 35, 65, 50, 75, 60, 85, 70, 90, 80, 95].map(
-                  (h, i) => (
+            {/* Animated chart area */}
+            <div className="mt-4 rounded-lg border border-border/50 bg-page/50 p-4 relative overflow-hidden">
+              <p className="mb-3 text-xs text-text-secondary">Monthly Revenue</p>
+
+              {/* Background pulse line */}
+              <div className="absolute inset-0 flex items-center pointer-events-none">
+                <svg
+                  viewBox="0 0 720 100"
+                  fill="none"
+                  className="w-full h-full opacity-[0.12]"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d={PULSE_POINTS}
+                    stroke="url(#pulseGrad)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    fill="none"
+                    className="hero-pulse-line"
+                  />
+                  <defs>
+                    <linearGradient id="pulseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="var(--color-accent)" />
+                      <stop offset="50%" stopColor="var(--color-chart-blue, #3B82F6)" />
+                      <stop offset="100%" stopColor="var(--color-chart-amber, #F59E0B)" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+
+              {/* Animated column chart */}
+              <div className="relative flex h-40 items-end gap-1.5 sm:gap-2">
+                {BAR_HEIGHTS.map((h, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1">
                     <div
-                      key={i}
-                      className="flex-1 rounded-t bg-gradient-to-t from-accent/40 to-accent/80 transition-all"
-                      style={{ height: `${h}%` }}
+                      className={`w-full rounded-t bg-gradient-to-t ${BAR_COLORS[i]} hero-bar`}
+                      style={{
+                        "--bar-height": `${h}%`,
+                        animationDelay: `${i * 0.15}s`,
+                      } as React.CSSProperties}
                     />
-                  )
-                )}
+                    <span className="text-[8px] sm:text-[9px] text-text-secondary/60 hidden sm:block">
+                      {MONTHS[i]}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

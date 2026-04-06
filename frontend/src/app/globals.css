@@ -639,6 +639,34 @@ html {
   50% { transform: translateY(-12px); }
 }
 
+/* --- Hero animated bars --- */
+.hero-bar {
+  height: 0;
+  animation: heroBarGrow 2s ease-out forwards, heroBarPulse 4s ease-in-out 2s infinite;
+}
+@keyframes heroBarGrow {
+  from { height: 0; }
+  to { height: var(--bar-height); }
+}
+@keyframes heroBarPulse {
+  0%, 100% { height: var(--bar-height); opacity: 0.85; }
+  50% { height: calc(var(--bar-height) * 0.88); opacity: 1; }
+}
+
+/* --- Hero pulse line --- */
+.hero-pulse-line {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: heroLineDraw 3s ease-in-out forwards, heroLineGlow 5s ease-in-out 3s infinite;
+}
+@keyframes heroLineDraw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes heroLineGlow {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.3; }
+}
+
 /* --- Shimmer CTA button --- */
 .cta-shimmer {
   position: relative;
@@ -827,8 +855,13 @@ html {
   .float-card,
   .cta-shimmer,
   .rotating-border::before,
-  .trust-scroll {
+  .trust-scroll,
+  .hero-bar,
+  .hero-pulse-line {
     animation: none;
+  }
+  .hero-bar {
+    height: var(--bar-height);
   }
   .cta-shimmer::before {
     display: none;

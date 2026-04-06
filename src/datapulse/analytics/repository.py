@@ -714,11 +714,12 @@ class AnalyticsRepository:
         params["limit"] = filters.limit
 
         stmt = text(f"""
-            SELECT drug_name, customer_name,
+            SELECT drug_brand, customer_name,
                    return_quantity, return_amount,
                    return_count
             FROM public_marts.agg_returns
             WHERE {where}
+              AND customer_key != -1
             ORDER BY return_amount DESC
             LIMIT :limit
         """)
@@ -731,6 +732,7 @@ class AnalyticsRepository:
         return [
             ReturnAnalysis(
                 drug_name=str(r[0]),
+                drug_brand=str(r[0]),
                 customer_name=str(r[1]),
                 return_quantity=Decimal(str(r[2])),
                 return_amount=Decimal(str(r[3])),

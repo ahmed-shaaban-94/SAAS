@@ -5,12 +5,53 @@ import { useFilters } from "@/contexts/filter-context";
 import { SummaryStats } from "@/components/shared/summary-stats";
 import { RankingChart } from "@/components/shared/ranking-chart";
 import { RankingTableLinked } from "@/components/shared/ranking-table-linked";
-import DistributionChart from "@/components/shared/distribution-chart";
 import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
-import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatNumber, formatCompact } from "@/lib/formatters";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
+import { CHART_COLORS } from "@/lib/constants";
+import { useChartTheme } from "@/hooks/use-chart-theme";
+
+function StaffDistributionBar({ data }: { data: { name: string; value: number; fill: string }[] }) {
+  const theme = useChartTheme();
+  if (!data || data.length === 0) return null;
+
+  return (
+    <ResponsiveContainer width="100%" height={data.length * 40 + 20}>
+      <BarChart data={data} layout="vertical" margin={{ left: 0 }}>
+        <XAxis
+          type="number"
+          tick={{ fill: theme.tickFill, fontSize: 10 }}
+          tickLine={false}
+          axisLine={{ stroke: theme.axisStroke }}
+          tickFormatter={(v: number) => formatCompact(v)}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          tick={{ fill: theme.tickFill, fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          width={140}
+        />
+        <Tooltip
+          contentStyle={{
+            backgroundColor: theme.tooltipBg,
+            border: `1px solid ${theme.tooltipBorder}`,
+            borderRadius: "8px",
+            color: theme.tooltipColor,
+          }}
+          formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+        />
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
 
 export function StaffOverview() {
   const { filters } = useFilters();
@@ -59,9 +100,10 @@ export function StaffOverview() {
     { label: "Top Revenue", value: formatCurrency(topPerformer.value) },
   ];
 
-  const chartData = data.items.slice(0, 8).map((item) => ({
+  const chartData = data.items.slice(0, 8).map((item, i) => ({
     name: item.name.length > 20 ? item.name.slice(0, 20) + "..." : item.name,
     value: item.value,
+    fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
   const exportData = data.items.map((item) => ({
@@ -85,7 +127,7 @@ export function StaffOverview() {
           <h3 className="mb-4 text-sm font-medium text-text-secondary">
             Revenue Distribution
           </h3>
-          <DistributionChart data={chartData} />
+          <StaffDistributionBar data={chartData} />
         </div>
         <div className="rounded-lg border border-border bg-card p-6">
           <div className="mb-4 flex items-center justify-between">

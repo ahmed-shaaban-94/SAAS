@@ -56,7 +56,7 @@ export interface RankingResult {
 
 export interface ReturnAnalysis {
   drug_name: string;
-  product_name?: string;
+  drug_brand: string;
   customer_name: string;
   return_quantity: number;
   return_amount: number;
@@ -462,6 +462,32 @@ export interface TargetVsActual {
 export interface TargetSummary {
   monthly_targets: TargetVsActual[];
   ytd_target: number;
+  ytd_actual: number;
+  ytd_achievement_pct: number;
+}
+
+export interface BudgetVsActualItem {
+  month: number;
+  month_name: string;
+  origin: string;
+  budget: number;
+  actual: number;
+  variance: number;
+  achievement_pct: number;
+}
+
+export interface BudgetOriginSummary {
+  origin: string;
+  ytd_budget: number;
+  ytd_actual: number;
+  ytd_variance: number;
+  ytd_achievement_pct: number;
+}
+
+export interface BudgetSummary {
+  monthly: BudgetVsActualItem[];
+  by_origin: BudgetOriginSummary[];
+  ytd_budget: number;
   ytd_actual: number;
   ytd_achievement_pct: number;
 }

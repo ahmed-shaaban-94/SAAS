@@ -18,6 +18,7 @@ from datapulse.targets.models import (
     AlertConfigCreate,
     AlertConfigResponse,
     AlertLogResponse,
+    BudgetSummary,
     TargetCreate,
     TargetResponse,
     TargetSummary,
@@ -116,6 +117,24 @@ def get_target_summary(
     """Target vs actual revenue summary for a given year."""
     _set_cache(response, 120)
     return service.get_target_summary(year)
+
+
+# ------------------------------------------------------------------
+# Budget endpoints
+# ------------------------------------------------------------------
+
+
+@router.get("/budget", response_model=BudgetSummary)
+@limiter.limit("60/minute")
+def get_budget_summary(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    year: Annotated[int, Query(ge=2020, le=2100, description="Year for budget")] = 2025,
+) -> BudgetSummary:
+    """Budget vs actual revenue by origin for a given year."""
+    _set_cache(response, 120)
+    return service.get_budget_summary(year)
 
 
 # ------------------------------------------------------------------

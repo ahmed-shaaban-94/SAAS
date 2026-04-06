@@ -17,11 +17,14 @@ export function ReturnRateGauge() {
   const isHealthy = rate < 5;
   const isWarning = rate >= 5 && rate < 10;
 
+  // Auto-scale: round up to nearest nice number (5, 10, 15, 20, 25, ...)
+  const maxScale = Math.max(Math.ceil(rate / 5) * 5, 10);
+
   // SVG gauge
   const startAngle = -135;
   const endAngle = 135;
   const totalAngle = endAngle - startAngle;
-  const normalizedRate = Math.min(rate / 20, 1); // 0-20% scale
+  const normalizedRate = Math.min(rate / maxScale, 1);
   const currentAngle = startAngle + normalizedRate * totalAngle;
 
   const r = 60;
@@ -68,7 +71,7 @@ export function ReturnRateGauge() {
           </text>
           {/* Scale labels */}
           <text x="15" y="105" className="text-[9px] fill-text-secondary">0%</text>
-          <text x="135" y="105" className="text-[9px] fill-text-secondary">20%</text>
+          <text x="135" y="105" className="text-[9px] fill-text-secondary">{maxScale}%</text>
         </svg>
 
         <div className="flex-1 space-y-2">

@@ -15,6 +15,9 @@ from datapulse.targets.models import (
     AlertConfigCreate,
     AlertConfigResponse,
     AlertLogResponse,
+    BudgetOriginSummary,
+    BudgetSummary,
+    BudgetVsActualItem,
     TargetCreate,
     TargetResponse,
     TargetSummary,
@@ -182,6 +185,112 @@ class TargetsRepository:
         return TargetSummary(
             monthly_targets=monthly,
             ytd_target=ytd_target,
+            ytd_actual=ytd_actual,
+            ytd_achievement_pct=ytd_achievement,
+        )
+
+    # ------------------------------------------------------------------
+    # Budget (from seed_budget_2025)
+    # ------------------------------------------------------------------
+
+    _MONTH_NAMES = [
+        "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
+
+    def get_budget_vs_actual(self, year: int) -> BudgetSummary:
+        """Compare budget from seed_budget_2025 against actual sales by origin."""
+        log.info("get_budget_vs_actual", year=year)
+
+        stmt = text("""
+            WITH budget AS (
+                SELECT month, origin, SUM(budget) AS budget
+                FROM public_marts.seed_budget_2025
+                WHERE year = :year
+                GROUP BY month, origin
+            ),
+            actuals AS (
+                SELECT month, origin, SUM(total_sales) AS actual
+                FROM public_marts.agg_sales_by_product
+                WHERE year = :year
+                  AND origin IS NOT NULL
+                GROUP BY month, origin
+            )
+            SELECT COALESCE(b.month, a.month) AS month,
+                   COALESCE(b.origin, a.origin) AS origin,
+                   COALESCE(b.budget, 0) AS budget,
+                   COALESCE(a.actual, 0) AS actual
+            FROM budget b
+            FULL OUTER JOIN actuals a
+              ON b.month = a.month AND b.origin = a.origin
+            ORDER BY month, origin
+        """)
+        rows = self._session.execute(stmt, {"year": year}).fetchall()
+
+        monthly: list[BudgetVsActualItem] = []
+        origin_totals: dict[str, dict[str, Decimal]] = {}
+        ytd_budget = _ZERO
+        ytd_actual = _ZERO
+
+        for r in rows:
+            month_num = int(r[0])
+            origin = str(r[1])
+            budget_val = Decimal(str(r[2]))
+            actual_val = Decimal(str(r[3]))
+            variance = actual_val - budget_val
+            achievement = (
+                (actual_val / budget_val * _HUNDRED).quantize(Decimal("0.01"))
+                if budget_val != _ZERO
+                else _ZERO
+            )
+
+            monthly.append(
+                BudgetVsActualItem(
+                    month=month_num,
+                    month_name=self._MONTH_NAMES[month_num] if month_num <= 12 else str(month_num),
+                    origin=origin,
+                    budget=budget_val,
+                    actual=actual_val,
+                    variance=variance,
+                    achievement_pct=achievement,
+                )
+            )
+
+            if origin not in origin_totals:
+                origin_totals[origin] = {"budget": _ZERO, "actual": _ZERO}
+            origin_totals[origin]["budget"] += budget_val
+            origin_totals[origin]["actual"] += actual_val
+            ytd_budget += budget_val
+            ytd_actual += actual_val
+
+        by_origin: list[BudgetOriginSummary] = []
+        for origin, totals in sorted(origin_totals.items()):
+            ob = totals["budget"]
+            oa = totals["actual"]
+            by_origin.append(
+                BudgetOriginSummary(
+                    origin=origin,
+                    ytd_budget=ob,
+                    ytd_actual=oa,
+                    ytd_variance=oa - ob,
+                    ytd_achievement_pct=(
+                        (oa / ob * _HUNDRED).quantize(Decimal("0.01"))
+                        if ob != _ZERO
+                        else _ZERO
+                    ),
+                )
+            )
+
+        ytd_achievement = (
+            (ytd_actual / ytd_budget * _HUNDRED).quantize(Decimal("0.01"))
+            if ytd_budget != _ZERO
+            else _ZERO
+        )
+
+        return BudgetSummary(
+            monthly=monthly,
+            by_origin=by_origin,
+            ytd_budget=ytd_budget,
             ytd_actual=ytd_actual,
             ytd_achievement_pct=ytd_achievement,
         )

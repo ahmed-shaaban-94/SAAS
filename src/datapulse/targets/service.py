@@ -7,6 +7,7 @@ from datapulse.targets.models import (
     AlertConfigCreate,
     AlertConfigResponse,
     AlertLogResponse,
+    BudgetSummary,
     TargetCreate,
     TargetResponse,
     TargetSummary,
@@ -60,6 +61,11 @@ class TargetsService:
         """
         log.info("service_target_summary", year=year)
         return self._repo.get_target_vs_actual(year)
+
+    def get_budget_summary(self, year: int) -> BudgetSummary:
+        """Get budget vs actual summary by origin for a given year."""
+        log.info("service_budget_summary", year=year)
+        return self._repo.get_budget_vs_actual(year)
 
     # ------------------------------------------------------------------
     # Alert configs
