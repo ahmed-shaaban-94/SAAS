@@ -7,6 +7,8 @@ import { useTopStaff } from "@/hooks/use-top-staff";
 import { useFilters } from "@/contexts/filter-context";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { NarrativeSummaryCard } from "@/components/dashboard/narrative-summary-card";
+import { InsightChips } from "@/components/dashboard/insight-chips";
 import { Printer } from "lucide-react";
 
 export default function PrintReportPage() {
@@ -53,6 +55,9 @@ export default function PrintReportPage() {
         </button>
       </div>
 
+      {/* Business Narrative */}
+      <NarrativeSummaryCard variant="print" />
+
       {/* KPI Summary */}
       {summary && (
         <section>
@@ -60,13 +65,13 @@ export default function PrintReportPage() {
             Key Performance Indicators
           </h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <KPICell label="Today Gross" value={formatCurrency(summary.today_gross)} />
-            <KPICell label="MTD Gross" value={formatCurrency(summary.mtd_gross)} />
-            <KPICell label="YTD Gross" value={formatCurrency(summary.ytd_gross)} />
-            <KPICell label="Daily Transactions" value={formatNumber(summary.daily_transactions)} />
+            <KPICell label="Selected Period Revenue" value={formatCurrency(summary.today_gross)} />
+            <KPICell label="Month-to-Date Revenue" value={formatCurrency(summary.mtd_gross)} />
+            <KPICell label="Year-to-Date Revenue" value={formatCurrency(summary.ytd_gross)} />
+            <KPICell label="Completed Transactions" value={formatNumber(summary.daily_transactions)} />
             <KPICell label="Daily Customers" value={formatNumber(summary.daily_customers)} />
             <KPICell
-              label="MoM Growth"
+              label="Growth"
               value={summary.mom_growth_pct !== null ? formatPercent(summary.mom_growth_pct) : "N/A"}
             />
             <KPICell
@@ -76,6 +81,9 @@ export default function PrintReportPage() {
           </div>
         </section>
       )}
+
+      {/* Insight Chips */}
+      <InsightChips variant="print" />
 
       {/* Top Products */}
       {products && products.items.length > 0 && (

@@ -7,6 +7,7 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig = {
   output: "standalone",
   experimental: {
+    scrollRestoration: true,
     optimizePackageImports: [
       "lucide-react",
       "recharts",

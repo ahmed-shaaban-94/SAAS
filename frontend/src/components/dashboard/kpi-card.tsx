@@ -17,6 +17,8 @@ interface KPICardProps {
   trend?: number | null;
   trendLabel?: string;
   subtitle?: string;
+  comparisonLine?: string;
+  hero?: boolean;
   icon?: React.ComponentType<{ className?: string }>;
   className?: string;
   accentGradient?: string;
@@ -46,7 +48,7 @@ function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
   return <>{animated}</>;
 }
 
-export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, subtitle, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
+export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
   const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
@@ -79,6 +81,7 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
         "bg-card/80 backdrop-blur-sm",
         "transition-all duration-300 hover:scale-[1.03] hover:shadow-lg",
         "hover:border-accent/40 hover:shadow-accent/5",
+        hero && "border-accent/30 shadow-md shadow-accent/5 ring-1 ring-accent/10",
         className,
       )}
     >
@@ -110,7 +113,10 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
         )}
       </div>
 
-      <p className="relative mt-2 text-lg sm:text-xl font-bold tracking-tight text-text-primary truncate" data-kpi-value>
+      <p className={cn(
+        "relative mt-2 font-bold tracking-tight text-text-primary truncate",
+        hero ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl",
+      )} data-kpi-value>
         <AnimatedValue
           value={value}
           numericValue={numericValue}
@@ -121,6 +127,15 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
 
       {subtitle && (
         <p className="relative mt-0.5 text-[10px] text-text-secondary truncate">{subtitle}</p>
+      )}
+
+      {comparisonLine && (
+        <p className={cn(
+          "relative mt-1 text-xs font-medium truncate",
+          isPositive ? "text-growth-green/80" : isNegative ? "text-growth-red/80" : "text-text-secondary",
+        )}>
+          {comparisonLine}
+        </p>
       )}
 
       {trend !== undefined && (

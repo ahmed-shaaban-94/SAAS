@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Printer, TrendingUp, Trophy, PieChart, Zap, Target, Calendar } from "lucide-react";
+import { Printer, TrendingUp, Trophy, PieChart, Zap, Target, Calendar, BarChart3 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -11,6 +11,8 @@ import dynamic from "next/dynamic";
 // Above-fold: regular imports (seen immediately)
 import { DayHeroConnected } from "@/components/dashboard/day-hero-connected";
 import { KPIGrid } from "@/components/dashboard/kpi-grid";
+import { NarrativeSummaryCard } from "@/components/dashboard/narrative-summary-card";
+import { InsightChips } from "@/components/dashboard/insight-chips";
 import { DailyTrendChart } from "@/components/dashboard/daily-trend-chart";
 import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
 import { LastUpdated } from "@/components/dashboard/last-updated";
@@ -32,6 +34,10 @@ const QuickRankings = dynamic(
 const TopMoversCard = dynamic(
   () => import("@/components/dashboard/top-movers-card").then(m => ({ default: m.TopMoversCard })),
   { loading: () => <LoadingCard lines={3} /> },
+);
+const WhyChangedPanel = dynamic(
+  () => import("@/components/dashboard/why-changed-panel").then(m => ({ default: m.WhyChangedPanel })),
+  { loading: () => <LoadingCard lines={4} />, ssr: false },
 );
 const CalendarHeatmap = dynamic(
   () => import("@/components/dashboard/calendar-heatmap").then(m => ({ default: m.CalendarHeatmap })),
@@ -101,6 +107,12 @@ export default function DashboardPage() {
           {/* KPI Section */}
           <KPIGrid />
 
+          {/* Business Narrative & Insight Chips */}
+          <div className="mt-6 space-y-3">
+            <NarrativeSummaryCard />
+            <InsightChips />
+          </div>
+
           {/* Trends Section */}
           <div className="mt-10">
             <SectionHeader icon={TrendingUp} title="Trends" />
@@ -137,6 +149,16 @@ export default function DashboardPage() {
               <SectionHeader icon={Zap} title="Top Movers" />
               <div className="mt-4">
                 <TopMoversCard />
+              </div>
+            </div>
+          </LazySection>
+
+          {/* Revenue Drivers Section */}
+          <LazySection minHeight="300px">
+            <div className="mt-10" id="why-changed">
+              <SectionHeader icon={BarChart3} title="Revenue Drivers" />
+              <div className="mt-4">
+                <WhyChangedPanel />
               </div>
             </div>
           </LazySection>
