@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Printer, TrendingUp, Trophy, PieChart, Zap, Target, Calendar, BarChart3 } from "lucide-react";
 import { Header } from "@/components/layout/header";
