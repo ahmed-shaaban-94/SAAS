@@ -42,9 +42,22 @@ const CURRENCY_COLS = new Set([
   "avg_order_value",
 ]);
 
+/** Columns that should display as plain integers (no thousand separators) */
+const PLAIN_INT_COLS = new Set([
+  "year",
+  "month",
+  "quarter",
+  "year_month",
+  "year_quarter",
+  "day_of_week",
+]);
+
 function formatCell(value: unknown, colName?: string): string {
   if (value === null || value === undefined) return "\u2014";
   if (typeof value === "number") {
+    if (colName && PLAIN_INT_COLS.has(colName)) {
+      return String(value);
+    }
     if (colName && CURRENCY_COLS.has(colName)) {
       return value.toLocaleString("en-EG", {
         minimumFractionDigits: 2,

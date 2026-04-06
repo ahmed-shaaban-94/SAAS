@@ -281,11 +281,11 @@ class DetailRepository:
                     SUM(a.unique_customers)      AS unique_customers,
                     SUM(a.unique_staff)          AS unique_staff,
                     COALESCE(
-                        SUM(a.walk_in_count)::NUMERIC
+                        SUM(a.walk_in_ratio * a.transaction_count)::NUMERIC
                         / NULLIF(SUM(a.transaction_count), 0), 0
                     )                            AS walk_in_ratio,
                     COALESCE(
-                        SUM(a.insurance_count)::NUMERIC
+                        SUM(a.insurance_ratio * a.transaction_count)::NUMERIC
                         / NULLIF(SUM(a.transaction_count), 0), 0
                     )                            AS insurance_ratio,
                     COALESCE(
@@ -300,16 +300,17 @@ class DetailRepository:
             ),
             trend AS (
                 SELECT json_agg(
-                    json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
-                                      'value', t.total_sales)
-                    ORDER BY a.month
+                    json_build_object('period',
+                        a.year::TEXT || '-' || LPAD(a.month::TEXT, 2, '0'),
+                        'value', a.total_sales)
+                    ORDER BY a.year, a.month
                 ) AS points
                 FROM (
-                    SELECT month, SUM(total_sales) AS total_sales
+                    SELECT year, month, SUM(total_sales) AS total_sales
                     FROM public_marts.agg_sales_by_site
                     WHERE site_key = :site_key
-                    GROUP BY month
-                ) a, LATERAL (SELECT a.total_sales) t
+                    GROUP BY year, month
+                ) a
             )
             SELECT s.*, tr.points AS trend_points
             FROM summary s

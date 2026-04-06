@@ -657,6 +657,9 @@ class AnalyticsRepository:
         2. Exclude Services/Other origin transactions
         3. Only non-return transactions
         4. Exclude below 33% of average transaction count (data entry noise)
+
+        'Unknown' staff are excluded from the ranking display but their
+        revenue is kept in the total to avoid misleading percentages.
         """
         log.info("get_top_staff", filters=filters.model_dump())
         ranking = self._get_ranking(
@@ -664,6 +667,20 @@ class AnalyticsRepository:
             "staff_key",
             "staff_name",
             filters,
+        )
+
+        # Remove 'Unknown' staff from display but keep their revenue in total
+        filtered_items = [
+            item.model_copy(update={"rank": idx})
+            for idx, item in enumerate(
+                (i for i in ranking.items if i.name != "Unknown"),
+                start=1,
+            )
+        ]
+        ranking = RankingResult(
+            items=filtered_items,
+            total=ranking.total,
+            active_count=ranking.active_count,
         )
 
         # Compute active staff count with 4-layer filter
