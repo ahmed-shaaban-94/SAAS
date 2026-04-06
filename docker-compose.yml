@@ -30,6 +30,9 @@ services:
       AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET:-}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
       API_KEY: ${API_KEY:-}
+      # NOTE: API_KEY, AUTH0_CLIENT_SECRET, and PIPELINE_WEBHOOK_SECRET default
+      # to empty for local dev. In production, set them explicitly or use
+      # docker-compose.prod.yml which overrides with :? (required) syntax.
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}

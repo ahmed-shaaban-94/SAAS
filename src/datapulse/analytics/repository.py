@@ -28,6 +28,7 @@ from datapulse.analytics.models import (
 from datapulse.analytics.queries import (
     ALLOWED_RANKING_COLUMNS,
     ALLOWED_RANKING_TABLES,
+    SITE_DATE_ONLY,
     build_ranking,
     build_trend,
     build_where,
@@ -102,32 +103,41 @@ class AnalyticsRepository:
         log.info("get_filter_options")
 
         stmt = text("""
-            SELECT 'category' AS type, drug_category AS value, NULL::int AS key
-            FROM public_marts.agg_sales_by_product
-            WHERE drug_category IS NOT NULL
-            GROUP BY drug_category
-
+            SELECT * FROM (
+                SELECT 'category' AS type, drug_category AS value, NULL::int AS key
+                FROM public_marts.agg_sales_by_product
+                WHERE drug_category IS NOT NULL
+                GROUP BY drug_category
+                ORDER BY drug_category
+                LIMIT 500
+            ) cats
             UNION ALL
-
-            SELECT 'brand', drug_brand, NULL
-            FROM public_marts.agg_sales_by_product
-            WHERE drug_brand IS NOT NULL
-            GROUP BY drug_brand
-
+            SELECT * FROM (
+                SELECT 'brand', drug_brand, NULL
+                FROM public_marts.agg_sales_by_product
+                WHERE drug_brand IS NOT NULL
+                GROUP BY drug_brand
+                ORDER BY drug_brand
+                LIMIT 500
+            ) brands
             UNION ALL
-
-            SELECT 'site', site_name, site_key
-            FROM public_marts.agg_sales_by_site
-            WHERE site_key > 0
-            GROUP BY site_key, site_name
-
+            SELECT * FROM (
+                SELECT 'site', site_name, site_key
+                FROM public_marts.agg_sales_by_site
+                WHERE site_key > 0
+                GROUP BY site_key, site_name
+                ORDER BY site_name
+                LIMIT 100
+            ) sites
             UNION ALL
-
-            SELECT 'staff', staff_name, staff_key
-            FROM public_marts.agg_sales_by_staff
-            WHERE staff_key > 0
-            GROUP BY staff_key, staff_name
-
+            SELECT * FROM (
+                SELECT 'staff', staff_name, staff_key
+                FROM public_marts.agg_sales_by_staff
+                WHERE staff_key > 0
+                GROUP BY staff_key, staff_name
+                ORDER BY staff_name
+                LIMIT 500
+            ) stf
             ORDER BY type, value
         """)
         rows = self._session.execute(stmt).fetchall()
@@ -166,10 +176,13 @@ class AnalyticsRepository:
         date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
         sparkline_start = target_date - timedelta(days=7)
 
+        # Single unified CTE: daily KPIs + basket + comparisons + sparkline +
+        # significance history (MoM 12 months + YoY 5 years) — all in ONE query.
         stmt = text("""
             WITH daily AS (
                 SELECT daily_gross_amount, 0 AS daily_discount,
                        mtd_gross_amount, ytd_gross_amount,
+                       daily_quantity,
                        daily_transactions, daily_unique_customers,
                        daily_returns, mtd_transactions, ytd_transactions
                 FROM public_marts.metrics_summary
@@ -204,12 +217,29 @@ class AnalyticsRepository:
                 ) AS points
                 FROM public_marts.metrics_summary
                 WHERE full_date BETWEEN :sparkline_start AND :target_date
+            ),
+            mom_history AS (
+                SELECT json_agg(mtd_gross_amount ORDER BY full_date) AS vals
+                FROM public_marts.metrics_summary
+                WHERE full_date IN (
+                    SELECT (CAST(:target_date AS date) - (n || ' months')::interval)::date
+                    FROM generate_series(1, 12) AS n
+                )
+            ),
+            yoy_history AS (
+                SELECT json_agg(ytd_gross_amount ORDER BY full_date) AS vals
+                FROM public_marts.metrics_summary
+                WHERE full_date IN (
+                    SELECT (CAST(:target_date AS date) - (n || ' years')::interval)::date
+                    FROM generate_series(1, 5) AS n
+                )
             )
             SELECT
                 d.daily_gross_amount,
                 d.daily_discount,
                 d.mtd_gross_amount,
                 d.ytd_gross_amount,
+                d.daily_quantity,
                 d.daily_transactions,
                 d.daily_unique_customers,
                 d.daily_returns,
@@ -218,12 +248,16 @@ class AnalyticsRepository:
                 b.avg_basket_size,
                 pm.mtd_gross_amount AS prev_month_mtd,
                 py.ytd_gross_amount AS prev_year_ytd,
-                sp.points AS sparkline_points
+                sp.points AS sparkline_points,
+                mh.vals AS mom_history,
+                yh.vals AS yoy_history
             FROM daily d
             LEFT JOIN basket b ON TRUE
             LEFT JOIN prev_month pm ON TRUE
             LEFT JOIN prev_year py ON TRUE
             LEFT JOIN sparkline sp ON TRUE
+            LEFT JOIN mom_history mh ON TRUE
+            LEFT JOIN yoy_history yh ON TRUE
         """)
 
         row = (
@@ -248,6 +282,7 @@ class AnalyticsRepository:
                 today_discount=_ZERO,
                 mom_growth_pct=None,
                 yoy_growth_pct=None,
+                daily_quantity=_ZERO,
                 daily_transactions=0,
                 daily_customers=0,
                 avg_basket_size=_ZERO,
@@ -261,6 +296,7 @@ class AnalyticsRepository:
         mtd_gross = Decimal(str(row["mtd_gross_amount"]))
         ytd_gross = Decimal(str(row["ytd_gross_amount"]))
         today_discount = Decimal(str(row["daily_discount"])) if row["daily_discount"] else _ZERO
+        daily_quantity = Decimal(str(row["daily_quantity"])) if row["daily_quantity"] is not None else _ZERO
         daily_transactions = int(row["daily_transactions"])
         daily_customers = int(row["daily_unique_customers"])
         daily_returns = int(row["daily_returns"]) if row["daily_returns"] is not None else 0
@@ -299,9 +335,9 @@ class AnalyticsRepository:
                 for p in raw_points
             ]
 
-        # Statistical significance for MoM/YoY growth
-        mom_sig = self._compute_growth_significance(target_date, "mom")
-        yoy_sig = self._compute_growth_significance(target_date, "yoy")
+        # Statistical significance from inline CTE history (no extra queries)
+        mom_sig = self._significance_from_history(row.get("mom_history"))
+        yoy_sig = self._significance_from_history(row.get("yoy_history"))
 
         return KPISummary(
             today_gross=today_gross,
@@ -310,6 +346,7 @@ class AnalyticsRepository:
             today_discount=today_discount,
             mom_growth_pct=mom_growth,
             yoy_growth_pct=yoy_growth,
+            daily_quantity=daily_quantity,
             daily_transactions=daily_transactions,
             daily_customers=daily_customers,
             avg_basket_size=avg_basket,
@@ -321,6 +358,33 @@ class AnalyticsRepository:
             yoy_significance=yoy_sig,
         )
 
+    @staticmethod
+    def _significance_from_history(raw_history) -> str | None:
+        """Compute significance from a JSON array of historical values.
+
+        Reuses the same z-score logic as _compute_growth_significance
+        but operates on pre-fetched data from the unified CTE — no extra queries.
+        """
+        if raw_history is None:
+            return None
+        import json as _json
+
+        if isinstance(raw_history, str):
+            raw_history = _json.loads(raw_history)
+        values = [Decimal(str(v)) for v in raw_history if v is not None]
+        if len(values) < 3:
+            return None
+        growths: list[Decimal] = []
+        for i in range(1, len(values)):
+            g = safe_growth(values[i], values[i - 1])
+            if g is not None:
+                growths.append(g)
+        if len(growths) < 3:
+            return None
+        current_growth = growths[-1]
+        z = compute_z_score(current_growth, growths)
+        return significance_level(z)
+
     def _compute_growth_significance(self, target_date: date, kind: str) -> str | None:
         """Compute statistical significance for MoM or YoY growth.
 
@@ -329,24 +393,27 @@ class AnalyticsRepository:
         the historical distribution of growth rates.
         """
         if kind == "mom":
-            # Get last 12 months' MTD net amounts (same day-of-month)
+            # Get last 12 months' MTD amounts on the same day-of-month
+            # Uses date arithmetic instead of EXTRACT to allow index usage
             stmt = text("""
                 SELECT mtd_gross_amount
                 FROM public_marts.metrics_summary
-                WHERE EXTRACT(DAY FROM full_date) = EXTRACT(DAY FROM CAST(:td AS date))
-                  AND full_date < CAST(:td AS date)
+                WHERE full_date IN (
+                    SELECT (CAST(:td AS date) - (n || ' months')::interval)::date
+                    FROM generate_series(1, 12) AS n
+                )
                 ORDER BY full_date DESC
-                LIMIT 12
             """)
         else:  # yoy
+            # Get last 5 years' YTD amounts on the same month+day
             stmt = text("""
                 SELECT ytd_gross_amount
                 FROM public_marts.metrics_summary
-                WHERE EXTRACT(MONTH FROM full_date) = EXTRACT(MONTH FROM CAST(:td AS date))
-                  AND EXTRACT(DAY FROM full_date) = EXTRACT(DAY FROM CAST(:td AS date))
-                  AND full_date < CAST(:td AS date)
+                WHERE full_date IN (
+                    SELECT (CAST(:td AS date) - (n || ' years')::interval)::date
+                    FROM generate_series(1, 5) AS n
+                )
                 ORDER BY full_date DESC
-                LIMIT 5
             """)
 
         try:
@@ -412,6 +479,7 @@ class AnalyticsRepository:
             WITH range_agg AS (
                 SELECT
                     ROUND(SUM(daily_gross_amount), 2) AS period_net,
+                    SUM(daily_quantity)::NUMERIC(18,4) AS total_quantity,
                     SUM(daily_transactions)::INT     AS total_transactions,
                     SUM(daily_returns)::INT           AS total_returns,
                     SUM(daily_unique_customers)::INT  AS total_customers
@@ -449,6 +517,7 @@ class AnalyticsRepository:
             )
             SELECT
                 r.period_net,
+                r.total_quantity,
                 r.total_transactions,
                 r.total_returns,
                 r.total_customers,
@@ -497,6 +566,7 @@ class AnalyticsRepository:
             )
 
         period_net = Decimal(str(row["period_net"]))
+        total_quantity = Decimal(str(row["total_quantity"])) if row["total_quantity"] is not None else _ZERO
         mtd_gross = (
             Decimal(str(row["mtd_gross_amount"])) if row["mtd_gross_amount"] is not None else _ZERO
         )
@@ -538,6 +608,7 @@ class AnalyticsRepository:
             ytd_gross=ytd_gross,
             mom_growth_pct=mom_growth,
             yoy_growth_pct=None,
+            daily_quantity=total_quantity,
             daily_transactions=total_transactions - total_returns,
             daily_customers=total_customers,
             avg_basket_size=avg_basket,
@@ -564,7 +635,7 @@ class AnalyticsRepository:
     def get_daily_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by day."""
         log.info("get_daily_trend", filters=filters.model_dump())
-        where, params = build_where(filters, date_column="date_key")
+        where, params = build_where(filters, date_column="date_key", supported_fields=SITE_DATE_ONLY)
 
         stmt = text(f"""
             SELECT date_key AS period,
@@ -580,7 +651,7 @@ class AnalyticsRepository:
     def get_monthly_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by year-month."""
         log.info("get_monthly_trend", filters=filters.model_dump())
-        where, params = build_where(filters, use_year_month=True)
+        where, params = build_where(filters, use_year_month=True, supported_fields=SITE_DATE_ONLY)
 
         stmt = text(f"""
             SELECT LPAD(year::text, 4, '0') || '-'

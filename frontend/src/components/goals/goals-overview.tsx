@@ -5,6 +5,7 @@ import { useTargetSummary } from "@/hooks/use-targets";
 import { useBudgetSummary } from "@/hooks/use-budget";
 import { formatCurrency, formatPercent, formatCompact } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 import { postAPI } from "@/lib/api-client";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -45,10 +46,11 @@ const ORIGIN_COLORS: Record<string, string> = {
 };
 
 function BudgetSection({ year }: { year: number }) {
-  const { data, isLoading } = useBudgetSummary(year);
+  const { data, isLoading, error } = useBudgetSummary(year);
   const theme = useChartTheme();
 
   if (isLoading) return <LoadingCard className="h-64" />;
+  if (error) return <ErrorRetry title="Failed to load budget data" />;
   if (!data || data.monthly.length === 0) return null;
 
   // Pivot monthly data: one row per month, budget/actual per origin

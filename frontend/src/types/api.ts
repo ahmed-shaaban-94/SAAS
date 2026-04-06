@@ -8,6 +8,8 @@ export interface KPISummary {
   // Growth (based on gross)
   mom_growth_pct: number | null;
   yoy_growth_pct: number | null;
+  // Units (quantity — returns are negative, so sum is net units)
+  daily_quantity: number;
   daily_transactions: number;
   daily_customers: number;
   avg_basket_size: number;
@@ -63,6 +65,13 @@ export interface ReturnAnalysis {
   return_amount: number;
   return_count: number;
   return_rate?: number;
+}
+
+export interface FilterOptions {
+  categories: string[];
+  brands: string[];
+  sites: Array<{ key: number; label: string }>;
+  staff: Array<{ key: number; label: string }>;
 }
 
 export interface HealthStatus {

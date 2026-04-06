@@ -410,7 +410,7 @@ async def execute_forecasting(
 ) -> ExecutionResult:
     """Run the forecasting stage in a background thread."""
     return await asyncio.to_thread(
-        partial(executor.run_forecasting, run_id=body.run_id),
+        partial(executor.run_forecasting, run_id=body.run_id, tenant_id=str(body.tenant_id)),
     )
 
 

@@ -17,6 +17,7 @@ from datapulse.config import Settings
 from datapulse.core.db import get_session_factory
 from datapulse.logging import get_logger
 from datapulse.pipeline.models import ExecutionResult
+from datapulse.pipeline.retry import with_retry
 
 log = get_logger(__name__)
 
@@ -61,13 +62,17 @@ class PipelineExecutor:
         log.info("executor_bronze_start", run_id=str(run_id), source_dir=source_dir)
         t0 = time.perf_counter()
 
-        try:
-            df = bronze_loader.run(
+        @with_retry(max_attempts=3, base_delay=2.0)
+        def _load():
+            return bronze_loader.run(
                 source_dir=Path(source_dir),
                 database_url=self._settings.database_url,
                 parquet_path=self._settings.parquet_dir / "bronze_sales.parquet",
                 batch_size=self._settings.bronze_batch_size,
             )
+
+        try:
+            df = _load()
             elapsed = round(time.perf_counter() - t0, 2)
             rows = df.shape[0]
             log.info("executor_bronze_done", run_id=str(run_id), rows=rows, seconds=elapsed)
@@ -113,18 +118,32 @@ class PipelineExecutor:
         t0 = time.perf_counter()
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 cmd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=self._settings.pipeline_dbt_timeout,
             )
+            try:
+                stdout, stderr = proc.communicate(timeout=self._settings.pipeline_dbt_timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.communicate()  # reap zombie
+                elapsed = round(time.perf_counter() - t0, 2)
+                error_msg = f"dbt {selector} timed out after {self._settings.pipeline_dbt_timeout}s"
+                log.error("executor_dbt_timeout", run_id=str(run_id), error=error_msg)
+                return ExecutionResult(
+                    success=False,
+                    error=_sanitize_error(error_msg),
+                    duration_seconds=elapsed,
+                )
+
             elapsed = round(time.perf_counter() - t0, 2)
 
             if proc.returncode != 0:
                 raw_error = (
-                    proc.stderr.strip()
-                    or proc.stdout.strip()
+                    stderr.strip()
+                    or stdout.strip()
                     or f"dbt exited with code {proc.returncode}"
                 )
                 log.error("executor_dbt_failed", run_id=str(run_id), error=raw_error)
@@ -142,15 +161,6 @@ class PipelineExecutor:
             )
             return ExecutionResult(
                 success=True,
-                duration_seconds=elapsed,
-            )
-        except subprocess.TimeoutExpired:
-            elapsed = round(time.perf_counter() - t0, 2)
-            error_msg = f"dbt {selector} timed out after {self._settings.pipeline_dbt_timeout}s"
-            log.error("executor_dbt_timeout", run_id=str(run_id), error=error_msg)
-            return ExecutionResult(
-                success=False,
-                error=_sanitize_error(error_msg),
                 duration_seconds=elapsed,
             )
         except Exception as exc:

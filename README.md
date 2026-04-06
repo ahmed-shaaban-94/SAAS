@@ -88,7 +88,7 @@ flowchart LR
 
     subgraph OUTPUT["<b>Consumers</b>"]
         H["FastAPI<br/>100 endpoints"]
-        I["Next.js<br/>14 pages"]
+        I["Next.js<br/>22 pages"]
         J["Power BI<br/>99 DAX measures"]
         K["AI Insights<br/>OpenRouter"]
     end
@@ -116,7 +116,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph CLIENT["<b>Client Layer</b>"]
-        WEB["Next.js Dashboard<br/>14 pages | 53 hooks"]
+        WEB["Next.js Dashboard<br/>22 pages | 49 hooks"]
         MOBILE["Android App<br/>Kotlin + Compose"]
         PBI["Power BI Desktop<br/>99 DAX measures"]
     end
@@ -528,7 +528,7 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 | **1.2** Bronze Layer | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | 1.1M rows loaded into PostgreSQL |
 | **1.3** Silver Layer | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Cleaned, normalized, 7 dbt tests |
 | **1.4** Gold Layer | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Star schema, 6 dims + 1 fact + 8 aggs |
-| **1.5** Dashboard | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Next.js 14, 14 pages, Recharts, E2E |
+| **1.5** Dashboard | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Next.js 14, 22 pages, Recharts, E2E |
 | **1.6** Polish | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Security audit, 95%+ coverage |
 | **2.0-2.7** Automation | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | n8n, pipeline tracking, quality gates |
 | **2.8** AI-Light | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | OpenRouter insights, anomaly detection |

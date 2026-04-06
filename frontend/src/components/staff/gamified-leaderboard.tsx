@@ -5,6 +5,7 @@ import { useFilters } from "@/contexts/filter-context";
 import { formatCurrency, formatCompact } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { Trophy, Medal, Crown, Award } from "lucide-react";
 import Link from "next/link";
 
@@ -14,9 +15,10 @@ const MEDAL_ICONS = [Crown, Medal, Award];
 
 export function GamifiedLeaderboard() {
   const { filters } = useFilters();
-  const { data, isLoading } = useTopStaff(filters);
+  const { data, isLoading, error } = useTopStaff(filters);
 
   if (isLoading) return <LoadingCard className="h-96" />;
+  if (error) return <ErrorRetry title="Failed to load staff data" />;
   if (!data?.items?.length)
     return <EmptyState title="No staff data available" />;
 

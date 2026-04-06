@@ -6,6 +6,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from sqlalchemy import text
 
 from datapulse.api.deps import CurrentUser, get_billing_service
 from datapulse.api.limiter import limiter
@@ -98,6 +99,7 @@ async def stripe_webhook(
     session = get_session_factory()()
     try:
         # Webhook uses raw session (no tenant RLS — it resolves tenant from Stripe customer)
+        session.execute(text("SET LOCAL statement_timeout = '30s'"))
         repo = BillingRepository(session)
         client = StripeClient(settings.stripe_secret_key)
         service = BillingService(

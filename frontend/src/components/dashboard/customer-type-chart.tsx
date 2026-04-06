@@ -14,10 +14,13 @@ import { useCustomerTypeBreakdown } from "@/hooks/use-customer-type-breakdown";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { formatCompact } from "@/lib/formatters";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
-const TYPE_COLORS = ["#4F46E5", "#2196F3", "#9E9E9E"] as const;
+// Theme-aware: dark mode uses brighter variants for contrast
+const TYPE_COLORS_LIGHT = ["#4F46E5", "#2196F3", "#9E9E9E"] as const;
+const TYPE_COLORS_DARK = ["#6366F1", "#60A5FA", "#D1D5DB"] as const;
 
 function CustomTooltip(props: Record<string, unknown>) {
   const { active, payload } = props;
@@ -39,10 +42,14 @@ function CustomTooltip(props: Record<string, unknown>) {
 
 export const CustomerTypeChart = memo(function CustomerTypeChart() {
   const { filters } = useFilters();
-  const { data, isLoading } = useCustomerTypeBreakdown(filters);
+  const { data, isLoading, error } = useCustomerTypeBreakdown(filters);
   const CHART_THEME = useChartTheme();
 
+  // Select theme-aware colors (chartBlue is dark-theme blue if dark)
+  const TYPE_COLORS = CHART_THEME.chartBlue === "#6366F1" ? TYPE_COLORS_DARK : TYPE_COLORS_LIGHT;
+
   if (isLoading) return <LoadingCard lines={6} className="h-80" />;
+  if (error) return <ErrorRetry title="Failed to load customer type data" />;
   if (!data?.items?.length)
     return <EmptyState title="No customer type data" />;
 

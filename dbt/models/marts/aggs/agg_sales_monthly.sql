@@ -28,6 +28,7 @@ WITH monthly_base AS (
         SUM(f.quantity)::NUMERIC(18,4)                    AS total_quantity,
         ROUND(SUM(f.sales), 2)                            AS total_sales,
         ROUND(SUM(f.discount), 2)                         AS total_discount,
+        ROUND(SUM(f.net_amount), 2)                       AS total_net_amount,
         COUNT(*)::INT                                     AS transaction_count,
         COUNT(*) FILTER (WHERE f.is_return)::INT          AS return_count,
         COUNT(DISTINCT f.customer_key)::INT               AS unique_customers,

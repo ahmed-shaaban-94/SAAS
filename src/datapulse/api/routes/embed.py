@@ -86,6 +86,7 @@ def _get_embed_session(token_payload: dict) -> Session:
     tenant_id = token_payload.get("tenant_id", "1")
     session = get_session_factory()()
     session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
+    session.execute(text("SET LOCAL statement_timeout = '30s'"))
     return session
 
 
@@ -142,25 +143,11 @@ def embed_query(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
+        session.rollback()
         log.error("embed_query_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Query execution failed") from exc
     finally:
         session.close()
 
 
-def _serialise(value: Any) -> str | int | float | bool | None:
-    """Convert a DB value to a JSON-safe primitive."""
-    if value is None:
-        return None
-    from datetime import date, datetime
-    from decimal import Decimal
-
-    if isinstance(value, Decimal):
-        return float(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, (int, float, bool, str)):
-        return value
-    return str(value)
+from datapulse.core.serializers import serialise_value as _serialise  # shared utility

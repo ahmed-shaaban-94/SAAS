@@ -136,6 +136,7 @@ class DiagnosticsRepository:
         for key in p_params:
             p_where_prefixed = p_where_prefixed.replace(f":{key}", f":p_{key}")
 
+        # Single query: FULL OUTER JOIN + window-function totals (replaces 3 queries)
         stmt = text(f"""
             WITH current_period AS (
                 SELECT {key_col}, {name_col}, SUM(total_sales) AS net
@@ -148,34 +149,37 @@ class DiagnosticsRepository:
                 FROM {table}
                 WHERE {p_where_prefixed}
                 GROUP BY {key_col}, {name_col}
+            ),
+            joined AS (
+                SELECT
+                    COALESCE(c.{key_col}, p.{key_col}) AS entity_key,
+                    COALESCE(c.{name_col}, p.{name_col}) AS entity_name,
+                    COALESCE(c.net, 0) AS current_value,
+                    COALESCE(p.net, 0) AS previous_value,
+                    COALESCE(c.net, 0) - COALESCE(p.net, 0) AS impact,
+                    SUM(COALESCE(c.net, 0)) OVER () AS c_grand_total,
+                    SUM(COALESCE(p.net, 0)) OVER () AS p_grand_total
+                FROM current_period c
+                FULL OUTER JOIN previous_period p ON c.{key_col} = p.{key_col}
             )
-            SELECT
-                COALESCE(c.{key_col}, p.{key_col}) AS entity_key,
-                COALESCE(c.{name_col}, p.{name_col}) AS entity_name,
-                COALESCE(c.net, 0) AS current_value,
-                COALESCE(p.net, 0) AS previous_value,
-                COALESCE(c.net, 0) - COALESCE(p.net, 0) AS impact
-            FROM current_period c
-            FULL OUTER JOIN previous_period p ON c.{key_col} = p.{key_col}
-            WHERE COALESCE(c.net, 0) - COALESCE(p.net, 0) != 0
-            ORDER BY ABS(COALESCE(c.net, 0) - COALESCE(p.net, 0)) DESC
+            SELECT entity_key, entity_name, current_value, previous_value, impact,
+                   c_grand_total, p_grand_total
+            FROM joined
+            WHERE impact != 0
+            ORDER BY ABS(impact) DESC
             LIMIT 20
         """)
 
         all_params = {**c_params_prefixed, **p_params_prefixed}
         rows = self._session.execute(stmt, all_params).fetchall()
 
-        # Also get totals for this dimension
-        c_total_stmt = text(f"""
-            SELECT COALESCE(SUM(total_sales), 0)
-            FROM {table} WHERE {c_where_prefixed}
-        """)
-        p_total_stmt = text(f"""
-            SELECT COALESCE(SUM(total_sales), 0)
-            FROM {table} WHERE {p_where_prefixed}
-        """)
-        c_total = Decimal(str(self._session.execute(c_total_stmt, c_params_prefixed).scalar() or 0))
-        p_total = Decimal(str(self._session.execute(p_total_stmt, p_params_prefixed).scalar() or 0))
+        # Totals come from the first row's window columns (same for all rows)
+        if rows:
+            c_total = Decimal(str(rows[0][5]))
+            p_total = Decimal(str(rows[0][6]))
+        else:
+            c_total = _ZERO
+            p_total = _ZERO
 
         drivers = [
             RevenueDriver(

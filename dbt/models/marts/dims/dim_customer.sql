@@ -34,7 +34,7 @@ WITH ranked AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY tenant_id, customer_id)::INT AS customer_key,
+    ABS(('x' || LEFT(MD5(tenant_id::text || '|' || customer_id), 8))::BIT(32)::INT) AS customer_key,
     tenant_id,
     customer_id,
     customer_name

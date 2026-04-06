@@ -50,7 +50,7 @@ DEFAULT_RULES: dict[str, list[dict[str, Any]]] = {
             "severity": "error",
             "config": {
                 "threshold": 5.0,
-                "columns": ["reference_no", "date", "net_sales", "quantity"],
+                "columns": ["reference_no", "date", "sales", "quantity"],
             },
         },
         {
@@ -81,6 +81,7 @@ _ALLOWED_COLUMNS = frozenset(
         "reference_no",
         "date",
         "net_sales",
+        "sales",
         "quantity",
         "gross_sales",
         "material",

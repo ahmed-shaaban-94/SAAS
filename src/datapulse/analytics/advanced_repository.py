@@ -169,10 +169,11 @@ class AdvancedRepository:
         stmt = text("""
             SELECT full_date, daily_gross_amount
             FROM public_marts.metrics_summary
-            WHERE EXTRACT(YEAR FROM full_date) = :year
+            WHERE full_date >= MAKE_DATE(:year, 1, 1)
+              AND full_date < MAKE_DATE(:year_next, 1, 1)
             ORDER BY full_date
         """)
-        rows = self._session.execute(stmt, {"year": year}).fetchall()
+        rows = self._session.execute(stmt, {"year": year, "year_next": year + 1}).fetchall()
         if not rows:
             return HeatmapData(cells=[], min_value=_ZERO, max_value=_ZERO)
 

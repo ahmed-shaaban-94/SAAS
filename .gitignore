@@ -63,5 +63,11 @@ frontend/tsconfig.tsbuildinfo
 # Waitlist data (frontend)
 frontend/waitlist.json
 
+# TLS/SSL certificates and keys
+*.pem
+*.key
+*.crt
+*.p12
+
 # Database backups
 backups/

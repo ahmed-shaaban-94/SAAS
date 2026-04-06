@@ -1,3 +1,5 @@
+{{ config(tags=['quality_gate', 'marts']) }}
+
 -- Data test: Verify that unknown dimension lookups (-1) in fct_sales
 -- are below 5% for each dimension.
 --

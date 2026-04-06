@@ -26,8 +26,14 @@ VALID_SEVERITIES = frozenset({"warn", "error"})
 VALID_STAGES = frozenset({"bronze", "silver", "gold"})
 
 # Critical columns that must have <5% null rate
-CRITICAL_COLUMNS = ("reference_no", "date", "net_sales", "quantity")
-_COLUMN_ALLOWLIST = frozenset(CRITICAL_COLUMNS)
+# Bronze uses net_sales; silver renames it to sales.
+# Stage-aware column list built below.
+_BRONZE_CRITICAL_COLUMNS = ("reference_no", "date", "net_sales", "quantity")
+_SILVER_CRITICAL_COLUMNS = ("reference_no", "date", "sales", "quantity")
+
+# Default (bronze) for backward compatibility
+CRITICAL_COLUMNS = _BRONZE_CRITICAL_COLUMNS
+_COLUMN_ALLOWLIST = frozenset(_BRONZE_CRITICAL_COLUMNS | frozenset(_SILVER_CRITICAL_COLUMNS))
 _SAFE_IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 # Trusted schema.table mapping — never derived from user input
@@ -233,21 +239,24 @@ def check_null_rate(
 
     threshold = 5.0
 
+    # Pick the right column list for the stage
+    columns = _SILVER_CRITICAL_COLUMNS if stage == "silver" else _BRONZE_CRITICAL_COLUMNS
+
     # Validate all column names against the allowlist
-    for col in CRITICAL_COLUMNS:
+    for col in columns:
         if col not in _COLUMN_ALLOWLIST or not _SAFE_IDENTIFIER_RE.match(col):
             raise ValueError(f"Unsafe column name: {col!r}")
 
     # Single query to check all critical columns at once (avoids N full-table scans)
     null_exprs = ", ".join(
         f"(COUNT(*) FILTER (WHERE {col} IS NULL)) * 100.0 / NULLIF(COUNT(*), 0) AS {col}_null_pct"
-        for col in CRITICAL_COLUMNS
+        for col in columns
     )
     stmt = text(f"SELECT {null_exprs} FROM {schema}.{table}")
     row = session.execute(stmt).fetchone()
 
     null_pcts: dict[str, float] = {}
-    for i, col in enumerate(CRITICAL_COLUMNS):
+    for i, col in enumerate(columns):
         null_pcts[col] = round(float(row[i] or 0.0) if row is not None else 0.0, 4)
 
     failing = {col: pct for col, pct in null_pcts.items() if pct >= threshold}
@@ -293,7 +302,7 @@ def check_dedup_effective(session: Session, run_id: UUID) -> QualityCheckResult:
 
 
 def check_financial_signs(session: Session, run_id: UUID) -> QualityCheckResult:
-    """Warn when net_sales and quantity have inconsistent signs (>1% of rows)."""
+    """Warn when sales and quantity have inconsistent signs (>1% of rows)."""
     total_stmt = text("SELECT COUNT(*) FROM public_staging.stg_sales")
     total: int = session.execute(total_stmt).scalar_one()
 
@@ -301,7 +310,7 @@ def check_financial_signs(session: Session, run_id: UUID) -> QualityCheckResult:
         SELECT COUNT(*) AS cnt
         FROM public_staging.stg_sales
         WHERE quantity != 0
-          AND SIGN(net_sales::numeric) != SIGN(quantity::numeric)
+          AND SIGN(sales::numeric) != SIGN(quantity::numeric)
     """)
     inconsistent: int = session.execute(inconsistent_stmt).scalar_one()
 
@@ -317,7 +326,7 @@ def check_financial_signs(session: Session, run_id: UUID) -> QualityCheckResult:
             if passed
             else (
                 f"{inconsistent:,} rows ({pct}%) have mismatched "
-                f"net_sales/quantity signs (threshold 1%)"
+                f"sales/quantity signs (threshold 1%)"
             )
         ),
         details={"inconsistent_count": inconsistent, "total": total, "pct": pct},

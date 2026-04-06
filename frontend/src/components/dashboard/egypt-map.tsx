@@ -1,6 +1,7 @@
 "use client";
 
 import { useSites } from "@/hooks/use-sites";
+import { useFilters } from "@/contexts/filter-context";
 import { formatCurrency } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { MapPin } from "lucide-react";
@@ -9,19 +10,51 @@ import { MapPin } from "lucide-react";
 const EGYPT_PATH =
   "M165,10 L200,15 L225,35 L245,25 L260,40 L275,35 L290,55 L295,75 L285,95 L295,115 L290,140 L280,155 L275,180 L260,195 L240,205 L220,200 L195,210 L170,240 L155,280 L145,320 L130,340 L110,345 L90,335 L80,310 L70,280 L60,250 L55,220 L50,195 L55,170 L65,150 L80,135 L95,115 L110,95 L120,70 L130,50 L145,30 Z";
 
-// Approximate positions for Egyptian governorates (normalized 0-100 within the SVG viewBox)
-const SITE_POSITIONS: Record<string, { x: number; y: number }> = {
+// Real site positions based on GPS coordinates, normalized to SVG viewBox (0-100)
+// Egypt bounds: lat 22.0-31.7 N, lng 24.7-36.9 E
+// SVG mapping: x = (lng - 24.7) / (36.9 - 24.7) * 100, y = (31.7 - lat) / (31.7 - 22.0) * 100
+function gpsToSvg(lat: number, lng: number) {
+  return {
+    x: ((lng - 24.7) / (36.9 - 24.7)) * 100,
+    y: ((31.7 - lat) / (31.7 - 22.0)) * 100,
+  };
+}
+
+// Known pharmacy site locations (from Google Maps)
+const KNOWN_SITES: Record<string, { lat: number; lng: number }> = {
+  // C090 — Shubra El-Kheima (شبرا الخيمة)
+  "شبرا الخيمة": { lat: 30.1188, lng: 31.2662 },
+  "shubra el-kheima": { lat: 30.1188, lng: 31.2662 },
+  // C086 — Boulaq / Shoubra (الشرقة البولاقية)
+  "الشرقة البولاقية": { lat: 30.0763, lng: 31.2485 },
+  "shoubra": { lat: 30.0763, lng: 31.2485 },
+};
+
+// Fallback positions for governorates
+const GOVERNORATE_POSITIONS: Record<string, { x: number; y: number }> = {
   cairo: { x: 78, y: 32 },
   alexandria: { x: 58, y: 18 },
   giza: { x: 75, y: 34 },
   luxor: { x: 72, y: 65 },
   aswan: { x: 72, y: 78 },
-  default_1: { x: 78, y: 32 },
-  default_2: { x: 58, y: 18 },
 };
 
+function getSitePosition(name: string, index: number) {
+  // Try exact match on known sites
+  const known = KNOWN_SITES[name] || KNOWN_SITES[name.toLowerCase()];
+  if (known) return gpsToSvg(known.lat, known.lng);
+
+  // Try governorate match
+  const gov = GOVERNORATE_POSITIONS[name.toLowerCase()];
+  if (gov) return gov;
+
+  // Default: offset from Cairo
+  return { x: 78 + index * 3, y: 32 + index * 3 };
+}
+
 export function EgyptMap() {
-  const { data, isLoading } = useSites();
+  const { filters } = useFilters();
+  const { data, isLoading } = useSites(filters);
 
   if (isLoading) return <LoadingCard className="h-72" />;
 
@@ -51,10 +84,7 @@ export function EgyptMap() {
 
           {/* Site markers */}
           {sites.map((site, i) => {
-            const pos =
-              SITE_POSITIONS[site.name.toLowerCase()] ||
-              SITE_POSITIONS[`default_${i + 1}`] ||
-              { x: 50 + i * 20, y: 30 + i * 10 };
+            const pos = getSitePosition(site.name, i);
             const x = pos.x * 3.2;
             const y = pos.y * 3.6;
 

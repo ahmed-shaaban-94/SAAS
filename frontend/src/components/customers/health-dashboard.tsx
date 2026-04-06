@@ -2,6 +2,7 @@
 
 import { useHealthDistribution, useAtRiskCustomers } from "@/hooks/use-customer-health";
 import { formatCurrency } from "@/lib/formatters";
+import { ErrorRetry } from "@/components/error-retry";
 import type { CustomerHealthScore, HealthDistribution } from "@/types/api";
 
 const BAND_COLORS: Record<string, string> = {
@@ -39,6 +40,11 @@ function DistributionBar({ dist }: { dist: HealthDistribution }) {
               className={`${BAND_COLORS[b.label]} transition-all`}
               style={{ width: `${(b.count / dist.total) * 100}%` }}
               title={`${b.label}: ${b.count}`}
+              role="meter"
+              aria-label={`${b.label}: ${b.count} customers`}
+              aria-valuenow={b.count}
+              aria-valuemin={0}
+              aria-valuemax={dist.total}
             />
           ) : null,
         )}
@@ -108,8 +114,8 @@ function AtRiskTable({ customers }: { customers: CustomerHealthScore[] }) {
 }
 
 export function HealthDashboard() {
-  const { data: dist, isLoading: distLoading } = useHealthDistribution();
-  const { data: atRisk, isLoading: riskLoading } = useAtRiskCustomers(15);
+  const { data: dist, isLoading: distLoading, error: distError } = useHealthDistribution();
+  const { data: atRisk, isLoading: riskLoading, error: riskError } = useAtRiskCustomers(15);
 
   if (distLoading || riskLoading) {
     return (
@@ -120,6 +126,8 @@ export function HealthDashboard() {
       </div>
     );
   }
+
+  if (distError || riskError) return <ErrorRetry title="Failed to load customer health data" />;
 
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-6">

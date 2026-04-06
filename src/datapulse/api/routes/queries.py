@@ -35,10 +35,11 @@ _ALLOWED_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
-# Blocklist: dangerous SQL keywords
+# Blocklist: dangerous SQL keywords and statements
 _BLOCKED_KEYWORDS = re.compile(
     r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY|EXECUTE|"
-    r"DO|CALL|SET(?!\s+LOCAL\s+app\.))\b",
+    r"DO|CALL|SET(?!\s+LOCAL\s+app\.)|VACUUM|ANALYZE|LOCK|COMMENT|LISTEN|NOTIFY|"
+    r"PREPARE|DEALLOCATE)\b",
     re.IGNORECASE,
 )
 
@@ -49,6 +50,18 @@ def _validate_sql(sql: str) -> None:
         raise HTTPException(
             status_code=422,
             detail="Only SELECT and WITH (CTE) statements are allowed.",
+        )
+    # Reject statement stacking (semicolon-separated statements)
+    if ";" in sql.rstrip().rstrip(";"):
+        raise HTTPException(
+            status_code=422,
+            detail="Multiple SQL statements are not allowed.",
+        )
+    # Reject SQL comments (potential keyword hiding)
+    if "--" in sql or "/*" in sql:
+        raise HTTPException(
+            status_code=422,
+            detail="SQL comments are not allowed in queries.",
         )
     if _BLOCKED_KEYWORDS.search(sql):
         raise HTTPException(

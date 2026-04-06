@@ -49,7 +49,7 @@ def discover_files(source_dir: Path) -> list[Path]:
     files: list[Path] = []
     for f in sorted(source_dir.rglob("*.xlsx")):
         resolved = f.resolve()
-        if not str(resolved).startswith(str(resolved_root)):
+        if not resolved.is_relative_to(resolved_root):
             log.warning("path_traversal_blocked", file=str(f), resolved=str(resolved))
             continue
         files.append(f)

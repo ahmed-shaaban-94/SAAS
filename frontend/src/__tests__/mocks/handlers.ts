@@ -46,12 +46,13 @@ export const mockRankingResult = {
 
 export const mockReturns = [
   {
-    product_key: 1,
-    product_name: "Drug X",
-    customer_key: 10,
+    drug_name: "Drug X",
+    drug_brand: "Brand X",
     customer_name: "Customer A",
+    origin: "Pharma",
     return_quantity: 50,
-    return_value: 5000,
+    return_amount: 5000,
+    return_count: 3,
     return_rate: 3.2,
   },
 ];

@@ -37,7 +37,7 @@ WITH ranked AS (
 
 sites AS (
     SELECT
-        ROW_NUMBER() OVER (ORDER BY tenant_id, site_code)::INT AS site_key,
+        ABS(('x' || LEFT(MD5(tenant_id::text || '|' || site_code), 8))::BIT(32)::INT) AS site_key,
         tenant_id,
         site_code,
         site_name,

@@ -52,19 +52,7 @@ def _get_job_client():
         return None
 
 
-def _serialise(value: Any) -> str | int | float | bool | None:
-    """Convert a DB value to a JSON-safe primitive."""
-    if value is None:
-        return None
-    if isinstance(value, Decimal):
-        return float(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, (int, float, bool, str)):
-        return value
-    return str(value)
+from datapulse.core.serializers import serialise_value as _serialise  # shared utility
 
 
 def _set_job(client, job_id: str, data: dict) -> None:

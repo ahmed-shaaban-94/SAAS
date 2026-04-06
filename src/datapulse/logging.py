@@ -19,10 +19,12 @@ _SENSITIVE_KEYS = frozenset(
 
 
 def _mask_sensitive_fields(logger: object, method_name: str, event_dict: dict) -> dict:
-    """Redact values of sensitive keys in log records."""
-    for key in _SENSITIVE_KEYS:
-        if key in event_dict:
+    """Redact values of sensitive keys in log records (recursive)."""
+    for key, value in list(event_dict.items()):
+        if key.lower() in _SENSITIVE_KEYS:
             event_dict[key] = "***REDACTED***"
+        elif isinstance(value, dict):
+            event_dict[key] = _mask_sensitive_fields(logger, method_name, dict(value))
     return event_dict
 
 
@@ -57,5 +59,5 @@ def setup_logging(log_level: str = "INFO", log_format: str = "console") -> None:
 
 
 def get_logger(name: str) -> structlog.typing.FilteringBoundLogger:
-    """Get a named logger instance."""
-    return structlog.get_logger(name)
+    """Get a named logger instance with module name bound to events."""
+    return structlog.get_logger().bind(module=name)

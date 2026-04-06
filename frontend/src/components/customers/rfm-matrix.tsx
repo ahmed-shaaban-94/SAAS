@@ -5,6 +5,7 @@ import { useSegmentSummary, useCustomerSegments } from "@/hooks/use-segments";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorRetry } from "@/components/error-retry";
 import { Users } from "lucide-react";
 
 // RFM segment descriptions and colors
@@ -27,7 +28,7 @@ function getSegmentMeta(segment: string) {
 }
 
 export function RFMMatrix() {
-  const { data: segments, isLoading } = useSegmentSummary();
+  const { data: segments, isLoading, error } = useSegmentSummary();
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
   const { data: customers, isLoading: customersLoading } = useCustomerSegments(
     selectedSegment ?? undefined,
@@ -35,6 +36,7 @@ export function RFMMatrix() {
   );
 
   if (isLoading) return <LoadingCard className="h-96" />;
+  if (error) return <ErrorRetry title="Failed to load segments" />;
   if (!segments || segments.length === 0) return <EmptyState title="No customer segment data available" />;
 
   const totalCustomers = segments.reduce((sum, s) => sum + s.count, 0);

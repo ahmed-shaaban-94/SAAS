@@ -3,6 +3,7 @@
 import { useAlertLog } from "@/hooks/use-alerts";
 import { formatCurrency } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 import { Bell, BellOff, Check, AlertTriangle, Info, XCircle } from "lucide-react";
 
 function timeAgo(dateStr: string): string {
@@ -28,11 +29,12 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 export function AlertsOverview() {
-  const { data: allAlerts, isLoading, acknowledgeAlert } = useAlertLog(false);
+  const { data: allAlerts, isLoading, error, acknowledgeAlert } = useAlertLog(false);
   const unacknowledged = allAlerts?.filter((a) => !a.acknowledged) ?? [];
   const acknowledged = allAlerts?.filter((a) => a.acknowledged) ?? [];
 
   if (isLoading) return <LoadingCard className="h-96" />;
+  if (error) return <ErrorRetry title="Failed to load alerts" />;
 
   return (
     <div className="space-y-6 mt-6">
@@ -68,7 +70,7 @@ export function AlertsOverview() {
               const Icon = SEVERITY_ICONS[severity] ?? AlertTriangle;
               return (
                 <div key={alert.id} className={`flex items-center gap-3 rounded-lg border p-3 ${SEVERITY_COLORS[severity]}`}>
-                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <Icon className="h-5 w-5 flex-shrink-0" aria-label={`${severity} severity`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{alert.alert_name || alert.message || "Alert"}</p>
                     {alert.message && <p className="text-xs opacity-80 mt-0.5">{alert.message}</p>}

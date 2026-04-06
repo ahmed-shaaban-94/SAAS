@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_date
-    description: "Calendar dimension (2023-01-01 to 2025-12-31). Egypt weekend = Friday & Saturday. Includes sort columns for Power BI and ISO week columns."
+    description: "Calendar dimension (2023-01-01 to 2030-12-31). Egypt weekend = Friday & Saturday. Includes sort columns for Power BI and ISO week columns."
     meta:
       label: "Date"
     columns:

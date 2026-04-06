@@ -13,7 +13,7 @@ describe("useReturns", () => {
     const { result } = renderHook(() => useReturns(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].product_name).toBe("Drug X");
+    expect(result.current.data?.[0].drug_name).toBe("Drug X");
     expect(result.current.data?.[0].return_rate).toBe(3.2);
   });
 });

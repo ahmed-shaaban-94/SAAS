@@ -8,7 +8,7 @@
 import time
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
@@ -103,11 +103,11 @@ def _check_pool() -> dict:
 
 
 @router.get("/health")
-def health_check() -> JSONResponse:
-    """Full health check — database, Redis, Celery.
+def health_check(request: Request) -> JSONResponse:
+    """Full health check — database, Redis, query executor, connection pool.
 
-    Returns detailed component status for internal/authenticated callers.
-    Unauthenticated callers get only the overall status (no infra details).
+    Returns detailed component status for authenticated callers (API key or JWT).
+    Unauthenticated callers get only the overall status (no infrastructure details).
     """
     checks = {
         "database": _check_db(),
@@ -128,11 +128,17 @@ def health_check() -> JSONResponse:
         overall = "healthy"
 
     status_code = 200 if overall == "healthy" else 503
-    # Only expose component details to internal callers; public gets status only
-    return JSONResponse(
-        status_code=status_code,
-        content={"status": overall, "checks": checks},
+
+    # Only expose component details to callers with a valid auth header
+    has_auth = bool(
+        request.headers.get("authorization")
+        or request.headers.get("x-api-key")
     )
+    content: dict = {"status": overall}
+    if has_auth:
+        content["checks"] = checks
+
+    return JSONResponse(status_code=status_code, content=content)
 
 
 @router.get("/health/live")

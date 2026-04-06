@@ -43,7 +43,7 @@ WITH ranked AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY r.tenant_id, r.drug_code)::INT AS product_key,
+    ABS(('x' || LEFT(MD5(r.tenant_id::text || '|' || r.drug_code), 8))::BIT(32)::INT) AS product_key,
     r.tenant_id,
     r.drug_code,
     r.drug_name,

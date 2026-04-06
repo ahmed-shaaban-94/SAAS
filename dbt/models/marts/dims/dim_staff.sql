@@ -34,7 +34,7 @@ WITH ranked AS (
 )
 
 SELECT
-    ROW_NUMBER() OVER (ORDER BY tenant_id, staff_id)::INT AS staff_key,
+    ABS(('x' || LEFT(MD5(tenant_id::text || '|' || staff_id), 8))::BIT(32)::INT) AS staff_key,
     tenant_id,
     staff_id,
     staff_name,

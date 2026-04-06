@@ -133,7 +133,7 @@ def get_current_user(
 
     # 3. Dev mode — both auth mechanisms unconfigured
     if not settings.api_key and not settings.auth0_domain:
-        env = os.getenv("SENTRY_ENVIRONMENT", "development")
+        env = settings.sentry_environment
         if env not in ("development", "test"):
             _auth_logger.error(
                 "auth_not_configured_in_production",

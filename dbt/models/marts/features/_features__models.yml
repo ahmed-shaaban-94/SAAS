@@ -189,3 +189,18 @@ models:
         description: "Site MA30 / cross-site average MA30 (>1 = outperforming)"
       - name: site_revenue_share
         description: "Site 30-day revenue as fraction of total"
+
+  # -- feat_customer_health ----------------------------------------------------
+  - name: feat_customer_health
+    description: "Customer Health Score — composite 0-100 score per customer based on recency, frequency, monetary value, return rate, and trend."
+    meta:
+      label: "Customer Health"
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier"
+      - name: customer_key
+        description: "FK to dim_customer"
+      - name: health_score
+        description: "Composite health score (0-100)"
+      - name: health_band
+        description: "Thriving / Healthy / Needs Attention / At Risk / Critical"

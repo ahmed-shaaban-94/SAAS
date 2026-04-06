@@ -15,6 +15,8 @@ import {
   Zap,
   ShoppingCart,
   Receipt,
+  Package,
+  Divide,
 } from "lucide-react";
 
 const TOOLTIPS = {
@@ -25,6 +27,8 @@ const TOOLTIPS = {
   momGrowth: "Growth compared to the equivalent previous period",
   completedTxn: "Completed transactions: total invoices minus returns for the selected period",
   avgOrderValue: "Average order value per customer for the selected period",
+  totalUnits: "Sum of all units sold/returned for the selected period (returns are negative)",
+  unitsPerTxn: "Average number of units per transaction for the selected period",
 } as const;
 
 function formatPeriodLabel(startDate?: string, endDate?: string): string | null {
@@ -88,35 +92,14 @@ export function KPIGrid() {
 
   if (!data) return null;
 
-  // Build MTD card — swap to "Revenue vs Target" when current month is selected and targets exist
-  const mtdCard = currentMonthSelected && currentMonthTarget
-    ? {
-        label: "Revenue vs Target",
-        value: formatCurrency(data.mtd_gross),
-        numericValue: data.mtd_gross,
-        isCurrency: true,
-        icon: Target,
-        tooltip: TOOLTIPS.revenueVsTarget,
-        comparisonLine: `${currentMonthTarget.achievement_pct.toFixed(0)}% of monthly target`,
-      }
-    : {
-        label: "Month-to-Date Revenue",
-        value: formatCurrency(data.mtd_gross),
-        numericValue: data.mtd_gross,
-        isCurrency: true,
-        icon: CalendarDays,
-        tooltip: TOOLTIPS.mtdRevenue,
-        comparisonLine: currentMonthTarget
-          ? `${currentMonthTarget.achievement_pct.toFixed(0)}% of monthly target`
-          : undefined,
-      };
+  // Total Units card (quantity — returns already negative)
+  const totalUnits = data.daily_quantity ?? 0;
 
-  // YTD comparison line — prefer target if available, else YoY growth
-  const ytdComparison = targetData?.ytd_achievement_pct
-    ? `${targetData.ytd_achievement_pct.toFixed(0)}% of annual target`
-    : data.yoy_growth_pct !== null
-      ? `${formatPercent(data.yoy_growth_pct)} vs same point last year`
-      : undefined;
+  // Units per Transaction
+  const unitsPerTxn =
+    data.daily_transactions > 0
+      ? totalUnits / data.daily_transactions
+      : 0;
 
   const cards: Array<{
     label: string;
@@ -146,15 +129,19 @@ export function KPIGrid() {
         ? `${formatPercent(data.mom_growth_pct)} vs previous period`
         : undefined,
     },
-    mtdCard,
     {
-      label: "Year-to-Date Revenue",
-      value: formatCurrency(data.ytd_gross),
-      numericValue: data.ytd_gross,
-      isCurrency: true,
-      icon: Target,
-      tooltip: TOOLTIPS.ytdRevenue,
-      comparisonLine: ytdComparison,
+      label: "Total Units",
+      value: formatNumber(Math.round(totalUnits)),
+      numericValue: totalUnits,
+      icon: Package,
+      tooltip: TOOLTIPS.totalUnits,
+    },
+    {
+      label: "Units per Transaction",
+      value: unitsPerTxn.toFixed(1),
+      numericValue: unitsPerTxn,
+      icon: Divide,
+      tooltip: TOOLTIPS.unitsPerTxn,
     },
     {
       label: "Growth",

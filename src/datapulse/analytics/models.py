@@ -114,6 +114,8 @@ class KPISummary(BaseModel):
     # Growth (based on gross)
     mom_growth_pct: JsonDecimal | None = None
     yoy_growth_pct: JsonDecimal | None = None
+    # Units (quantity — returns are negative)
+    daily_quantity: JsonDecimal = Field(default=Decimal("0"))
     daily_transactions: int
     daily_customers: int
     avg_basket_size: JsonDecimal = Field(default=Decimal("0"))

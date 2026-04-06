@@ -155,20 +155,18 @@ class AnalyticsService:
     def get_dashboard_data(
         self,
         target_date: date | None = None,
-        date_range: DateRange | None = None,
+        filters: AnalyticsFilter | None = None,
     ) -> DashboardData:
         """Composite dashboard payload — KPI + trends + rankings + filters (cached 600s).
 
-        When *date_range* is provided, KPI cards aggregate the entire range and
-        trends/rankings are filtered to it.  Falls back to a 30-day window from
-        the latest data date when no range is given.
+        Accepts a full ``AnalyticsFilter`` with optional dimensional filters
+        (site_key, category, brand, staff_key).  Falls back to a 30-day window
+        from the latest data date when no filters are given.
         """
         _, max_date = self._repo.get_data_date_range()
         end = max_date or date.today()
 
-        if date_range is not None:
-            filters = AnalyticsFilter(date_range=date_range)
-        else:
+        if filters is None:
             if target_date is None:
                 target_date = end
             filters = AnalyticsFilter(
@@ -177,12 +175,22 @@ class AnalyticsService:
                     end_date=end,
                 )
             )
+        elif filters.date_range is None:
+            filters = AnalyticsFilter(
+                date_range=DateRange(
+                    start_date=end - timedelta(days=30),
+                    end_date=end,
+                ),
+                site_key=filters.site_key,
+                category=filters.category,
+                brand=filters.brand,
+                staff_key=filters.staff_key,
+                limit=filters.limit,
+            )
 
         key = _cache_key(
             "dashboard",
-            {"start": str(filters.date_range.start_date), "end": str(filters.date_range.end_date)}
-            if filters.date_range
-            else {"target_date": str(target_date)},
+            filters.model_dump(exclude_none=True),
         )
         cached_val = cache_get(key)
         if cached_val is not None:
@@ -379,6 +387,7 @@ class AnalyticsService:
     # Phase 4: Site Detail & Product Hierarchy
     # ------------------------------------------------------------------
 
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
     def get_site_detail(self, site_key: int) -> SiteDetail | None:
         """Detailed metrics for a single site."""
         log.info("site_detail", site_key=site_key)

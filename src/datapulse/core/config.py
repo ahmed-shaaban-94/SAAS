@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     bronze_batch_size: int = 50_000
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = []  # Empty = block all CORS; set CORS_ORIGINS in .env for dev
 
     # Pipeline execution
     dbt_project_dir: str = "/app/dbt"
@@ -144,9 +144,7 @@ class Settings(BaseSettings):
 
     def warn_if_auth_disabled(self) -> None:
         """Log warnings when authentication secrets are not configured."""
-        import os
-
-        env = os.getenv("SENTRY_ENVIRONMENT", "development")
+        env = self.sentry_environment
 
         if not self.api_key:
             logger.warning(

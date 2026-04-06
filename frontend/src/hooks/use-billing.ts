@@ -5,7 +5,7 @@ import type { BillingStatus, CheckoutResponse, PortalResponse } from "@/types/bi
 export function useBilling() {
   const { data, error, isLoading, mutate } = useSWR<BillingStatus>(
     "/api/v1/billing/status",
-    fetchAPI<BillingStatus>,
+    () => fetchAPI<BillingStatus>("/api/v1/billing/status"),
   );
 
   return {

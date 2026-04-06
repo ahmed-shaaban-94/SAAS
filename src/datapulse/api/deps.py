@@ -50,10 +50,10 @@ def get_db_session() -> Generator[Session, None, None]:
         and hardcodes tenant_id='1', which is unsafe for multi-tenant deployments.
         It is kept only for backward compatibility in test overrides.
     """
-    import os
     import warnings
 
-    env = os.getenv("SENTRY_ENVIRONMENT", "development")
+    settings = get_settings()
+    env = settings.sentry_environment
     if env not in ("development", "test"):
         logger.error(
             "get_db_session_called_in_production",

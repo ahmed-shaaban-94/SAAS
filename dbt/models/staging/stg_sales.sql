@@ -78,7 +78,7 @@ deduplicated AS (
     SELECT
         *,
         ROW_NUMBER() OVER (
-            PARTITION BY reference_no, date, material, customer, site, quantity
+            PARTITION BY tenant_id, reference_no, date, material, customer, site, quantity
             ORDER BY id
         ) AS row_num
     FROM source
@@ -151,11 +151,12 @@ SELECT
     COALESCE(NULLIF(TRIM(position), ''), 'Unknown')        AS staff_position,
     COALESCE(NULLIF(TRIM(area_mg), ''), 'Unknown')         AS area_manager,
 
-    -- Financial: gross sales + discount only (net_sales deliberately dropped)
+    -- Financial: gross sales + discount + net amount
     -- NOTE: subtotal5_discount is NEGATIVE in the ERP (e.g. -13.2 means 13.2 discount)
     COALESCE(quantity, 0)               AS quantity,
     COALESCE(gross_sales, 0)            AS sales,
     COALESCE(subtotal5_discount, 0)     AS discount,
+    ROUND((COALESCE(gross_sales, 0) + COALESCE(subtotal5_discount, 0))::NUMERIC, 2) AS net_amount,
 
     -- Derived: date parts (faster grouping in dashboards)
     EXTRACT(YEAR FROM date)::INT        AS invoice_year,

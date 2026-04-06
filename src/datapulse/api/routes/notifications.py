@@ -90,6 +90,7 @@ async def notification_stream(
                 session = get_session_factory()()
                 try:
                     session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
+                    session.execute(sa_text("SET LOCAL statement_timeout = '10s'"))
                     repo = NotificationRepository(session)
                     count = repo.unread_count(user_id)
                     if count != last_count:

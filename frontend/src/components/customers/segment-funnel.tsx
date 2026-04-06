@@ -3,6 +3,7 @@
 import { useSegmentSummary } from "@/hooks/use-segments";
 import { formatNumber } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
@@ -35,10 +36,11 @@ const COLORS: Record<string, string> = {
 };
 
 export function SegmentFunnel() {
-  const { data, isLoading } = useSegmentSummary();
+  const { data, isLoading, error } = useSegmentSummary();
   const theme = useChartTheme();
 
   if (isLoading) return <LoadingCard className="h-64" />;
+  if (error) return <ErrorRetry title="Failed to load segment data" />;
   if (!data || data.length === 0) return null;
 
   // Sort by SEGMENT_ORDER, then by count

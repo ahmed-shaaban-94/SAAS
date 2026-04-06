@@ -21,6 +21,11 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const { data, isLoading } = useHeatmap(year);
+
+  // Auto-fallback: if current year has no data, try previous year
+  const { data: fallbackData } = useHeatmap(year - 1);
+  const effectiveData = data?.cells?.length ? data : fallbackData;
+  const effectiveYear = data?.cells?.length ? year : year - 1;
   const [hoveredCell, setHoveredCell] = useState<{
     date: string;
     value: number;
@@ -33,12 +38,13 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
     document.documentElement.classList.contains("dark");
 
   const grid = useMemo(() => {
-    if (!data?.cells.length) return [];
+    if (!effectiveData?.cells.length) return [];
 
-    const cellMap = new Map(data.cells.map((c) => [c.date, c.value]));
+    const cellMap = new Map(effectiveData.cells.map((c) => [c.date, c.value]));
 
     // Build weeks grid (53 weeks x 7 days)
-    const startDate = new Date(year, 0, 1);
+    const displayYear = effectiveData === fallbackData ? effectiveYear : year;
+    const startDate = new Date(displayYear, 0, 1);
     const startDay = startDate.getDay(); // 0=Sun
     const weeks: { date: string; value: number; dayOfWeek: number }[][] = [];
     let currentWeek: { date: string; value: number; dayOfWeek: number }[] = [];
@@ -48,7 +54,7 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
       currentWeek.push({ date: "", value: -1, dayOfWeek: i });
     }
 
-    const endDate = new Date(year, 11, 31);
+    const endDate = new Date(displayYear, 11, 31);
     const current = new Date(startDate);
 
     while (current <= endDate) {
@@ -72,7 +78,7 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
 
     if (currentWeek.length > 0) weeks.push(currentWeek);
     return weeks;
-  }, [data, year]);
+  }, [effectiveData, effectiveYear]);
 
   if (isLoading) return <LoadingCard className="h-48" />;
 
@@ -142,8 +148,8 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
                         ? "transparent"
                         : getColor(
                             cell.value,
-                            data?.min_value ?? 0,
-                            data?.max_value ?? 1,
+                            effectiveData?.min_value ?? 0,
+                            effectiveData?.max_value ?? 1,
                             isDark,
                           ),
                   }}

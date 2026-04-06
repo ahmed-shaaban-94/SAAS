@@ -41,40 +41,8 @@ const VARIANT_ICONS: Record<ChartVariant, React.ComponentType<{ className?: stri
   line: LineChartIcon,
 };
 
-function CustomTooltip(props: Record<string, unknown>) {
-  const { active, payload, label } = props;
-  const items = payload as Array<{ value: number; dataKey: string }> | undefined;
-  if (!active || !items?.length) return null;
-  const current = items.find((i) => i.dataKey === "value");
-  const prev = items.find((i) => i.dataKey === "prev");
-  return (
-    <div className="rounded-xl border border-border bg-card/95 px-4 py-3 shadow-xl backdrop-blur-sm">
-      <p className="text-xs font-medium text-text-secondary">{String(label)}</p>
-      <p className="mt-1 text-lg font-bold text-accent">
-        {formatCurrency(current?.value ?? 0)}
-      </p>
-      {prev && prev.value !== undefined && (
-        <p className="text-xs text-text-secondary">
-          Previous: {formatCurrency(prev.value)}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/** Find the index of max and min values for smart annotations */
-function findPeakValley(data: { value: number }[]) {
-  if (data.length < 3) return { peakIdx: -1, valleyIdx: -1 };
-  let peakIdx = 0;
-  let valleyIdx = 0;
-  for (let i = 1; i < data.length; i++) {
-    if (data[i].value > data[peakIdx].value) peakIdx = i;
-    if (data[i].value < data[valleyIdx].value) valleyIdx = i;
-  }
-  // Only annotate if there's meaningful variance (peak != valley)
-  if (peakIdx === valleyIdx) return { peakIdx: -1, valleyIdx: -1 };
-  return { peakIdx, valleyIdx };
-}
+import { ChartTooltip } from "@/components/shared/chart-tooltip";
+import { findPeakValley } from "@/lib/chart-utils";
 
 function ChartTypeSwitcher({
   value,
@@ -169,7 +137,7 @@ function TrendChartInner({
     <CartesianGrid strokeDasharray="3 3" stroke={CHART_THEME.gridStroke} vertical={false} />
   );
 
-  const tooltip = <Tooltip content={<CustomTooltip />} />;
+  const tooltip = <Tooltip content={<ChartTooltip accentClass="text-accent" showPrevious />} />;
 
   // Peak/Valley reference dots (only for area and line)
   const annotations = variant !== "bar" ? (

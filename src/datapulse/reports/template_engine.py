@@ -337,19 +337,4 @@ def render_report(
     )
 
 
-def _serialise(value) -> str | int | float | bool | None:
-    """Convert a DB value to a JSON-safe primitive."""
-    if value is None:
-        return None
-    from datetime import date, datetime
-    from decimal import Decimal
-
-    if isinstance(value, Decimal):
-        return float(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, (int, float, bool, str)):
-        return value
-    return str(value)
+from datapulse.core.serializers import serialise_value as _serialise  # shared utility

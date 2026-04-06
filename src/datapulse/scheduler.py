@@ -22,6 +22,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from structlog.contextvars import bind_contextvars, clear_contextvars
+
 from datapulse.config import get_settings
 from datapulse.logging import get_logger
 
@@ -60,6 +62,7 @@ async def run_pipeline(
     executor = PipelineExecutor(settings=settings)
     run_id_str = str(run_id)
     t0 = time.perf_counter()
+    bind_contextvars(run_id=run_id_str, tenant_id=str(tenant_id))
 
     def _get_session():
         session = get_session_factory()()
@@ -103,6 +106,20 @@ async def run_pipeline(
     ]
 
     log.info("pipeline_start", run_id=run_id_str)
+
+    # Acquire advisory lock to prevent concurrent pipeline runs
+    lock_session = get_session_factory()()
+    try:
+        lock_result = lock_session.execute(sa_text("SELECT pg_try_advisory_lock(42)")).scalar()
+        if not lock_result:
+            log.warning("pipeline_already_running", run_id=run_id_str)
+            _update_status("failed", error_message="Another pipeline is already running")
+            notify_pipeline_failure(run_id_str, "lock", "Another pipeline is already running")
+            return
+    except Exception:
+        lock_session.close()
+        raise
+
     _update_status("running")
     total_rows = 0
 
@@ -151,6 +168,16 @@ async def run_pipeline(
         _update_status("failed", error_message=error_msg)
         notify_pipeline_failure(run_id_str, "unknown", error_msg)
         log.error("pipeline_crashed", run_id=run_id_str, error=error_msg, duration=elapsed)
+    finally:
+        # Release advisory lock
+        try:
+            lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
+            lock_session.commit()
+        except Exception:
+            pass
+        finally:
+            lock_session.close()
+        clear_contextvars()
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +217,7 @@ async def _quality_digest() -> None:
 
     session = get_session_factory()()
     try:
-        session.execute(sa_text("SET LOCAL app.tenant_id = '1'"))
+        session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": "1"})
         repo = PipelineRepository(session)
         latest = repo.get_latest_run()
         if not latest:
