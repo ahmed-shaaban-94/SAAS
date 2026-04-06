@@ -94,22 +94,22 @@ scored AS (
         ra.frequency_3m,
         ra.monetary_3m,
         ra.product_diversity,
-        ROUND(
+        ROUND((
             CASE WHEN ra.total_txn_3m > 0
                 THEN ra.return_count_3m::NUMERIC / ra.total_txn_3m
                 ELSE 0
-            END, 4
+            END)::NUMERIC, 4
         ) AS return_rate,
 
         -- Normalize each component to 0-100
         -- Recency: inverted (lower days = better)
         GREATEST(0, LEAST(100,
-            ROUND((1.0 - LEAST(COALESCE(r.recency_days, 999)::NUMERIC / NULLIF(p.recency_p95, 0), 1.0)) * 100, 2)
+            ROUND(((1.0 - LEAST(COALESCE(r.recency_days, 999)::NUMERIC / NULLIF(p.recency_p95, 0), 1.0)) * 100)::NUMERIC, 2)
         )) AS recency_score,
 
         -- Frequency: higher = better
         GREATEST(0, LEAST(100,
-            ROUND(LEAST(ra.frequency_3m::NUMERIC / NULLIF(p.freq_p95, 0), 1.0) * 100, 2)
+            ROUND((LEAST(ra.frequency_3m::NUMERIC / NULLIF(p.freq_p95, 0), 1.0) * 100)::NUMERIC, 2)
         )) AS frequency_score,
 
         -- Monetary: higher = better
@@ -128,7 +128,7 @@ scored AS (
 
         -- Diversity: higher = better
         GREATEST(0, LEAST(100,
-            ROUND(LEAST(ra.product_diversity::NUMERIC / NULLIF(p.diversity_p95, 0), 1.0) * 100, 2)
+            ROUND((LEAST(ra.product_diversity::NUMERIC / NULLIF(p.diversity_p95, 0), 1.0) * 100)::NUMERIC, 2)
         )) AS diversity_score,
 
         -- Trend: improving/stable/declining
