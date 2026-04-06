@@ -114,16 +114,16 @@ scored AS (
 
         -- Monetary: higher = better
         GREATEST(0, LEAST(100,
-            ROUND(LEAST(ra.monetary_3m / NULLIF(p.monetary_p95, 0), 1.0) * 100, 2)
+            ROUND((LEAST(ra.monetary_3m / NULLIF(p.monetary_p95, 0), 1.0) * 100)::NUMERIC, 2)
         )) AS monetary_score,
 
         -- Return rate: lower = better (inverted)
         GREATEST(0, LEAST(100,
-            ROUND((1.0 - LEAST(
+            ROUND(((1.0 - LEAST(
                 CASE WHEN ra.total_txn_3m > 0
                     THEN ra.return_count_3m::NUMERIC / ra.total_txn_3m
                     ELSE 0
-                END, 0.5) / 0.5) * 100, 2)
+                END, 0.5) / 0.5) * 100)::NUMERIC, 2)
         )) AS return_score,
 
         -- Diversity: higher = better
@@ -156,20 +156,20 @@ SELECT
     trend,
 
     -- Weighted composite health score
-    GREATEST(0, LEAST(100, ROUND(
+    GREATEST(0, LEAST(100, ROUND((
         recency_score   * 0.30 +
         frequency_score * 0.25 +
         monetary_score  * 0.25 +
         return_score    * 0.10 +
         diversity_score * 0.10
-    , 2)))::NUMERIC(5,2) AS health_score,
+    )::NUMERIC, 2)))::NUMERIC(5,2) AS health_score,
 
     -- Health band
     CASE
-        WHEN ROUND(recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10, 2) >= 80 THEN 'Thriving'
-        WHEN ROUND(recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10, 2) >= 60 THEN 'Healthy'
-        WHEN ROUND(recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10, 2) >= 40 THEN 'Needs Attention'
-        WHEN ROUND(recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10, 2) >= 20 THEN 'At Risk'
+        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 80 THEN 'Thriving'
+        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 60 THEN 'Healthy'
+        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 40 THEN 'Needs Attention'
+        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 20 THEN 'At Risk'
         ELSE 'Critical'
     END AS health_band
 
