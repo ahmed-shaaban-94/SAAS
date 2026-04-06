@@ -12,24 +12,51 @@ import CsvExportButton from "@/components/shared/csv-export-button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { useMemo } from "react";
 
+const EXCLUDED_ORIGINS = new Set(["HVI", "Services", "Other"]);
+
+function isNonProduct(r: { drug_brand: string; customer_name: string }): boolean {
+  const brand = r.drug_brand.toUpperCase();
+  const customer = r.customer_name.toUpperCase();
+  return (
+    brand === "UNCLAIMED MONEY" ||
+    brand.startsWith("SPECIAL ORDER") ||
+    customer === "UNCLAIMED MONEY" ||
+    customer.startsWith("SPECIAL ORDER")
+  );
+}
+
 export function ReturnsOverview() {
   const { filters } = useFilters();
   const { data, error, isLoading } = useReturns(filters);
 
-  const summaryStats = useMemo(() => {
-    if (!data || data.length === 0) return [];
+  // Split data into product returns vs other
+  const { productData, otherAmount, summaryStats } = useMemo(() => {
+    if (!data || data.length === 0)
+      return { productData: [], otherAmount: 0, summaryStats: [] };
 
-    const totalAmount = data.reduce((sum, r) => sum + r.return_amount, 0);
-    const totalQuantity = data.reduce((sum, r) => sum + r.return_quantity, 0);
-    const totalCount = data.reduce((sum, r) => sum + r.return_count, 0);
-    const uniqueProducts = new Set(data.map((r) => r.drug_brand)).size;
+    const product: typeof data = [];
+    let otherAmt = 0;
 
-    return [
-      { label: "Total Return Amount", value: formatCurrency(totalAmount) },
-      { label: "Total Return Quantity", value: formatNumber(totalQuantity) },
-      { label: "Total Return Count", value: formatNumber(totalCount) },
-      { label: "Unique Products", value: formatNumber(uniqueProducts) },
+    for (const r of data) {
+      if (EXCLUDED_ORIGINS.has(r.origin) || isNonProduct(r)) {
+        otherAmt += r.return_amount;
+      } else {
+        product.push(r);
+      }
+    }
+
+    const productAmount = product.reduce((s, r) => s + r.return_amount, 0);
+    const productQty = product.reduce((s, r) => s + r.return_quantity, 0);
+    const totalAmount = productAmount + otherAmt;
+
+    const stats = [
+      { label: "Product Returns", value: formatCurrency(productAmount) },
+      { label: "Other Returns", value: formatCurrency(otherAmt) },
+      { label: "Total Returns", value: formatCurrency(totalAmount) },
+      { label: "Return Quantity", value: formatNumber(productQty) },
     ];
+
+    return { productData: product, otherAmount: otherAmt, summaryStats: stats };
   }, [data]);
 
   if (isLoading) {
@@ -74,7 +101,7 @@ export function ReturnsOverview() {
           <h3 className="mb-4 text-sm font-medium text-text-secondary">
             Top Returns by Amount
           </h3>
-          <ReturnsChart items={data} />
+          <ReturnsChart items={productData} />
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="mb-4 flex items-center justify-between">
@@ -82,7 +109,7 @@ export function ReturnsOverview() {
               Return Details
             </h3>
             <CsvExportButton
-              data={data.map((r) => ({
+              data={productData.map((r) => ({
                 Product: r.drug_brand,
                 Customer: r.customer_name,
                 Quantity: r.return_quantity,
@@ -92,7 +119,7 @@ export function ReturnsOverview() {
               filename="returns"
             />
           </div>
-          <ReturnsTable items={data} />
+          <ReturnsTable items={productData} />
         </div>
       </div>
     </div>

@@ -58,6 +58,7 @@ export interface ReturnAnalysis {
   drug_name: string;
   drug_brand: string;
   customer_name: string;
+  origin: string;
   return_quantity: number;
   return_amount: number;
   return_count: number;
