@@ -13,7 +13,9 @@ export const ForecastCard = memo(function ForecastCard() {
   if (isLoading) return <LoadingCard className="h-48" />;
   if (error) return <ErrorRetry description="Failed to load forecast" />;
 
-  if (!data) {
+  const hasNoData = !data || (data.next_30d_revenue === 0 && data.next_3m_revenue === 0);
+
+  if (hasNoData) {
     return (
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-2">
@@ -22,9 +24,11 @@ export const ForecastCard = memo(function ForecastCard() {
             Revenue Forecast
           </h3>
         </div>
-        <p className="py-4 text-center text-sm text-text-secondary">
-          No forecast data available
-        </p>
+        <div className="flex flex-col items-center justify-center py-8 text-text-secondary">
+          <Brain className="mb-2 h-10 w-10 opacity-30" />
+          <p className="text-sm">No forecast data available</p>
+          <p className="mt-1 text-xs">Run the forecasting pipeline to generate predictions</p>
+        </div>
       </div>
     );
   }

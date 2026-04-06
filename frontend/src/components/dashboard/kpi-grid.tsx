@@ -90,7 +90,15 @@ export function KPIGrid() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-text-secondary">
+          KPI data unavailable. Check your API connection.
+        </p>
+      </div>
+    );
+  }
 
   // Units metrics
   const totalUnits = data.daily_quantity ?? 0;

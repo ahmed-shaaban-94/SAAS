@@ -17,6 +17,7 @@ import { NarrativeSummaryCard } from "@/components/dashboard/narrative-summary-c
 import { InsightChips } from "@/components/dashboard/insight-chips";
 import { DailyTrendChart } from "@/components/dashboard/daily-trend-chart";
 import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
+import { TrendKPICards } from "@/components/dashboard/trend-kpi-cards";
 import { LastUpdated } from "@/components/dashboard/last-updated";
 import { LazySection } from "@/components/dashboard/lazy-section";
 
@@ -118,9 +119,12 @@ export default function DashboardPage() {
           {/* Trends Section */}
           <div className="mt-10">
             <SectionHeader icon={TrendingUp} title="Trends" />
-            <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-2">
-              <DailyTrendChart />
-              <MonthlyTrendChart />
+            <div className="mt-4 space-y-4">
+              <TrendKPICards />
+              <div className="grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-2">
+                <DailyTrendChart />
+                <MonthlyTrendChart />
+              </div>
             </div>
           </div>
 

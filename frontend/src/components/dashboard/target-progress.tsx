@@ -1,7 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useTargetSummary } from "@/hooks/use-targets";
+import { useBudgetSummary } from "@/hooks/use-budget";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { Target, TrendingUp, TrendingDown } from "lucide-react";
@@ -43,11 +44,62 @@ function ProgressRing({ pct, size = 80 }: { pct: number; size?: number }) {
 }
 
 export const TargetProgress = memo(function TargetProgress() {
-  const { data, isLoading } = useTargetSummary();
+  const { data: targetData, isLoading: targetLoading } = useTargetSummary();
+  const { data: budgetData, isLoading: budgetLoading } = useBudgetSummary();
+
+  const isLoading = targetLoading || budgetLoading;
+
+  // Prefer sales_targets, fall back to seed_budget_2025
+  const hasTargets = (targetData?.monthly_targets?.length ?? 0) > 0;
+  const hasBudget = (budgetData?.monthly?.length ?? 0) > 0;
+
+  // Normalize budget data into the same shape as target data for display
+  const normalized = useMemo(() => {
+    if (hasTargets && targetData) {
+      return {
+        source: "target" as const,
+        ytdTarget: targetData.ytd_target,
+        ytdActual: targetData.ytd_actual,
+        ytdPct: targetData.ytd_achievement_pct,
+        months: targetData.monthly_targets.slice(0, 12).map((m) => ({
+          key: m.period,
+          label: m.period.split("-")[1],
+          target: m.target_value,
+          actual: m.actual_value,
+        })),
+      };
+    }
+    if (hasBudget && budgetData) {
+      // Aggregate budget across origins per month
+      const byMonth = new Map<number, { budget: number; actual: number }>();
+      for (const item of budgetData.monthly) {
+        const existing = byMonth.get(item.month) ?? { budget: 0, actual: 0 };
+        existing.budget += item.budget;
+        existing.actual += item.actual;
+        byMonth.set(item.month, existing);
+      }
+      const months = Array.from(byMonth.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([m, v]) => ({
+          key: `2025-${String(m).padStart(2, "0")}`,
+          label: String(m).padStart(2, "0"),
+          target: v.budget,
+          actual: v.actual,
+        }));
+      return {
+        source: "budget" as const,
+        ytdTarget: budgetData.ytd_budget,
+        ytdActual: budgetData.ytd_actual,
+        ytdPct: budgetData.ytd_achievement_pct,
+        months,
+      };
+    }
+    return null;
+  }, [hasTargets, hasBudget, targetData, budgetData]);
 
   if (isLoading) return <LoadingCard className="h-64" />;
 
-  if (!data?.monthly_targets?.length) {
+  if (!normalized) {
     return (
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-2">
@@ -65,15 +117,22 @@ export const TargetProgress = memo(function TargetProgress() {
     );
   }
 
-  const ytdPct = data.ytd_achievement_pct;
+  const { ytdTarget, ytdActual, ytdPct, months, source } = normalized;
 
   return (
     <div className="rounded-xl border border-border bg-card p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <Target className="h-4 w-4 text-accent" />
-        <h3 className="text-sm font-semibold text-text-primary">
-          YTD Target Progress
-        </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-accent" />
+          <h3 className="text-sm font-semibold text-text-primary">
+            YTD {source === "budget" ? "Budget" : "Target"} Progress
+          </h3>
+        </div>
+        {source === "budget" && (
+          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent">
+            Budget
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-6">
@@ -90,32 +149,32 @@ export const TargetProgress = memo(function TargetProgress() {
         {/* Stats */}
         <div className="flex-1 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-text-secondary">Target</span>
+            <span className="text-text-secondary">
+              {source === "budget" ? "Budget" : "Target"}
+            </span>
             <span className="font-medium text-text-primary">
-              {formatCurrency(data.ytd_target)}
+              {formatCurrency(ytdTarget)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-text-secondary">Actual</span>
             <span className="font-medium text-text-primary">
-              {formatCurrency(data.ytd_actual)}
+              {formatCurrency(ytdActual)}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-text-secondary">Variance</span>
             <span
               className={`flex items-center gap-1 font-medium ${
-                data.ytd_actual >= data.ytd_target
-                  ? "text-green-500"
-                  : "text-red-500"
+                ytdActual >= ytdTarget ? "text-green-500" : "text-red-500"
               }`}
             >
-              {data.ytd_actual >= data.ytd_target ? (
+              {ytdActual >= ytdTarget ? (
                 <TrendingUp className="h-3 w-3" />
               ) : (
                 <TrendingDown className="h-3 w-3" />
               )}
-              {formatCurrency(Math.abs(data.ytd_actual - data.ytd_target))}
+              {formatCurrency(Math.abs(ytdActual - ytdTarget))}
             </span>
           </div>
         </div>
@@ -123,14 +182,10 @@ export const TargetProgress = memo(function TargetProgress() {
 
       {/* Monthly mini bars */}
       <div className="mt-4 grid grid-cols-6 gap-1">
-        {data.monthly_targets.slice(0, 12).map((m) => {
-          const pct =
-            m.target_value > 0
-              ? (m.actual_value / m.target_value) * 100
-              : 0;
-          const month = m.period.split("-")[1];
+        {months.map((m) => {
+          const pct = m.target > 0 ? (m.actual / m.target) * 100 : 0;
           return (
-            <div key={m.period} className="text-center">
+            <div key={m.key} className="text-center">
               <div className="relative h-12 overflow-hidden rounded bg-divider">
                 <div
                   className="absolute bottom-0 w-full rounded transition-all duration-500"
@@ -146,7 +201,7 @@ export const TargetProgress = memo(function TargetProgress() {
                 />
               </div>
               <span className="mt-0.5 block text-[9px] text-text-secondary">
-                {month}
+                {m.label}
               </span>
             </div>
           );
