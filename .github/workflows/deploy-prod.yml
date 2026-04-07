@@ -49,6 +49,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
     strategy:
       matrix:
         include:
@@ -120,6 +122,7 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
+            export IMAGE_TAG="${{ needs.build-push.outputs.image_tag }}"
             export API_KEY="${{ secrets.API_KEY }}"
             export PIPELINE_WEBHOOK_SECRET="${{ secrets.PIPELINE_WEBHOOK_SECRET }}"
             export NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}"
