@@ -1,32 +1,44 @@
 .PHONY: up down build test lint fmt dbt logs clean dev status pipeline demo help setup backup restore
 
+## Compose file shortcuts
+DEV_COMPOSE  = docker compose -f docker-compose.yml -f docker-compose.dev.yml
+PROD_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.prod.yml
+
 ## Docker
 up:
-	docker compose up -d --build
+	$(DEV_COMPOSE) up -d --build
 
 down:
 	docker compose down
 
 build:
-	docker compose build
+	$(DEV_COMPOSE) build
 
 logs:
 	docker compose logs -f
 
 ## Development
 dev:
-	docker compose up -d --build
+	$(DEV_COMPOSE) up -d --build
 	@echo ""
-	@echo "DataPulse is running:"
+	@echo "DataPulse is running (DEV mode):"
 	@echo "  Dashboard: http://localhost:3000"
 	@echo "  API:       http://localhost:8000/docs"
 	@echo "  Health:    http://localhost:8000/health"
 	@echo ""
 
+## Production (server only — requires IMAGE_TAG env var)
+prod:
+	$(PROD_COMPOSE) up -d
+	@echo ""
+	@echo "DataPulse is running (PROD mode):"
+	@echo "  https://smartdatapulse.tech"
+	@echo ""
+
 setup:
 	@echo "=== DataPulse Setup ==="
 	@test -f .env || (cp .env.example .env && echo "[setup] Created .env from .env.example — edit with your passwords")
-	docker compose up -d --build
+	$(DEV_COMPOSE) up -d --build
 	@echo "Waiting for services..."
 	@sleep 10
 	@echo ""
@@ -51,7 +63,7 @@ pipeline:
 
 demo:
 	@echo "=== DataPulse Demo Setup ==="
-	docker compose up -d --build
+	$(DEV_COMPOSE) up -d --build
 	@echo "Waiting for services to be healthy..."
 	@sleep 10
 	@echo "Running bronze loader..."
@@ -67,14 +79,15 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Docker:"
-	@echo "  setup     Zero-to-working: copy .env + build + start"
-	@echo "  up        Build and start all services"
+	@echo "  setup     Zero-to-working: copy .env + build + start (dev)"
+	@echo "  up        Build and start all services (dev)"
+	@echo "  dev       Start dev services and print access URLs"
+	@echo "  prod      Start production services (requires IMAGE_TAG)"
 	@echo "  down      Stop all services"
-	@echo "  build     Build Docker images"
+	@echo "  build     Build Docker images (dev)"
 	@echo "  logs      Follow service logs"
-	@echo "  dev       Start services and print access URLs"
 	@echo "  status    Show service health status"
-	@echo "  demo      Full demo: build + load data + dbt + serve"
+	@echo "  demo      Full demo: build + load data + dbt + serve (dev)"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test      Run Python unit tests with coverage"

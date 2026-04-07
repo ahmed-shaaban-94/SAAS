@@ -484,6 +484,175 @@ class AnalyticsRepository:
         z = compute_z_score(current_growth, growths)
         return significance_level(z)
 
+    def _has_dimensional_filters(self, filters: AnalyticsFilter) -> bool:
+        """Check if any non-date dimensional filters are active."""
+        return any([
+            filters.site_key is not None,
+            filters.category is not None,
+            filters.brand is not None,
+            filters.staff_key is not None,
+        ])
+
+    def _get_kpi_from_fct_sales(self, filters: AnalyticsFilter) -> KPISummary:
+        """KPI aggregation via fct_sales with dimension JOINs for filtered queries."""
+        start = filters.date_range.start_date
+        end = filters.date_range.end_date
+        start_key = start.year * 10000 + start.month * 100 + start.day
+        end_key = end.year * 10000 + end.month * 100 + end.day
+        log.info("get_kpi_fct_sales", start=str(start), end=str(end), filters=filters.model_dump(exclude_none=True))
+
+        # Build dimensional WHERE clauses
+        where_parts = ["f.date_key BETWEEN :start_key AND :end_key"]
+        params: dict = {"start_key": start_key, "end_key": end_key}
+
+        joins: list[str] = []
+        if filters.category is not None or filters.brand is not None:
+            joins.append(
+                "INNER JOIN public_marts.dim_product p ON f.product_key = p.product_key AND f.tenant_id = p.tenant_id"
+            )
+            if filters.category is not None:
+                where_parts.append("p.drug_category = :category")
+                params["category"] = filters.category
+            if filters.brand is not None:
+                where_parts.append("p.drug_brand = :brand")
+                params["brand"] = filters.brand
+        if filters.site_key is not None:
+            where_parts.append("f.site_key = :site_key")
+            params["site_key"] = filters.site_key
+        if filters.staff_key is not None:
+            where_parts.append("f.staff_key = :staff_key")
+            params["staff_key"] = filters.staff_key
+
+        join_clause = "\n".join(joins)
+        where_clause = " AND ".join(where_parts)
+
+        # Previous period for MoM growth
+        period_len = (end - start).days + 1
+        prev_start = start - timedelta(days=period_len)
+        prev_end = start - timedelta(days=1)
+        prev_start_key = prev_start.year * 10000 + prev_start.month * 100 + prev_start.day
+        prev_end_key = prev_end.year * 10000 + prev_end.month * 100 + prev_end.day
+        params["prev_start_key"] = prev_start_key
+        params["prev_end_key"] = prev_end_key
+
+        # Sparkline date keys
+        sparkline_start = end - timedelta(days=7)
+        spark_start_key = sparkline_start.year * 10000 + sparkline_start.month * 100 + sparkline_start.day
+        params["spark_start_key"] = spark_start_key
+
+        # Build previous period WHERE with same dimensional filters
+        prev_where = where_clause.replace(
+            "f.date_key BETWEEN :start_key AND :end_key",
+            "f.date_key BETWEEN :prev_start_key AND :prev_end_key",
+        )
+
+        stmt = text(f"""
+            WITH range_agg AS (
+                SELECT
+                    ROUND(SUM(f.sales), 2) AS period_net,
+                    SUM(f.quantity)::NUMERIC(18,4) AS total_quantity,
+                    COUNT(*) FILTER (WHERE NOT f.is_return)::INT AS total_transactions,
+                    COUNT(*) FILTER (WHERE f.is_return)::INT AS total_returns,
+                    COUNT(DISTINCT f.customer_key)::INT AS total_customers
+                FROM public_marts.fct_sales f
+                {join_clause}
+                WHERE {where_clause}
+            ),
+            basket AS (
+                SELECT ROUND(
+                    SUM(f.sales) FILTER (WHERE NOT f.is_return)
+                    / NULLIF(COUNT(DISTINCT f.invoice_id) FILTER (WHERE NOT f.is_return), 0),
+                    2
+                ) AS avg_basket_size
+                FROM public_marts.fct_sales f
+                {join_clause}
+                WHERE {where_clause}
+            ),
+            prev_period AS (
+                SELECT ROUND(SUM(f.sales), 2) AS prev_net
+                FROM public_marts.fct_sales f
+                {join_clause}
+                WHERE {prev_where}
+            ),
+            sparkline AS (
+                SELECT json_agg(
+                    json_build_object('period', d.full_date, 'value', COALESCE(day_total, 0))
+                    ORDER BY d.full_date
+                ) AS points
+                FROM public_marts.dim_date d
+                LEFT JOIN (
+                    SELECT f.date_key, ROUND(SUM(f.sales), 2) AS day_total
+                    FROM public_marts.fct_sales f
+                    {join_clause}
+                    WHERE {where_clause} AND f.date_key >= :spark_start_key
+                    GROUP BY f.date_key
+                ) s ON d.date_key = s.date_key
+                WHERE d.date_key BETWEEN :spark_start_key AND :end_key
+            )
+            SELECT
+                r.period_net,
+                r.total_quantity,
+                r.total_transactions,
+                r.total_returns,
+                r.total_customers,
+                b.avg_basket_size,
+                p.prev_net,
+                sp.points AS sparkline_points
+            FROM range_agg r
+            LEFT JOIN basket b ON TRUE
+            LEFT JOIN prev_period p ON TRUE
+            LEFT JOIN sparkline sp ON TRUE
+        """)
+
+        row = self._session.execute(stmt, params).mappings().fetchone()
+
+        if row is None or row["period_net"] is None:
+            log.warning("kpi_fct_no_data", start=str(start), end=str(end))
+            return KPISummary(
+                today_gross=_ZERO, mtd_gross=_ZERO, ytd_gross=_ZERO,
+                daily_transactions=0, daily_customers=0, sparkline=[],
+            )
+
+        period_net = Decimal(str(row["period_net"]))
+        total_quantity = Decimal(str(row["total_quantity"])) if row["total_quantity"] is not None else _ZERO
+        total_transactions = int(row["total_transactions"] or 0)
+        total_returns = int(row["total_returns"] or 0)
+        total_customers = int(row["total_customers"] or 0)
+        avg_basket = (
+            Decimal(str(row["avg_basket_size"])).quantize(Decimal("0.01"))
+            if row["avg_basket_size"] is not None else _ZERO
+        )
+
+        mom_growth: Decimal | None = None
+        if row["prev_net"] is not None:
+            prev_net = Decimal(str(row["prev_net"]))
+            mom_growth = safe_growth(period_net, prev_net)
+
+        sparkline: list[TimeSeriesPoint] = []
+        if row.get("sparkline_points") is not None:
+            raw_points = row["sparkline_points"]
+            if isinstance(raw_points, str):
+                import json
+                raw_points = json.loads(raw_points)
+            sparkline = [
+                TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))
+                for p in raw_points
+            ]
+
+        return KPISummary(
+            today_gross=period_net,
+            mtd_gross=_ZERO,
+            ytd_gross=_ZERO,
+            mom_growth_pct=mom_growth,
+            yoy_growth_pct=None,
+            daily_quantity=total_quantity,
+            daily_transactions=total_transactions - total_returns,
+            daily_customers=total_customers,
+            avg_basket_size=avg_basket,
+            daily_returns=total_returns,
+            sparkline=sparkline,
+        )
+
     def get_kpi_summary_range(self, filters: AnalyticsFilter) -> KPISummary:
         """Aggregate KPI metrics over a date range instead of a single day.
 
@@ -493,9 +662,17 @@ class AnalyticsRepository:
         * ``daily_returns`` → total return count for range
         * ``avg_basket_size`` → weighted average for range
         * ``mom_growth_pct`` → compare range total to same-length previous period
+
+        When dimensional filters (category, brand, site, staff) are active,
+        queries fct_sales with dimension JOINs for accurate filtered results.
+        Otherwise uses the fast pre-aggregated metrics_summary path.
         """
         if filters.date_range is None:
             return self.get_kpi_summary(date.today())
+
+        # Use fct_sales path when dimensional filters are active
+        if self._has_dimensional_filters(filters):
+            return self._get_kpi_from_fct_sales(filters)
 
         start = filters.date_range.start_date
         end = filters.date_range.end_date

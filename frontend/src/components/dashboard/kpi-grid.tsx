@@ -100,7 +100,8 @@ export function KPIGrid() {
     );
   }
 
-  // Units metrics
+  // Units metrics — daily_quantity is already net (returns are negative in DB)
+  // daily_transactions is already net (total_transactions - total_returns) from backend
   const totalUnits = data.daily_quantity ?? 0;
   const unitsPerTxn = data.daily_transactions > 0 ? totalUnits / data.daily_transactions : 0;
 
@@ -110,6 +111,7 @@ export function KPIGrid() {
     numericValue?: number;
     isCurrency?: boolean;
     isPercent?: boolean;
+    isDecimal?: boolean;
     trend?: number | null;
     trendLabel?: string;
     icon: React.ComponentType<{ className?: string }>;
@@ -141,8 +143,9 @@ export function KPIGrid() {
     },
     {
       label: "Units per Transaction",
-      value: unitsPerTxn.toFixed(1),
+      value: unitsPerTxn.toFixed(2),
       numericValue: unitsPerTxn,
+      isDecimal: true,
       icon: Divide,
       tooltip: TOOLTIPS.unitsPerTxn,
     },

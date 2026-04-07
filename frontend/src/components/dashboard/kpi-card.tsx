@@ -14,6 +14,7 @@ interface KPICardProps {
   numericValue?: number;
   isCurrency?: boolean;
   isPercent?: boolean;
+  isDecimal?: boolean;
   trend?: number | null;
   trendLabel?: string;
   subtitle?: string;
@@ -26,16 +27,17 @@ interface KPICardProps {
   tooltip?: string;
 }
 
-function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
+function AnimatedValue({ value, numericValue, isCurrency, isPercent, isDecimal }: {
   value: string;
   numericValue?: number;
   isCurrency?: boolean;
   isPercent?: boolean;
+  isDecimal?: boolean;
 }) {
   const animated = useCountUp({
     end: numericValue ?? 0,
     duration: 1400,
-    decimals: isPercent ? 1 : 0,
+    decimals: isPercent ? 1 : isDecimal ? 2 : 0,
     prefix: "",
     suffix: isCurrency ? " EGP" : isPercent ? "%" : "",
     separator: ",",
@@ -48,7 +50,7 @@ function AnimatedValue({ value, numericValue, isCurrency, isPercent }: {
   return <>{animated}</>;
 }
 
-export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
+export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, isDecimal, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
   const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
@@ -122,6 +124,7 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
           numericValue={numericValue}
           isCurrency={isCurrency}
           isPercent={isPercent}
+          isDecimal={isDecimal}
         />
       </p>
 
