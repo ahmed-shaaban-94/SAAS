@@ -157,10 +157,6 @@ class RBACService:
         if existing:
             raise ValueError(f"Member with email {invite.email} already exists")
 
-        # Cannot invite as owner
-        if invite.role_key == "owner":
-            raise ValueError("Cannot invite a member as owner")
-
         # Create with placeholder user_id (will be set on accept)
         member = self._repo.create_member(
             tenant_id=tenant_id,
@@ -190,17 +186,13 @@ class RBACService:
         if not member:
             raise ValueError("Member not found")
 
-        # Cannot change owner's role
+        # Only owner can change roles to owner or admin
+        if update.role_key in ("owner", "admin") and actor_role != "owner":
+            raise ValueError("Only the owner can assign the owner or admin role")
+
+        # Cannot demote the current owner (unless you're the owner demoting yourself — not supported)
         if member["role_key"] == "owner" and update.role_key and update.role_key != "owner":
-            raise ValueError("Cannot change the owner's role")
-
-        # Only owner can assign admin role
-        if update.role_key == "admin" and actor_role != "owner":
-            raise ValueError("Only the owner can assign the admin role")
-
-        # Cannot promote to owner
-        if update.role_key == "owner":
-            raise ValueError("Cannot assign owner role — use transfer ownership instead")
+            raise ValueError("Cannot change the owner's role directly")
 
         fields = update.model_dump(exclude_none=True)
         sector_ids = fields.pop("sector_ids", None)

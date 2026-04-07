@@ -204,16 +204,20 @@ class TestInviteMember:
         with pytest.raises(ValueError, match="already exists"):
             service.invite_member(1, invite, invited_by="admin")
 
-    def test_invite_as_owner_raises(self):
+    def test_invite_as_owner_allowed(self):
         repo = MagicMock()
         repo.MAX_MEMBERS_PER_TENANT = 100
         repo.count_members.return_value = 1
         repo.get_member_by_email.return_value = None
+        repo.create_member.return_value = _make_member(
+            user_id="pending:new@example.com", email="new@example.com", role_key="owner"
+        )
+        repo.get_member_sectors.return_value = []
 
         service = RBACService(repo)
         invite = MemberInvite(email="new@example.com", role_key="owner")
-        with pytest.raises(ValueError, match="Cannot invite.*owner"):
-            service.invite_member(1, invite, invited_by="admin")
+        result = service.invite_member(1, invite, invited_by="admin")
+        assert result.email == "new@example.com"
 
     def test_invite_over_limit_raises(self):
         repo = MagicMock()
@@ -246,7 +250,7 @@ class TestUpdateMember:
         service = RBACService(repo)
         update = MemberUpdate(role_key="admin")
         with pytest.raises(ValueError, match="Cannot change the owner"):
-            service.update_member(1, update, actor_role="admin")
+            service.update_member(1, update, actor_role="owner")
 
     def test_only_owner_can_assign_admin(self):
         repo = MagicMock()
@@ -257,14 +261,26 @@ class TestUpdateMember:
         with pytest.raises(ValueError, match="Only the owner"):
             service.update_member(1, update, actor_role="admin")
 
-    def test_cannot_promote_to_owner(self):
+    def test_only_owner_can_promote_to_owner(self):
         repo = MagicMock()
-        repo.get_member_by_id.return_value = _make_member(role_key="admin")
+        repo.get_member_by_id.return_value = _make_member(role_key="editor")
 
         service = RBACService(repo)
         update = MemberUpdate(role_key="owner")
-        with pytest.raises(ValueError, match="Cannot assign owner"):
-            service.update_member(1, update, actor_role="owner")
+        with pytest.raises(ValueError, match="Only the owner"):
+            service.update_member(1, update, actor_role="admin")
+
+    def test_owner_can_promote_to_owner(self):
+        repo = MagicMock()
+        repo.get_member_by_id.return_value = _make_member(role_key="admin")
+        updated = _make_member(role_key="owner")
+        repo.update_member.return_value = updated
+        repo.get_member_sectors.return_value = []
+
+        service = RBACService(repo)
+        update = MemberUpdate(role_key="owner")
+        result = service.update_member(1, update, actor_role="owner")
+        assert result.role_key == "owner"
 
 
 class TestRemoveMember:

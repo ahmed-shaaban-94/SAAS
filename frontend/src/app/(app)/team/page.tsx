@@ -7,10 +7,12 @@ import {
   Shield,
   Building2,
   Trash2,
-  ChevronDown,
   Check,
   X,
   Plus,
+  Edit3,
+  Power,
+  ChevronDown,
 } from "lucide-react";
 import { useMembers, useMyAccess, useRoles, useSectors } from "@/hooks/use-members";
 import type { MemberResponse, RoleKey, SectorResponse } from "@/types/members";
@@ -38,16 +40,20 @@ function RoleBadge({ role }: { role: RoleKey }) {
   );
 }
 
+/* ── Invite Dialog ─────────────────────────────────────── */
+
 function InviteDialog({
   open,
   onClose,
   onInvite,
   sectors,
+  actorRole,
 }: {
   open: boolean;
   onClose: () => void;
   onInvite: (email: string, role: RoleKey, name: string, sectorIds: number[]) => Promise<void>;
   sectors: SectorResponse[];
+  actorRole: RoleKey;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -80,6 +86,18 @@ function InviteDialog({
     setSelectedSectors((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
+  }
+
+  // Available roles depend on actor
+  const availableRoles: { key: RoleKey; label: string }[] = [
+    { key: "viewer", label: "Viewer — Read-only access" },
+    { key: "editor", label: "Editor — Pipelines & reports" },
+  ];
+  if (actorRole === "owner" || actorRole === "admin") {
+    availableRoles.push({ key: "admin", label: "Admin — Manage team & settings" });
+  }
+  if (actorRole === "owner") {
+    availableRoles.push({ key: "owner", label: "Owner — Full access + billing" });
   }
 
   return (
@@ -124,9 +142,9 @@ function InviteDialog({
               onChange={(e) => setRole(e.target.value as RoleKey)}
               className="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
             >
-              <option value="viewer">Viewer — Read-only access</option>
-              <option value="editor">Editor — Can run pipelines & create reports</option>
-              <option value="admin">Admin — Can manage members & settings</option>
+              {availableRoles.map((r) => (
+                <option key={r.key} value={r.key}>{r.label}</option>
+              ))}
             </select>
           </div>
 
@@ -136,7 +154,7 @@ function InviteDialog({
                 Sector Access
               </label>
               <p className="text-xs text-text-secondary mb-2">
-                Select which sectors this member can access. Leave empty for no data access.
+                Select which sectors this member can access.
               </p>
               <div className="space-y-1 max-h-32 overflow-y-auto rounded-lg border border-border p-2">
                 {sectors.map((s) => (
@@ -182,16 +200,184 @@ function InviteDialog({
   );
 }
 
+/* ── Edit Member Dialog ────────────────────────────────── */
+
+function EditMemberDialog({
+  member,
+  onClose,
+  onSave,
+  sectors,
+  actorRole,
+}: {
+  member: MemberResponse;
+  onClose: () => void;
+  onSave: (memberId: number, updates: Record<string, unknown>) => Promise<void>;
+  sectors: SectorResponse[];
+  actorRole: RoleKey;
+}) {
+  const [role, setRole] = useState<RoleKey>(member.role_key);
+  const [displayName, setDisplayName] = useState(member.display_name);
+  const [selectedSectors, setSelectedSectors] = useState<number[]>(
+    member.sectors.map((s) => s.sector_id)
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Available roles based on actor
+  const availableRoles: { key: RoleKey; label: string }[] = [
+    { key: "viewer", label: "Viewer" },
+    { key: "editor", label: "Editor" },
+  ];
+  if (actorRole === "owner" || actorRole === "admin") {
+    availableRoles.push({ key: "admin", label: "Admin" });
+  }
+  if (actorRole === "owner") {
+    availableRoles.push({ key: "owner", label: "Owner" });
+  }
+
+  function toggleSector(id: number) {
+    setSelectedSectors((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  }
+
+  async function handleSave() {
+    setLoading(true);
+    setError("");
+    try {
+      const updates: Record<string, unknown> = {};
+      if (role !== member.role_key) updates.role_key = role;
+      if (displayName !== member.display_name) updates.display_name = displayName;
+      const currentSectorIds = member.sectors.map((s) => s.sector_id).sort().join(",");
+      const newSectorIds = [...selectedSectors].sort().join(",");
+      if (currentSectorIds !== newSectorIds) updates.sector_ids = selectedSectors;
+      if (Object.keys(updates).length > 0) {
+        await onSave(member.member_id, updates);
+      }
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update member");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-text-primary">Edit Member</h3>
+          <button onClick={onClose} className="p-1 text-text-secondary hover:text-text-primary">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-lg bg-divider/50 p-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20 text-sm font-bold text-accent">
+              {(member.display_name || member.email).charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-primary">{member.email}</p>
+              <p className="text-xs text-text-secondary">Member since {new Date(member.created_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Display Name</label>
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Role</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as RoleKey)}
+              className="w-full rounded-lg border border-border bg-page px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+            >
+              {availableRoles.map((r) => (
+                <option key={r.key} value={r.key}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {(role === "viewer" || role === "editor") && sectors.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Sector Access</label>
+              <div className="space-y-1 max-h-32 overflow-y-auto rounded-lg border border-border p-2">
+                {sectors.map((s) => (
+                  <button
+                    key={s.sector_id}
+                    type="button"
+                    onClick={() => toggleSector(s.sector_id)}
+                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                      selectedSectors.includes(s.sector_id)
+                        ? "bg-accent/10 text-accent"
+                        : "text-text-secondary hover:bg-divider"
+                    }`}
+                  >
+                    <div className={`flex h-4 w-4 items-center justify-center rounded border ${
+                      selectedSectors.includes(s.sector_id)
+                        ? "border-accent bg-accent"
+                        : "border-border"
+                    }`}>
+                      {selectedSectors.includes(s.sector_id) && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
+                    </div>
+                    {s.sector_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-growth-red">{error}</p>}
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-page hover:bg-accent/90 disabled:opacity-60"
+            >
+              {loading ? "Saving..." : "Save Changes"}
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:bg-divider"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Member Row ────────────────────────────────────────── */
+
 function MemberRow({
   member,
   isCurrentUser,
   canManage,
+  actorRole,
   onRemove,
+  onEdit,
+  onToggleActive,
 }: {
   member: MemberResponse;
   isCurrentUser: boolean;
   canManage: boolean;
+  actorRole: RoleKey;
   onRemove: (id: number) => void;
+  onEdit: (member: MemberResponse) => void;
+  onToggleActive: (id: number, active: boolean) => void;
 }) {
   const initials = (member.display_name || member.email)
     .split(" ")
@@ -201,9 +387,12 @@ function MemberRow({
     .slice(0, 2);
 
   const isPending = member.user_id.startsWith("pending:");
+  const canEditThis = canManage && !isCurrentUser;
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
+    <div className={`flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-card/80 ${
+      !member.is_active ? "border-growth-red/20 opacity-60" : "border-border"
+    }`}>
       {/* Avatar */}
       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-sm font-bold text-accent">
         {initials}
@@ -256,18 +445,45 @@ function MemberRow({
       <RoleBadge role={member.role_key} />
 
       {/* Actions */}
-      {canManage && !isCurrentUser && member.role_key !== "owner" && (
-        <button
-          onClick={() => onRemove(member.member_id)}
-          className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-growth-red/10 hover:text-growth-red"
-          title="Remove member"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+      {canEditThis && (
+        <div className="flex items-center gap-1">
+          {/* Edit */}
+          <button
+            onClick={() => onEdit(member)}
+            className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+            title="Edit member"
+          >
+            <Edit3 className="h-4 w-4" />
+          </button>
+
+          {/* Toggle Active */}
+          <button
+            onClick={() => onToggleActive(member.member_id, !member.is_active)}
+            className={`rounded-md p-1.5 transition-colors ${
+              member.is_active
+                ? "text-text-secondary hover:bg-chart-amber/10 hover:text-chart-amber"
+                : "text-emerald-400 hover:bg-emerald-500/10"
+            }`}
+            title={member.is_active ? "Deactivate" : "Activate"}
+          >
+            <Power className="h-4 w-4" />
+          </button>
+
+          {/* Remove */}
+          <button
+            onClick={() => onRemove(member.member_id)}
+            className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-growth-red/10 hover:text-growth-red"
+            title="Remove member"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </div>
   );
 }
+
+/* ── Sector Card ───────────────────────────────────────── */
 
 function SectorCard({
   sector,
@@ -315,6 +531,8 @@ function SectorCard({
     </div>
   );
 }
+
+/* ── Create Sector Form ────────────────────────────────── */
 
 function CreateSectorForm({
   onSubmit,
@@ -422,14 +640,22 @@ function CreateSectorForm({
   );
 }
 
+/* ── Main Page ─────────────────────────────────────────── */
+
 export default function TeamPage() {
   const { access, isLoading: accessLoading } = useMyAccess();
-  const { members, isLoading: membersLoading, inviteMember, removeMember } = useMembers();
+  const { members, isLoading: membersLoading, inviteMember, updateMember, removeMember } = useMembers();
   const { sectors, isLoading: sectorsLoading, createSector, deleteSector } = useSectors();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<MemberResponse | null>(null);
 
   const isLoading = accessLoading || membersLoading || sectorsLoading;
   const canManage = access?.is_admin ?? false;
+  const actorRole = access?.role_key ?? "viewer";
+
+  function handleToggleActive(memberId: number, active: boolean) {
+    updateMember(memberId, { is_active: active });
+  }
 
   if (isLoading) {
     return (
@@ -498,7 +724,10 @@ export default function TeamPage() {
               member={m}
               isCurrentUser={m.user_id === access?.user_id}
               canManage={canManage}
+              actorRole={actorRole}
               onRemove={removeMember}
+              onEdit={setEditingMember}
+              onToggleActive={handleToggleActive}
             />
           ))}
           {(!members || members.length === 0) && (
@@ -531,13 +760,24 @@ export default function TeamPage() {
         </div>
       </section>
 
-      {/* Invite Dialog */}
+      {/* Dialogs */}
       <InviteDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         onInvite={inviteMember}
         sectors={sectors || []}
+        actorRole={actorRole}
       />
+
+      {editingMember && (
+        <EditMemberDialog
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
+          onSave={updateMember}
+          sectors={sectors || []}
+          actorRole={actorRole}
+        />
+      )}
     </div>
   );
 }
