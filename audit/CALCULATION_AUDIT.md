@@ -5,19 +5,19 @@
 
 ## Summary
 
-- 🔴 Critical: **15**
-- 🟡 Warnings: **23**
+- 🔴 Critical: **22**
+- 🟡 Warnings: **33**
 - 🟢 Suggestions: **7**
-- **Total findings: 45**
+- **Total findings: 62**
 
 | Layer | 🔴 | 🟡 | 🟢 | Files |
 |-------|-----|-----|-----|-------|
 | Config & Thresholds | 0 | 2 | 1 | 5 |
 | Pipeline & Forecasting | 1 | 3 | 1 | 6 |
-| Python Analytics | 4 | 5 | 2 | 14 |
+| Python Analytics | 7 | 9 | 2 | 14 |
 | dbt SQL Models | 6 | 7 | 2 | 26+7 |
 | Frontend (Next.js) | 3 | 9 | 1 | 35 |
-| Power BI DAX | 1 | 3 | 2 | 12 |
+| Power BI DAX | 5 | 9 | 2 | 12+4 |
 
 ---
 
@@ -355,13 +355,123 @@
 - **Why it matters:** The 0.33 threshold is duplicated in two files. Should be a named constant.
 - **Suggested fix:** Add `STAFF_ACTIVITY_THRESHOLD = Decimal("0.33")` to `queries.py`.
 
+### Additional Findings (from deep Python agent audit)
+
+#### 🔴 [PY-12] `SUM(unique_customers)` across months inflates distinct count on detail pages
+- **File:** `src/datapulse/analytics/detail_repository.py:105,163,222,281-282`
+- **Severity:** Critical
+- **Category:** Wrong aggregation of distinct counts
+- **Current code:**
+  ```sql
+  -- Product detail (line 105):
+  SUM(a.unique_customers) AS unique_customers
+  -- Customer detail (line 163):
+  SUM(a.unique_products) AS unique_products
+  -- Staff detail (lines 281-282):
+  SUM(a.unique_customers) AS unique_customers,
+  SUM(a.unique_staff)     AS unique_staff,
+  ```
+- **Why it's wrong:** `unique_customers` in `agg_sales_by_product` is a per-month `COUNT(DISTINCT)`. Summing across months double-counts customers who purchased in multiple months. A customer buying every month for 12 months is counted 12 times instead of 1.
+  - **Concrete example:** Product X has 50 unique customers/month, but 30 are the same regulars. `SUM = 600`, actual unique = ~80. Over 300% inflation.
+- **Suggested fix:** Query `COUNT(DISTINCT f.customer_key) FROM fct_sales` instead of summing pre-aggregated uniques. Or add a note that this is a "customer-month count" not truly unique.
+- **Test to add:** Compare `SUM(unique_customers)` vs `COUNT(DISTINCT customer_key)` for a product with known repeat buyers.
+
+#### 🔴 [PY-13] Search repository uses wrong column names — runtime SQL error
+- **File:** `src/datapulse/analytics/search_repository.py:30-35`
+- **Severity:** Critical
+- **Category:** Column name mismatch
+- **Current code:**
+  ```sql
+  SELECT product_key AS key,
+         product_name AS name,
+         category,
+         similarity(product_name, :q) AS score
+  WHERE product_name % :q OR product_name ILIKE :pattern
+  ```
+- **Why it's wrong:** `dim_product` has `drug_name` and `drug_category`, not `product_name` and `category`. This query will throw a `column "product_name" does not exist` SQL error at runtime.
+- **Suggested fix:** Replace `product_name` → `drug_name`, `category` → `drug_category`.
+
+#### 🔴 [PY-14] Alert log query joins wrong table name — `alerts_config` vs `alert_configs`
+- **File:** `src/datapulse/targets/repository.py:389`
+- **Severity:** Critical
+- **Category:** Table name mismatch
+- **Current code:**
+  ```sql
+  -- Line 389 (list_alert_logs):
+  LEFT JOIN public.alerts_config c ON l.alert_config_id = c.id
+
+  -- Line 319 (create_alert_config):
+  INSERT INTO public.alert_configs
+  ```
+- **Why it's wrong:** `create_alert_config` inserts into `alert_configs` (singular alert, plural configs). `list_alert_logs` joins `alerts_config` (plural alerts, singular config). If only one table exists, the other query fails at runtime. The LEFT JOIN silently returns `'Unknown Alert'` via COALESCE if the table doesn't exist (PostgreSQL may error instead).
+- **Suggested fix:** Verify the actual migration table name and use it consistently.
+
+#### 🟡 [PY-15] `get_origin_breakdown` uses `float` for financial calculations
+- **File:** `src/datapulse/analytics/repository.py:916-922`
+- **Severity:** Warning
+- **Category:** Float for money
+- **Current code:**
+  ```python
+  total = sum(float(r[1]) for r in rows)
+  return [{
+      "value": float(r[1]),
+      "pct": round(float(r[1]) / total * 100, 1) if total else 0,
+  } ...]
+  ```
+- **Why it matters:** Every other financial calculation in the codebase uses `Decimal`. This method returns raw `float`, causing precision loss inconsistent with the codebase's `NUMERIC(18,4)` convention.
+- **Suggested fix:** Use `Decimal(str(r[1]))` consistently.
+
+#### 🟡 [PY-16] Three different definitions of `avg_basket_size` across code paths
+- **File:** `src/datapulse/analytics/repository.py:219-221,564-566,700-702`
+- **Severity:** Warning
+- **Category:** Inconsistent business metric definition
+- **Current code:**
+  ```python
+  # Path A — single day (line 219-221):
+  SUM(total_sales) / NULLIF(SUM(unique_customers), 0)   # = revenue per customer
+
+  # Path B — range with filters (line 564-566):
+  SUM(f.sales) FILTER (WHERE NOT f.is_return)
+    / NULLIF(COUNT(DISTINCT f.invoice_id) FILTER (WHERE NOT f.is_return), 0)
+                                                          # = avg invoice value (excl. returns)
+
+  # Path C — range without filters (line 700-702):
+  SUM(total_sales) / NULLIF(SUM(transaction_count), 0)   # = revenue per transaction
+  ```
+- **Why it matters:** Three semantically different metrics reported under the same name. Revenue-per-customer ≠ revenue-per-invoice ≠ revenue-per-transaction. Dashboard switching between single-day and range views will show different "basket sizes" even for the same data.
+- **Suggested fix:** Standardize on `SUM(net_amount) / NULLIF(COUNT(DISTINCT invoice_id), 0)` (average invoice value) across all paths.
+
+#### 🟡 [PY-17] KPI sparkline returns 8 days of data instead of 7
+- **File:** `src/datapulse/analytics/repository.py:203`
+- **Severity:** Warning
+- **Category:** Off-by-one
+- **Current code:**
+  ```python
+  sparkline_start = target_date - timedelta(days=7)
+  # SQL: WHERE full_date BETWEEN :sparkline_start AND :target_date
+  ```
+- **Why it matters:** `BETWEEN` is inclusive on both ends, so `target_date - 7` through `target_date` = 8 data points. If the frontend chart expects exactly 7 days, the extra point may be clipped or cause alignment issues.
+- **Suggested fix:** Use `timedelta(days=6)` for 7 inclusive days, or `full_date > :start AND full_date <= :end`.
+
+#### 🟡 [PY-18] Backtest returns MAPE=0 for insufficient data — may select wrong forecast method
+- **File:** `src/datapulse/forecasting/methods.py:235-237`
+- **Severity:** Warning
+- **Category:** Misleading metric
+- **Current code:**
+  ```python
+  if len(series) <= horizon:
+      return ForecastAccuracy(
+          mape=Decimal("0"), mae=Decimal("0"), rmse=Decimal("0"), coverage=Decimal("0")
+      )
+  ```
+- **Why it matters:** MAPE=0 means "perfect forecast". When `select_best_method` compares candidates, a method with "untested" MAPE=0 will always win over methods with real (nonzero) error metrics, even if the untested method would perform poorly.
+- **Suggested fix:** Return `mape=Decimal("999999")` or skip the method in selection.
+
 ### Files with no issues found
 - `src/datapulse/analytics/models.py` — Pydantic models are well-typed with `JsonDecimal`
 - `src/datapulse/analytics/service.py` — caching wrapper, no calculations
 - `src/datapulse/analytics/customer_health.py` — delegates to SQL, no Python-side math
 - `src/datapulse/analytics/hierarchy_repository.py` — clean hierarchy queries
-- `src/datapulse/analytics/search_repository.py` — text search, no calculations
-- `src/datapulse/analytics/diagnostics.py` — diagnostic queries, no math
 - `src/datapulse/explore/sql_builder.py` — well-secured SQL builder with whitelist
 - `src/datapulse/reports/template_engine.py` — template rendering, no math
 - `src/datapulse/bronze/loader.py` — data loading, correct batch progress calculation
@@ -994,15 +1104,145 @@
   IF(ISBLANK(_p), 0, SIGN(_c - _p))
   ```
 
+### Additional Findings (from deep Power BI agent audit)
+
+#### 🔴 [PBI-7] `Last Transaction Date` returns MAX of integer surrogate key — displays garbage
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:995-998`
+- **Severity:** Critical
+- **Category:** Wrong column reference
+- **Current code:**
+  ```dax
+  measure 'Last Transaction Date' = MAX(fct_sales[date_key])
+      formatString: DD-MMM-YYYY
+  ```
+- **Why it's wrong:** `fct_sales[date_key]` is `dataType: int64` (e.g., `20230101`). `MAX()` returns the largest integer, not a date. The format string `DD-MMM-YYYY` attempts to format an integer as a date, producing nonsensical output. This measure is referenced by `Tooltip Customer Summary`, so customer tooltips display garbage.
+- **Suggested fix:**
+  ```dax
+  measure 'Last Transaction Date' = MAX(dim_date[full_date])
+      formatString: DD-MMM-YYYY
+  ```
+
+#### 🔴 [PBI-8] `KPI Dynamic Value` format string always `#,##0` — shows 0 for percentages
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:1115-1123`
+- **Severity:** Critical
+- **Category:** Format string mismatch
+- **Current code:**
+  ```dax
+  measure 'KPI Dynamic Value' =
+      IF([KPI Display Mode] = "Percentage", [Revenue MoM %], [Net Revenue])
+      formatString: #,##0
+  ```
+- **Why it's wrong:** When toggle is "Percentage", returns `[Revenue MoM %]` (e.g., 0.05 = 5%), but format is `#,##0` (integer). A 5% growth displays as `0`. The format string is static regardless of mode.
+- **Suggested fix:** Use `formatStringExpression` for dynamic formatting:
+  ```dax
+  formatStringExpression: =IF([KPI Display Mode] = "Percentage", "0.00%", "#,##0.00")
+  ```
+
+#### 🔴 [PBI-9] `Revenue by Governorate` checks `site_name` instead of `governorate`
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:1086-1094`
+- **Severity:** Critical
+- **Category:** Wrong column reference
+- **Current code:**
+  ```dax
+  measure 'Revenue by Governorate' =
+      IF(HASONEVALUE(dim_site[site_name]), [Net Revenue], BLANK())
+  ```
+- **Why it's wrong:** Named "Revenue by Governorate" for shape map visual, but checks `HASONEVALUE(dim_site[site_name])`. If a governorate has multiple sites, returns BLANK when sliced by governorate. `dim_site` has a `governorate` column.
+- **Suggested fix:** `HASONEVALUE(dim_site[governorate])`
+
+#### 🔴 [PBI-10] `Last Refresh Date` format `HH:MM` shows month instead of minutes
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:869,929`
+- **Severity:** Critical
+- **Category:** DAX format string bug
+- **Current code:**
+  ```dax
+  measure 'Last Refresh Date' = FORMAT(NOW(), "DD-MMM-YYYY HH:MM")
+  ```
+- **Why it's wrong:** In DAX `FORMAT()` (VBA-style), `MM` = month, `NN` = minutes. A refresh at 14:35 on 7-Apr-2026 displays "07-Apr-2026 14:04" (showing month 04 instead of minute 35). Same bug in `Title - Data Quality`.
+- **Suggested fix:** `FORMAT(NOW(), "DD-MMM-YYYY HH:NN")`
+
+#### 🟡 [PBI-11] `Avg Unit Price` divides by quantity including returns — can produce negative prices
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:485-493`
+- **Severity:** Warning
+- **Category:** Business logic
+- **Current code:**
+  ```dax
+  measure 'Avg Unit Price' =
+      DIVIDE(SUM(fct_sales[net_amount]), SUM(fct_sales[quantity]), 0)
+  ```
+- **Why it matters:** Returns have negative quantity and negative net_amount. If returns dominate in a filter context, `SUM(quantity)` approaches zero or goes negative, producing extreme or negative "prices."
+- **Suggested fix:** Filter to forward sales only: `CALCULATE(SUM(...), fct_sales[is_return] = FALSE)`
+
+#### 🟡 [PBI-12] `Rolling 3M Avg` uses `DISTINCTCOUNT(dim_date[month])` — wrong across year boundaries
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/Time Intelligence.tmdl:104-116`
+- **Severity:** Warning
+- **Category:** Wrong month counting
+- **Current code:**
+  ```dax
+  VAR _monthCount = CALCULATE(
+      DISTINCTCOUNT(dim_date[month]),
+      DATESINPERIOD(dim_date[full_date], MAX(dim_date[full_date]), -3, MONTH)
+  )
+  ```
+- **Why it matters:** `dim_date[month]` is 1-12. If the 3-month window spans {Nov, Dec, Jan}, month numbers {11, 12, 1} = 3 distinct (correct by luck). But with sparse data crossing years, month 1 from 2024 and month 1 from 2025 would count as 1 instead of 2.
+- **Suggested fix:** Use `DISTINCTCOUNT(dim_date[year_month])` for year-unique months.
+
+#### 🟡 [PBI-13] `Revenue MoM/YoY Variance` shows full revenue as variance when no prior period
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:580-588`
+- **Severity:** Warning
+- **Category:** Missing BLANK handling
+- **Current code:**
+  ```dax
+  measure 'Revenue MoM Variance' =
+      [Net Revenue] - CALCULATE([Net Revenue], PREVIOUSMONTH(dim_date[full_date]))
+  ```
+- **Why it matters:** When no previous month exists (e.g., first month of data), `CALCULATE(..., PREVIOUSMONTH(...))` returns BLANK. In DAX, `value - BLANK() = value`, so the full current revenue appears as "variance" — misleading.
+- **Suggested fix:** Wrap in `IF(ISBLANK(_prev), BLANK(), [Net Revenue] - _prev)`.
+
+#### 🟡 [PBI-14] `fct_sales.tenant_id` has `summarizeBy: sum` — summing security IDs
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/fct_sales.tmdl:117-124`
+- **Severity:** Warning
+- **Category:** Governance
+- **Current code:**
+  ```
+  column tenant_id
+      dataType: int64
+      summarizeBy: sum
+  ```
+- **Why it matters:** `tenant_id` is a security/partition identifier, not a measure. Dragging it into a visual produces a meaningless sum. All dim tables correctly set `summarizeBy: none` for tenant_id.
+- **Suggested fix:** Change to `summarizeBy: none`.
+
+#### 🟡 [PBI-15] `Orphan Row Count` uses `ISBLANK(RELATED(...))` as CALCULATE filter — invalid syntax
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:831-838`
+- **Severity:** Warning
+- **Category:** Invalid DAX pattern
+- **Current code:**
+  ```dax
+  measure 'Orphan Row Count' =
+      CALCULATE(COUNTROWS(fct_sales), ISBLANK(RELATED(dim_date[full_date])))
+  ```
+- **Why it matters:** `CALCULATE` filter arguments must be boolean table filters or `FILTER` expressions, not scalar expressions using `RELATED`. This may produce an error or always return 0.
+- **Suggested fix:** `COUNTROWS(FILTER(fct_sales, ISBLANK(RELATED(dim_date[full_date]))))`
+
+#### 🟡 [PBI-16] `Product/Staff Revenue Rank` uses `ALL` on single column — ranks within filtered context
+- **File:** `powerbi/saas_demo.SemanticModel/definition/tables/_Measures.tmdl:780-798`
+- **Severity:** Warning
+- **Category:** Potentially misleading ranking
+- **Current code:**
+  ```dax
+  measure 'Product Revenue Rank' =
+      IF(HASONEVALUE(dim_product[drug_name]),
+         RANKX(ALL(dim_product[drug_name]), [Net Revenue],, DESC, Dense), BLANK())
+  ```
+- **Why it matters:** `ALL(dim_product[drug_name])` only removes the drug_name filter but keeps other product filters (category, status). A product can appear as Rank #1 when filtered by category even if it's #50 overall.
+- **Suggested fix:** Use `ALL(dim_product)` for overall rank, or document as "rank within current filter context."
+
 ### Verified Correct (no issues)
 - **All `DIVIDE()` calls** use proper alternate result (0 or BLANK)
 - **Time intelligence:** `DATESMTD`, `DATESYTD`, `SAMEPERIODLASTYEAR`, `PREVIOUSMONTH` all reference `dim_date[full_date]` — correct date table
 - **Return measures:** Properly filter `fct_sales[is_return]`, use `ABS()` for absolute values
-- **Pareto (Top 20%):** `ROUNDUP(COUNTROWS * 0.2, 0)` with `TOPN` + `SUMX` — correct approach
+- **Revenue mix percentages:** All use `REMOVEFILTERS()` correctly
 - **Staff/Product contribution:** `HASONEVALUE` guard prevents aggregation context errors
-- **RANKX measures:** Use `ALL()` correctly to rank across all items
-- **Data quality measures:** Correctly check for -1 keys, negative non-return quantities, orphan rows
-- **Relationships:** All 6 relationships are fact-to-dim, many-to-one, correct cardinality
 - **Conditional formatting colors:** Proper threshold cascading in `SWITCH(TRUE(), ...)`
 - **Display folders:** Well-organized: Core KPIs, Revenue Mix, Returns, Customer/Product/Staff Analytics, Time Intelligence, Conditional Formatting, Data Quality, Report Helpers
 
@@ -1032,12 +1272,9 @@
 - `src/datapulse/analytics/service.py` — caching wrapper, no calculations
 - `src/datapulse/analytics/customer_health.py` — delegates to SQL
 - `src/datapulse/analytics/hierarchy_repository.py` — clean hierarchy queries
-- `src/datapulse/analytics/search_repository.py` — text search, no math
-- `src/datapulse/analytics/diagnostics.py` — diagnostic queries, no math
 - `src/datapulse/explore/sql_builder.py` — well-secured SQL builder with whitelist
 - `src/datapulse/reports/template_engine.py` — template rendering, no math
 - `src/datapulse/bronze/loader.py` — correct batch progress calculation
-- `src/datapulse/targets/repository.py` — clean Decimal arithmetic, division guards
 - `src/datapulse/analytics/comparison_repository.py` — correct growth edge cases
 - `src/datapulse/billing/plans.py` — clean plan definitions
 
@@ -1074,10 +1311,11 @@
 - `frontend/src/components/customers/rfm-matrix.tsx` — correct reduce sum
 
 ### Power BI
-- All 99 DAX measures use `DIVIDE()` with proper alternate results
-- All relationships are correct cardinality (many-to-one, fact→dim)
+- All `DIVIDE()` calls use proper alternate results (0 or BLANK)
+- All relationships default to correct cardinality (many-to-one, fact→dim)
 - All time intelligence references `dim_date[full_date]` correctly
-- All REMOVEFILTERS / ALL usage is correct for percentage-of-total calculations
+- Revenue mix percentages (Cash/Credit/Delivery/Insurance/Walk-in %) use `REMOVEFILTERS()` correctly
+- Conditional formatting colors use proper `SWITCH(TRUE(), ...)` cascading
 
 ### Config & Infrastructure
 - `frontend/src/lib/constants.ts` — chart colors, nav items, no calculations
