@@ -119,7 +119,7 @@ class TestGetReturnAnalysisEmpty:
         r, session = repo
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [
-            ("Drug A", "Cust X", Decimal("5"), Decimal("-500.00"), 3),
+            ("Drug A", "Brand X", "Cust X", Decimal("5"), Decimal("-500.00"), 3, "Local"),
         ]
         session.execute.return_value = mock_result
 

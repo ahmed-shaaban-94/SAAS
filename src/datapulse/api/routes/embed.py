@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from datapulse.api.auth import get_current_user
 from datapulse.api.limiter import limiter
 from datapulse.core.db import get_session_factory
+from datapulse.core.serializers import serialise_value as _serialise
 from datapulse.embed.token import create_embed_token, validate_embed_token
 from datapulse.explore.manifest_parser import build_catalog
 from datapulse.explore.models import ExploreQuery, ExploreResult
@@ -110,8 +111,9 @@ def embed_query(
     except jwt.InvalidTokenError as exc:
         raise HTTPException(status_code=401, detail="Invalid or expired embed token") from exc
 
-    session = _get_embed_session(payload)
+    session = None
     try:
+        session = _get_embed_session(payload)
         settings = get_settings()
         catalog = build_catalog(f"{settings.dbt_project_dir}/models")
 
@@ -143,11 +145,10 @@ def embed_query(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        session.rollback()
+        if session is not None:
+            session.rollback()
         log.error("embed_query_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Query execution failed") from exc
     finally:
-        session.close()
-
-
-from datapulse.core.serializers import serialise_value as _serialise  # shared utility
+        if session is not None:
+            session.close()

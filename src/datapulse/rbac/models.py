@@ -7,7 +7,6 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
-
 # ── Roles & Permissions ──────────────────────────────────────
 
 RoleKey = Literal["owner", "admin", "editor", "viewer"]

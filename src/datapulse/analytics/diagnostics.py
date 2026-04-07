@@ -126,8 +126,12 @@ class DiagnosticsRepository:
 
         Uses fct_sales with dimension JOIN for day-level date precision.
         """
-        c_where, c_params = build_where(current_filters, date_column="date_key", supported_fields=SITE_DATE_ONLY)
-        p_where, p_params = build_where(previous_filters, date_column="date_key", supported_fields=SITE_DATE_ONLY)
+        c_where, c_params = build_where(
+            current_filters, date_column="date_key", supported_fields=SITE_DATE_ONLY
+        )
+        p_where, p_params = build_where(
+            previous_filters, date_column="date_key", supported_fields=SITE_DATE_ONLY
+        )
 
         # Prefix params to avoid collisions
         c_params_prefixed = {f"c_{k}": v for k, v in c_params.items()}

@@ -40,7 +40,7 @@ class NotificationRepository:
         """)
         result = self._session.execute(sql, {"nid": notification_id, "uid": user_id})
         self._session.flush()
-        return (result.rowcount or 0) > 0
+        return (result.rowcount or 0) > 0  # type: ignore[attr-defined]
 
     def mark_all_read(self, user_id: str) -> int:
         sql = text("""
@@ -49,7 +49,7 @@ class NotificationRepository:
         """)
         result = self._session.execute(sql, {"uid": user_id})
         self._session.flush()
-        return result.rowcount or 0
+        return result.rowcount or 0  # type: ignore[attr-defined]
 
     def create(
         self,

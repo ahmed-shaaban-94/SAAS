@@ -421,4 +421,4 @@ class TestBuiltinTemplates:
         assert all(isinstance(t, ReportTemplate) for t in BUILTIN_TEMPLATES)
 
     def test_count(self):
-        assert len(BUILTIN_TEMPLATES) == 3
+        assert len(BUILTIN_TEMPLATES) == 4

@@ -155,6 +155,7 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
     unified_row = {
         "daily_gross_amount": 1000,
         "daily_discount": 0,
+        "daily_quantity": 100,
         "mtd_gross_amount": 25000,
         "ytd_gross_amount": 300000,
         "daily_transactions": 42,
@@ -179,7 +180,7 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
     assert result.today_gross == Decimal("1000")
     assert result.mtd_gross == Decimal("25000")
     assert result.ytd_gross == Decimal("300000")
-    assert result.daily_transactions == 42
+    assert result.daily_transactions == 39  # 42 raw - 3 returns
     assert result.daily_customers == 15
     assert result.daily_returns == 3
     assert result.mtd_transactions == 420
@@ -196,6 +197,7 @@ def test_get_kpi_summary_nulls_in_optional_fields(analytics_repo, mock_session):
     row = {
         "daily_gross_amount": 500,
         "daily_discount": None,
+        "daily_quantity": None,
         "mtd_gross_amount": 1500,
         "ytd_gross_amount": 10000,
         "daily_transactions": 10,

@@ -26,8 +26,8 @@ const DIM_TABS = [
 
 type DimensionKey = (typeof DIM_TABS)[number]["key"];
 
-interface WaterfallChartProps {
-  data: WaterfallAnalysis;
+export interface WaterfallChartProps {
+  data?: WaterfallAnalysis;
 }
 
 export function WaterfallChart({ data }: WaterfallChartProps) {
@@ -36,12 +36,13 @@ export function WaterfallChart({ data }: WaterfallChartProps) {
 
   // Group drivers by dimension
   const driversByDim = useMemo(() => {
+    if (!data) return {};
     const grouped: Record<string, typeof data.drivers> = {};
     for (const d of data.drivers) {
       (grouped[d.dimension] ??= []).push(d);
     }
     return grouped;
-  }, [data.drivers]);
+  }, [data]);
 
   // Only show tabs that have data
   const availableTabs = useMemo(
@@ -49,7 +50,7 @@ export function WaterfallChart({ data }: WaterfallChartProps) {
     [driversByDim],
   );
 
-  if (!data.drivers.length) {
+  if (!data || !data.drivers.length) {
     return (
       <div className="rounded-lg border border-border bg-card p-6">
         <h3 className="text-lg font-semibold mb-2">Revenue Change Drivers</h3>

@@ -75,10 +75,10 @@ def _check_pool() -> dict:
     try:
         engine = get_engine()
         pool = engine.pool
-        size = pool.size()
-        checked_out = pool.checkedout()
-        overflow = pool.overflow()
-        max_total = size + pool._max_overflow
+        size = pool.size()  # type: ignore[attr-defined]
+        checked_out = pool.checkedout()  # type: ignore[attr-defined]
+        overflow = pool.overflow()  # type: ignore[attr-defined]
+        max_total = size + pool._max_overflow  # type: ignore[attr-defined]
         saturation = checked_out / max(max_total, 1)
         status = "ok"
         if saturation > 0.95:
@@ -130,10 +130,7 @@ def health_check(request: Request) -> JSONResponse:
     status_code = 200 if overall == "healthy" else 503
 
     # Only expose component details to callers with a valid auth header
-    has_auth = bool(
-        request.headers.get("authorization")
-        or request.headers.get("x-api-key")
-    )
+    has_auth = bool(request.headers.get("authorization") or request.headers.get("x-api-key"))
     content: dict = {"status": overall}
     if has_auth:
         content["checks"] = checks

@@ -47,7 +47,7 @@ class BreakdownRepository:
 
         stmt = text(f"""
             SELECT db.billing_group,
-                   -- Subtract 2x returns: each return reverses the original sale (+1) and adds a return txn (+1)
+                   -- Subtract 2x returns: reverses original sale + adds return txn
                    SUM(a.transaction_count) - 2 * SUM(a.return_count) AS transaction_count,
                    SUM(a.total_sales) AS total_sales
             FROM public_marts.agg_sales_daily a
@@ -62,7 +62,7 @@ class BreakdownRepository:
             return BillingBreakdown(items=[], total_transactions=0, total_net_amount=_ZERO)
 
         raw = [(str(r[0]), int(r[1]), Decimal(str(r[2]))) for r in rows]
-        grand_total = sum(v for _, _, v in raw)
+        grand_total = sum((v for _, _, v in raw), _ZERO)
         if grand_total <= 0:
             grand_total = Decimal("1")  # fallback: net-negative period
         total_txn = sum(c for _, c, _ in raw)
