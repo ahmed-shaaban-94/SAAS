@@ -71,3 +71,4 @@ frontend/waitlist.json
 
 # Database backups
 backups/
+coverage.xml
