@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTargetSummary } from "@/hooks/use-targets";
+import { useTargetSummary, useQuarterlySummary } from "@/hooks/use-targets";
 import { useBudgetSummary } from "@/hooks/use-budget";
 import { formatCurrency, formatPercent, formatCompact, formatAbsolutePercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
@@ -139,9 +139,81 @@ function BudgetSection({ year }: { year: number }) {
   );
 }
 
+function QuarterlyView({ year }: { year: number }) {
+  const { data, isLoading } = useQuarterlySummary(year);
+  const theme = useChartTheme();
+
+  if (isLoading) return <LoadingCard className="h-64" />;
+  if (!data || data.quarters.length === 0) {
+    return <div className="rounded-xl border border-border bg-card p-8 text-center text-text-tertiary">No quarterly data for {year}</div>;
+  }
+
+  const chartData = data.quarters.map((q) => ({
+    period: q.quarter_label,
+    target: q.target_value,
+    actual: q.actual_value,
+    achievement: q.achievement_pct,
+  }));
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold text-text-primary mb-4">Quarterly Target vs Actual</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.gridStroke} />
+            <XAxis dataKey="period" tick={{ fontSize: 12, fill: theme.tickFill }} />
+            <YAxis tick={{ fontSize: 10, fill: theme.tickFill }} tickFormatter={(v: number) => formatCompact(v)} />
+            <Tooltip
+              contentStyle={{ backgroundColor: theme.tooltipBg, border: `1px solid ${theme.gridStroke}`, borderRadius: "8px", fontSize: "12px" }}
+              formatter={(value: number, name: string) => [formatCurrency(value), name === "target" ? "Target" : "Actual"]}
+            />
+            <Legend wrapperStyle={{ fontSize: "11px" }} />
+            <Bar dataKey="target" name="Target" fill={theme.gridStroke} radius={[4, 4, 0, 0]} opacity={0.5} />
+            <Bar dataKey="actual" name="Actual" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border bg-card p-4">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left py-2 px-3 font-medium text-text-secondary">Quarter</th>
+              <th className="text-right py-2 px-3 font-medium text-text-secondary">Target</th>
+              <th className="text-right py-2 px-3 font-medium text-text-secondary">Actual</th>
+              <th className="text-right py-2 px-3 font-medium text-text-secondary">Variance</th>
+              <th className="text-right py-2 px-3 font-medium text-text-secondary">Achievement</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.quarters.map((q) => (
+              <tr key={q.quarter} className="border-b border-border/50 hover:bg-divider/50">
+                <td className="py-2 px-3 font-medium text-text-primary">{q.quarter_label}</td>
+                <td className="py-2 px-3 text-right text-text-secondary">{formatCurrency(q.target_value)}</td>
+                <td className="py-2 px-3 text-right text-text-primary font-medium">{formatCurrency(q.actual_value)}</td>
+                <td className={`py-2 px-3 text-right font-medium ${q.variance >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  {q.variance >= 0 ? "+" : ""}{formatCurrency(q.variance)}
+                </td>
+                <td className="py-2 px-3 text-right">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                    q.achievement_pct >= 100 ? "bg-green-500/10 text-green-500" :
+                    q.achievement_pct >= 75 ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
+                  }`}>{formatAbsolutePercent(q.achievement_pct)}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function GoalsOverview() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
+  const [viewMode, setViewMode] = useState<"monthly" | "quarterly">("monthly");
   const { data, isLoading, mutate } = useTargetSummary(year);
   const theme = useChartTheme();
   const [showForm, setShowForm] = useState(false);
@@ -192,6 +264,23 @@ export function GoalsOverview() {
         <span className="text-lg font-bold text-text-primary">{year}</span>
         <button onClick={() => setYear(y => Math.min(y + 1, currentYear))} disabled={year >= currentYear}
           className="rounded-lg px-3 py-1 text-sm text-text-secondary hover:bg-divider disabled:opacity-30">&rarr;</button>
+        {/* Monthly / Quarterly toggle */}
+        <div className="flex rounded-lg border border-border overflow-hidden ml-4">
+          {(["monthly", "quarterly"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                viewMode === mode
+                  ? "bg-accent text-white"
+                  : "text-text-secondary hover:bg-divider"
+              }`}
+            >
+              {mode === "monthly" ? "Monthly" : "Quarterly"}
+            </button>
+          ))}
+        </div>
+
         <button onClick={() => setShowForm(!showForm)}
           className="ml-auto flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors">
           <Plus className="h-4 w-4" />
@@ -223,7 +312,9 @@ export function GoalsOverview() {
         </div>
       )}
 
-      {!hasTargets ? (
+      {viewMode === "quarterly" ? (
+        <QuarterlyView year={year} />
+      ) : !hasTargets ? (
         <div className="rounded-xl border border-border bg-card p-12 text-center">
           <Target className="h-12 w-12 text-text-secondary mx-auto mb-3 opacity-30" />
           <p className="text-sm text-text-secondary">No targets set for {year}</p>

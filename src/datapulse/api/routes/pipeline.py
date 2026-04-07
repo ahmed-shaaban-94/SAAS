@@ -34,6 +34,7 @@ from datapulse.pipeline.models import (
     PipelineRunList,
     PipelineRunResponse,
     PipelineRunUpdate,
+    QualityScorecard,
     TriggerRequest,
     TriggerResponse,
 )
@@ -454,3 +455,13 @@ def execute_quality_check(
         stage=body.stage,
         tenant_id=body.tenant_id,
     )
+
+
+@router.get("/quality/scorecard", response_model=QualityScorecard)
+def get_quality_scorecard(
+    request: Request,
+    quality_service: QualityServiceDep,
+    limit: int = Query(20, ge=1, le=100),
+) -> QualityScorecard:
+    """Return aggregated quality scores across recent pipeline runs."""
+    return quality_service.get_scorecard(limit=limit)

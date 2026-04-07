@@ -35,6 +35,11 @@ export const NAV_ITEMS = [
   { label: "Reports", href: "/reports", icon: "FileBarChart" },
   { label: "Alerts", href: "/alerts", icon: "Bell" },
   { label: "Insights", href: "/insights", icon: "Sparkles" },
+  { label: "What-If", href: "/scenarios", icon: "FlaskConical" },
+  { label: "Import Data", href: "/upload", icon: "Upload" },
   { label: "Team", href: "/team", icon: "Shield" },
+  { label: "Data Lineage", href: "/lineage", icon: "GitBranch" },
+  { label: "Data Quality", href: "/quality", icon: "ShieldCheck" },
+  { label: "Audit Log", href: "/audit", icon: "ScrollText" },
   { label: "Billing", href: "/billing", icon: "CreditCard" },
 ] as const;

@@ -756,7 +756,7 @@ export default function TeamPage() {
               onDelete={deleteSector}
             />
           ))}
-          {canManage && <CreateSectorForm onSubmit={createSector} />}
+          {canManage && <CreateSectorForm onSubmit={async (data) => { await createSector(data); }} />}
         </div>
       </section>
 
@@ -764,7 +764,7 @@ export default function TeamPage() {
       <InviteDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
-        onInvite={inviteMember}
+        onInvite={async (email, role, name, sectorIds) => { await inviteMember(email, role, name, sectorIds); }}
         sectors={sectors || []}
         actorRole={actorRole}
       />

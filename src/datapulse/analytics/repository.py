@@ -1088,5 +1088,38 @@ class AnalyticsRepository:
             for r in rows
         ]
 
+    def get_staff_quota(
+        self,
+        year: int | None = None,
+        month: int | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Fetch staff quota attainment from feat_staff_quota."""
+        conditions = []
+        params: dict = {"limit": limit}
+
+        if year is not None:
+            conditions.append("year = :year")
+            params["year"] = year
+        if month is not None:
+            conditions.append("month = :month")
+            params["month"] = month
+
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        stmt = text(f"""
+            SELECT staff_key, staff_name, staff_position, year, month,
+                   actual_revenue, actual_quantity AS actual_transactions,
+                   target_revenue, target_transactions,
+                   revenue_achievement_pct, transactions_achievement_pct,
+                   revenue_variance
+            FROM public_marts.feat_staff_quota
+            {where}
+            ORDER BY actual_revenue DESC
+            LIMIT :limit
+        """)  # noqa: S608
+        rows = self._session.execute(stmt, params).mappings().all()
+        return [dict(r) for r in rows]
+
     # Detail methods (get_product_detail, get_customer_detail, get_staff_detail)
     # have been extracted to datapulse.analytics.detail_repository.DetailRepository

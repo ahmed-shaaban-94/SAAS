@@ -204,3 +204,68 @@ models:
         description: "Composite health score (0-100)"
       - name: health_band
         description: "Thriving / Healthy / Needs Attention / At Risk / Critical"
+
+  # -- feat_churn_prediction ------------------------------------------------------
+  - name: feat_churn_prediction
+    description: "Customer churn prediction. Grain: (tenant_id, customer_key). Logistic probability based on recency, frequency, trend, and health score."
+    meta:
+      label: "Churn Prediction"
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: customer_key
+        tests: [not_null]
+      - name: churn_probability
+        description: "Probability of churn (0-1)"
+      - name: risk_level
+        description: "high / medium / low"
+        tests:
+          - accepted_values:
+              values: ["high", "medium", "low"]
+
+  # -- feat_product_affinity ------------------------------------------------------
+  - name: feat_product_affinity
+    description: "Product co-purchase affinity. Grain: (tenant_id, product_key_a, product_key_b). Shows co-occurrence count, support, and confidence for product pairs."
+    meta:
+      label: "Product Affinity"
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: product_key_a
+        tests: [not_null]
+      - name: product_key_b
+        tests: [not_null]
+      - name: co_occurrence_count
+        description: "Number of invoices containing both products"
+      - name: support_pct
+        description: "Co-occurrence / total invoices * 100"
+      - name: confidence_a_to_b
+        description: "P(B|A) = co-occurrence / invoices_with_A * 100"
+
+  # -- feat_staff_quota -----------------------------------------------------------
+  - name: feat_staff_quota
+    description: "Staff quota attainment — actual sales vs targets per staff member per month. Grain: (tenant_id, staff_key, year, month)."
+    meta:
+      label: "Staff Quota"
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: staff_key
+        description: "FK to dim_staff"
+        tests: [not_null]
+      - name: year
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: staff_name
+        description: "Staff member name"
+      - name: actual_revenue
+        description: "Actual net revenue for the period"
+      - name: target_revenue
+        description: "Revenue target for the period (from sales_targets)"
+      - name: revenue_achievement_pct
+        description: "Actual / Target * 100 for revenue"
+      - name: transactions_achievement_pct
+        description: "Actual / Target * 100 for transactions"
+      - name: revenue_variance
+        description: "Actual revenue minus target revenue"
