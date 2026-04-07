@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # run_pipeline
@@ -22,20 +20,23 @@ async def test_run_pipeline_success():
 
     with (
         patch("datapulse.scheduler.get_settings") as mock_settings,
-        patch("datapulse.scheduler.get_session_factory") as mock_sf,
-        patch("datapulse.scheduler.PipelineExecutor") as mock_executor_cls,
-        patch("datapulse.scheduler.PipelineRepository"),
-        patch("datapulse.scheduler.QualityRepository"),
-        patch("datapulse.scheduler.QualityService") as mock_qs_cls,
-        patch("datapulse.scheduler.notify_pipeline_success") as mock_notify_ok,
-        patch("datapulse.scheduler.notify_pipeline_failure"),
-        patch("datapulse.scheduler.cache_invalidate_pattern"),
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.pipeline.executor.PipelineExecutor") as mock_executor_cls,
+        patch("datapulse.pipeline.repository.PipelineRepository"),
+        patch("datapulse.pipeline.quality_repository.QualityRepository"),
+        patch("datapulse.pipeline.quality_service.QualityService") as mock_qs_cls,
+        patch("datapulse.notifications.notify_pipeline_success") as mock_notify_ok,
+        patch("datapulse.notifications.notify_pipeline_failure"),
+        patch("datapulse.cache.cache_invalidate_pattern"),
     ):
         mock_settings.return_value = MagicMock()
 
         # Session factory
         mock_session = MagicMock()
-        mock_sf.return_value = lambda: mock_session
+        # get_session_factory()() returns a session
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        # pg_try_advisory_lock returns True
+        mock_session.execute.return_value.scalar.return_value = True
 
         # Executor stages all succeed
         mock_executor = mock_executor_cls.return_value
@@ -62,16 +63,17 @@ async def test_run_pipeline_stage_failure_stops_pipeline():
 
     with (
         patch("datapulse.scheduler.get_settings") as mock_settings,
-        patch("datapulse.scheduler.get_session_factory") as mock_sf,
-        patch("datapulse.scheduler.PipelineExecutor") as mock_executor_cls,
-        patch("datapulse.scheduler.PipelineRepository"),
-        patch("datapulse.scheduler.notify_pipeline_success") as mock_ok,
-        patch("datapulse.scheduler.notify_pipeline_failure") as mock_fail,
-        patch("datapulse.scheduler.cache_invalidate_pattern"),
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.pipeline.executor.PipelineExecutor") as mock_executor_cls,
+        patch("datapulse.pipeline.repository.PipelineRepository"),
+        patch("datapulse.notifications.notify_pipeline_success") as mock_ok,
+        patch("datapulse.notifications.notify_pipeline_failure") as mock_fail,
+        patch("datapulse.cache.cache_invalidate_pattern"),
     ):
         mock_settings.return_value = MagicMock()
         mock_session = MagicMock()
-        mock_sf.return_value = lambda: mock_session
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        mock_session.execute.return_value.scalar.return_value = True
         mock_executor_cls.return_value.run_bronze.return_value = fail_result
 
         from datapulse.scheduler import run_pipeline
@@ -91,9 +93,14 @@ async def test_run_pipeline_stage_failure_stops_pipeline():
 async def test_health_check_all_ok():
     """No notification when DB and Redis are healthy."""
     with (
-        patch("datapulse.scheduler._check_db", return_value={"status": "ok", "latency_ms": 5}),
-        patch("datapulse.scheduler._check_redis", return_value={"status": "ok", "latency_ms": 2}),
-        patch("datapulse.scheduler.notify_health_failure") as mock_notify,
+        patch(
+            "datapulse.api.routes.health._check_db", return_value={"status": "ok", "latency_ms": 5}
+        ),
+        patch(
+            "datapulse.api.routes.health._check_redis",
+            return_value={"status": "ok", "latency_ms": 2},
+        ),
+        patch("datapulse.notifications.notify_health_failure") as mock_notify,
     ):
         from datapulse.scheduler import _health_check
 
@@ -105,9 +112,12 @@ async def test_health_check_all_ok():
 async def test_health_check_db_failure_notifies():
     """Notification sent when DB is down."""
     with (
-        patch("datapulse.scheduler._check_db", return_value={"status": "error", "error": "timeout"}),
-        patch("datapulse.scheduler._check_redis", return_value={"status": "ok"}),
-        patch("datapulse.scheduler.notify_health_failure") as mock_notify,
+        patch(
+            "datapulse.api.routes.health._check_db",
+            return_value={"status": "error", "error": "timeout"},
+        ),
+        patch("datapulse.api.routes.health._check_redis", return_value={"status": "ok"}),
+        patch("datapulse.notifications.notify_health_failure") as mock_notify,
     ):
         from datapulse.scheduler import _health_check
 
@@ -124,12 +134,12 @@ async def test_health_check_db_failure_notifies():
 async def test_quality_digest_no_runs():
     """No notification when no pipeline runs exist."""
     with (
-        patch("datapulse.scheduler.get_session_factory") as mock_sf,
-        patch("datapulse.scheduler.PipelineRepository") as mock_repo_cls,
-        patch("datapulse.scheduler.notify_quality_digest") as mock_notify,
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
+        patch("datapulse.notifications.notify_quality_digest") as mock_notify,
     ):
         mock_session = MagicMock()
-        mock_sf.return_value = lambda: mock_session
+        mock_sf.return_value = MagicMock(return_value=mock_session)
         mock_repo_cls.return_value.get_latest_run.return_value = None
 
         from datapulse.scheduler import _quality_digest

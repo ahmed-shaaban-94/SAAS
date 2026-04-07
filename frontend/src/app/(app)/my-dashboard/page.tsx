@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { ResponsiveGridLayout, type Layout } from "react-grid-layout";
+import { Responsive, useContainerWidth } from "react-grid-layout";
 import {
   Save,
   Plus,
@@ -22,7 +22,7 @@ import {
 
 import "react-grid-layout/css/styles.css";
 
-
+// react-grid-layout v2 uses useContainerWidth instead of WidthProvider
 
 function WidgetPickerPanel({
   open,
@@ -109,6 +109,7 @@ function WidgetPickerPanel({
 
 export default function MyDashboardPage() {
   const { layout: savedLayout, isLoading, saveLayout } = useDashboardLayout();
+  const { containerRef, width } = useContainerWidth();
   const [layout, setLayout] = useState<LayoutItem[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -248,8 +249,9 @@ export default function MyDashboardPage() {
           </button>
         </div>
       ) : (
-        <ResponsiveGridLayout
-          width={0}
+        <Responsive
+          innerRef={containerRef as React.RefObject<HTMLDivElement>}
+          width={width || 1024}
           className="layout"
           layouts={{ lg: layout }}
           breakpoints={{ lg: 1024, md: 768, sm: 480, xs: 0 }}
@@ -257,8 +259,8 @@ export default function MyDashboardPage() {
           rowHeight={100}
           dragConfig={{ enabled: !locked, handle: ".drag-handle" }}
           resizeConfig={{ enabled: !locked }}
-          onLayoutChange={(newLayout: Layout) => handleLayoutChange(newLayout as LayoutItem[])}
-          margin={[12, 12]}
+          onLayoutChange={(newLayout) => handleLayoutChange([...newLayout] as LayoutItem[])}
+          margin={[12, 12] as [number, number]}
         >
           {layout.map((item) => (
             <div
@@ -290,7 +292,7 @@ export default function MyDashboardPage() {
               </div>
             </div>
           ))}
-        </ResponsiveGridLayout>
+        </Responsive>
       )}
 
       {/* Widget Picker */}

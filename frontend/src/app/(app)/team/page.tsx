@@ -51,7 +51,7 @@ function InviteDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onInvite: (email: string, role: RoleKey, name: string, sectorIds: number[]) => Promise<void>;
+  onInvite: (email: string, role: RoleKey, name: string, sectorIds: number[]) => Promise<unknown>;
   sectors: SectorResponse[];
   actorRole: RoleKey;
 }) {
@@ -537,7 +537,7 @@ function SectorCard({
 function CreateSectorForm({
   onSubmit,
 }: {
-  onSubmit: (data: { sector_key: string; sector_name: string; description: string; site_codes: string[] }) => Promise<void>;
+  onSubmit: (data: { sector_key: string; sector_name: string; description?: string; site_codes?: string[] }) => Promise<unknown>;
 }) {
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState("");

@@ -1,7 +1,7 @@
 """Tests for RBACRepository with mocked DB sessions."""
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from datapulse.rbac.repository import RBACRepository
 

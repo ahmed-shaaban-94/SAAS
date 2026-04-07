@@ -5,7 +5,7 @@ from pathlib import Path
 from datapulse.config import get_settings
 from datapulse.import_pipeline.models import FileFormat
 
-ALLOWED_EXTENSIONS = {".csv", ".xlsx"}
+ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
 
 
 class ValidationError(Exception):

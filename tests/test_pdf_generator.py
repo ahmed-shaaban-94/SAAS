@@ -1,7 +1,5 @@
 """Tests for PDF report generator."""
 
-import pytest
-
 from datapulse.reports.pdf_generator import (
     _fmt,
     generate_dashboard_pdf,
@@ -37,63 +35,78 @@ class TestGenerateReportPdf:
         assert pdf[:5] == b"%PDF-"
 
     def test_text_section(self):
-        pdf = generate_report_pdf("Test", [
-            {"type": "text", "title": "Intro", "text": "Hello world"},
-        ])
+        pdf = generate_report_pdf(
+            "Test",
+            [
+                {"type": "text", "title": "Intro", "text": "Hello world"},
+            ],
+        )
         assert pdf[:5] == b"%PDF-"
 
     def test_kpi_section(self):
-        pdf = generate_report_pdf("Test", [
-            {
-                "type": "kpi",
-                "title": "KPIs",
-                "kpis": [
-                    {"label": "Revenue", "value": "1,000,000"},
-                    {"label": "Orders", "value": "5,000"},
-                ],
-            },
-        ])
+        pdf = generate_report_pdf(
+            "Test",
+            [
+                {
+                    "type": "kpi",
+                    "title": "KPIs",
+                    "kpis": [
+                        {"label": "Revenue", "value": "1,000,000"},
+                        {"label": "Orders", "value": "5,000"},
+                    ],
+                },
+            ],
+        )
         assert pdf[:5] == b"%PDF-"
 
     def test_table_section(self):
-        pdf = generate_report_pdf("Test", [
-            {
-                "type": "table",
-                "title": "Products",
-                "headers": ["Name", "Revenue", "Qty"],
-                "rows": [
-                    ["Widget A", 50000, 100],
-                    ["Widget B", 30000, 75],
-                ],
-            },
-        ])
+        pdf = generate_report_pdf(
+            "Test",
+            [
+                {
+                    "type": "table",
+                    "title": "Products",
+                    "headers": ["Name", "Revenue", "Qty"],
+                    "rows": [
+                        ["Widget A", 50000, 100],
+                        ["Widget B", 30000, 75],
+                    ],
+                },
+            ],
+        )
         assert pdf[:5] == b"%PDF-"
 
     def test_mixed_sections(self):
-        pdf = generate_report_pdf("Full Report", [
-            {"type": "text", "title": "Summary", "text": "Q1 2025 Report"},
-            {
-                "type": "kpi",
-                "title": "Overview",
-                "kpis": [
-                    {"label": "Revenue", "value": "$1M"},
-                    {"label": "Growth", "value": "+15%"},
-                ],
-            },
-            {
-                "type": "table",
-                "title": "Details",
-                "headers": ["Item", "Amount"],
-                "rows": [["A", 100], ["B", 200]],
-            },
-        ])
+        pdf = generate_report_pdf(
+            "Full Report",
+            [
+                {"type": "text", "title": "Summary", "text": "Q1 2025 Report"},
+                {
+                    "type": "kpi",
+                    "title": "Overview",
+                    "kpis": [
+                        {"label": "Revenue", "value": "$1M"},
+                        {"label": "Growth", "value": "+15%"},
+                    ],
+                },
+                {
+                    "type": "table",
+                    "title": "Details",
+                    "headers": ["Item", "Amount"],
+                    "rows": [["A", 100], ["B", 200]],
+                },
+            ],
+        )
         assert pdf[:5] == b"%PDF-"
         assert len(pdf) > 500
 
     def test_empty_table(self):
-        pdf = generate_report_pdf("Test", [
-            {"type": "table", "title": "Empty", "headers": [], "rows": []},
-        ])
+        pdf = generate_report_pdf(
+            "Test",
+            [
+                {"type": "table", "title": "Empty", "headers": [], "rows": []},
+            ],
+        )
         assert pdf[:5] == b"%PDF-"
 
 
@@ -108,14 +121,34 @@ class TestGenerateDashboardPdf:
                 "revenue_growth_pct": 15.5,
             },
             top_products=[
-                {"product_name": "Widget A", "total_revenue": 50000, "total_quantity": 100, "total_orders": 50},
-                {"product_name": "Widget B", "total_revenue": 30000, "total_quantity": 75, "total_orders": 30},
+                {
+                    "product_name": "Widget A",
+                    "total_revenue": 50000,
+                    "total_quantity": 100,
+                    "total_orders": 50,
+                },
+                {
+                    "product_name": "Widget B",
+                    "total_revenue": 30000,
+                    "total_quantity": 75,
+                    "total_orders": 30,
+                },
             ],
             top_customers=[
-                {"customer_name": "Acme Corp", "total_revenue": 80000, "total_orders": 40, "avg_order_value": 2000},
+                {
+                    "customer_name": "Acme Corp",
+                    "total_revenue": 80000,
+                    "total_orders": 40,
+                    "avg_order_value": 2000,
+                },
             ],
             top_staff=[
-                {"staff_name": "Ahmed", "total_revenue": 120000, "total_orders": 60, "unique_customers": 25},
+                {
+                    "staff_name": "Ahmed",
+                    "total_revenue": 120000,
+                    "total_orders": 60,
+                    "unique_customers": 25,
+                },
             ],
         )
         assert pdf[:5] == b"%PDF-"

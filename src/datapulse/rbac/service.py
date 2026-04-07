@@ -105,9 +105,9 @@ class RBACService:
             user_id=user_id,
             email=email,
             role=role,
-            reason="owner_emails" if role == "owner" else (
-                "admin_emails" if role == "admin" else "default"
-            ),
+            reason="owner_emails"
+            if role == "owner"
+            else ("admin_emails" if role == "admin" else "default"),
         )
         return self._repo.create_member(
             tenant_id=tenant_id,
@@ -190,7 +190,7 @@ class RBACService:
         if update.role_key in ("owner", "admin") and actor_role != "owner":
             raise ValueError("Only the owner can assign the owner or admin role")
 
-        # Cannot demote the current owner (unless you're the owner demoting yourself — not supported)
+        # Cannot demote the current owner (owner self-demote not supported)
         if member["role_key"] == "owner" and update.role_key and update.role_key != "owner":
             raise ValueError("Cannot change the owner's role directly")
 

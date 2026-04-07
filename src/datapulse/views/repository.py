@@ -97,4 +97,4 @@ class ViewsRepository:
         sql = text("DELETE FROM public.saved_views WHERE id = :vid AND user_id = :uid")
         result = self._session.execute(sql, {"vid": view_id, "uid": user_id})
         self._session.flush()
-        return (result.rowcount or 0) > 0
+        return (result.rowcount or 0) > 0  # type: ignore[attr-defined]

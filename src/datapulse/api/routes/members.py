@@ -7,13 +7,11 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from datapulse.api.deps import CurrentUser
 from datapulse.api.limiter import limiter
 from datapulse.rbac.dependencies import (
     AccessCtx,
     get_rbac_service,
     require_permission,
-    require_role,
 )
 from datapulse.rbac.models import (
     MemberBrief,

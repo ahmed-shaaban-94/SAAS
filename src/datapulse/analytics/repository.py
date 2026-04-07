@@ -509,6 +509,7 @@ class AnalyticsRepository:
 
     def _get_kpi_from_fct_sales(self, filters: AnalyticsFilter) -> KPISummary:
         """KPI aggregation via fct_sales with dimension JOINs for filtered queries."""
+        assert filters.date_range is not None
         start = filters.date_range.start_date
         end = filters.date_range.end_date
         start_key = start.year * 10000 + start.month * 100 + start.day
@@ -528,7 +529,8 @@ class AnalyticsRepository:
         if filters.category is not None or filters.brand is not None:
             joins.append(
                 "INNER JOIN public_marts.dim_product p"
-                " ON f.product_key = p.product_key AND f.tenant_id = p.tenant_id"
+                " ON f.product_key = p.product_key"
+                " AND f.tenant_id = p.tenant_id"
             )
             if filters.category is not None:
                 where_parts.append("p.drug_category = :category")
@@ -704,6 +706,7 @@ class AnalyticsRepository:
         if self._has_dimensional_filters(filters):
             return self._get_kpi_from_fct_sales(filters)
 
+        assert filters.date_range is not None
         start = filters.date_range.start_date
         end = filters.date_range.end_date
         log.info("get_kpi_summary_range", start=str(start), end=str(end))
@@ -1085,9 +1088,6 @@ class AnalyticsRepository:
             for r in rows
         ]
 
-    # Detail methods (get_product_detail, get_customer_detail, get_staff_detail)
-    # have been extracted to datapulse.analytics.detail_repository.DetailRepository
-
     def get_staff_quota(
         self,
         year: int | None = None,
@@ -1120,3 +1120,6 @@ class AnalyticsRepository:
         """)  # noqa: S608
         rows = self._session.execute(stmt, params).mappings().all()
         return [dict(r) for r in rows]
+
+    # Detail methods (get_product_detail, get_customer_detail, get_staff_detail)
+    # have been extracted to datapulse.analytics.detail_repository.DetailRepository

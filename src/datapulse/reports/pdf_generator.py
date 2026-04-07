@@ -33,41 +33,51 @@ _WHITE = colors.white
 
 def _styles():
     ss = getSampleStyleSheet()
-    ss.add(ParagraphStyle(
-        "ReportTitle",
-        parent=ss["Title"],
-        fontSize=22,
-        textColor=_ACCENT,
-        spaceAfter=4 * mm,
-    ))
-    ss.add(ParagraphStyle(
-        "SectionHeading",
-        parent=ss["Heading2"],
-        fontSize=14,
-        textColor=_GRAY_700,
-        spaceBefore=8 * mm,
-        spaceAfter=4 * mm,
-    ))
-    ss.add(ParagraphStyle(
-        "SubText",
-        parent=ss["Normal"],
-        fontSize=9,
-        textColor=colors.gray,
-    ))
-    ss.add(ParagraphStyle(
-        "KPIValue",
-        parent=ss["Normal"],
-        fontSize=16,
-        textColor=_ACCENT,
-        alignment=1,  # center
-    ))
-    ss.add(ParagraphStyle(
-        "KPILabel",
-        parent=ss["Normal"],
-        fontSize=8,
-        textColor=colors.gray,
-        alignment=1,
-    ))
+    ss.add(
+        ParagraphStyle(
+            "ReportTitle",
+            parent=ss["Title"],
+            fontSize=22,
+            textColor=_ACCENT,
+            spaceAfter=4 * mm,
+        )
+    )
+    ss.add(
+        ParagraphStyle(
+            "SectionHeading",
+            parent=ss["Heading2"],
+            fontSize=14,
+            textColor=_GRAY_700,
+            spaceBefore=8 * mm,
+            spaceAfter=4 * mm,
+        )
+    )
+    ss.add(
+        ParagraphStyle(
+            "SubText",
+            parent=ss["Normal"],
+            fontSize=9,
+            textColor=colors.gray,
+        )
+    )
+    ss.add(
+        ParagraphStyle(
+            "KPIValue",
+            parent=ss["Normal"],
+            fontSize=16,
+            textColor=_ACCENT,
+            alignment=1,  # center
+        )
+    )
+    ss.add(
+        ParagraphStyle(
+            "KPILabel",
+            parent=ss["Normal"],
+            fontSize=8,
+            textColor=colors.gray,
+            alignment=1,
+        )
+    )
     return ss
 
 
@@ -111,10 +121,12 @@ def _build_kpi_row(kpis: list[dict[str, str]]) -> Table:
     ss = _styles()
     cells = []
     for kpi in kpis[:6]:  # max 6 KPIs
-        cells.append([
-            Paragraph(str(kpi.get("value", "")), ss["KPIValue"]),
-            Paragraph(str(kpi.get("label", "")), ss["KPILabel"]),
-        ])
+        cells.append(
+            [
+                Paragraph(str(kpi.get("value", "")), ss["KPIValue"]),
+                Paragraph(str(kpi.get("label", "")), ss["KPILabel"]),
+            ]
+        )
 
     # Transpose to rows
     data = [
@@ -123,15 +135,19 @@ def _build_kpi_row(kpis: list[dict[str, str]]) -> Table:
     ]
     col_w = (A4[0] - 4 * cm) / len(cells)
     t = Table(data, colWidths=[col_w] * len(cells))
-    t.setStyle(TableStyle([
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("BOX", (0, 0), (-1, -1), 0.5, _GRAY_200),
-        ("LINEBEFORE", (1, 0), (-1, -1), 0.5, _GRAY_200),
-        ("BACKGROUND", (0, 0), (-1, -1), _ACCENT_LIGHT),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("BOX", (0, 0), (-1, -1), 0.5, _GRAY_200),
+                ("LINEBEFORE", (1, 0), (-1, -1), 0.5, _GRAY_200),
+                ("BACKGROUND", (0, 0), (-1, -1), _ACCENT_LIGHT),
+            ]
+        )
+    )
     return t
 
 
@@ -234,67 +250,75 @@ def generate_dashboard_pdf(
 
     # KPI Summary
     if summary:
-        sections.append({
-            "type": "kpi",
-            "title": "Key Performance Indicators",
-            "kpis": [
-                {"label": "Total Revenue", "value": _fmt(summary.get("total_revenue"))},
-                {"label": "Total Orders", "value": _fmt(summary.get("total_orders"))},
-                {"label": "Avg Order Value", "value": _fmt(summary.get("avg_order_value"))},
-                {"label": "Unique Customers", "value": _fmt(summary.get("unique_customers"))},
-                {"label": "Growth %", "value": _fmt(summary.get("revenue_growth_pct"))},
-            ],
-        })
+        sections.append(
+            {
+                "type": "kpi",
+                "title": "Key Performance Indicators",
+                "kpis": [
+                    {"label": "Total Revenue", "value": _fmt(summary.get("total_revenue"))},
+                    {"label": "Total Orders", "value": _fmt(summary.get("total_orders"))},
+                    {"label": "Avg Order Value", "value": _fmt(summary.get("avg_order_value"))},
+                    {"label": "Unique Customers", "value": _fmt(summary.get("unique_customers"))},
+                    {"label": "Growth %", "value": _fmt(summary.get("revenue_growth_pct"))},
+                ],
+            }
+        )
 
     # Top Products
     if top_products:
-        sections.append({
-            "type": "table",
-            "title": f"Top {len(top_products)} Products",
-            "headers": ["Product", "Revenue", "Quantity", "Orders"],
-            "rows": [
-                [
-                    p.get("product_name", p.get("material_name", ""))[:40],
-                    p.get("total_revenue", p.get("revenue", 0)),
-                    p.get("total_quantity", p.get("quantity", 0)),
-                    p.get("total_orders", p.get("orders", 0)),
-                ]
-                for p in top_products[:20]
-            ],
-        })
+        sections.append(
+            {
+                "type": "table",
+                "title": f"Top {len(top_products)} Products",
+                "headers": ["Product", "Revenue", "Quantity", "Orders"],
+                "rows": [
+                    [
+                        p.get("product_name", p.get("material_name", ""))[:40],
+                        p.get("total_revenue", p.get("revenue", 0)),
+                        p.get("total_quantity", p.get("quantity", 0)),
+                        p.get("total_orders", p.get("orders", 0)),
+                    ]
+                    for p in top_products[:20]
+                ],
+            }
+        )
 
     # Top Customers
     if top_customers:
-        sections.append({
-            "type": "table",
-            "title": f"Top {len(top_customers)} Customers",
-            "headers": ["Customer", "Revenue", "Orders", "Avg Order"],
-            "rows": [
-                [
-                    c.get("customer_name", c.get("customer", ""))[:40],
-                    c.get("total_revenue", c.get("revenue", 0)),
-                    c.get("total_orders", c.get("orders", 0)),
-                    c.get("avg_order_value", c.get("avg_order", 0)),
-                ]
-                for c in top_customers[:20]
-            ],
-        })
+        sections.append(
+            {
+                "type": "table",
+                "title": f"Top {len(top_customers)} Customers",
+                "headers": ["Customer", "Revenue", "Orders", "Avg Order"],
+                "rows": [
+                    [
+                        c.get("customer_name", c.get("customer", ""))[:40],
+                        c.get("total_revenue", c.get("revenue", 0)),
+                        c.get("total_orders", c.get("orders", 0)),
+                        c.get("avg_order_value", c.get("avg_order", 0)),
+                    ]
+                    for c in top_customers[:20]
+                ],
+            }
+        )
 
     # Top Staff
     if top_staff:
-        sections.append({
-            "type": "table",
-            "title": f"Top {len(top_staff)} Staff",
-            "headers": ["Staff", "Revenue", "Orders", "Customers"],
-            "rows": [
-                [
-                    s.get("staff_name", s.get("salesperson", ""))[:40],
-                    s.get("total_revenue", s.get("revenue", 0)),
-                    s.get("total_orders", s.get("orders", 0)),
-                    s.get("unique_customers", s.get("customers", 0)),
-                ]
-                for s in top_staff[:20]
-            ],
-        })
+        sections.append(
+            {
+                "type": "table",
+                "title": f"Top {len(top_staff)} Staff",
+                "headers": ["Staff", "Revenue", "Orders", "Customers"],
+                "rows": [
+                    [
+                        s.get("staff_name", s.get("salesperson", ""))[:40],
+                        s.get("total_revenue", s.get("revenue", 0)),
+                        s.get("total_orders", s.get("orders", 0)),
+                        s.get("unique_customers", s.get("customers", 0)),
+                    ]
+                    for s in top_staff[:20]
+                ],
+            }
+        )
 
     return generate_report_pdf("DataPulse Sales Report", sections)

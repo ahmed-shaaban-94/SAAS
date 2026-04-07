@@ -14,29 +14,53 @@ from datapulse.rbac.models import (
 class TestAccessContext:
     def test_has_full_access_owner(self):
         ctx = AccessContext(
-            member_id=1, tenant_id=1, user_id="u1", role_key="owner",
-            permissions=set(), sector_ids=[], site_codes=[], is_admin=True,
+            member_id=1,
+            tenant_id=1,
+            user_id="u1",
+            role_key="owner",
+            permissions=set(),
+            sector_ids=[],
+            site_codes=[],
+            is_admin=True,
         )
         assert ctx.has_full_access is True
 
     def test_has_full_access_admin(self):
         ctx = AccessContext(
-            member_id=2, tenant_id=1, user_id="u2", role_key="admin",
-            permissions=set(), sector_ids=[], site_codes=[], is_admin=True,
+            member_id=2,
+            tenant_id=1,
+            user_id="u2",
+            role_key="admin",
+            permissions=set(),
+            sector_ids=[],
+            site_codes=[],
+            is_admin=True,
         )
         assert ctx.has_full_access is True
 
     def test_no_full_access_editor(self):
         ctx = AccessContext(
-            member_id=3, tenant_id=1, user_id="u3", role_key="editor",
-            permissions=set(), sector_ids=[1], site_codes=["S1"], is_admin=False,
+            member_id=3,
+            tenant_id=1,
+            user_id="u3",
+            role_key="editor",
+            permissions=set(),
+            sector_ids=[1],
+            site_codes=["S1"],
+            is_admin=False,
         )
         assert ctx.has_full_access is False
 
     def test_no_full_access_viewer(self):
         ctx = AccessContext(
-            member_id=4, tenant_id=1, user_id="u4", role_key="viewer",
-            permissions=set(), sector_ids=[], site_codes=[], is_admin=False,
+            member_id=4,
+            tenant_id=1,
+            user_id="u4",
+            role_key="viewer",
+            permissions=set(),
+            sector_ids=[],
+            site_codes=[],
+            is_admin=False,
         )
         assert ctx.has_full_access is False
 
@@ -76,7 +100,7 @@ class TestSectorCreate:
         assert sector.sector_key == "sales-north"
 
     def test_key_validation(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SectorCreate(sector_key="Sales North!", sector_name="Sales North")
 
     def test_with_site_codes(self):

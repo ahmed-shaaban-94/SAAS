@@ -1,7 +1,7 @@
 """Tests for RBACService business logic."""
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -97,7 +97,7 @@ class TestEnsureMemberExists:
         repo.accept_invite.return_value = _make_member()
 
         service = RBACService(repo)
-        result = service.ensure_member_exists(1, "auth0|123", "test@example.com", "Test")
+        service.ensure_member_exists(1, "auth0|123", "test@example.com", "Test")
         repo.accept_invite.assert_called_once()
 
     def test_owner_email_gets_owner_role(self):
