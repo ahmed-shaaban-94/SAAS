@@ -5,11 +5,19 @@
 
 ## Summary
 
-- 🔴 Critical: _in progress_
-- 🟡 Warnings: _in progress_
-- 🟢 Suggestions: _in progress_
+- 🔴 Critical: **7**
+- 🟡 Warnings: **16**
+- 🟢 Suggestions: **7**
+- **Total findings: 30**
 
-> This report is compiled incrementally. Each layer is audited and pushed as completed.
+| Layer | 🔴 | 🟡 | 🟢 | Files |
+|-------|-----|-----|-----|-------|
+| Config & Thresholds | 0 | 2 | 1 | 5 |
+| Pipeline & Forecasting | 1 | 3 | 1 | 6 |
+| Python Analytics | 4 | 5 | 2 | 14 |
+| dbt SQL Models | 0 | 4 | 2 | 26+7 |
+| Frontend (Next.js) | 1 | 5 | 1 | 35 |
+| Power BI DAX | 1 | 3 | 2 | 12 |
 
 ---
 
@@ -760,3 +768,82 @@
 - **Display folders:** Well-organized: Core KPIs, Revenue Mix, Returns, Customer/Product/Staff Analytics, Time Intelligence, Conditional Formatting, Data Quality, Report Helpers
 
 ---
+
+## Top 5 Issues to Fix First
+
+| Priority | ID | Title | Effort | Impact |
+|----------|----|-------|--------|--------|
+| 1 | PY-1 | `daily_transactions` inconsistency across 3 code paths | Small (1 line fix) | KPI dashboard shows wrong transaction count |
+| 2 | PY-2 | Return rate unit mismatch (0-1 vs 0-100) | Small (standardize in 2 files) | Frontend displays 0.03% instead of 3.42% |
+| 3 | PY-3 | Average return rate uses simple avg, not weighted | Small (change formula) | 69% overstatement of return rate |
+| 4 | PBI-1 | Power BI financial columns use `double` not `decimal` | Medium (change dataType + reimport) | Floating-point artifacts in financial reports |
+| 5 | PQ-1 | IQR anomaly detection uses naive quartile indexing | Small (use `statistics.quantiles`) | Missed anomalies or false positives for small N |
+
+---
+
+## Files with No Issues Found
+
+### Python
+- `src/datapulse/analytics/models.py` — Pydantic models, well-typed with JsonDecimal
+- `src/datapulse/analytics/service.py` — caching wrapper, no calculations
+- `src/datapulse/analytics/customer_health.py` — delegates to SQL
+- `src/datapulse/analytics/hierarchy_repository.py` — clean hierarchy queries
+- `src/datapulse/analytics/search_repository.py` — text search, no math
+- `src/datapulse/analytics/diagnostics.py` — diagnostic queries, no math
+- `src/datapulse/explore/sql_builder.py` — well-secured SQL builder with whitelist
+- `src/datapulse/reports/template_engine.py` — template rendering, no math
+- `src/datapulse/bronze/loader.py` — correct batch progress calculation
+- `src/datapulse/targets/repository.py` — clean Decimal arithmetic, division guards
+- `src/datapulse/analytics/comparison_repository.py` — correct growth edge cases
+- `src/datapulse/billing/plans.py` — clean plan definitions
+
+### dbt SQL
+- `dbt/models/staging/stg_sales.sql` — correct net_amount formula, proper COALESCE
+- `dbt/models/bronze/bronze_sales.sql` — simple source reference
+- `dbt/models/marts/facts/fct_sales.sql` — correct surrogate keys, ROUND(2)
+- `dbt/models/marts/dims/dim_date.sql` — correct Egypt weekend (ISODOW 5,6)
+- `dbt/models/marts/dims/dim_customer.sql` — correct MD5 key with tenant_id
+- `dbt/models/marts/dims/dim_product.sql` — correct MD5 key
+- `dbt/models/marts/dims/dim_staff.sql` — correct MD5 key
+- `dbt/models/marts/dims/dim_site.sql` — correct MD5 key
+- `dbt/models/marts/dims/dim_billing.sql` — clean ROW_NUMBER key
+- `dbt/models/marts/aggs/agg_sales_daily.sql` — correct aggregations, NULLIF
+- `dbt/models/marts/aggs/agg_sales_monthly.sql` — correct MoM/YoY, LAG window
+- `dbt/models/marts/aggs/agg_sales_by_customer.sql` — correct GROUP BY
+- `dbt/models/marts/aggs/agg_sales_by_product.sql` — correct COALESCE for returns
+- `dbt/models/marts/aggs/agg_returns.sql` — correct ABS for return amounts
+- `dbt/models/marts/features/feat_customer_segments.sql` — correct RFM NTILE
+- `dbt/models/marts/features/feat_revenue_daily_rolling.sql` — correct windows
+- `dbt/models/marts/features/feat_revenue_site_rolling.sql` — correct ratios
+- `dbt/models/marts/features/feat_seasonality_daily.sql` — correct indices
+- `dbt/models/marts/features/feat_seasonality_monthly.sql` — correct indices
+- `dbt/models/marts/features/feat_product_lifecycle.sql` — correct dormant logic
+- `dbt/macros/governorate_map.sql` — static lookup, no calculations
+- `dbt/tests/assert_unknown_dimension_below_threshold.sql` — correct test
+
+### Frontend
+- `frontend/src/lib/formatters.ts` — proper locale, null handling (except FE-6)
+- `frontend/src/hooks/use-count-up.ts` — correct easing, interpolation, clamping
+- `frontend/src/hooks/use-comparison-trend.ts` — correct date math
+- `frontend/src/components/dashboard/target-progress.tsx` — correct SVG, guards
+- `frontend/src/components/dashboard/day-hero.tsx` — correct display logic
+- `frontend/src/components/products/pareto-chart.tsx` — correct ABC display
+- `frontend/src/components/goals/goals-overview.tsx` — correct progress ring
+- `frontend/src/components/shared/ranking-table.tsx` — correct clamping
+- `frontend/src/components/shared/ranking-table-linked.tsx` — correct clamping
+- `frontend/src/components/staff/gamified-leaderboard.tsx` — correct max guard
+- `frontend/src/components/customers/rfm-matrix.tsx` — correct reduce sum
+
+### Power BI
+- All 99 DAX measures use `DIVIDE()` with proper alternate results
+- All relationships are correct cardinality (many-to-one, fact→dim)
+- All time intelligence references `dim_date[full_date]` correctly
+- All REMOVEFILTERS / ALL usage is correct for percentage-of-total calculations
+
+### Config & Infrastructure
+- `frontend/src/lib/constants.ts` — chart colors, nav items, no calculations
+- `src/datapulse/pipeline/quality.py` — well-designed quality gates
+
+---
+
+_End of audit report. Generated 2026-04-07._
