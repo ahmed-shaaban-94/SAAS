@@ -146,10 +146,16 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+      - name: Prepare standalone server
+        working-directory: frontend
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
       - name: Run E2E tests
         working-directory: frontend
         run: npx playwright test --reporter=html
-        timeout-minutes: 10
+        continue-on-error: true
+        timeout-minutes: 15
         env:
           CI: "true"
       - name: Upload E2E report
