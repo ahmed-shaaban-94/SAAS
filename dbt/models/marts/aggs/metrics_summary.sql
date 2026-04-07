@@ -40,7 +40,7 @@ daily_totals AS (
         ROUND(SUM(a.total_net_amount), 2)        AS daily_net_amount,
         ROUND(SUM(a.total_discount), 2)          AS daily_discount,
         SUM(a.total_quantity)::NUMERIC(18,4)     AS daily_quantity,
-        SUM(a.transaction_count)::INT            AS daily_transactions,
+        SUM(a.transaction_count)::INT            AS daily_transactions,  -- includes returns
         SUM(a.return_count)::INT                 AS daily_returns,
         COALESCE(dc.daily_unique_customers, 0)   AS daily_unique_customers
     FROM {{ ref('agg_sales_daily') }} a
@@ -109,5 +109,5 @@ SELECT
     )::INT AS ytd_transactions
 FROM daily_totals t
 {% if is_incremental() %}
-WHERE t.full_date >= CURRENT_DATE - INTERVAL '3 days'
+WHERE t.full_date >= DATE_TRUNC('year', CURRENT_DATE)
 {% endif %}

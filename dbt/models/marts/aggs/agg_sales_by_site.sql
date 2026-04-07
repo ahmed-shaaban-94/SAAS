@@ -27,8 +27,9 @@ WITH site_monthly AS (
         d.month,
 
         -- Volume
-        ROUND(SUM(f.quantity)::NUMERIC, 2)              AS total_quantity,
+        SUM(f.quantity)::NUMERIC(18,4)                    AS total_quantity,
         ROUND(SUM(f.sales)::NUMERIC, 2)                 AS total_sales,
+        ROUND(SUM(f.net_amount)::NUMERIC, 2)            AS total_net_amount,
         ROUND(SUM(f.discount)::NUMERIC, 2)              AS total_discount,
         COUNT(*)                                         AS transaction_count,
 
@@ -74,6 +75,7 @@ SELECT
     s.month,
     s.total_quantity,
     s.total_sales,
+    s.total_net_amount,
     s.total_discount,
     s.transaction_count,
     s.unique_customers,

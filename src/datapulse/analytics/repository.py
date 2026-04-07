@@ -200,7 +200,7 @@ class AnalyticsRepository:
         log.info("get_kpi_summary", target_date=str(target_date))
 
         date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
-        sparkline_start = target_date - timedelta(days=7)
+        sparkline_start = target_date - timedelta(days=6)
 
         # Single unified CTE: daily KPIs + basket + comparisons + sparkline +
         # significance history (MoM 12 months + YoY 5 years) — all in ONE query.
@@ -373,7 +373,7 @@ class AnalyticsRepository:
             mom_growth_pct=mom_growth,
             yoy_growth_pct=yoy_growth,
             daily_quantity=daily_quantity,
-            daily_transactions=daily_transactions,
+            daily_transactions=daily_transactions - daily_returns,
             daily_customers=daily_customers,
             avg_basket_size=avg_basket,
             daily_returns=daily_returns,
@@ -913,13 +913,13 @@ class AnalyticsRepository:
             ORDER BY value DESC
         """)
         rows = self._session.execute(stmt, params).fetchall()
-        total = sum(float(r[1]) for r in rows)
+        total = sum(Decimal(str(r[1])) for r in rows)
         return [
             {
                 "origin": str(r[0]),
-                "value": float(r[1]),
+                "value": Decimal(str(r[1])),
                 "product_count": int(r[2]),
-                "pct": round(float(r[1]) / total * 100, 1) if total else 0,
+                "pct": round(Decimal(str(r[1])) / total * 100, 2) if total else Decimal("0"),
             }
             for r in rows
         ]

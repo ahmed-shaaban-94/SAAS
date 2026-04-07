@@ -158,7 +158,7 @@ def sma_forecast(
     effective_window = min(window, len(series))
     tail = series[-effective_window:]
     mean_val = sum(tail) / len(tail)
-    std_val = (sum((x - mean_val) ** 2 for x in tail) / len(tail)) ** 0.5
+    std_val = (sum((x - mean_val) ** 2 for x in tail) / (len(tail) - 1)) ** 0.5 if len(tail) > 1 else 0.0
     z = _z_for_confidence(confidence)
 
     points: list[ForecastPoint] = []
@@ -196,7 +196,7 @@ def seasonal_naive_forecast(
     # Compute cycle-level standard deviation for confidence bounds
     if len(series) >= 2 * seasonal_periods:
         prev_cycle = series[-2 * seasonal_periods : -seasonal_periods]
-        diffs = [abs(a - b) for a, b in zip(last_cycle, prev_cycle, strict=True)]
+        diffs = [(a - b) for a, b in zip(last_cycle, prev_cycle, strict=True)]
         std_val = (sum(d**2 for d in diffs) / len(diffs)) ** 0.5
     else:
         std_val = (
@@ -234,7 +234,7 @@ def backtest(
     """
     if len(series) <= horizon:
         return ForecastAccuracy(
-            mape=Decimal("0"), mae=Decimal("0"), rmse=Decimal("0"), coverage=Decimal("0")
+            mape=Decimal("999999"), mae=Decimal("0"), rmse=Decimal("0"), coverage=Decimal("0")
         )
 
     train = series[:-horizon]

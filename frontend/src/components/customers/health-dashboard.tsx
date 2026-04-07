@@ -38,7 +38,7 @@ function DistributionBar({ dist }: { dist: HealthDistribution }) {
             <div
               key={b.label}
               className={`${BAND_COLORS[b.label]} transition-all`}
-              style={{ width: `${(b.count / dist.total) * 100}%` }}
+              style={{ width: `${dist.total > 0 ? (b.count / dist.total) * 100 : 0}%` }}
               title={`${b.label}: ${b.count}`}
               role="meter"
               aria-label={`${b.label}: ${b.count} customers`}

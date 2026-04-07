@@ -5,7 +5,7 @@ import { useTopProducts } from "@/hooks/use-top-products";
 import { useTopCustomers } from "@/hooks/use-top-customers";
 import { useTopStaff } from "@/hooks/use-top-staff";
 import { useFilters } from "@/contexts/filter-context";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatNumber, formatPercent, formatAbsolutePercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { NarrativeSummaryCard } from "@/components/dashboard/narrative-summary-card";
 import { InsightChips } from "@/components/dashboard/insight-chips";
@@ -97,7 +97,7 @@ export default function PrintReportPage() {
               `#${item.rank}`,
               item.name,
               formatCurrency(item.value),
-              formatPercent(item.pct_of_total),
+              formatAbsolutePercent(item.pct_of_total),
             ])}
           />
         </section>
@@ -115,7 +115,7 @@ export default function PrintReportPage() {
               `#${item.rank}`,
               item.name,
               formatCurrency(item.value),
-              formatPercent(item.pct_of_total),
+              formatAbsolutePercent(item.pct_of_total),
             ])}
           />
         </section>
@@ -133,7 +133,7 @@ export default function PrintReportPage() {
               `#${item.rank}`,
               item.name,
               formatCurrency(item.value),
-              formatPercent(item.pct_of_total),
+              formatAbsolutePercent(item.pct_of_total),
             ])}
           />
         </section>

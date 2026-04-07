@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTargetSummary } from "@/hooks/use-targets";
 import { useBudgetSummary } from "@/hooks/use-budget";
-import { formatCurrency, formatPercent, formatCompact } from "@/lib/formatters";
+import { formatCurrency, formatPercent, formatCompact, formatAbsolutePercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { postAPI } from "@/lib/api-client";
@@ -30,7 +30,7 @@ function ProgressRing({ pct, size = 120 }: { pct: number; size?: number }) {
           className="transition-all duration-1000 ease-out" />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-text-primary">{formatPercent(pct)}</span>
+        <span className="text-2xl font-bold text-text-primary">{formatAbsolutePercent(pct)}</span>
         <span className="text-[10px] text-text-secondary">achieved</span>
       </div>
     </div>
@@ -87,7 +87,7 @@ function BudgetSection({ year }: { year: number }) {
                   o.ytd_achievement_pct >= 100 ? "bg-green-500/10 text-green-500" :
                   o.ytd_achievement_pct >= 75 ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
                 }`}>
-                  {formatPercent(o.ytd_achievement_pct)}
+                  {formatAbsolutePercent(o.ytd_achievement_pct)}
                 </span>
               </div>
               <div className="flex justify-between text-xs text-text-secondary mb-1">
@@ -237,7 +237,7 @@ export function GoalsOverview() {
               <ProgressRing pct={data!.ytd_achievement_pct} size={80} />
               <div>
                 <p className="text-xs text-text-secondary">YTD Achievement</p>
-                <p className="text-sm font-bold text-text-primary">{formatPercent(data!.ytd_achievement_pct)}</p>
+                <p className="text-sm font-bold text-text-primary">{formatAbsolutePercent(data!.ytd_achievement_pct)}</p>
               </div>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
@@ -311,7 +311,7 @@ export function GoalsOverview() {
                           m.achievement_pct >= 100 ? "bg-green-500/10 text-green-500" :
                           m.achievement_pct >= 75 ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
                         }`}>
-                          {formatPercent(m.achievement_pct)}
+                          {formatAbsolutePercent(m.achievement_pct)}
                         </span>
                       </td>
                       <td className="py-2 px-3">

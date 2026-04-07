@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface DayHeroProps {
@@ -34,7 +34,7 @@ export const DayHero = memo(function DayHero({ revenue, transactions, momGrowth 
           <span className={`ml-2 inline-flex items-center gap-1 ${trendColor}`}>
             <TrendIcon className="h-4 w-4" />
             <span className="text-sm font-medium">
-              {formatPercent(Math.abs(momGrowth))} vs last month
+              {Math.abs(momGrowth).toFixed(1)}% vs last month
             </span>
           </span>
         )}

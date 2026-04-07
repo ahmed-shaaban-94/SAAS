@@ -34,6 +34,7 @@ WITH date_bounds AS (
 -- Current 3-month window
 recent_activity AS (
     SELECT
+        f.tenant_id,
         c.customer_key,
         c.customer_name,
         COUNT(DISTINCT f.date_key) AS frequency_3m,
@@ -42,17 +43,18 @@ recent_activity AS (
         SUM(CASE WHEN f.is_return THEN 1 ELSE 0 END) AS return_count_3m,
         COUNT(*) AS total_txn_3m
     FROM {{ ref('fct_sales') }} f
-    JOIN {{ ref('dim_customer') }} c ON f.customer_key = c.customer_key
+    JOIN {{ ref('dim_customer') }} c ON f.customer_key = c.customer_key AND f.tenant_id = c.tenant_id
     CROSS JOIN date_bounds db
     JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key
     WHERE d.full_date > db.three_m_ago
       AND c.customer_key > 0
-    GROUP BY c.customer_key, c.customer_name
+    GROUP BY f.tenant_id, c.customer_key, c.customer_name
 ),
 
 -- Previous 3-month window (for trend)
 prior_activity AS (
     SELECT
+        f.tenant_id,
         f.customer_key,
         COUNT(DISTINCT f.date_key) AS frequency_prev,
         COALESCE(SUM(f.sales), 0) AS monetary_prev
@@ -61,33 +63,37 @@ prior_activity AS (
     JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key
     WHERE d.full_date > db.six_m_ago
       AND d.full_date <= db.three_m_ago
-    GROUP BY f.customer_key
+    GROUP BY f.tenant_id, f.customer_key
 ),
 
 -- Recency: days since last transaction
 recency AS (
     SELECT
+        f.tenant_id,
         f.customer_key,
         (SELECT max_date FROM date_bounds) - MAX(d.full_date) AS recency_days
     FROM {{ ref('fct_sales') }} f
     JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key
     WHERE f.customer_key > 0
-    GROUP BY f.customer_key
+    GROUP BY f.tenant_id, f.customer_key
 ),
 
 -- Percentile boundaries for normalization
 percentiles AS (
     SELECT
+        ra.tenant_id,
         PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY r.recency_days) AS recency_p95,
         PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ra.frequency_3m) AS freq_p95,
         PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ra.monetary_3m) AS monetary_p95,
         PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ra.product_diversity) AS diversity_p95
     FROM recent_activity ra
-    JOIN recency r ON ra.customer_key = r.customer_key
+    JOIN recency r ON ra.customer_key = r.customer_key AND ra.tenant_id = r.tenant_id
+    GROUP BY ra.tenant_id
 ),
 
 scored AS (
     SELECT
+        ra.tenant_id,
         ra.customer_key,
         ra.customer_name,
         COALESCE(r.recency_days, 999)::INT AS recency_days,
@@ -140,12 +146,37 @@ scored AS (
         END AS trend
 
     FROM recent_activity ra
-    LEFT JOIN recency r ON ra.customer_key = r.customer_key
-    LEFT JOIN prior_activity pa ON ra.customer_key = pa.customer_key
-    CROSS JOIN percentiles p
+    LEFT JOIN recency r ON ra.customer_key = r.customer_key AND ra.tenant_id = r.tenant_id
+    LEFT JOIN prior_activity pa ON ra.customer_key = pa.customer_key AND ra.tenant_id = pa.tenant_id
+    JOIN percentiles p ON ra.tenant_id = p.tenant_id
+),
+
+with_health_score AS (
+    SELECT
+        tenant_id,
+        customer_key,
+        customer_name,
+        recency_days,
+        frequency_3m,
+        monetary_3m,
+        product_diversity,
+        return_rate,
+        trend,
+
+        -- Weighted composite health score
+        GREATEST(0, LEAST(100, ROUND((
+            recency_score   * 0.30 +
+            frequency_score * 0.25 +
+            monetary_score  * 0.25 +
+            return_score    * 0.10 +
+            diversity_score * 0.10
+        )::NUMERIC, 2)))::NUMERIC(5,2) AS health_score
+
+    FROM scored
 )
 
 SELECT
+    tenant_id,
     customer_key,
     customer_name,
     recency_days,
@@ -154,23 +185,15 @@ SELECT
     product_diversity,
     return_rate,
     trend,
-
-    -- Weighted composite health score
-    GREATEST(0, LEAST(100, ROUND((
-        recency_score   * 0.30 +
-        frequency_score * 0.25 +
-        monetary_score  * 0.25 +
-        return_score    * 0.10 +
-        diversity_score * 0.10
-    )::NUMERIC, 2)))::NUMERIC(5,2) AS health_score,
+    health_score,
 
     -- Health band
     CASE
-        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 80 THEN 'Thriving'
-        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 60 THEN 'Healthy'
-        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 40 THEN 'Needs Attention'
-        WHEN ROUND((recency_score * 0.30 + frequency_score * 0.25 + monetary_score * 0.25 + return_score * 0.10 + diversity_score * 0.10)::NUMERIC, 2) >= 20 THEN 'At Risk'
+        WHEN health_score >= 80 THEN 'Thriving'
+        WHEN health_score >= 60 THEN 'Healthy'
+        WHEN health_score >= 40 THEN 'Needs Attention'
+        WHEN health_score >= 20 THEN 'At Risk'
         ELSE 'Critical'
     END AS health_band
 
-FROM scored
+FROM with_health_score

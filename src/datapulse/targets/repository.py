@@ -386,7 +386,7 @@ class TargetsRepository:
                    l.fired_at, l.metric_value, l.threshold_value,
                    l.message, l.acknowledged
             FROM public.alerts_log l
-            LEFT JOIN public.alerts_config c ON l.alert_config_id = c.id
+            LEFT JOIN public.alert_configs c ON l.alert_config_id = c.id
             WHERE (:ack_only = FALSE OR l.acknowledged = FALSE)
             ORDER BY l.fired_at DESC
             LIMIT :limit
