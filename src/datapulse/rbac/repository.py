@@ -240,7 +240,7 @@ class RBACRepository:
             text("DELETE FROM public.tenant_members WHERE member_id = :mid"),
             {"mid": member_id},
         )
-        return (result.rowcount or 0) > 0
+        return (result.rowcount or 0) > 0  # type: ignore[attr-defined]
 
     def accept_invite(self, member_id: int, user_id: str) -> dict | None:
         self._s.execute(
@@ -370,7 +370,7 @@ class RBACRepository:
             text("DELETE FROM public.sectors WHERE sector_id = :sid"),
             {"sid": sector_id},
         )
-        return (result.rowcount or 0) > 0
+        return (result.rowcount or 0) > 0  # type: ignore[attr-defined]
 
     # ── Sector Access ────────────────────────────────────────
 

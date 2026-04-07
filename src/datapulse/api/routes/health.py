@@ -75,10 +75,10 @@ def _check_pool() -> dict:
     try:
         engine = get_engine()
         pool = engine.pool
-        size = pool.size()
-        checked_out = pool.checkedout()
-        overflow = pool.overflow()
-        max_total = size + pool._max_overflow
+        size = pool.size()  # type: ignore[attr-defined]
+        checked_out = pool.checkedout()  # type: ignore[attr-defined]
+        overflow = pool.overflow()  # type: ignore[attr-defined]
+        max_total = size + pool._max_overflow  # type: ignore[attr-defined]
         saturation = checked_out / max(max_total, 1)
         status = "ok"
         if saturation > 0.95:

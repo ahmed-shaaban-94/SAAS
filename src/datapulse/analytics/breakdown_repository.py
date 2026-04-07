@@ -62,7 +62,7 @@ class BreakdownRepository:
             return BillingBreakdown(items=[], total_transactions=0, total_net_amount=_ZERO)
 
         raw = [(str(r[0]), int(r[1]), Decimal(str(r[2]))) for r in rows]
-        grand_total = sum(v for _, _, v in raw)
+        grand_total = sum((v for _, _, v in raw), _ZERO)
         if grand_total <= 0:
             grand_total = Decimal("1")  # fallback: net-negative period
         total_txn = sum(c for _, c, _ in raw)
