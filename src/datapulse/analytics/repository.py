@@ -139,7 +139,7 @@ class AnalyticsRepository:
             ) cats
             UNION ALL
             SELECT * FROM (
-                SELECT 'brand', drug_brand, NULL
+                SELECT 'brand', drug_brand, NULL::int
                 FROM public_marts.agg_sales_by_product
                 WHERE drug_brand IS NOT NULL
                 GROUP BY drug_brand
