@@ -37,7 +37,7 @@ export function NotificationCenter({ open, onClose }: NotificationCenterProps) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div ref={ref} className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-border bg-card shadow-2xl sm:w-96">
+    <div ref={ref} className="fixed inset-x-3 top-14 z-50 rounded-xl border border-border bg-card shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>

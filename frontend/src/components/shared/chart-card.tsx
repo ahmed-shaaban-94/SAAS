@@ -19,7 +19,7 @@ export function ChartCard({ title, subtitle, badge, actions, children, className
     <section
       aria-label={title}
       className={cn(
-        "group rounded-xl border border-border bg-card p-5",
+        "group rounded-xl border border-border bg-card p-3 sm:p-5",
         "transition-all duration-300 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5",
         className,
       )}

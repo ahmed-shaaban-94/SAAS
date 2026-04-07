@@ -46,16 +46,16 @@ export function FilterBar() {
   };
 
   return (
-    <div className="mb-6 space-y-3">
-      {/* Row 1: Date presets + toggle + clear */}
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="mb-4 space-y-2 sm:mb-6 sm:space-y-3">
+      {/* Row 1: Date presets (scrollable on mobile) */}
+      <div className="-mx-3 flex items-center gap-1.5 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 scrollbar-hide">
         {presets.map((preset) => (
           <button
             key={preset.label}
             onClick={() => handlePreset(preset)}
             aria-pressed={isActivePreset(preset)}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
               isActivePreset(preset)
                 ? "bg-accent text-page"
                 : "bg-divider text-text-secondary hover:bg-border hover:text-text-primary",
@@ -73,7 +73,10 @@ export function FilterBar() {
             setFilters({ ...filters, start_date: start, end_date: end })
           }
         />
+      </div>
 
+      {/* Row 2: Filter actions */}
+      <div className="flex items-center gap-2">
         {/* Save View button */}
         <button
           onClick={() => setSaveDialogOpen(true)}
@@ -114,10 +117,10 @@ export function FilterBar() {
               info("All filters cleared");
             }}
             aria-label={`Clear all ${activeFilterCount} filters`}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-text-secondary transition-colors hover:bg-growth-red/10 hover:text-growth-red"
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-growth-red/10 hover:text-growth-red sm:px-3 sm:text-sm"
           >
             <X className="h-3.5 w-3.5" />
-            Clear
+            <span className="hidden sm:inline">Clear</span>
             <span className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-growth-red/15 text-xs font-semibold text-growth-red">
               {activeFilterCount}
             </span>
