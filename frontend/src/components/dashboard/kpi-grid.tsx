@@ -94,7 +94,9 @@ export function KPIGrid() {
 
   // Units metrics
   const totalUnits = data.daily_quantity ?? 0;
-  const unitsPerTxn = data.daily_transactions > 0 ? totalUnits / data.daily_transactions : 0;
+  // Gross sales = net transactions + returns (units are per sale invoice, not per net txn)
+  const grossTransactions = data.daily_transactions + (data.daily_returns ?? 0);
+  const unitsPerTxn = grossTransactions > 0 ? totalUnits / grossTransactions : 0;
 
   const cards: Array<{
     label: string;
