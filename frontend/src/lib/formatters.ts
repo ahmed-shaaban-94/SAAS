@@ -19,6 +19,11 @@ export function formatPercent(value: number | null | undefined): string {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
+export function formatAbsolutePercent(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "N/A";
+  return `${value.toFixed(1)}%`;
+}
+
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return "N/A";
   return new Intl.NumberFormat("ar-EG-u-nu-latn").format(value);

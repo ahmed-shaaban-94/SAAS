@@ -30,8 +30,8 @@ WITH returns_monthly AS (
         f.billing_way,
 
         -- Measures (absolute values for returns)
-        ABS(ROUND(SUM(f.quantity)::NUMERIC, 2))         AS return_quantity,
-        ABS(ROUND(SUM(f.sales)::NUMERIC, 2))              AS return_amount,
+        ROUND(SUM(ABS(f.quantity))::NUMERIC, 2)          AS return_quantity,
+        ROUND(SUM(ABS(f.sales))::NUMERIC, 2)              AS return_amount,
         COUNT(*)                                         AS return_count
 
     FROM {{ ref('fct_sales') }} f

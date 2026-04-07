@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { useForecastSummary } from "@/hooks/use-forecast";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatPercent, formatAbsolutePercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { TrendingUp, TrendingDown, Brain } from "lucide-react";
@@ -51,7 +51,7 @@ export const ForecastCard = memo(function ForecastCard() {
         </div>
         {data.mape !== null && (
           <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent">
-            MAPE: {formatPercent(data.mape)}
+            MAPE: {formatAbsolutePercent(data.mape)}
           </span>
         )}
       </div>
@@ -90,7 +90,7 @@ export const ForecastCard = memo(function ForecastCard() {
                     {p.drug_name}
                   </span>
                   <span className="font-medium text-growth-green">
-                    +{formatPercent(p.forecast_change_pct)}
+                    {formatPercent(p.forecast_change_pct)}
                   </span>
                 </div>
               ))}

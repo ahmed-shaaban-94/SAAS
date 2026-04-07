@@ -155,8 +155,12 @@ def apply_filters(
                     )
                     continue
                 # Ensure low <= high to prevent reversed ranges
-                if low > high:
-                    low, high = high, low
+                try:
+                    if float(low) > float(high):
+                        low, high = high, low
+                except ValueError:
+                    if low > high:
+                        low, high = high, low
                 conditions.append(col.between(low, high))
             else:
                 log.warning(

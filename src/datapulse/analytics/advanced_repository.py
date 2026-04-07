@@ -189,7 +189,8 @@ class AdvancedRepository:
             SELECT year || '-' || LPAD(month::TEXT, 2, '0') AS period,
                    SUM(return_count)::INT AS return_count,
                    ROUND(ABS(SUM(total_discount)), 2) AS return_amount,
-                   ROUND(AVG(return_rate) * 100, 2) AS return_rate
+                   ROUND(AVG(return_rate), 4) AS return_rate,
+                   SUM(transaction_count)::INT AS transaction_count
             FROM public_marts.agg_sales_monthly
             WHERE {where}
             GROUP BY year, month
@@ -216,9 +217,10 @@ class AdvancedRepository:
 
         total_returns = sum(p.return_count for p in points)
         total_amount = Decimal(sum(p.return_amount for p in points))
+        total_transactions = sum(int(r[4]) if r[4] else 0 for r in rows)
         avg_rate = (
-            Decimal(sum(p.return_rate for p in points) / len(points)).quantize(Decimal("0.01"))
-            if points
+            (Decimal(total_returns) / Decimal(total_transactions)).quantize(Decimal("0.0001"))
+            if total_transactions > 0
             else _ZERO
         )
 

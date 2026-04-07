@@ -27,12 +27,12 @@ class SearchRepository:
     def _search_products(self, query: str, limit: int) -> list[dict]:
         sql = text("""
             SELECT product_key AS key,
-                   product_name AS name,
-                   category,
-                   similarity(product_name, :q) AS score
+                   drug_name AS name,
+                   drug_category AS category,
+                   similarity(drug_name, :q) AS score
             FROM public_marts.dim_product
-            WHERE product_name % :q OR product_name ILIKE :pattern
-            ORDER BY similarity(product_name, :q) DESC
+            WHERE drug_name % :q OR drug_name ILIKE :pattern
+            ORDER BY similarity(drug_name, :q) DESC
             LIMIT :lim
         """)
         rows = (

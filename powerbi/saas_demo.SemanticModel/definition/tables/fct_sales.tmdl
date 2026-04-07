@@ -63,7 +63,7 @@ table fct_sales
 		sourceColumn: billing_way
 
 	column quantity
-		dataType: double
+		dataType: decimal
 		formatString: #,##0.00
 		lineageTag: 7984bcc7-9b8e-4e5e-9c09-e8ec9275be95
 		summarizeBy: sum
@@ -72,7 +72,7 @@ table fct_sales
 		annotation SummarizationSetBy = Automatic
 
 	column sales
-		dataType: double
+		dataType: decimal
 		formatString: #,##0.00
 		lineageTag: 5ebc1a9a-54ff-4853-8403-285b7939e9ad
 		summarizeBy: sum
@@ -81,7 +81,7 @@ table fct_sales
 		annotation SummarizationSetBy = Automatic
 
 	column discount
-		dataType: double
+		dataType: decimal
 		formatString: #,##0.00
 		lineageTag: 34aed7cd-3157-4071-95f6-3e042a17440b
 		summarizeBy: sum
@@ -90,7 +90,7 @@ table fct_sales
 		annotation SummarizationSetBy = Automatic
 
 	column net_amount
-		dataType: double
+		dataType: decimal
 		formatString: #,##0.00
 		lineageTag: 99f22694-f63f-4c15-a0d8-ff8d30cb38c2
 		summarizeBy: sum
@@ -117,7 +117,7 @@ table fct_sales
 		dataType: int64
 		formatString: 0
 		lineageTag: 44b83758-2ae5-48ac-ac61-7a8f196d831c
-		summarizeBy: sum
+		summarizeBy: none
 		sourceColumn: tenant_id
 
 		annotation SummarizationSetBy = Automatic

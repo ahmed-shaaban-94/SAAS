@@ -7,7 +7,7 @@ import { LoadingCard } from "@/components/loading-card";
 
 function getColor(value: number, min: number, max: number, isDark: boolean): string {
   if (max === min) return isDark ? "var(--divider)" : "var(--divider)";
-  const ratio = (value - min) / (max - min);
+  const ratio = Math.min(Math.max((value - min) / (max - min), 0), 1);
   // Use opacity-based approach with growth-green for consistent theming
   const base = isDark ? [52, 211, 153] : [5, 150, 105]; // emerald shades
   const opacity = 0.2 + ratio * 0.8;

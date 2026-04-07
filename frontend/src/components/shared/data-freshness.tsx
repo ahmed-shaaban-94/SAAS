@@ -9,7 +9,7 @@ interface DataFreshnessProps {
 }
 
 function getMinutesAgo(date: Date): number {
-  return Math.floor((Date.now() - date.getTime()) / 60000);
+  return Math.max(Math.floor((Date.now() - date.getTime()) / 60000), 0);
 }
 
 function getFreshnessLevel(minutesAgo: number): "fresh" | "stale" | "old" {

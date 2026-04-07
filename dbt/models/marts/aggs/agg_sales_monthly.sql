@@ -70,6 +70,7 @@ SELECT
     g.site_key,
     g.total_quantity,
     g.total_sales,
+    g.total_net_amount,
     g.total_discount,
     g.transaction_count,
     g.return_count,

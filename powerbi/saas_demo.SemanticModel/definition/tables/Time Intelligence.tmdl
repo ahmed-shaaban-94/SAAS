@@ -107,7 +107,7 @@ table 'Time Intelligence'
 				    DATESINPERIOD(dim_date[full_date], MAX(dim_date[full_date]), -3, MONTH)
 				)
 				VAR _monthCount = CALCULATE(
-				    DISTINCTCOUNT(dim_date[month]),
+				    DISTINCTCOUNT(dim_date[year_month]),
 				    DATESINPERIOD(dim_date[full_date], MAX(dim_date[full_date]), -3, MONTH)
 				)
 				RETURN
