@@ -167,3 +167,195 @@
 - `src/datapulse/pipeline/quality.py` (besides PQ-5) — well-designed quality gates, proper column allowlisting
 
 ---
+
+## LAYER 3: Python Analytics Backend ✅
+
+### Files Audited
+- `src/datapulse/analytics/repository.py` (1050+ lines)
+- `src/datapulse/analytics/advanced_repository.py`
+- `src/datapulse/analytics/breakdown_repository.py`
+- `src/datapulse/analytics/detail_repository.py`
+- `src/datapulse/analytics/queries.py`
+- `src/datapulse/analytics/customer_health.py`
+- `src/datapulse/analytics/hierarchy_repository.py`
+- `src/datapulse/analytics/search_repository.py`
+- `src/datapulse/analytics/diagnostics.py`
+- `src/datapulse/analytics/models.py`
+- `src/datapulse/analytics/service.py`
+- `src/datapulse/explore/sql_builder.py`
+- `src/datapulse/reports/template_engine.py`
+- `src/datapulse/bronze/loader.py`
+
+### Findings
+
+#### 🔴 [PY-1] `daily_transactions` calculated inconsistently across 3 code paths
+- **File:** `src/datapulse/analytics/repository.py:376` vs `:649` vs `:815`
+- **Severity:** Critical
+- **Category:** Inconsistent business metric
+- **Current code:**
+  ```python
+  # Path A: metrics_summary (line 376) — includes returns
+  daily_transactions=daily_transactions,  # raw COUNT(*) from DB
+
+  # Path B: fct_sales fallback (line 649) — excludes returns
+  daily_transactions=total_transactions - total_returns,
+
+  # Path C: range query (line 815) — excludes returns
+  daily_transactions=total_transactions - total_returns,
+  ```
+- **Why it's wrong:** `agg_sales_daily.transaction_count` = `COUNT(*)` which includes return rows. Path A passes this raw value. Paths B & C subtract `total_returns`. The same KPI endpoint can show 1,200 or 1,150 transactions for the same day depending on which path executes.
+- **Suggested fix:**
+  ```python
+  # Path A: subtract returns to match B and C
+  daily_transactions=daily_transactions - daily_returns,
+  ```
+- **Test to add:** `test_kpi_daily_transactions_excludes_returns` — assert all 3 paths produce the same value for known test data.
+
+#### 🔴 [PY-2] Return rate unit inconsistency — 0-1 vs 0-100 across endpoints
+- **File:** `src/datapulse/analytics/advanced_repository.py:192` vs `src/datapulse/analytics/detail_repository.py:336`
+- **Severity:** Critical
+- **Category:** Unit mismatch
+- **Current code:**
+  ```sql
+  -- advanced_repository.py:192 → returns 0-100
+  ROUND(AVG(return_rate) * 100, 2) AS return_rate
+
+  -- detail_repository.py:336 → returns 0-1
+  return_rate=Decimal(str(row["return_rate"])).quantize(Decimal("0.0001"))
+  ```
+- **Why it's wrong:** The `agg_sales_monthly.return_rate` stores 0-1 decimals (e.g., 0.0342 = 3.42%). The returns trend endpoint multiplies by 100, but detail endpoints don't. Frontend displaying raw 0.0342 as "0.03%" or multiplied 3.42 as "342%" depending on assumptions.
+- **Suggested fix:** Standardize: always transmit as 0-1, multiply by 100 only in frontend display code.
+- **Test to add:** `test_return_rate_unit_consistency` — assert all endpoints returning return_rate use the same unit range.
+
+#### 🔴 [PY-3] Average return rate uses simple average instead of weighted by volume
+- **File:** `src/datapulse/analytics/advanced_repository.py:219-221`
+- **Severity:** Critical
+- **Category:** Wrong aggregation method
+- **Current code:**
+  ```python
+  avg_rate = (
+      Decimal(sum(p.return_rate for p in points) / len(points)).quantize(Decimal("0.01"))
+      if points else _ZERO
+  )
+  ```
+- **Why it's wrong:** Averages monthly rates arithmetically. Jan: 100 txns, 5% return. Mar: 10,000 txns, 2% return. Simple avg = 3.5%. Correct weighted avg = 2.07%. The 69% overstatement makes return performance look worse than reality.
+- **Suggested fix:**
+  ```python
+  total_returns = sum(p.return_count for p in points)
+  total_txns = sum(p.return_count + ... for p in points)  # need transaction count
+  avg_rate = Decimal(str(total_returns / total_txns * 100)).quantize(Decimal("0.01"))
+  ```
+- **Test to add:** `test_avg_return_rate_weighted` — 3 months with different volumes, verify weighted average.
+
+#### 🔴 [PY-4] Origin breakdown returns `float` instead of `Decimal` for financial amounts
+- **File:** `src/datapulse/analytics/repository.py:916-925`
+- **Severity:** Critical
+- **Category:** Float for money / API contract inconsistency
+- **Current code:**
+  ```python
+  total = sum(float(r[1]) for r in rows)
+  return [
+      {
+          "origin": str(r[0]),
+          "value": float(r[1]),          # float — precision loss
+          "pct": round(float(r[1]) / total * 100, 1) if total else 0,
+      }
+      for r in rows
+  ]
+  ```
+- **Why it's wrong:** All other analytics endpoints use `Decimal` + `JsonDecimal`. This endpoint uses `float`, causing IEEE 754 artifacts (e.g., `1234567.8912000001` in JSON). Also uses 1-decimal rounding for pct while others use 2.
+- **Suggested fix:** Use `Decimal(str(r[1]))` and return `JsonDecimal` values.
+- **Test to add:** `test_origin_breakdown_returns_decimal` — assert response values are clean decimals.
+
+#### 🟡 [PY-5] Transaction netting formula `- 2 * return_count` assumes each return has a matching sale
+- **File:** `src/datapulse/analytics/breakdown_repository.py:50`
+- **Severity:** Warning
+- **Category:** Business logic assumption
+- **Current code:**
+  ```sql
+  SUM(a.transaction_count) - 2 * SUM(a.return_count) AS transaction_count,
+  ```
+- **Why it matters:** `transaction_count = COUNT(*)` includes return rows. Subtracting `2 * return_count` removes both the return row AND its assumed original sale. If returns are standalone credit notes without a matching original transaction, this over-subtracts and can produce negative counts.
+- **Suggested fix:** Document the assumption. If standalone returns exist, use `SUM(a.transaction_count) - SUM(a.return_count)` instead.
+
+#### 🟡 [PY-6] Silent fallback when all breakdown values are negative
+- **File:** `src/datapulse/analytics/breakdown_repository.py:64`
+- **Severity:** Warning
+- **Category:** Silent data quality issue
+- **Current code:**
+  ```python
+  grand_total = sum(v for _, _, v in raw) or Decimal("1")
+  ```
+- **Why it matters:** If all sales are returns (net negative), the `or` triggers and sets `grand_total = 1`, making percentages meaningless (e.g., -50,000 / 1 * 100 = -5,000,000%). Should return an explicit error or zero-state.
+
+#### 🟡 [PY-7] `safe_growth()` returns None for zero-to-nonzero growth (new entrants)
+- **File:** `src/datapulse/analytics/queries.py:119-123`
+- **Severity:** Warning
+- **Category:** Edge case handling
+- **Current code:**
+  ```python
+  def safe_growth(current: Decimal, previous: Decimal) -> Decimal | None:
+      if previous == _ZERO:
+          return None
+      return ((current - previous) / previous * 100).quantize(Decimal("0.01"))
+  ```
+- **Why it matters:** `comparison_repository.py` correctly handles this by treating None as +100% for new entrants. But other callers (KPI, detail pages) may display "N/A" instead of a meaningful value. The contract should be documented.
+
+#### 🟡 [PY-8] `other_count` can go negative without validation
+- **File:** `src/datapulse/analytics/breakdown_repository.py:106`
+- **Severity:** Warning
+- **Category:** Missing validation
+- **Current code:**
+  ```python
+  other_count=int(r[3]) - int(r[1]) - int(r[2]),
+  ```
+- **Why it matters:** `total_count - walk_in_count - insurance_count` assumes these three are exhaustive. Data quality issues could make walk_in + insurance > total, producing negative `other_count`.
+- **Suggested fix:** `max(int(r[3]) - int(r[1]) - int(r[2]), 0)`
+
+#### 🟡 [PY-9] Percentage rounding inconsistency across analytics endpoints
+- **File:** Multiple files
+- **Severity:** Warning
+- **Category:** API inconsistency
+- **Details:**
+  | File | Line | Precision |
+  |------|------|-----------|
+  | `queries.py` | 238 | 2 decimals (`Decimal("0.01")`) |
+  | `repository.py` | 922 | 1 decimal (`round(..., 1)`) |
+  | `detail_repository.py` | 336 | 4 decimals (`Decimal("0.0001")`) |
+  | `breakdown_repository.py` | 66 | 2 decimals (`Decimal("0.01")`) |
+- **Suggested fix:** Standardize all percentage fields to 2 decimal places.
+
+#### 🟢 [PY-10] Coefficient of variation silently returns None for zero-mean distributions
+- **File:** `src/datapulse/analytics/queries.py:188-204`
+- **Severity:** Suggestion
+- **Category:** Edge case documentation
+- **Current code:**
+  ```python
+  if mean == 0:
+      return None
+  ```
+- **Why it matters:** Correct behavior mathematically (CV undefined for zero mean), but callers should know None means "undefined", not "zero variation". Add docstring clarification.
+
+#### 🟢 [PY-11] Staff activity threshold (33% of average) is hardcoded magic number
+- **File:** `src/datapulse/analytics/repository.py:988` and `src/datapulse/analytics/comparison_repository.py:101`
+- **Severity:** Suggestion
+- **Category:** Hardcoded magic number
+- **Current code:**
+  ```sql
+  SELECT COALESCE(AVG(sale_count) * 0.33, 0) AS min_txns FROM staff_txns
+  ```
+- **Why it matters:** The 0.33 threshold is duplicated in two files. Should be a named constant.
+- **Suggested fix:** Add `STAFF_ACTIVITY_THRESHOLD = Decimal("0.33")` to `queries.py`.
+
+### Files with no issues found
+- `src/datapulse/analytics/models.py` — Pydantic models are well-typed with `JsonDecimal`
+- `src/datapulse/analytics/service.py` — caching wrapper, no calculations
+- `src/datapulse/analytics/customer_health.py` — delegates to SQL, no Python-side math
+- `src/datapulse/analytics/hierarchy_repository.py` — clean hierarchy queries
+- `src/datapulse/analytics/search_repository.py` — text search, no calculations
+- `src/datapulse/analytics/diagnostics.py` — diagnostic queries, no math
+- `src/datapulse/explore/sql_builder.py` — well-secured SQL builder with whitelist
+- `src/datapulse/reports/template_engine.py` — template rendering, no math
+- `src/datapulse/bronze/loader.py` — data loading, correct batch progress calculation
+
+---
