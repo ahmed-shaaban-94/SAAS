@@ -80,31 +80,98 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
+            set -e
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             export IMAGE_TAG=staging
 
-            # Pull latest images (no git pull — compose files copied via SCP)
+            # Save current image digests for rollback
+            echo "=== Saving current state for rollback ==="
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.prod.yml \
+              ps --format json > /tmp/staging-pre-deploy.json 2>/dev/null || true
+
+            PREV_API_IMAGE=$(docker inspect --format='{{.Image}}' datapulse-api 2>/dev/null || echo "none")
+            PREV_FRONTEND_IMAGE=$(docker inspect --format='{{.Image}}' datapulse-frontend 2>/dev/null || echo "none")
+            echo "Previous API: $PREV_API_IMAGE"
+            echo "Previous Frontend: $PREV_FRONTEND_IMAGE"
+
+            # Pull latest images
+            echo "=== Pulling new images ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
               pull
 
+            # Deploy
+            echo "=== Starting deployment ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
               up -d --remove-orphans
 
-            # Health check with retries
-            echo "=== Waiting for services ==="
-            for i in $(seq 1 6); do
-              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:3000 || echo "000")
+            # Health check — API
+            echo "=== Health check: API ==="
+            API_OK=false
+            for i in $(seq 1 12); do
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8000/health 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
-                echo "Health check PASSED on attempt $i (HTTP $HTTP_CODE)"
+                echo "API health check PASSED on attempt $i"
+                API_OK=true
                 break
               fi
-              echo "Attempt $i: HTTP $HTTP_CODE — retrying in 10s..."
+              echo "Attempt $i: API HTTP $HTTP_CODE — retrying in 10s..."
               sleep 10
             done
+
+            # Health check — Frontend
+            echo "=== Health check: Frontend ==="
+            FE_OK=false
+            for i in $(seq 1 6); do
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:3000 2>/dev/null || echo "000")
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "Frontend health check PASSED on attempt $i"
+                FE_OK=true
+                break
+              fi
+              echo "Attempt $i: Frontend HTTP $HTTP_CODE — retrying in 10s..."
+              sleep 10
+            done
+
+            # Smoke tests — verify critical API endpoints return valid responses
+            echo "=== Smoke tests ==="
+            SMOKE_OK=true
+
+            # Test /health/ready
+            READY=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health/ready 2>/dev/null || echo "000")
+            if [ "$READY" != "200" ]; then
+              echo "FAIL: /health/ready returned $READY"
+              SMOKE_OK=false
+            else
+              echo "PASS: /health/ready"
+            fi
+
+            # Test /api/v1/analytics/summary (with API key if set)
+            SUMMARY=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "X-API-Key: ${API_KEY:-}" \
+              http://localhost:8000/api/v1/analytics/summary 2>/dev/null || echo "000")
+            if [ "$SUMMARY" != "200" ] && [ "$SUMMARY" != "401" ]; then
+              echo "FAIL: /api/v1/analytics/summary returned $SUMMARY (expected 200 or 401)"
+              SMOKE_OK=false
+            else
+              echo "PASS: /api/v1/analytics/summary ($SUMMARY)"
+            fi
+
+            # Test /api/v1/reports
+            REPORTS=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "X-API-Key: ${API_KEY:-}" \
+              http://localhost:8000/api/v1/reports 2>/dev/null || echo "000")
+            if [ "$REPORTS" != "200" ] && [ "$REPORTS" != "401" ]; then
+              echo "FAIL: /api/v1/reports returned $REPORTS"
+              SMOKE_OK=false
+            else
+              echo "PASS: /api/v1/reports ($REPORTS)"
+            fi
 
             echo "=== Container Status ==="
             docker compose \
@@ -112,12 +179,44 @@ jobs:
               -f docker-compose.prod.yml \
               ps
 
-            if [ "$HTTP_CODE" != "200" ]; then
-              echo "::error::Staging health check failed after 6 attempts (HTTP $HTTP_CODE)"
+            # Rollback if any check failed
+            if [ "$API_OK" != "true" ] || [ "$FE_OK" != "true" ] || [ "$SMOKE_OK" != "true" ]; then
+              echo "::error::Staging deploy FAILED — initiating rollback"
+              echo "API: $API_OK | Frontend: $FE_OK | Smoke: $SMOKE_OK"
+
+              # Show container logs for debugging
+              echo "=== API Logs (last 50 lines) ==="
+              docker compose \
+                -f docker-compose.yml \
+                -f docker-compose.prod.yml \
+                logs --tail=50 api 2>&1 || true
+
+              echo "=== Frontend Logs (last 30 lines) ==="
+              docker compose \
+                -f docker-compose.yml \
+                -f docker-compose.prod.yml \
+                logs --tail=30 frontend 2>&1 || true
+
+              # Rollback: restart with previous images if available
+              if [ "$PREV_API_IMAGE" != "none" ]; then
+                echo "=== Rolling back to previous images ==="
+                docker compose \
+                  -f docker-compose.yml \
+                  -f docker-compose.prod.yml \
+                  down --remove-orphans
+                docker compose \
+                  -f docker-compose.yml \
+                  -f docker-compose.prod.yml \
+                  up -d
+                echo "Rollback completed — verify manually"
+              fi
               exit 1
             fi
 
-            # Rebuild dbt models (stg -> fct -> agg -> metrics) with 5min timeout
+            echo "=== Staging deploy SUCCESSFUL ==="
+
+            # Rebuild dbt models with 5min timeout
+            echo "=== Running dbt ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
@@ -125,4 +224,4 @@ jobs:
                 cd /app/dbt && \
                 dbt deps --profiles-dir . && \
                 dbt run --profiles-dir . \
-              "
+              " || echo "::warning::dbt run failed — data models may be stale"

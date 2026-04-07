@@ -60,6 +60,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -67,12 +76,22 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
+          PGPASSWORD: datapulse
         run: |
-          pip install -e ".[dev]"
+          for f in migrations/*.sql; do
+            echo "Applying $f..."
+            psql -h localhost -U datapulse -d datapulse -f "$f" 2>&1 || true
+          done
       - name: Run tests
         env:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
-        run: pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+          REDIS_URL: redis://localhost:6379/0
+          SENTRY_ENVIRONMENT: test
+        run: pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=95
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -130,7 +149,6 @@ jobs:
       - name: Run E2E tests
         working-directory: frontend
         run: npx playwright test --reporter=html
-        continue-on-error: true  # TODO: remove once E2E tests are stable in CI
       - name: Upload E2E report
         if: always()
         uses: actions/upload-artifact@v4
