@@ -82,4 +82,17 @@ class ApiService @Inject constructor(
 
     suspend fun triggerPipeline(): TriggerResponseDto =
         client.post("/api/v1/pipeline/trigger").body()
+
+    // Reports
+    suspend fun getReportTemplates(): List<ReportTemplateDto> =
+        client.get("/api/v1/reports").body()
+
+    suspend fun getReportTemplate(templateId: String): ReportTemplateDto =
+        client.get("/api/v1/reports/$templateId").body()
+
+    suspend fun renderReport(templateId: String, parameters: Map<String, String>): RenderedReportDto =
+        client.post("/api/v1/reports/$templateId/render") {
+            io.ktor.client.request.setBody(mapOf("parameters" to parameters))
+            io.ktor.http.contentType(io.ktor.http.ContentType.Application.Json)
+        }.body()
 }
