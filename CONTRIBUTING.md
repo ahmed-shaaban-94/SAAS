@@ -13,7 +13,7 @@ Thanks for your interest in contributing! Here's how to get started.
 ### Quick Start
 
 ```bash
-git clone https://github.com/ahmed-shaaban-94/SAAS.git
+git clone https://github.com/ahmed-shaaban-94/Data-Pulse.git
 cd SAAS
 cp .env.example .env
 make up

@@ -125,7 +125,7 @@ make dbt
 
 ```bash
 # 1. On new server
-git clone https://github.com/ahmed-shaaban-94/SAAS.git
+git clone https://github.com/ahmed-shaaban-94/Data-Pulse.git
 cd SAAS
 cp .env.example .env  # Configure with production values
 

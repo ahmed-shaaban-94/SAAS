@@ -44,7 +44,7 @@ services:
 
   # ---------- API: GHCR image, remove direct port ----------
   api:
-    image: ghcr.io/ahmed-shaaban-94/saas/api:${IMAGE_TAG:?IMAGE_TAG is required for production}
+    image: ghcr.io/ahmed-shaaban-94/data-pulse/api:${IMAGE_TAG:?IMAGE_TAG is required for production}
     ports: !reset []
     environment:
       SENTRY_ENVIRONMENT: production
@@ -61,7 +61,7 @@ services:
 
   # ---------- Frontend: GHCR image, remove direct port ----------
   frontend:
-    image: ghcr.io/ahmed-shaaban-94/saas/frontend:${IMAGE_TAG:?IMAGE_TAG is required for production}
+    image: ghcr.io/ahmed-shaaban-94/data-pulse/frontend:${IMAGE_TAG:?IMAGE_TAG is required for production}
     ports: !reset []
     environment:
       - NEXT_PUBLIC_API_URL=
