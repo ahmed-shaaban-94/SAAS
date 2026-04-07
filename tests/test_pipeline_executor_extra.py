@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -41,41 +40,36 @@ class TestRunDbtEdgeCases:
         settings.pipeline_dbt_timeout = 300
         return PipelineExecutor(settings=settings)
 
-    @patch("datapulse.pipeline.executor.subprocess")
-    def test_dbt_failure_stderr_empty_uses_stdout(self, mock_sub):
+    @patch("datapulse.pipeline.executor.subprocess.Popen")
+    def test_dbt_failure_stderr_empty_uses_stdout(self, mock_popen):
         """When stderr is empty but returncode != 0, falls back to stdout."""
-        mock_sub.run.return_value = MagicMock(
-            returncode=1,
-            stdout="Some error in stdout",
-            stderr="",
-        )
-        mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("Some error in stdout", "")
+        mock_proc.returncode = 1
+        mock_popen.return_value = mock_proc
 
         executor = self._make_executor()
         result = executor.run_dbt(run_id=uuid4(), selector="staging")
         assert result.success is False
         assert result.error is not None
 
-    @patch("datapulse.pipeline.executor.subprocess")
-    def test_dbt_failure_both_empty(self, mock_sub):
+    @patch("datapulse.pipeline.executor.subprocess.Popen")
+    def test_dbt_failure_both_empty(self, mock_popen):
         """When both stderr and stdout empty, uses generic message."""
-        mock_sub.run.return_value = MagicMock(
-            returncode=2,
-            stdout="",
-            stderr="",
-        )
-        mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("", "")
+        mock_proc.returncode = 2
+        mock_popen.return_value = mock_proc
 
         executor = self._make_executor()
         result = executor.run_dbt(run_id=uuid4(), selector="marts")
         assert result.success is False
         assert "exited with code 2" in result.error
 
-    @patch("datapulse.pipeline.executor.subprocess")
-    def test_dbt_generic_exception(self, mock_sub):
+    @patch("datapulse.pipeline.executor.subprocess.Popen")
+    def test_dbt_generic_exception(self, mock_popen):
         """Non-timeout exceptions are caught."""
-        mock_sub.run.side_effect = OSError("command not found")
-        mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+        mock_popen.side_effect = OSError("command not found")
 
         executor = self._make_executor()
         result = executor.run_dbt(run_id=uuid4(), selector="staging")

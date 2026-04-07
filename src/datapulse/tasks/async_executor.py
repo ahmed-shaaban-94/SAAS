@@ -16,14 +16,13 @@ import asyncio
 import json
 import time
 import uuid
-from datetime import date, datetime
-from decimal import Decimal
-from typing import Any
 
+import redis
 from sqlalchemy import text
 
 from datapulse.config import get_settings
 from datapulse.core.db import get_session_factory
+from datapulse.core.serializers import serialise_value as _serialise
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
@@ -40,8 +39,6 @@ def _get_job_client():
     if not settings.redis_url:
         return None
     try:
-        import redis
-
         base = settings.redis_url
         parts = base.rsplit("/", 1)
         url = f"{parts[0]}/2" if len(parts) == 2 and parts[1].isdigit() else f"{base.rstrip('/')}/2"
@@ -50,9 +47,6 @@ def _get_job_client():
     except Exception as exc:
         log.error("job_redis_connect_error", error=str(exc))
         return None
-
-
-from datapulse.core.serializers import serialise_value as _serialise  # shared utility
 
 
 def _set_job(client, job_id: str, data: dict) -> None:

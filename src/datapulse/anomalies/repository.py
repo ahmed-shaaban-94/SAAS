@@ -116,7 +116,7 @@ class AnomalyRepository:
         """)
         result = self._session.execute(stmt, {"id": alert_id, "user": user})
         self._session.flush()
-        return result.rowcount > 0
+        return result.rowcount > 0  # type: ignore[attr-defined]
 
     @staticmethod
     def _to_response(row) -> AnomalyAlertResponse:

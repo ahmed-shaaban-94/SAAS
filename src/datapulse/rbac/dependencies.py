@@ -103,7 +103,9 @@ def require_role(*allowed_roles: RoleKey):
         if ctx.role_key not in allowed_roles:
             raise HTTPException(
                 status_code=403,
-                detail=f"Role '{ctx.role_key}' is not authorized. Required: {', '.join(allowed_roles)}",
+                detail=(
+                    f"Role '{ctx.role_key}' is not authorized. Required: {', '.join(allowed_roles)}"
+                ),
             )
         return ctx
 

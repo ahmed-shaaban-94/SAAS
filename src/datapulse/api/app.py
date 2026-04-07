@@ -1,7 +1,5 @@
 """FastAPI application factory."""
 
-from __future__ import annotations
-
 import time
 import traceback
 import uuid as _uuid

@@ -11,12 +11,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from datapulse.tasks.async_executor import (
-    _JOB_TTL,
     _QUERY_TIMEOUT,
     _serialise,
     get_job_result,
 )
-
 
 # ---------------------------------------------------------------------------
 # _serialise

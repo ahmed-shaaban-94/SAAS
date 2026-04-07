@@ -158,7 +158,9 @@ def sma_forecast(
     effective_window = min(window, len(series))
     tail = series[-effective_window:]
     mean_val = sum(tail) / len(tail)
-    std_val = (sum((x - mean_val) ** 2 for x in tail) / (len(tail) - 1)) ** 0.5 if len(tail) > 1 else 0.0
+    std_val = (
+        (sum((x - mean_val) ** 2 for x in tail) / (len(tail) - 1)) ** 0.5 if len(tail) > 1 else 0.0
+    )
     z = _z_for_confidence(confidence)
 
     points: list[ForecastPoint] = []

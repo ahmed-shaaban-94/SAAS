@@ -186,7 +186,7 @@ def export_dashboard_pdf(
 
     f = _build_filter(start_date, end_date, 10)
     try:
-        summary = service.get_summary(f)
+        summary = service.get_dashboard_summary(f)
         products = service.get_product_insights(f)
         customers = service.get_customer_insights(f)
         staff = service.get_staff_leaderboard(f)

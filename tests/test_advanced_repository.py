@@ -36,10 +36,10 @@ class TestABCAnalysis:
 
     def test_with_data(self, repo: AdvancedRepository, mock_session: MagicMock, default_filters):
         mock_session.execute.return_value.fetchall.return_value = [
-            (1, "Product A", Decimal("80000"), 1, Decimal("50.00"), Decimal("160000")),
-            (2, "Product B", Decimal("40000"), 2, Decimal("75.00"), Decimal("160000")),
-            (3, "Product C", Decimal("25000"), 3, Decimal("90.63"), Decimal("160000")),
-            (4, "Product D", Decimal("15000"), 4, Decimal("100.00"), Decimal("160000")),
+            (1, "Product A", Decimal("80000"), 1, Decimal("50.00"), Decimal("160000"), None),
+            (2, "Product B", Decimal("40000"), 2, Decimal("75.00"), Decimal("160000"), None),
+            (3, "Product C", Decimal("25000"), 3, Decimal("90.63"), Decimal("160000"), None),
+            (4, "Product D", Decimal("15000"), 4, Decimal("100.00"), Decimal("160000"), None),
         ]
         result = repo.get_abc_analysis(default_filters, entity="product")
         assert len(result.items) == 4
@@ -82,8 +82,8 @@ class TestReturnsTrend:
 
     def test_with_data(self, repo: AdvancedRepository, mock_session: MagicMock, default_filters):
         mock_session.execute.return_value.fetchall.return_value = [
-            ("2025-01", 50, Decimal("25000"), Decimal("2.50")),
-            ("2025-02", 30, Decimal("15000"), Decimal("1.80")),
+            ("2025-01", 50, Decimal("25000"), Decimal("2.50"), 2000),
+            ("2025-02", 30, Decimal("15000"), Decimal("1.80"), 1667),
         ]
         result = repo.get_returns_trend(default_filters)
         assert len(result.points) == 2

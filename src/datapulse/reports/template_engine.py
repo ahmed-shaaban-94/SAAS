@@ -11,6 +11,7 @@ import re
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from datapulse.core.serializers import serialise_value as _serialise
 from datapulse.logging import get_logger
 from datapulse.reports.models import (
     ParameterType,
@@ -335,6 +336,3 @@ def render_report(
         parameters=params,
         sections=rendered_sections,
     )
-
-
-from datapulse.core.serializers import serialise_value as _serialise  # shared utility

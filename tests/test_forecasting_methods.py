@@ -158,8 +158,8 @@ class TestBacktest:
     def test_handles_short_series(self):
         series = [100.0, 200.0]
         accuracy = backtest(series, horizon=5, seasonal_periods=7, method="sma")
-        # Should not crash — returns zero accuracy
-        assert float(accuracy.mape) == 0.0
+        # Should not crash — returns sentinel MAPE for insufficient data
+        assert float(accuracy.mape) == 999999.0
 
     def test_seasonal_naive_backtest(self):
         cycle = [100, 200, 300, 400, 500, 600, 700]

@@ -49,7 +49,11 @@ _ENTITY_MAP: dict[str, tuple[str, str, str]] = {
 # Map agg table -> (dim_table, dim_key) for fct_sales-based day-level queries
 _DIM_JOIN: dict[str, tuple[str, str, str]] = {
     "public_marts.agg_sales_by_product": ("public_marts.dim_product", "product_key", "drug_brand"),
-    "public_marts.agg_sales_by_customer": ("public_marts.dim_customer", "customer_key", "customer_name"),
+    "public_marts.agg_sales_by_customer": (
+        "public_marts.dim_customer",
+        "customer_key",
+        "customer_name",
+    ),
     "public_marts.agg_sales_by_staff": ("public_marts.dim_staff", "staff_key", "staff_name"),
     "public_marts.agg_sales_by_site": ("public_marts.dim_site", "site_key", "site_name"),
 }
@@ -77,7 +81,9 @@ class ComparisonRepository:
         transaction counts below 33% of the average — same threshold used
         by get_top_staff in the main repository.
         """
-        where, params = build_where(filters, date_column="date_key", supported_fields=SITE_DATE_ONLY)
+        where, params = build_where(
+            filters, date_column="date_key", supported_fields=SITE_DATE_ONLY
+        )
         params["limit"] = limit
 
         if active_only:
@@ -154,10 +160,20 @@ class ComparisonRepository:
         fetch_limit = max(limit * 20, 100)
         is_staff = entity_type == "staff"
         current = self._fetch_period_totals(
-            table, key_col, name_col, current_filters, fetch_limit, active_only=is_staff,
+            table,
+            key_col,
+            name_col,
+            current_filters,
+            fetch_limit,
+            active_only=is_staff,
         )
         previous = self._fetch_period_totals(
-            table, key_col, name_col, previous_filters, fetch_limit, active_only=is_staff,
+            table,
+            key_col,
+            name_col,
+            previous_filters,
+            fetch_limit,
+            active_only=is_staff,
         )
 
         movers: list[MoverItem] = []
@@ -179,9 +195,10 @@ class ComparisonRepository:
                 # Disappeared (existed before, gone now) — treat as -100%
                 change = Decimal("-100")
             else:
-                change = safe_growth(curr_val, prev_val)
-                if change is None:
+                growth = safe_growth(curr_val, prev_val)
+                if growth is None:
                     continue
+                change = growth
 
             movers.append(
                 MoverItem(
