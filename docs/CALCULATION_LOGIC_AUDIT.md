@@ -12,6 +12,83 @@ The audit found **4 HIGH severity**, **7 MODERATE severity**, and **6 LOW severi
 
 ---
 
+## Issue Severity Distribution
+
+```mermaid
+pie title Issues by Severity
+    "HIGH (4)" : 4
+    "MODERATE (7)" : 7
+    "LOW (6)" : 6
+```
+
+---
+
+## Data Flow Overview — Where Issues Live
+
+```mermaid
+flowchart TB
+    subgraph Bronze["Bronze Layer"]
+        RAW["Raw CSV/Excel"]
+    end
+
+    subgraph Silver["Silver Layer (dbt)"]
+        STG["stg_sales<br/>✅ Correct"]
+    end
+
+    subgraph Gold["Gold Layer (dbt)"]
+        FCT["fct_sales<br/>✅ Correct"]
+        AGG_D["agg_sales_daily<br/>transaction_count = COUNT(*)"]
+        AGG_M["agg_sales_monthly<br/>return_rate stored as 0–1"]
+        MS["metrics_summary<br/>daily_transactions = SUM(COUNT(*))"]
+        FEAT["features<br/>✅ Correct"]
+    end
+
+    subgraph Python["Python API Layer"]
+        R1["repository.py<br/>get_kpi_summary<br/>🔴 H1: uses raw COUNT(*)"]
+        R2["repository.py<br/>get_kpi_from_fct_sales<br/>🔴 H1: subtracts returns"]
+        R3["repository.py<br/>get_kpi_summary_range<br/>🔴 H1: subtracts returns"]
+        ADV["advanced_repository.py<br/>🔴 H2: return_rate × 100<br/>🔴 H3: simple avg"]
+        DET["detail_repository.py<br/>🔴 H2: return_rate as-is (0–1)"]
+        ORIG["repository.py<br/>origin_breakdown<br/>🔴 H4: float not Decimal"]
+        BRK["breakdown_repository.py<br/>🟡 M1/M2/M5"]
+    end
+
+    subgraph Frontend["Frontend (Next.js)"]
+        KPI["KPI Cards<br/>Displays daily_transactions"]
+        RET["Returns Trend<br/>Displays return_rate %"]
+        DETAIL["Detail Pages<br/>Displays return_rate"]
+        HEALTH["Health Dashboard<br/>🟡 M7: div by zero"]
+    end
+
+    RAW --> STG --> FCT
+    FCT --> AGG_D --> MS
+    FCT --> AGG_M
+    FCT --> FEAT
+    MS --> R1
+    FCT --> R2
+    AGG_D --> R3
+    AGG_M --> ADV
+    AGG_M --> DET
+    R1 --> KPI
+    R2 --> KPI
+    R3 --> KPI
+    ADV --> RET
+    DET --> DETAIL
+    ORIG --> Frontend
+    BRK --> Frontend
+
+    style R1 fill:#fee2e2,stroke:#ef4444
+    style R2 fill:#fee2e2,stroke:#ef4444
+    style R3 fill:#fee2e2,stroke:#ef4444
+    style ADV fill:#fee2e2,stroke:#ef4444
+    style DET fill:#fee2e2,stroke:#ef4444
+    style ORIG fill:#fee2e2,stroke:#ef4444
+    style BRK fill:#fef3c7,stroke:#f59e0b
+    style HEALTH fill:#fef3c7,stroke:#f59e0b
+```
+
+---
+
 ## HIGH Severity Issues
 
 ### H1: `daily_transactions` Calculated Inconsistently Across Code Paths
@@ -20,6 +97,42 @@ The audit found **4 HIGH severity**, **7 MODERATE severity**, and **6 LOW severi
 - `src/datapulse/analytics/repository.py:376` (metrics_summary path)
 - `src/datapulse/analytics/repository.py:649` (fct_sales fallback path)
 - `src/datapulse/analytics/repository.py:815` (range query path)
+
+#### How the Inconsistency Happens
+
+```mermaid
+flowchart LR
+    subgraph DB["Database (agg_sales_daily)"]
+        TC["transaction_count<br/>= COUNT(*)<br/><b>includes returns</b>"]
+        RC["return_count<br/>= COUNT(*) FILTER (is_return)"]
+    end
+
+    subgraph MS["metrics_summary"]
+        DT_RAW["daily_transactions<br/>= SUM(transaction_count)<br/><b>= 1,200 (incl. 50 returns)</b>"]
+    end
+
+    subgraph Path_A["Path A: get_kpi_summary (line 376)"]
+        A_RESULT["daily_transactions = 1,200<br/>🔴 includes returns"]
+    end
+
+    subgraph Path_B["Path B: get_kpi_from_fct_sales (line 649)"]
+        B_CALC["total_transactions - total_returns<br/>= 1,200 - 50"]
+        B_RESULT["daily_transactions = 1,150<br/>🟢 excludes returns"]
+    end
+
+    subgraph Path_C["Path C: get_kpi_summary_range (line 815)"]
+        C_CALC["total_transactions - total_returns<br/>= 1,200 - 50"]
+        C_RESULT["daily_transactions = 1,150<br/>🟢 excludes returns"]
+    end
+
+    TC --> DT_RAW --> A_RESULT
+    TC --> B_CALC --> B_RESULT
+    TC --> C_CALC --> C_RESULT
+
+    style A_RESULT fill:#fee2e2,stroke:#ef4444
+    style B_RESULT fill:#dcfce7,stroke:#22c55e
+    style C_RESULT fill:#dcfce7,stroke:#22c55e
+```
 
 **Problem:**
 The metrics_summary code path reads `daily_transactions` directly from the database, which is `COUNT(*)` in `agg_sales_daily` — **including returns**. But the fct_sales and range query paths compute `daily_transactions = total_transactions - total_returns`, **excluding returns**.
@@ -32,9 +145,9 @@ daily_transactions=daily_transactions,  # raw from DB: COUNT(*)
 daily_transactions=total_transactions - total_returns,
 ```
 
-**Impact:** KPI dashboard shows different transaction counts depending on which code path is triggered by date range/data availability.
+**Impact:** KPI dashboard shows different transaction counts depending on which code path is triggered by date range/data availability. The same day could show 1,200 or 1,150 transactions depending on the query path.
 
-**Fix:** Standardize to one definition. Recommended: always subtract returns (net transactions).
+**Fix:** Standardize to one definition. Recommended: always subtract returns (net transactions) in all paths, including the metrics_summary path at line 376.
 
 ---
 
@@ -43,6 +156,43 @@ daily_transactions=total_transactions - total_returns,
 **Files:**
 - `src/datapulse/analytics/advanced_repository.py:192` — multiplies by 100
 - `src/datapulse/analytics/detail_repository.py:336` — keeps as 0-1 decimal
+
+#### Unit Mismatch Across Endpoints
+
+```mermaid
+flowchart TB
+    subgraph Source["Source of Truth"]
+        AGG["agg_sales_monthly<br/>return_rate = 0.0342<br/>(ratio, 0–1 range)"]
+    end
+
+    subgraph Endpoint_A["Returns Trend Endpoint<br/>(advanced_repository.py:192)"]
+        CALC_A["AVG(return_rate) × 100"]
+        OUT_A["API returns: 3.42<br/>(percentage, 0–100)"]
+    end
+
+    subgraph Endpoint_B["Detail Endpoint<br/>(detail_repository.py:336)"]
+        CALC_B["return_rate as-is"]
+        OUT_B["API returns: 0.0342<br/>(ratio, 0–1)"]
+    end
+
+    subgraph Frontend_A["Returns Trend Chart"]
+        FE_A["Displays: 3.42%<br/>✅ Correct if treated as %"]
+    end
+
+    subgraph Frontend_B["Site/Product Detail"]
+        direction TB
+        FE_B1["If × 100: Shows 3.42%<br/>✅ Correct"]
+        FE_B2["If displayed as-is: Shows 0.03%<br/>🔴 Wrong!"]
+    end
+
+    AGG --> CALC_A --> OUT_A --> FE_A
+    AGG --> CALC_B --> OUT_B --> FE_B1
+    OUT_B --> FE_B2
+
+    style OUT_A fill:#dbeafe,stroke:#3b82f6
+    style OUT_B fill:#fef3c7,stroke:#f59e0b
+    style FE_B2 fill:#fee2e2,stroke:#ef4444
+```
 
 **Problem:**
 ```sql
@@ -57,13 +207,49 @@ The `agg_sales_monthly.return_rate` column stores values as 0-1 decimals (e.g., 
 
 **Impact:** Frontend components may display incorrect percentages if they multiply a pre-multiplied value by 100 again, or display raw decimals that should be percentages.
 
-**Fix:** Choose one convention and apply everywhere. Recommended: store/transmit as 0-1, multiply by 100 only at display time.
+**Fix:** Choose one convention and apply everywhere. Recommended: store/transmit as 0-1, multiply by 100 only at display time in the frontend.
 
 ---
 
 ### H3: Average Return Rate Uses Simple Average Instead of Weighted Average
 
 **File:** `src/datapulse/analytics/advanced_repository.py:219-221`
+
+#### Simple vs Weighted Average — Numerical Example
+
+```mermaid
+flowchart TB
+    subgraph Data["Monthly Data"]
+        JAN["January<br/>100 transactions<br/>5 returns<br/>rate = 5.00%"]
+        FEB["February<br/>200 transactions<br/>8 returns<br/>rate = 4.00%"]
+        MAR["March<br/>10,000 transactions<br/>200 returns<br/>rate = 2.00%"]
+    end
+
+    subgraph Current["🔴 Current: Simple Average"]
+        SIMPLE["(5.00 + 4.00 + 2.00) / 3<br/><b>= 3.67%</b><br/>Each month weighted equally"]
+    end
+
+    subgraph Correct["🟢 Correct: Weighted Average"]
+        WEIGHTED["(5 + 8 + 200) / (100 + 200 + 10,000)<br/>= 213 / 10,300<br/><b>= 2.07%</b><br/>Weighted by transaction volume"]
+    end
+
+    subgraph Impact["Impact"]
+        DIFF["Difference: 3.67% vs 2.07%<br/>🔴 77% overstatement!<br/>Low-volume months inflate the metric"]
+    end
+
+    JAN --> SIMPLE
+    FEB --> SIMPLE
+    MAR --> SIMPLE
+    JAN --> WEIGHTED
+    FEB --> WEIGHTED
+    MAR --> WEIGHTED
+    SIMPLE --> DIFF
+    WEIGHTED --> DIFF
+
+    style SIMPLE fill:#fee2e2,stroke:#ef4444
+    style WEIGHTED fill:#dcfce7,stroke:#22c55e
+    style DIFF fill:#fef3c7,stroke:#f59e0b
+```
 
 **Problem:**
 ```python
@@ -77,13 +263,47 @@ This averages monthly return rates arithmetically. A month with 100 transactions
 
 **Correct formula:** `total_returns_across_months / total_transactions_across_months * 100`
 
-**Impact:** Skewed average return rate in low-volume months.
+**Impact:** Overstatement of return rate when low-volume months have higher return rates (common seasonal pattern).
 
 ---
 
 ### H4: Origin Breakdown Returns Float Instead of Decimal
 
 **File:** `src/datapulse/analytics/repository.py:916-925`
+
+#### Precision Loss Chain
+
+```mermaid
+flowchart LR
+    subgraph DB["PostgreSQL"]
+        PG["NUMERIC(18,4)<br/>value = 1,234,567.8912"]
+    end
+
+    subgraph Current["🔴 Current Code"]
+        F1["float(r[1])"]
+        F2["= 1234567.8912<br/>IEEE 754 double<br/>~15 significant digits"]
+        F3["After arithmetic:<br/>1234567.891200000<b>1</b><br/>Rounding error creeps in"]
+    end
+
+    subgraph Correct["🟢 Correct Approach"]
+        D1["Decimal(str(r[1]))"]
+        D2["= Decimal('1234567.8912')<br/>Exact decimal arithmetic"]
+        D3["After arithmetic:<br/>1234567.8912<br/>No precision loss"]
+    end
+
+    subgraph API["API Response"]
+        J_BAD["JSON: 1234567.8912000001<br/>🔴 Floating point artifact"]
+        J_GOOD["JSON: 1234567.89<br/>✅ Clean output"]
+    end
+
+    PG --> F1 --> F2 --> F3 --> J_BAD
+    PG --> D1 --> D2 --> D3 --> J_GOOD
+
+    style F3 fill:#fee2e2,stroke:#ef4444
+    style D3 fill:#dcfce7,stroke:#22c55e
+    style J_BAD fill:#fee2e2,stroke:#ef4444
+    style J_GOOD fill:#dcfce7,stroke:#22c55e
+```
 
 **Problem:**
 ```python
@@ -267,6 +487,35 @@ These areas were audited and found to be correctly implemented:
 | **Target Progress** | Division by zero guard and 0-100% clamping are properly implemented |
 
 ---
+
+## Fix Priority Roadmap
+
+```mermaid
+gantt
+    title Fix Priority — Recommended Order
+    dateFormat X
+    axisFormat %s
+
+    section HIGH (Fix First)
+    H1 daily_transactions consistency  :crit, h1, 0, 2
+    H2 return_rate unit standard       :crit, h2, 0, 2
+    H3 weighted avg return rate        :crit, h3, 0, 2
+    H4 origin Decimal conversion       :crit, h4, 0, 1
+
+    section MODERATE
+    M7 health dashboard div/0          :m7, 2, 3
+    M5 other_count validation          :m5, 2, 3
+    M1 transaction netting docs        :m1, 3, 4
+    M2 silent fallback guard           :m2, 3, 4
+    M3 safe_growth docs                :m3, 3, 4
+    M4 ABC rounding edge case          :m4, 4, 5
+    M6 health_score refactor           :m6, 4, 5
+
+    section LOW
+    L1 percentage decimal standard     :l1, 5, 7
+    L2 dbt quantity precision          :l2, 5, 7
+    L3-L6 frontend minor fixes         :l3, 5, 7
+```
 
 ## Recommendations Summary
 
