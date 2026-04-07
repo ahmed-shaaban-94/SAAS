@@ -83,6 +83,9 @@ jobs:
             set -e
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             export IMAGE_TAG=staging
+            export API_KEY="${{ secrets.API_KEY }}"
+            export PIPELINE_WEBHOOK_SECRET="${{ secrets.PIPELINE_WEBHOOK_SECRET }}"
+            export NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}"
 
             # Save current image digests for rollback
             echo "=== Saving current state for rollback ==="

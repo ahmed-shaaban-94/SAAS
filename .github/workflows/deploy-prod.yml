@@ -120,6 +120,9 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
+            export API_KEY="${{ secrets.API_KEY }}"
+            export PIPELINE_WEBHOOK_SECRET="${{ secrets.PIPELINE_WEBHOOK_SECRET }}"
+            export NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}"
 
             # Save current state for rollback
             echo "=== Saving rollback state ==="
