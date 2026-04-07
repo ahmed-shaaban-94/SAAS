@@ -117,10 +117,32 @@ def _export_response(
     entity: str,
     fmt: str,
 ) -> StreamingResponse:
-    """Dispatch to CSV or Excel export."""
+    """Dispatch to CSV, Excel, or PDF export."""
     if fmt == "xlsx":
         return _stream_xlsx(data, f"{entity}_export.xlsx")
+    if fmt == "pdf":
+        return _stream_pdf_table(data, entity)
     return _stream_csv(data, f"{entity}_export.csv")
+
+
+def _stream_pdf_table(data: list[dict[str, Any]], entity: str) -> StreamingResponse:
+    """Generate a simple PDF table from data rows."""
+    from datapulse.reports.pdf_generator import generate_report_pdf
+
+    headers = list(data[0].keys()) if data else []
+    rows = [[row.get(h) for h in headers] for row in data]
+    pdf_bytes = generate_report_pdf(
+        title=f"{entity.title()} Export",
+        sections=[{"type": "table", "title": entity.title(), "headers": headers, "rows": rows}],
+    )
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={entity}_export.pdf",
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 def _build_filter(
@@ -151,12 +173,49 @@ def _build_filter(
     return AnalyticsFilter(date_range=dr, category=category, limit=limit)
 
 
+@router.get("/dashboard/pdf")
+@limiter.limit("5/minute")
+def export_dashboard_pdf(
+    request: Request,
+    service: ServiceDep,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> StreamingResponse:
+    """Export the dashboard overview as a styled PDF report."""
+    from datapulse.reports.pdf_generator import generate_dashboard_pdf
+
+    f = _build_filter(start_date, end_date, 10)
+    try:
+        summary = service.get_summary(f)
+        products = service.get_product_insights(f)
+        customers = service.get_customer_insights(f)
+        staff = service.get_staff_leaderboard(f)
+    except Exception as exc:
+        log.error("export_dashboard_pdf_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Failed to generate PDF.") from exc
+
+    summary_dict = summary.model_dump() if hasattr(summary, "model_dump") else {}
+    prod_list = [i.model_dump() for i in products.items] if hasattr(products, "items") else []
+    cust_list = [i.model_dump() for i in customers.items] if hasattr(customers, "items") else []
+    staff_list = [i.model_dump() for i in staff.items] if hasattr(staff, "items") else []
+
+    pdf_bytes = generate_dashboard_pdf(summary_dict, prod_list, cust_list, staff_list)
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": "attachment; filename=dashboard_report.pdf",
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
 @router.get("/products")
 @limiter.limit("10/minute")
 def export_products(
     request: Request,
     service: ServiceDep,
-    format: Annotated[str, Query(pattern="^(csv|xlsx)$")] = "csv",
+    format: Annotated[str, Query(pattern="^(csv|xlsx|pdf)$")] = "csv",
     start_date: str | None = None,
     end_date: str | None = None,
     category: str | None = None,
@@ -178,7 +237,7 @@ def export_products(
 def export_customers(
     request: Request,
     service: ServiceDep,
-    format: Annotated[str, Query(pattern="^(csv|xlsx)$")] = "csv",
+    format: Annotated[str, Query(pattern="^(csv|xlsx|pdf)$")] = "csv",
     start_date: str | None = None,
     end_date: str | None = None,
     limit: Annotated[int, Query(ge=1, le=10000)] = 100,
@@ -199,7 +258,7 @@ def export_customers(
 def export_staff(
     request: Request,
     service: ServiceDep,
-    format: Annotated[str, Query(pattern="^(csv|xlsx)$")] = "csv",
+    format: Annotated[str, Query(pattern="^(csv|xlsx|pdf)$")] = "csv",
     start_date: str | None = None,
     end_date: str | None = None,
     limit: Annotated[int, Query(ge=1, le=10000)] = 100,

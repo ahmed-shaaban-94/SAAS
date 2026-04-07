@@ -24,6 +24,7 @@ export const API_BASE_URL =
 
 export const NAV_ITEMS = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
+  { label: "My Dashboard", href: "/my-dashboard", icon: "LayoutGrid" },
   { label: "Goals", href: "/goals", icon: "Target" },
   { label: "Custom Report", href: "/custom-report", icon: "BarChartBig" },
   { label: "Products", href: "/products", icon: "Package" },

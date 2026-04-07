@@ -11,6 +11,7 @@ import {
   CreditCard,
   FileBarChart,
   LayoutDashboard,
+  LayoutGrid,
   Menu,
   Package,
   Shield,
@@ -39,6 +40,7 @@ interface SidebarProps {
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
+  LayoutGrid,
   Target,
   BarChartBig,
   Package,
