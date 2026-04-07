@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Menu,
   Package,
+  Shield,
   Target,
   Users,
   UserCog,
@@ -49,6 +50,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   GitBranch,
   Bell,
   Sparkles,
+  Shield,
   CreditCard,
 };
 
