@@ -107,8 +107,8 @@ class ScenarioService:
 
     @staticmethod
     def _summarize(series: list[TimePoint]) -> ImpactSummary:
-        base_total = sum(p.baseline for p in series)
-        proj_total = sum(p.projected for p in series)
+        base_total = sum((p.baseline for p in series), Decimal("0"))
+        proj_total = sum((p.projected for p in series), Decimal("0"))
         abs_change = proj_total - base_total
         pct_change = float(abs_change / base_total * _HUNDRED) if base_total else 0.0
         return ImpactSummary(

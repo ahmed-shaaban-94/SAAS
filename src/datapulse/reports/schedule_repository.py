@@ -75,7 +75,7 @@ class ScheduleRepository:
             .first()
         )
         self._session.flush()
-        return self._row_to_response(dict(row))
+        return self._row_to_response(dict(row))  # type: ignore[arg-type]
 
     def update_schedule(
         self, schedule_id: int, data: ReportScheduleUpdate
@@ -119,4 +119,4 @@ class ScheduleRepository:
         stmt = text("DELETE FROM public.report_schedules WHERE id = :id")
         result = self._session.execute(stmt, {"id": schedule_id})
         self._session.flush()
-        return (result.rowcount or 0) > 0
+        return (result.rowcount or 0) > 0  # type: ignore[attr-defined]
