@@ -89,8 +89,8 @@ jobs:
           target: ${{ matrix.target }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/saas/${{ matrix.service }}:production
-            ghcr.io/${{ github.repository_owner }}/saas/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/data-pulse/${{ matrix.service }}:production
+            ghcr.io/${{ github.repository_owner }}/data-pulse/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
