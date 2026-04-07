@@ -5,17 +5,17 @@
 
 ## Summary
 
-- 🔴 Critical: **9**
-- 🟡 Warnings: **20**
+- 🔴 Critical: **15**
+- 🟡 Warnings: **23**
 - 🟢 Suggestions: **7**
-- **Total findings: 36**
+- **Total findings: 45**
 
 | Layer | 🔴 | 🟡 | 🟢 | Files |
 |-------|-----|-----|-----|-------|
 | Config & Thresholds | 0 | 2 | 1 | 5 |
 | Pipeline & Forecasting | 1 | 3 | 1 | 6 |
 | Python Analytics | 4 | 5 | 2 | 14 |
-| dbt SQL Models | 0 | 4 | 2 | 26+7 |
+| dbt SQL Models | 6 | 7 | 2 | 26+7 |
 | Frontend (Next.js) | 3 | 9 | 1 | 35 |
 | Power BI DAX | 1 | 3 | 2 | 12 |
 
@@ -454,6 +454,124 @@
   ```
 - **Test to add:** Singular test asserting no return_rate exceeds 1.0 or is negative.
 
+#### 🔴 [DBT-7] `metrics_summary` incremental run corrupts MTD/YTD running totals
+- **File:** `dbt/models/marts/aggs/metrics_summary.sql:67-109,111-113`
+- **Severity:** Critical
+- **Category:** Silent data corruption
+- **Current code:**
+  ```sql
+  -- Line 67-73: MTD window function
+  SUM(t.daily_gross_amount) OVER (
+      PARTITION BY t.tenant_id, t.year, t.month
+      ORDER BY t.full_date
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) AS mtd_gross_amount,
+  ...
+  -- Line 111-113: Incremental filter
+  {% if is_incremental() %}
+  WHERE t.full_date >= CURRENT_DATE - INTERVAL '3 days'
+  {% endif %}
+  ```
+- **Why it's wrong:** During incremental runs, the WHERE clause filters to only the last 3 days. The window functions (`PARTITION BY year, month ... UNBOUNDED PRECEDING`) then operate only on this 3-day subset. On March 29, MTD should sum March 1–29 but instead sums only March 27–29. YTD is even worse — it should sum Jan 1–Mar 29 but only sees 3 days.
+  - **Concrete example:** If March has 29 days with ~100K EGP/day, the correct MTD is ~2.9M EGP. The incremental run produces ~300K EGP (3 days only). This silently overwrites the correct values via `unique_key`.
+- **Suggested fix:** Expand the incremental window to include the full month-to-date (or full year-to-date for YTD):
+  ```sql
+  {% if is_incremental() %}
+  WHERE t.full_date >= DATE_TRUNC('year', CURRENT_DATE)
+  {% endif %}
+  ```
+  Or better: use a two-step approach — filter the CTE to recent data but join back to get the full window context.
+- **Test to add:** Singular test: compare MTD on last day of month vs SUM of daily values for that month.
+
+#### 🔴 [DBT-8] `dim_date.year_week` uses `EXTRACT(YEAR)` instead of `EXTRACT(ISOYEAR)` — wrong at year boundaries
+- **File:** `dbt/models/marts/dims/dim_date.sql:37`
+- **Severity:** Critical
+- **Category:** Incorrect date logic
+- **Current code:**
+  ```sql
+  EXTRACT(YEAR FROM full_date)::INT || '-W' || LPAD(EXTRACT(WEEK FROM full_date)::INT::TEXT, 2, '0')
+                                                AS year_week,
+  ```
+- **Why it's wrong:** `EXTRACT(WEEK ...)` returns ISO 8601 week numbers (1–53), but the year prefix uses `EXTRACT(YEAR ...)` (calendar year). At year boundaries, ISO week 1 of 2025 may include Dec 29–31 of 2024. Those dates produce `"2024-W01"` instead of `"2025-W01"`.
+  - **Concrete example:** 2024-12-30 is ISO week 1 of 2025. Current code: `"2024-W01"`. Correct: `"2025-W01"`. Grouping by `year_week` would mix Dec 30, 2024 with Jan 6, 2025 (actual W01 of 2024).
+- **Suggested fix:**
+  ```sql
+  EXTRACT(ISOYEAR FROM full_date)::INT || '-W' || LPAD(EXTRACT(WEEK FROM full_date)::INT::TEXT, 2, '0')
+                                                AS year_week,
+  ```
+- **Test to add:** `test_year_week_iso_boundary` — assert that Dec 29-31, 2024 produce `"2025-W01"`.
+
+#### 🔴 [DBT-9] `agg_sales_monthly` computes `total_net_amount` but drops it from final SELECT
+- **File:** `dbt/models/marts/aggs/agg_sales_monthly.sql:31,64-91`
+- **Severity:** Critical
+- **Category:** Missing column / YAML test failure
+- **Current code:**
+  ```sql
+  -- Line 31 (in monthly_base CTE): computed
+  ROUND(SUM(f.net_amount), 2)  AS total_net_amount,
+
+  -- Lines 64-91 (final SELECT): NOT included
+  SELECT g.total_quantity, g.total_sales, g.total_discount,
+         g.transaction_count, ...
+  -- total_net_amount is missing from this list
+  ```
+- **Why it's wrong:** The YAML schema (`_aggs__models.yml:155-158`) defines `total_net_amount` with a `not_null` test. Since the column is absent from the SQL output, `dbt test` would fail. Any downstream model or API query referencing `agg_sales_monthly.total_net_amount` would error.
+- **Suggested fix:** Add `g.total_net_amount,` to the final SELECT between `g.total_discount,` and `g.transaction_count,`.
+- **Test to add:** Already defined in YAML — fix the SQL so the existing test passes.
+
+#### 🔴 [DBT-10] `agg_sales_by_site` missing `total_net_amount` column entirely
+- **File:** `dbt/models/marts/aggs/agg_sales_by_site.sql:22-65`
+- **Severity:** Critical
+- **Category:** Missing column / YAML test failure
+- **Current code:**
+  ```sql
+  -- site_monthly CTE computes:
+  total_quantity, total_sales, total_discount, transaction_count, ...
+  -- NO SUM(f.net_amount) anywhere in the SQL
+  ```
+- **Why it's wrong:** YAML schema (`_aggs__models.yml:309-311`) defines `total_net_amount` with `not_null` test, but the SQL never computes it. `dbt test` would fail.
+- **Suggested fix:** Add to `site_monthly` CTE:
+  ```sql
+  ROUND(SUM(f.net_amount)::NUMERIC, 2)  AS total_net_amount,
+  ```
+  And include in final SELECT.
+
+#### 🔴 [DBT-11] `agg_sales_by_staff` missing `total_net_amount` column entirely
+- **File:** `dbt/models/marts/aggs/agg_sales_by_staff.sql:22-52`
+- **Severity:** Critical
+- **Category:** Missing column / YAML test failure
+- **Current code:**
+  ```sql
+  -- staff_monthly CTE computes:
+  total_quantity, total_sales, total_discount, ...
+  -- NO SUM(f.net_amount) anywhere in the SQL
+  ```
+- **Why it's wrong:** Same issue as DBT-10 — YAML defines `total_net_amount` with `not_null` test but SQL doesn't produce it.
+- **Suggested fix:** Add `ROUND(SUM(f.net_amount)::NUMERIC, 2) AS total_net_amount,` to `staff_monthly` CTE and final SELECT.
+
+#### 🔴 [DBT-12] `fct_sales` 32-bit hash surrogate key has ~149 expected collisions at 1.13M rows
+- **File:** `dbt/models/marts/facts/fct_sales.sql:56-65`
+- **Severity:** Critical
+- **Category:** Data integrity / key collision
+- **Current code:**
+  ```sql
+  ('x' || LEFT(MD5(
+      COALESCE(s.tenant_id::TEXT, '') || '|' ||
+      COALESCE(s.invoice_id, '') || '|' ||
+      ... 8 fields ...
+  ), 8))::BIT(32)::INT AS sales_key,
+  ```
+- **Why it's wrong:** `LEFT(MD5(...), 8)` takes 8 hex chars = 32 bits = 4.29 billion possible values. By the birthday paradox, with 1.13M rows: expected collisions ≈ n²/(2m) = (1.13×10⁶)² / (2×4.29×10⁹) ≈ **149 collisions**. Two different invoices sharing the same `sales_key` means:
+  - Any `JOIN ON sales_key` produces duplicate rows
+  - Any `DISTINCT sales_key` query loses rows silently
+  - If used as `unique_key` in incremental models, one row overwrites another
+- **Suggested fix:** Use full MD5 (128-bit) or at least 64-bit:
+  ```sql
+  ('x' || LEFT(MD5(...), 16))::BIT(64)::BIGINT AS sales_key,
+  ```
+  At 64 bits, expected collisions drop to ~0.00015 (essentially zero).
+- **Test to add:** `test_fct_sales_no_duplicate_keys` — `SELECT sales_key, COUNT(*) FROM fct_sales GROUP BY sales_key HAVING COUNT(*) > 1`.
+
 #### 🟡 [DBT-4] `metrics_summary.daily_transactions` includes returns — inconsistent with Python layer
 - **File:** `dbt/models/marts/aggs/metrics_summary.sql:43`
 - **Severity:** Warning
@@ -475,6 +593,54 @@
   ```
 - **Why it matters:** Uses 364 (52 weeks × 7) instead of 365 to align same day-of-week. This is correct business practice but should have a comment explaining why.
 
+#### 🟡 [DBT-13] `feat_customer_health` percentile boundaries computed across all tenants
+- **File:** `dbt/models/marts/features/feat_customer_health.sql:79-86`
+- **Severity:** Warning
+- **Category:** Multi-tenant leakage
+- **Current code:**
+  ```sql
+  percentiles AS (
+      SELECT
+          PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY r.recency_days) AS recency_p95,
+          PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ra.frequency_3m) AS freq_p95,
+          PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ra.monetary_3m) AS monetary_p95,
+          ...
+      FROM recent_activity ra
+      JOIN recency r ON ra.customer_key = r.customer_key
+  )
+  ```
+- **Why it matters:** Percentile boundaries (p95) are computed across ALL tenants' customers together. A high-spend tenant (e.g., hospital pharmacy) skews `monetary_p95` upward, making all small-pharmacy customers score artificially low on monetary. Also, the model has no `tenant_id` column and no RLS post_hook, unlike all other marts models.
+- **Suggested fix:** Add `PARTITION BY tenant_id` to percentile calculations, include `tenant_id` in output, add RLS post_hook.
+
+#### 🟡 [DBT-14] `agg_returns` uses `ABS(SUM(...))` instead of `SUM(ABS(...))` — fragile for mixed-sign data
+- **File:** `dbt/models/marts/aggs/agg_returns.sql:33-34`
+- **Severity:** Warning
+- **Category:** Fragile aggregation
+- **Current code:**
+  ```sql
+  ABS(ROUND(SUM(f.quantity)::NUMERIC, 2))  AS return_quantity,
+  ABS(ROUND(SUM(f.sales)::NUMERIC, 2))     AS return_amount,
+  ```
+- **Why it matters:** If return rows have mixed signs due to data quality issues (e.g., a correction entry with positive quantity among negative returns), `SUM()` partially cancels out, then `ABS()` hides the problem. `SUM(ABS(...))` would be more defensive and give the correct total return magnitude regardless of sign inconsistency.
+- **Suggested fix:** `SUM(ABS(f.quantity))::NUMERIC(18,2) AS return_quantity`
+
+#### 🟡 [DBT-15] `agg_sales_daily.avg_basket_size` documented as "net amount" but uses gross `f.sales`
+- **File:** `dbt/models/marts/aggs/agg_sales_daily.sql:37` vs `_aggs__models.yml:108`
+- **Severity:** Warning
+- **Category:** Documentation vs code mismatch
+- **Current code:**
+  ```sql
+  -- SQL (line 37):
+  SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0) AS avg_basket_size
+  ```
+  ```yaml
+  # YAML (line 108):
+  - name: avg_basket_size
+    description: "Average net amount per invoice"
+  ```
+- **Why it matters:** YAML says "net amount" but SQL uses `f.sales` (gross, before discount). The same pattern exists in `agg_sales_monthly.sql:40-42`. This misleads analysts who trust the documentation.
+- **Suggested fix:** Either change SQL to `SUM(f.net_amount)` to match docs, or fix docs to say "Average gross sales per invoice".
+
 #### 🟢 [DBT-6] All aggregation models use full table materialization — incremental could improve performance
 - **File:** All `dbt/models/marts/aggs/*.sql`
 - **Severity:** Suggestion
@@ -483,16 +649,16 @@
 
 ### Verified Correct (no issues)
 - **Division protection:** All dbt models use `NULLIF(denominator, 0)` consistently
-- **Multi-tenant safety:** All JOINs include `tenant_id`, all window functions `PARTITION BY tenant_id`
-- **Financial precision:** Sales/discounts: `ROUND(..., 2)`, quantities: `NUMERIC(18,4)` (mostly)
-- **Window functions:** Correct `ROWS BETWEEN` frames in metrics_summary, rolling features
+- **Multi-tenant safety:** Most JOINs include `tenant_id`, most window functions `PARTITION BY tenant_id` (exception: DBT-13)
+- **Financial precision:** Sales/discounts: `ROUND(..., 2)`, quantities: `NUMERIC(18,4)` (mostly — see DBT-2)
+- **Window functions:** Correct `ROWS BETWEEN` frames in rolling features (exception: metrics_summary incremental — DBT-7)
 - **Growth rates:** MoM/YoY in `agg_sales_monthly` use proper `NULLIF` protection
 - **RFM NTILE scoring:** `feat_customer_segments.sql:56` — `ORDER BY days_since_last DESC` gives NTILE(1) to oldest (worst), NTILE(5) to most recent (best) — **CORRECT** (comment confirms: "Higher score = better")
 - **Product lifecycle phases:** `feat_product_lifecycle.sql:94-104` — dormant quarter logic with `-1` buffer is **CORRECT** (provides 1-quarter grace period)
-- **Customer health scores:** Recency/frequency/monetary/return/diversity scoring math is sound
+- **Customer health scores:** Recency/frequency/monetary/return/diversity scoring math is sound (weights and normalization correct)
 - **Seasonality indices:** DOW and monthly divided by grand average, NULLIF protected
 - **Rolling averages:** 7/30/90-day windows use `ROWS BETWEEN N-1 PRECEDING AND CURRENT ROW` — correct
-- **Date dimension:** Egypt weekend (Fri/Sat) coded as `ISODOW IN (5, 6)` — correct
+- **Date dimension:** Egypt weekend (Fri/Sat) coded as `ISODOW IN (5, 6)` — correct (exception: year_week — DBT-8)
 - **GROUP BY completeness:** All non-aggregated columns present in GROUP BY across all models
 - **NULL handling:** `COALESCE` used properly for financial defaults, `FILTER (WHERE ...)` for conditional counts
 
@@ -842,15 +1008,20 @@
 
 ---
 
-## Top 5 Issues to Fix First
+## Top 10 Issues to Fix First
 
 | Priority | ID | Title | Effort | Impact |
 |----------|----|-------|--------|--------|
-| 1 | PY-1 | `daily_transactions` inconsistency across 3 code paths | Small (1 line fix) | KPI dashboard shows wrong transaction count |
-| 2 | PY-2 | Return rate unit mismatch (0-1 vs 0-100) | Small (standardize in 2 files) | Frontend displays 0.03% instead of 3.42% |
-| 3 | PY-3 | Average return rate uses simple avg, not weighted | Small (change formula) | 69% overstatement of return rate |
-| 4 | PBI-1 | Power BI financial columns use `double` not `decimal` | Medium (change dataType + reimport) | Floating-point artifacts in financial reports |
-| 5 | PQ-1 | IQR anomaly detection uses naive quartile indexing | Small (use `statistics.quantiles`) | Missed anomalies or false positives for small N |
+| 1 | DBT-7 | `metrics_summary` incremental corrupts MTD/YTD totals | Small (fix WHERE clause) | **All dashboard MTD/YTD KPIs wrong after incremental runs** |
+| 2 | DBT-9/10/11 | 3 agg models missing `total_net_amount` column | Small (add column) | dbt tests fail, net revenue queries error |
+| 3 | PY-1 | `daily_transactions` inconsistency across 3 code paths | Small (1 line fix) | KPI dashboard shows wrong transaction count |
+| 4 | PY-2 | Return rate unit mismatch (0-1 vs 0-100) | Small (standardize in 2 files) | Frontend displays 0.03% instead of 3.42% |
+| 5 | DBT-12 | `fct_sales` 32-bit hash has ~149 collisions at 1.13M rows | Medium (widen to BIGINT) | Silent row duplication/loss in JOINs |
+| 6 | DBT-8 | `dim_date.year_week` wrong at year boundaries | Small (YEAR→ISOYEAR) | Weekly reports misgroup Dec/Jan boundary rows |
+| 7 | PY-3 | Average return rate uses simple avg, not weighted | Small (change formula) | 69% overstatement of return rate |
+| 8 | PBI-1 | Power BI financial columns use `double` not `decimal` | Medium (change dataType) | Floating-point artifacts in financial reports |
+| 9 | FE-8 | `formatPercent` misused for absolute percentages | Small (add utility) | "+25.0%" shown for market share values |
+| 10 | PQ-1 | IQR anomaly detection uses naive quartile indexing | Small (use `statistics.quantiles`) | Missed anomalies or false positives for small N |
 
 ---
 
@@ -873,18 +1044,13 @@
 ### dbt SQL
 - `dbt/models/staging/stg_sales.sql` — correct net_amount formula, proper COALESCE
 - `dbt/models/bronze/bronze_sales.sql` — simple source reference
-- `dbt/models/marts/facts/fct_sales.sql` — correct surrogate keys, ROUND(2)
-- `dbt/models/marts/dims/dim_date.sql` — correct Egypt weekend (ISODOW 5,6)
 - `dbt/models/marts/dims/dim_customer.sql` — correct MD5 key with tenant_id
 - `dbt/models/marts/dims/dim_product.sql` — correct MD5 key
 - `dbt/models/marts/dims/dim_staff.sql` — correct MD5 key
 - `dbt/models/marts/dims/dim_site.sql` — correct MD5 key
 - `dbt/models/marts/dims/dim_billing.sql` — clean ROW_NUMBER key
-- `dbt/models/marts/aggs/agg_sales_daily.sql` — correct aggregations, NULLIF
-- `dbt/models/marts/aggs/agg_sales_monthly.sql` — correct MoM/YoY, LAG window
 - `dbt/models/marts/aggs/agg_sales_by_customer.sql` — correct GROUP BY
 - `dbt/models/marts/aggs/agg_sales_by_product.sql` — correct COALESCE for returns
-- `dbt/models/marts/aggs/agg_returns.sql` — correct ABS for return amounts
 - `dbt/models/marts/features/feat_customer_segments.sql` — correct RFM NTILE
 - `dbt/models/marts/features/feat_revenue_daily_rolling.sql` — correct windows
 - `dbt/models/marts/features/feat_revenue_site_rolling.sql` — correct ratios
