@@ -38,6 +38,21 @@ def _disable_rate_limiting():
 
 
 @pytest.fixture(autouse=True, scope="session")
+def _disable_redis_cache():
+    """Disable Redis caching so service tests hit the real (mocked) functions.
+
+    The cache module itself is tested in test_cache.py using local mocks,
+    so this global disable doesn't affect those tests — they mock
+    get_redis_client() directly.
+    """
+    with (
+        patch("datapulse.cache_decorator.cache_get", return_value=None),
+        patch("datapulse.cache_decorator.cache_set"),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True, scope="session")
 def _patch_get_settings_globally():
     """Replace get_settings() with a version that never reads the .env file.
 
