@@ -48,6 +48,7 @@ def _disable_redis_cache():
     with (
         patch("datapulse.cache_decorator.cache_get", return_value=None),
         patch("datapulse.cache_decorator.cache_set"),
+        patch("datapulse.cache.get_redis_client", return_value=None),
     ):
         yield
 
