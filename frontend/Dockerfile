@@ -29,6 +29,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# next-intl loads messages at runtime via dynamic import — must be present in the image
+COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
 
 USER nextjs
 
