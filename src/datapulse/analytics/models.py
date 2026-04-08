@@ -543,3 +543,52 @@ class AnomalyAlert(BaseModel):
     is_suppressed: bool = False
     suppression_reason: str | None = None
     acknowledged: bool = False
+
+
+class ChurnPrediction(BaseModel):
+    """Customer churn prediction result."""
+
+    model_config = ConfigDict(frozen=True)
+
+    customer_key: int
+    customer_name: str
+    health_score: JsonDecimal
+    health_band: str
+    recency_days: int
+    frequency_3m: int
+    monetary_3m: JsonDecimal
+    trend: str
+    rfm_segment: str
+    churn_probability: JsonDecimal
+    risk_level: str
+
+
+class AffinityPair(BaseModel):
+    """A pair of frequently co-purchased products."""
+
+    model_config = ConfigDict(frozen=True)
+
+    related_key: int
+    related_name: str
+    co_occurrence_count: int
+    support_pct: JsonDecimal
+    confidence: JsonDecimal
+
+
+class StaffQuota(BaseModel):
+    """Staff quota attainment for a given period."""
+
+    model_config = ConfigDict(frozen=True)
+
+    staff_key: int
+    staff_name: str
+    staff_position: str | None = None
+    year: int
+    month: int
+    actual_revenue: JsonDecimal
+    actual_transactions: int | None = None
+    target_revenue: JsonDecimal | None = None
+    target_transactions: JsonDecimal | None = None
+    revenue_achievement_pct: JsonDecimal | None = None
+    transactions_achievement_pct: JsonDecimal | None = None
+    revenue_variance: JsonDecimal | None = None

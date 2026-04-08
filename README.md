@@ -12,8 +12,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ahmed-shaaban-94/SAAS/actions/workflows/ci.yml"><img src="https://github.com/ahmed-shaaban-94/SAAS/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/ahmed-shaaban-94/SAAS/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
+  <a href="https://github.com/ahmed-shaaban-94/Data-Pulse/actions/workflows/ci.yml"><img src="https://github.com/ahmed-shaaban-94/Data-Pulse/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/ahmed-shaaban-94/Data-Pulse/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/coverage-95%25-brightgreen.svg?style=flat-square" alt="Coverage">
   <img src="https://img.shields.io/badge/tests-1,342-blue.svg?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/API_endpoints-100+-orange.svg?style=flat-square" alt="API Endpoints">
@@ -182,7 +182,7 @@ flowchart TB
 
 ```bash
 # Clone the repository
-git clone https://github.com/ahmed-shaaban-94/SAAS.git
+git clone https://github.com/ahmed-shaaban-94/Data-Pulse.git
 cd SAAS
 
 # Configure environment

@@ -24,6 +24,7 @@ export const API_BASE_URL =
 
 export const NAV_ITEMS = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
+  { label: "My Dashboard", href: "/my-dashboard", icon: "LayoutGrid" },
   { label: "Goals", href: "/goals", icon: "Target" },
   { label: "Custom Report", href: "/custom-report", icon: "BarChartBig" },
   { label: "Products", href: "/products", icon: "Package" },
@@ -34,5 +35,13 @@ export const NAV_ITEMS = [
   { label: "Reports", href: "/reports", icon: "FileBarChart" },
   { label: "Alerts", href: "/alerts", icon: "Bell" },
   { label: "Insights", href: "/insights", icon: "Sparkles" },
+  { label: "What-If", href: "/scenarios", icon: "FlaskConical" },
+  { label: "Import Data", href: "/upload", icon: "Upload" },
+  { label: "Team", href: "/team", icon: "Shield" },
+  { label: "Data Lineage", href: "/lineage", icon: "GitBranch" },
+  { label: "Data Quality", href: "/quality", icon: "ShieldCheck" },
+  { label: "Gamification", href: "/gamification", icon: "Trophy" },
+  { label: "Branding", href: "/branding", icon: "Palette" },
+  { label: "Audit Log", href: "/audit", icon: "ScrollText" },
   { label: "Billing", href: "/billing", icon: "CreditCard" },
 ] as const;

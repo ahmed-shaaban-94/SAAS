@@ -16,8 +16,12 @@ import com.datapulse.android.data.local.entity.*
         ReturnEntity::class,
         PipelineRunEntity::class,
         CacheMetadata::class,
+        SyncQueueEntity::class,
+        GamificationLeaderboardEntity::class,
+        BadgeCacheEntity::class,
+        GoalEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -28,4 +32,7 @@ abstract class DataPulseDatabase : RoomDatabase() {
     abstract fun returnDao(): ReturnDao
     abstract fun pipelineDao(): PipelineDao
     abstract fun cacheMetadataDao(): CacheMetadataDao
+    abstract fun syncQueueDao(): SyncQueueDao
+    abstract fun gamificationDao(): GamificationDao
+    abstract fun goalDao(): GoalDao
 }

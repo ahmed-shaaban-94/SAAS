@@ -110,6 +110,27 @@ class QualityRepository:
             raise
         return responses
 
+    def get_scorecard(self, limit: int = 20) -> list[dict]:
+        """Aggregate quality check stats per pipeline run."""
+        stmt = text("""
+            SELECT
+                qc.pipeline_run_id AS run_id,
+                pr.run_type,
+                pr.status,
+                pr.started_at,
+                COUNT(*) AS total_checks,
+                COUNT(*) FILTER (WHERE qc.passed) AS passed,
+                COUNT(*) FILTER (WHERE NOT qc.passed AND qc.severity = 'error') AS failed,
+                COUNT(*) FILTER (WHERE NOT qc.passed AND qc.severity = 'warn') AS warned
+            FROM public.quality_checks qc
+            JOIN public.pipeline_runs pr ON pr.id = qc.pipeline_run_id
+            GROUP BY qc.pipeline_run_id, pr.run_type, pr.status, pr.started_at
+            ORDER BY pr.started_at DESC
+            LIMIT :limit
+        """)
+        rows = self._session.execute(stmt, {"limit": limit}).mappings().all()
+        return [dict(r) for r in rows]
+
     def get_checks_for_run(
         self,
         run_id: UUID,

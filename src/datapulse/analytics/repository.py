@@ -52,16 +52,24 @@ class AnalyticsRepository:
     # Dimension JOIN config for fact-table-based rankings (day-level precision).
     _DIM_JOIN: dict[str, tuple[str, str, str]] = {
         "public_marts.agg_sales_by_product": (
-            "public_marts.dim_product", "product_key", "f.tenant_id = dim.tenant_id"
+            "public_marts.dim_product",
+            "product_key",
+            "f.tenant_id = dim.tenant_id",
         ),
         "public_marts.agg_sales_by_customer": (
-            "public_marts.dim_customer", "customer_key", "f.tenant_id = dim.tenant_id"
+            "public_marts.dim_customer",
+            "customer_key",
+            "f.tenant_id = dim.tenant_id",
         ),
         "public_marts.agg_sales_by_staff": (
-            "public_marts.dim_staff", "staff_key", "f.tenant_id = dim.tenant_id"
+            "public_marts.dim_staff",
+            "staff_key",
+            "f.tenant_id = dim.tenant_id",
         ),
         "public_marts.agg_sales_by_site": (
-            "public_marts.dim_site", "site_key", "f.tenant_id = dim.tenant_id"
+            "public_marts.dim_site",
+            "site_key",
+            "f.tenant_id = dim.tenant_id",
         ),
     }
 
@@ -89,7 +97,9 @@ class AnalyticsRepository:
 
         dim_table, dim_key, dim_join_cond = self._DIM_JOIN[table]
         where, params = build_where(
-            filters, date_column="date_key", supported_fields=SITE_DATE_ONLY,
+            filters,
+            date_column="date_key",
+            supported_fields=SITE_DATE_ONLY,
         )
         params["limit"] = filters.limit
 
@@ -200,7 +210,7 @@ class AnalyticsRepository:
         log.info("get_kpi_summary", target_date=str(target_date))
 
         date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
-        sparkline_start = target_date - timedelta(days=7)
+        sparkline_start = target_date - timedelta(days=6)
 
         # Single unified CTE: daily KPIs + basket + comparisons + sparkline +
         # significance history (MoM 12 months + YoY 5 years) — all in ONE query.
@@ -322,7 +332,9 @@ class AnalyticsRepository:
         mtd_gross = Decimal(str(row["mtd_gross_amount"]))
         ytd_gross = Decimal(str(row["ytd_gross_amount"]))
         today_discount = Decimal(str(row["daily_discount"])) if row["daily_discount"] else _ZERO
-        daily_quantity = Decimal(str(row["daily_quantity"])) if row["daily_quantity"] is not None else _ZERO
+        daily_quantity = (
+            Decimal(str(row["daily_quantity"])) if row["daily_quantity"] is not None else _ZERO
+        )
         daily_transactions = int(row["daily_transactions"])
         daily_customers = int(row["daily_unique_customers"])
         daily_returns = int(row["daily_returns"]) if row["daily_returns"] is not None else 0
@@ -373,7 +385,7 @@ class AnalyticsRepository:
             mom_growth_pct=mom_growth,
             yoy_growth_pct=yoy_growth,
             daily_quantity=daily_quantity,
-            daily_transactions=daily_transactions,
+            daily_transactions=daily_transactions - daily_returns,
             daily_customers=daily_customers,
             avg_basket_size=avg_basket,
             daily_returns=daily_returns,
@@ -486,20 +498,28 @@ class AnalyticsRepository:
 
     def _has_dimensional_filters(self, filters: AnalyticsFilter) -> bool:
         """Check if any non-date dimensional filters are active."""
-        return any([
-            filters.site_key is not None,
-            filters.category is not None,
-            filters.brand is not None,
-            filters.staff_key is not None,
-        ])
+        return any(
+            [
+                filters.site_key is not None,
+                filters.category is not None,
+                filters.brand is not None,
+                filters.staff_key is not None,
+            ]
+        )
 
     def _get_kpi_from_fct_sales(self, filters: AnalyticsFilter) -> KPISummary:
         """KPI aggregation via fct_sales with dimension JOINs for filtered queries."""
+        assert filters.date_range is not None
         start = filters.date_range.start_date
         end = filters.date_range.end_date
         start_key = start.year * 10000 + start.month * 100 + start.day
         end_key = end.year * 10000 + end.month * 100 + end.day
-        log.info("get_kpi_fct_sales", start=str(start), end=str(end), filters=filters.model_dump(exclude_none=True))
+        log.info(
+            "get_kpi_fct_sales",
+            start=str(start),
+            end=str(end),
+            filters=filters.model_dump(exclude_none=True),
+        )
 
         # Build dimensional WHERE clauses
         where_parts = ["f.date_key BETWEEN :start_key AND :end_key"]
@@ -508,7 +528,9 @@ class AnalyticsRepository:
         joins: list[str] = []
         if filters.category is not None or filters.brand is not None:
             joins.append(
-                "INNER JOIN public_marts.dim_product p ON f.product_key = p.product_key AND f.tenant_id = p.tenant_id"
+                "INNER JOIN public_marts.dim_product p"
+                " ON f.product_key = p.product_key"
+                " AND f.tenant_id = p.tenant_id"
             )
             if filters.category is not None:
                 where_parts.append("p.drug_category = :category")
@@ -537,7 +559,9 @@ class AnalyticsRepository:
 
         # Sparkline date keys
         sparkline_start = end - timedelta(days=7)
-        spark_start_key = sparkline_start.year * 10000 + sparkline_start.month * 100 + sparkline_start.day
+        spark_start_key = (
+            sparkline_start.year * 10000 + sparkline_start.month * 100 + sparkline_start.day
+        )
         params["spark_start_key"] = spark_start_key
 
         # Build previous period WHERE with same dimensional filters
@@ -609,18 +633,25 @@ class AnalyticsRepository:
         if row is None or row["period_net"] is None:
             log.warning("kpi_fct_no_data", start=str(start), end=str(end))
             return KPISummary(
-                today_gross=_ZERO, mtd_gross=_ZERO, ytd_gross=_ZERO,
-                daily_transactions=0, daily_customers=0, sparkline=[],
+                today_gross=_ZERO,
+                mtd_gross=_ZERO,
+                ytd_gross=_ZERO,
+                daily_transactions=0,
+                daily_customers=0,
+                sparkline=[],
             )
 
         period_net = Decimal(str(row["period_net"]))
-        total_quantity = Decimal(str(row["total_quantity"])) if row["total_quantity"] is not None else _ZERO
+        total_quantity = (
+            Decimal(str(row["total_quantity"])) if row["total_quantity"] is not None else _ZERO
+        )
         total_transactions = int(row["total_transactions"] or 0)
         total_returns = int(row["total_returns"] or 0)
         total_customers = int(row["total_customers"] or 0)
         avg_basket = (
             Decimal(str(row["avg_basket_size"])).quantize(Decimal("0.01"))
-            if row["avg_basket_size"] is not None else _ZERO
+            if row["avg_basket_size"] is not None
+            else _ZERO
         )
 
         mom_growth: Decimal | None = None
@@ -633,6 +664,7 @@ class AnalyticsRepository:
             raw_points = row["sparkline_points"]
             if isinstance(raw_points, str):
                 import json
+
                 raw_points = json.loads(raw_points)
             sparkline = [
                 TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))
@@ -674,6 +706,7 @@ class AnalyticsRepository:
         if self._has_dimensional_filters(filters):
             return self._get_kpi_from_fct_sales(filters)
 
+        assert filters.date_range is not None
         start = filters.date_range.start_date
         end = filters.date_range.end_date
         log.info("get_kpi_summary_range", start=str(start), end=str(end))
@@ -769,7 +802,9 @@ class AnalyticsRepository:
             )
 
         period_net = Decimal(str(row["period_net"]))
-        total_quantity = Decimal(str(row["total_quantity"])) if row["total_quantity"] is not None else _ZERO
+        total_quantity = (
+            Decimal(str(row["total_quantity"])) if row["total_quantity"] is not None else _ZERO
+        )
         mtd_gross = (
             Decimal(str(row["mtd_gross_amount"])) if row["mtd_gross_amount"] is not None else _ZERO
         )
@@ -838,7 +873,9 @@ class AnalyticsRepository:
     def get_daily_trend(self, filters: AnalyticsFilter) -> TrendResult:
         """Return net-sales trend grouped by day."""
         log.info("get_daily_trend", filters=filters.model_dump())
-        where, params = build_where(filters, date_column="date_key", supported_fields=SITE_DATE_ONLY)
+        where, params = build_where(
+            filters, date_column="date_key", supported_fields=SITE_DATE_ONLY
+        )
 
         stmt = text(f"""
             SELECT date_key AS period,
@@ -875,7 +912,9 @@ class AnalyticsRepository:
         """
         log.info("get_top_products", filters=filters.model_dump())
         where, params = build_where(
-            filters, date_column="date_key", supported_fields=SITE_DATE_ONLY,
+            filters,
+            date_column="date_key",
+            supported_fields=SITE_DATE_ONLY,
         )
         params["limit"] = filters.limit
 
@@ -898,7 +937,9 @@ class AnalyticsRepository:
         """Revenue breakdown by product origin (Pharma, Non-pharma, HVI)."""
         log.info("get_origin_breakdown", filters=filters.model_dump())
         where, params = build_where(
-            filters, date_column="date_key", supported_fields=SITE_DATE_ONLY,
+            filters,
+            date_column="date_key",
+            supported_fields=SITE_DATE_ONLY,
         )
 
         stmt = text(f"""
@@ -913,13 +954,13 @@ class AnalyticsRepository:
             ORDER BY value DESC
         """)
         rows = self._session.execute(stmt, params).fetchall()
-        total = sum(float(r[1]) for r in rows)
+        total = sum(Decimal(str(r[1])) for r in rows)
         return [
             {
                 "origin": str(r[0]),
-                "value": float(r[1]),
+                "value": Decimal(str(r[1])),
                 "product_count": int(r[2]),
-                "pct": round(float(r[1]) / total * 100, 1) if total else 0,
+                "pct": round(Decimal(str(r[1])) / total * 100, 2) if total else Decimal("0"),
             }
             for r in rows
         ]
@@ -1046,6 +1087,39 @@ class AnalyticsRepository:
             )
             for r in rows
         ]
+
+    def get_staff_quota(
+        self,
+        year: int | None = None,
+        month: int | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Fetch staff quota attainment from feat_staff_quota."""
+        conditions = []
+        params: dict = {"limit": limit}
+
+        if year is not None:
+            conditions.append("year = :year")
+            params["year"] = year
+        if month is not None:
+            conditions.append("month = :month")
+            params["month"] = month
+
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        stmt = text(f"""
+            SELECT staff_key, staff_name, staff_position, year, month,
+                   actual_revenue, actual_quantity AS actual_transactions,
+                   target_revenue, target_transactions,
+                   revenue_achievement_pct, transactions_achievement_pct,
+                   revenue_variance
+            FROM public_marts.feat_staff_quota
+            {where}
+            ORDER BY actual_revenue DESC
+            LIMIT :limit
+        """)  # noqa: S608
+        rows = self._session.execute(stmt, params).mappings().all()
+        return [dict(r) for r in rows]
 
     # Detail methods (get_product_detail, get_customer_detail, get_staff_detail)
     # have been extracted to datapulse.analytics.detail_repository.DetailRepository

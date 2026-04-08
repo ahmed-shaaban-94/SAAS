@@ -82,19 +82,19 @@ export default function DashboardPage() {
       <CompareProvider>
       <div>
         <Breadcrumbs />
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <Header
             title="Executive Overview"
             description="Sales performance at a glance"
           />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <CompareButton />
             <Link
               href="/dashboard/report"
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary transition-all hover:bg-accent/10 hover:text-accent"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-text-secondary transition-all hover:bg-accent/10 hover:text-accent"
             >
               <Printer className="h-4 w-4" />
-              Print Report
+              <span className="hidden sm:inline">Print Report</span>
             </Link>
             <LastUpdated />
           </div>
@@ -181,8 +181,8 @@ export default function DashboardPage() {
           {/* Geographic & Temporal Section — always visible (no lazy) */}
           <div className="mt-10">
             <SectionHeader icon={Calendar} title="Revenue Patterns" />
-            <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
+            <div className="mt-4 grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-6">
+              <div className="md:col-span-2">
                 <CalendarHeatmap />
               </div>
               <EgyptMap />

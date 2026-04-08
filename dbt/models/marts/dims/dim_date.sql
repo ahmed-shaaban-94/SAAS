@@ -34,7 +34,7 @@ SELECT
     EXTRACT(WEEK FROM full_date)::INT             AS week_number,
     (full_date - (EXTRACT(ISODOW FROM full_date)::INT - 1) * INTERVAL '1 day')::DATE
                                                   AS week_start_date,
-    EXTRACT(YEAR FROM full_date)::INT || '-W' || LPAD(EXTRACT(WEEK FROM full_date)::INT::TEXT, 2, '0')
+    EXTRACT(ISOYEAR FROM full_date)::INT || '-W' || LPAD(EXTRACT(WEEK FROM full_date)::INT::TEXT, 2, '0')
                                                   AS year_week,
 
     -- Period labels

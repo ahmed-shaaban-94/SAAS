@@ -79,9 +79,7 @@ class AnomalyDetector:
             return None
 
         sorted_vals = sorted(values)
-        n = len(sorted_vals)
-        q1 = sorted_vals[n // 4]
-        q3 = sorted_vals[3 * n // 4]
+        q1, _, q3 = _stats.quantiles(sorted_vals, n=4)
         iqr = q3 - q1
         if iqr == 0:
             return None

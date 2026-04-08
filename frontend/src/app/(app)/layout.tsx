@@ -10,6 +10,7 @@ import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help";
+import { BrandProvider } from "@/components/branding/brand-provider";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useAIAnomalies } from "@/hooks/use-ai-anomalies";
 import { useAlertLog } from "@/hooks/use-alerts";
@@ -30,9 +31,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <OnboardingOverlay />
       <KeyboardShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <main id="main-content" className="min-h-screen p-4 pt-16 lg:ml-60 lg:p-6 lg:pt-6">
+      <main id="main-content" className="min-h-screen p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-14 sm:p-4 sm:pt-16 lg:ml-60 lg:p-6 lg:pt-6">
         {/* Header actions */}
-        <div className="fixed right-4 top-4 z-40 flex items-center gap-2 lg:right-6 lg:top-4">
+        <div className="fixed right-3 top-3.5 z-40 flex items-center gap-2 sm:right-4 sm:top-4 lg:right-6 lg:top-4">
           <div className="relative">
             <NotificationBell onClick={() => setNotifOpen(!notifOpen)} />
             <NotificationCenter open={notifOpen} onClose={() => setNotifOpen(false)} />
@@ -49,7 +50,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <Providers>
       <ErrorBoundary>
         <ToastProvider>
-          <AppShell>{children}</AppShell>
+          <BrandProvider>
+            <AppShell>{children}</AppShell>
+          </BrandProvider>
         </ToastProvider>
       </ErrorBoundary>
     </Providers>

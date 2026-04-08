@@ -187,21 +187,15 @@ class TestH2DevModeProductionBlock:
     """H2: Dev mode auth fallback must raise 503 in production."""
 
     def test_blocked_in_production(self):
-        settings = _settings(api_key="", auth0_domain="")
-        with (
-            patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}),
-            pytest.raises(HTTPException) as exc_info,
-        ):
+        settings = _settings(api_key="", auth0_domain="", sentry_environment="production")
+        with pytest.raises(HTTPException) as exc_info:
             get_current_user(credentials=None, api_key=None, settings=settings)
         assert exc_info.value.status_code == 503
         assert "not configured" in exc_info.value.detail.lower()
 
     def test_blocked_in_staging(self):
-        settings = _settings(api_key="", auth0_domain="")
-        with (
-            patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "staging"}),
-            pytest.raises(HTTPException) as exc_info,
-        ):
+        settings = _settings(api_key="", auth0_domain="", sentry_environment="staging")
+        with pytest.raises(HTTPException) as exc_info:
             get_current_user(credentials=None, api_key=None, settings=settings)
         assert exc_info.value.status_code == 503
 

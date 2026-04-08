@@ -3,7 +3,7 @@
 import { memo, useMemo } from "react";
 import { useTargetSummary } from "@/hooks/use-targets";
 import { useBudgetSummary } from "@/hooks/use-budget";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatAbsolutePercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { Target, TrendingUp, TrendingDown } from "lucide-react";
 
@@ -141,7 +141,7 @@ export const TargetProgress = memo(function TargetProgress() {
           <ProgressRing pct={ytdPct} size={100} />
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-lg font-bold text-text-primary">
-              {formatPercent(ytdPct)}
+              {formatAbsolutePercent(ytdPct)}
             </span>
           </div>
         </div>

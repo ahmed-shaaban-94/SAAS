@@ -30,13 +30,14 @@ export function useCountUp({
   suffix = "",
   separator = ",",
 }: UseCountUpOptions): string {
+  const safeEnd = Number.isNaN(end) ? 0 : end;
   const [display, setDisplay] = useState(`${prefix}${formatWithSeparator(0, decimals, separator)}${suffix}`);
   const rafRef = useRef<number>(0);
-  const prevEnd = useRef(end);
+  const prevEnd = useRef(safeEnd);
 
   useEffect(() => {
-    const startVal = prevEnd.current !== end ? prevEnd.current : 0;
-    prevEnd.current = end;
+    const startVal = prevEnd.current !== safeEnd ? prevEnd.current : 0;
+    prevEnd.current = safeEnd;
 
     const startTime = performance.now();
 
@@ -44,7 +45,7 @@ export function useCountUp({
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOutExpo(progress);
-      const current = startVal + (end - startVal) * eased;
+      const current = startVal + (safeEnd - startVal) * eased;
 
       setDisplay(`${prefix}${formatWithSeparator(current, decimals, separator)}${suffix}`);
 

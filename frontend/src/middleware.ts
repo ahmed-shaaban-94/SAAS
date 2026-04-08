@@ -20,8 +20,41 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+/**
+ * Resolve custom domain / subdomain to tenant context.
+ * Sets X-Tenant-Domain header so downstream pages can fetch public branding.
+ */
+function resolveTenantDomain(request: NextRequest): string | null {
+  const host = request.headers.get("host") || "";
+  const baseDomain = process.env.BASE_DOMAIN || "datapulse.tech";
+
+  // Skip localhost / IP addresses
+  if (host.startsWith("localhost") || host.startsWith("127.") || host.startsWith("10.")) {
+    return null;
+  }
+
+  // Subdomain: *.datapulse.tech
+  if (host.endsWith(`.${baseDomain}`)) {
+    const subdomain = host.replace(`.${baseDomain}`, "").split(":")[0];
+    if (subdomain && subdomain !== "www") {
+      return subdomain;
+    }
+  }
+
+  // Custom domain: anything that's not the base domain
+  const hostname = host.split(":")[0];
+  if (hostname !== baseDomain && hostname !== `www.${baseDomain}`) {
+    return hostname;
+  }
+
+  return null;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // --- Tenant domain resolution ---
+  const tenantDomain = resolveTenantDomain(request);
 
   // --- Auth check (skip for public paths & static assets) ---
   if (!isPublicPath(pathname)) {
@@ -37,8 +70,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // --- Security headers ---
+  // --- Tenant domain header ---
   const response = NextResponse.next();
+  if (tenantDomain) {
+    response.headers.set("X-Tenant-Domain", tenantDomain);
+  }
+
+  // --- Security headers ---
   const auth0Domain = process.env.AUTH0_DOMAIN || "";
   const auth0Origin = auth0Domain ? `https://${auth0Domain}` : "";
   const isDev = process.env.NODE_ENV === "development";

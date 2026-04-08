@@ -21,7 +21,6 @@ from uuid import UUID
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from datapulse.config import get_settings
@@ -228,7 +227,7 @@ async def _quality_digest() -> None:
         checks = q_repo.get_checks_for_run(latest.id)
 
         total = len(checks.items) if checks else 0
-        passed = sum(1 for c in (checks.items if checks else []) if c.passed)
+        passed = len([c for c in (checks.items if checks else []) if c.passed])
 
         notify_quality_digest(
             run_id=str(latest.id),

@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { isRtl } from "@/i18n/config";
 import type { Locale } from "@/i18n/config";
+import { PWARegister } from "@/components/pwa-register";
 import "@fontsource-variable/inter";
 import "./globals.css";
 
@@ -14,6 +15,12 @@ export const metadata: Metadata = {
   },
   description:
     "Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. AI-powered insights, real-time dashboards, and enterprise-grade quality gates.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "DataPulse",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -24,7 +31,22 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
+    apple: "/icons/icon-192.png",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover" as const,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F8FA" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D1117" },
+  ],
 };
 
 export default async function RootLayout({
@@ -43,6 +65,7 @@ export default async function RootLayout({
           Skip to main content
         </a>
         <NextIntlClientProvider messages={messages}>
+          <PWARegister />
           {children}
         </NextIntlClientProvider>
       </body>

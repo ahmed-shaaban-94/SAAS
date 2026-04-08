@@ -148,3 +148,29 @@ class ExecutionResult(BaseModel):
     rows_loaded: int | None = None
     error: str | None = None
     duration_seconds: float
+
+
+class RunScore(BaseModel):
+    """Quality score for a single pipeline run."""
+
+    model_config = ConfigDict(frozen=True)
+
+    run_id: UUID
+    run_type: str
+    status: str
+    started_at: datetime
+    total_checks: int
+    passed: int
+    failed: int
+    warned: int
+    pass_rate: float
+
+
+class QualityScorecard(BaseModel):
+    """Aggregated quality scorecard across recent pipeline runs."""
+
+    model_config = ConfigDict(frozen=True)
+
+    runs: list[RunScore]
+    overall_pass_rate: float
+    total_runs: int

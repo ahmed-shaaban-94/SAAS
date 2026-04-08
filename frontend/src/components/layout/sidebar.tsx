@@ -11,15 +11,23 @@ import {
   CreditCard,
   FileBarChart,
   LayoutDashboard,
+  LayoutGrid,
   Menu,
   Package,
+  Shield,
   Target,
   Users,
   UserCog,
   Building2,
   RotateCcw,
+  FlaskConical,
   GitBranch,
+  Palette,
+  ScrollText,
+  ShieldCheck,
   Sparkles,
+  Trophy,
+  Upload,
   LogOut,
   User,
   X,
@@ -38,6 +46,7 @@ interface SidebarProps {
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
+  LayoutGrid,
   Target,
   BarChartBig,
   Package,
@@ -46,9 +55,16 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Building2,
   RotateCcw,
   FileBarChart,
+  FlaskConical,
   GitBranch,
   Bell,
   Sparkles,
+  Shield,
+  ShieldCheck,
+  Palette,
+  ScrollText,
+  Trophy,
+  Upload,
   CreditCard,
 };
 
@@ -174,7 +190,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
       {/* Mobile hamburger button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-50 rounded-lg bg-card p-2 text-text-primary shadow-lg border border-border lg:hidden"
+        className="fixed left-3 top-3 z-50 rounded-lg bg-card p-2 text-text-primary shadow-lg border border-border sm:left-4 sm:top-4 lg:hidden"
         aria-label="Open navigation"
         aria-expanded={mobileOpen}
       >
@@ -191,7 +207,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
           />
           {/* Drawer */}
           <aside
-            className="absolute left-0 top-0 flex h-screen w-60 flex-col border-r border-border bg-card shadow-xl animate-slide-in-left"
+            className="absolute left-0 top-0 flex h-screen w-[min(15rem,85vw)] flex-col border-r border-border bg-card shadow-xl animate-slide-in-left"
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >

@@ -576,6 +576,11 @@ html {
   right: 0;
 }
 
+[dir="rtl"] .fixed.left-3 {
+  left: auto;
+  right: 0.75rem;
+}
+
 [dir="rtl"] .fixed.left-4 {
   left: auto;
   right: 1rem;
@@ -846,6 +851,66 @@ html {
 .hover-lift:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 40px rgba(255, 69, 0, 0.15);
+}
+
+/* ═══════════════════════════════════════════════
+   Mobile responsive enhancements
+   ═══════════════════════════════════════════════ */
+
+/* Hide scrollbar for filter preset horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area padding for notched devices (iPhone X+, etc.) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Ensure touch targets are at least 44px on mobile */
+@media (max-width: 640px) {
+  /* Prevent text size adjust on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Improve touch targets for filter buttons */
+  .filter-bar button {
+    min-height: 36px;
+  }
+
+  /* Reduce section spacing on mobile */
+  .mt-10 {
+    margin-top: 1.75rem;
+  }
+
+  /* Disable hover effects that cause sticky states on touch */
+  .glow-card:hover {
+    box-shadow: none;
+    border-color: inherit;
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input[type="date"],
+  input[type="text"],
+  input[type="search"],
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Responsive chart container heights */
+@media (max-width: 640px) {
+  .recharts-responsive-container {
+    min-height: 220px;
+  }
 }
 
 /* ═══════════════════════════════════════════════

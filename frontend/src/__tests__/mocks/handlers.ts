@@ -104,6 +104,68 @@ export const mockDashboardData = {
   filter_options: { categories: ["Pharma"], brands: ["BrandA"], sites: [], staff: [] },
 };
 
+export const mockQualityScorecard = {
+  runs: [
+    {
+      run_id: "run-1",
+      run_type: "full",
+      status: "success",
+      started_at: "2024-01-01T10:00:00Z",
+      total_checks: 10,
+      passed: 9,
+      failed: 1,
+      warned: 0,
+      pass_rate: 90.0,
+    },
+  ],
+  overall_pass_rate: 90.0,
+  total_runs: 1,
+};
+
+export const mockAuditLog = {
+  items: [
+    {
+      id: 1,
+      action: "api_call",
+      endpoint: "/api/v1/analytics/summary",
+      method: "GET",
+      ip_address: "127.0.0.1",
+      user_id: "user-1",
+      response_status: 200,
+      duration_ms: 45,
+      created_at: "2024-01-01T10:00:00Z",
+    },
+  ],
+  total: 1,
+  page: 1,
+  page_size: 50,
+};
+
+export const mockStaffQuota = [
+  {
+    staff_key: 1,
+    staff_name: "Ahmed",
+    staff_position: "Manager",
+    year: 2024,
+    month: 1,
+    actual_revenue: 50000,
+    actual_transactions: 100,
+    target_revenue: 60000,
+    target_transactions: 120,
+    revenue_achievement_pct: 83.3,
+    transactions_achievement_pct: 83.3,
+    revenue_variance: -10000,
+  },
+];
+
+export const mockLineageGraph = {
+  nodes: [
+    { name: "sales", layer: "bronze", model_type: "source" },
+    { name: "stg_sales", layer: "silver", model_type: "view" },
+  ],
+  edges: [{ source: "sales", target: "stg_sales" }],
+};
+
 export const handlers = [
   http.get(`${API}/health`, () => HttpResponse.json(mockHealthy)),
 
@@ -166,5 +228,30 @@ export const handlers = [
   ),
   http.get(`${API}/api/v1/ai-light/anomalies`, () =>
     HttpResponse.json({ anomalies: [], checked_at: null }),
+  ),
+
+  // New feature endpoints
+  http.get(`${API}/api/v1/pipeline/quality/scorecard`, () =>
+    HttpResponse.json(mockQualityScorecard),
+  ),
+  http.get(`${API}/api/v1/audit-log`, () => HttpResponse.json(mockAuditLog)),
+  http.get(`${API}/api/v1/analytics/staff/quota`, () =>
+    HttpResponse.json(mockStaffQuota),
+  ),
+  http.get(`${API}/api/v1/lineage/graph`, () =>
+    HttpResponse.json(mockLineageGraph),
+  ),
+  http.get(`${API}/api/v1/lineage/graph/:model`, () =>
+    HttpResponse.json(mockLineageGraph),
+  ),
+  http.get(`${API}/api/v1/analytics/products/:key/affinity`, () =>
+    HttpResponse.json([]),
+  ),
+  http.get(`${API}/api/v1/analytics/customers/churn`, () =>
+    HttpResponse.json([]),
+  ),
+  http.get(`${API}/api/v1/report-schedules`, () => HttpResponse.json([])),
+  http.get(`${API}/api/v1/targets/summary/quarterly`, () =>
+    HttpResponse.json({ year: 2024, quarters: [] }),
   ),
 ];

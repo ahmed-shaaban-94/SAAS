@@ -38,7 +38,7 @@ export const FOOTER_COLUMNS = [
   {
     title: "Connect",
     links: [
-      { label: "GitHub", href: "https://github.com/ahmed-shaaban-94/SAAS" },
+      { label: "GitHub", href: "https://github.com/ahmed-shaaban-94/Data-Pulse" },
     ],
   },
 ] as const;

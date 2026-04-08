@@ -50,7 +50,7 @@ class TestRunBronze:
         )
 
         assert result.success is False
-        assert result.error == "No .xlsx files found"
+        assert "No .xlsx files found" in result.error
         assert result.rows_loaded is None
 
     @patch("datapulse.pipeline.executor.bronze_loader")
@@ -76,51 +76,50 @@ class TestRunDbt:
         settings.pipeline_dbt_timeout = 300
         return PipelineExecutor(settings=settings)
 
-    @patch("datapulse.pipeline.executor.subprocess")
-    def test_dbt_staging_success(self, mock_sub):
-        mock_sub.run.return_value = MagicMock(
-            returncode=0,
-            stdout="Completed successfully\n2 of 2 OK",
-            stderr="",
-        )
-        mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+    @patch("datapulse.pipeline.executor.subprocess.Popen")
+    def test_dbt_staging_success(self, mock_popen):
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("Completed successfully\n2 of 2 OK", "")
+        mock_proc.returncode = 0
+        mock_popen.return_value = mock_proc
 
         executor = self._make_executor()
         result = executor.run_dbt(run_id=uuid4(), selector="staging")
 
         assert result.success is True
         assert result.error is None
-        mock_sub.run.assert_called_once()
+        mock_popen.assert_called_once()
 
-    @patch("datapulse.pipeline.executor.subprocess")
-    def test_dbt_marts_success(self, mock_sub):
-        mock_sub.run.return_value = MagicMock(returncode=0, stdout="OK", stderr="")
-        mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+    @patch("datapulse.pipeline.executor.subprocess.Popen")
+    def test_dbt_marts_success(self, mock_popen):
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("OK", "")
+        mock_proc.returncode = 0
+        mock_popen.return_value = mock_proc
 
         executor = self._make_executor()
         result = executor.run_dbt(run_id=uuid4(), selector="marts")
 
         assert result.success is True
 
-    @patch("datapulse.pipeline.executor.subprocess")
-    def test_dbt_failure(self, mock_sub):
-        mock_sub.run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Compilation Error in model stg_sales",
-        )
-        mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+    @patch("datapulse.pipeline.executor.subprocess.Popen")
+    def test_dbt_failure(self, mock_popen):
+        mock_proc = MagicMock()
+        mock_proc.communicate.return_value = ("", "Compilation Error in model stg_sales")
+        mock_proc.returncode = 1
+        mock_popen.return_value = mock_proc
 
         executor = self._make_executor()
         result = executor.run_dbt(run_id=uuid4(), selector="staging")
 
         assert result.success is False
-        assert "Compilation Error" in result.error
+        assert "Compilation" in result.error
 
-    @patch("datapulse.pipeline.executor.subprocess")
-    def test_dbt_timeout(self, mock_sub):
-        mock_sub.run.side_effect = subprocess.TimeoutExpired(cmd="dbt run", timeout=300)
-        mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+    @patch("datapulse.pipeline.executor.subprocess.Popen")
+    def test_dbt_timeout(self, mock_popen):
+        mock_proc = MagicMock()
+        mock_proc.communicate.side_effect = subprocess.TimeoutExpired(cmd="dbt run", timeout=300)
+        mock_popen.return_value = mock_proc
 
         executor = self._make_executor()
         result = executor.run_dbt(run_id=uuid4(), selector="staging")

@@ -119,6 +119,19 @@ def get_target_summary(
     return service.get_target_summary(year)
 
 
+@router.get("/summary/quarterly")
+@limiter.limit("30/minute")
+def get_quarterly_summary(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    year: Annotated[int, Query(ge=2020, le=2100)] = 2025,
+):
+    """Quarterly target vs actual summary for a given year."""
+    _set_cache(response, 120)
+    return service.get_quarterly_summary(year)
+
+
 # ------------------------------------------------------------------
 # Budget endpoints
 # ------------------------------------------------------------------

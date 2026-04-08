@@ -69,6 +69,30 @@ const nextConfig = {
         ],
       },
       {
+        // PWA manifest — short cache so updates propagate quickly
+        source: "/manifest.json",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        // Service worker must not be cached aggressively
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Service-Worker-Allowed",
+            value: "/",
+          },
+        ],
+      },
+      {
         // Short cache for API proxy responses with stale-while-revalidate
         source: "/api/v1/:path*",
         headers: [

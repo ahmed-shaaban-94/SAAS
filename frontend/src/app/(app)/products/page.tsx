@@ -23,12 +23,12 @@ export default function ProductsPage() {
   return (
     <PageTransition>
       <Breadcrumbs />
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <Header
           title="Product Analytics"
           description="Top performing products by revenue"
         />
-        <div className="flex gap-1 rounded-lg bg-background p-1">
+        <div className="flex gap-1 rounded-lg bg-background p-1 self-start">
           {VIEWS.map((v) => (
             <button
               key={v.key}
@@ -60,8 +60,8 @@ export default function ProductsPage() {
           </h2>
           <div className="flex-1 section-divider" />
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+          <div className="md:col-span-2">
             <ParetoChart />
           </div>
           <ABCSummary />

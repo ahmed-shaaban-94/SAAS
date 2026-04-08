@@ -57,4 +57,4 @@ class AnnotationRepository:
         sql = text("DELETE FROM public.annotations WHERE id = :aid AND user_id = :uid")
         result = self._session.execute(sql, {"aid": annotation_id, "uid": user_id})
         self._session.flush()
-        return (result.rowcount or 0) > 0
+        return (result.rowcount or 0) > 0  # type: ignore[attr-defined]

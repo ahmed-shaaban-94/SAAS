@@ -142,9 +142,7 @@ class PipelineExecutor:
 
             if proc.returncode != 0:
                 raw_error = (
-                    stderr.strip()
-                    or stdout.strip()
-                    or f"dbt exited with code {proc.returncode}"
+                    stderr.strip() or stdout.strip() or f"dbt exited with code {proc.returncode}"
                 )
                 log.error("executor_dbt_failed", run_id=str(run_id), error=raw_error)
                 return ExecutionResult(

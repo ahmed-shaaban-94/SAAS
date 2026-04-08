@@ -34,7 +34,7 @@ WITH daily AS (
         COUNT(DISTINCT f.customer_key)::INT      AS unique_customers,
         COUNT(DISTINCT f.product_key)::INT       AS unique_products,
         ROUND(
-            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                        AS avg_basket_size
     FROM {{ ref('fct_sales') }} f

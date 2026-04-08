@@ -49,7 +49,7 @@ table _Measures
 		lineageTag: 3c18e55f-5726-48de-a669-785c81f75e57
 
 	/// Distinct customers in context
-	measure 'Unique Customers' = DISTINCTCOUNT(fct_sales[customer_key])
+	measure 'Unique Customers' = CALCULATE(DISTINCTCOUNT(fct_sales[customer_key]), fct_sales[customer_key] <> -1)
 		formatString: #,##0
 		displayFolder: Core KPIs
 		lineageTag: 6ba65fb5-7ad3-472e-af7f-b5072a8bd791
@@ -483,10 +483,13 @@ table _Measures
 
 	/// Net amount per unit
 	measure 'Avg Unit Price' =
-			DIVIDE(
-			    SUM(fct_sales[net_amount]),
-			    SUM(fct_sales[quantity]),
-			    0
+			CALCULATE(
+			    DIVIDE(
+			        SUM(fct_sales[net_amount]),
+			        SUM(fct_sales[quantity]),
+			        0
+			    ),
+			    fct_sales[is_return] = FALSE
 			)
 		formatString: #,##0.00
 		displayFolder: Operational
@@ -577,7 +580,10 @@ table _Measures
 		lineageTag: 11ee9b32-78b5-4363-a800-5405cd3d879e
 
 	/// Absolute MoM revenue change
-	measure 'Revenue MoM Variance' = [Net Revenue] - CALCULATE([Net Revenue], PREVIOUSMONTH(dim_date[full_date]))
+	measure 'Revenue MoM Variance' =
+			VAR _prev = CALCULATE([Net Revenue], PREVIOUSMONTH(dim_date[full_date]))
+			RETURN
+			    IF(ISBLANK(_prev), BLANK(), [Net Revenue] - _prev)
 		formatString: #,##0.00
 		displayFolder: Time Intelligence
 		lineageTag: 0970d601-0ad3-4d4e-9b00-6e3e510d1920
@@ -829,9 +835,8 @@ table _Measures
 
 	/// Rows with no matching date dimension
 	measure 'Orphan Row Count' =
-			CALCULATE(
-			    COUNTROWS(fct_sales),
-			    ISBLANK(RELATED(dim_date[full_date]))
+			COUNTROWS(
+			    FILTER(fct_sales, ISBLANK(RELATED(dim_date[full_date])))
 			)
 		formatString: #,##0
 		displayFolder: Data Quality
@@ -866,7 +871,7 @@ table _Measures
 		lineageTag: c01faddc-89e1-483c-901b-9a2fce4a1778
 
 	/// Data as of timestamp
-	measure 'Last Refresh Date' = FORMAT(NOW(), "DD-MMM-YYYY HH:MM")
+	measure 'Last Refresh Date' = FORMAT(NOW(), "DD-MMM-YYYY HH:NN")
 		isHidden
 		displayFolder: Report Helpers
 		lineageTag: c1c99e8d-5e08-4c6b-8d06-e0df7db57665
@@ -926,7 +931,7 @@ table _Measures
 		lineageTag: fc1a4c73-58b3-4848-ba09-ad1c0d3318c4
 
 	/// Dynamic title for Data Quality page
-	measure 'Title - Data Quality' = "Data Quality Dashboard | " & [Selected Period Label] & " | Refreshed: " & FORMAT(NOW(), "DD-MMM-YYYY HH:MM")
+	measure 'Title - Data Quality' = "Data Quality Dashboard | " & [Selected Period Label] & " | Refreshed: " & FORMAT(NOW(), "DD-MMM-YYYY HH:NN")
 		isHidden
 		displayFolder: Page Titles
 		lineageTag: 4a34e249-59f5-4796-8896-e3c945e7d007
@@ -992,7 +997,7 @@ table _Measures
 		lineageTag: 2136692a-68c3-419d-82fe-21dc189768fa
 
 	/// Most recent transaction date in current filter context
-	measure 'Last Transaction Date' = MAX(fct_sales[date_key])
+	measure 'Last Transaction Date' = MAX(dim_date[full_date])
 		formatString: DD-MMM-YYYY
 		displayFolder: Tooltips
 		lineageTag: 223e097b-bbf9-4a1a-9d4d-b7848fa9fa7c
@@ -1085,7 +1090,7 @@ table _Measures
 	/// Net Revenue resolved at governorate level for shape map
 	measure 'Revenue by Governorate' =
 			IF(
-			    HASONEVALUE(dim_site[site_name]),
+			    HASONEVALUE(dim_site[governorate]),
 			    [Net Revenue],
 			    BLANK()
 			)
@@ -1118,7 +1123,7 @@ table _Measures
 			    [Revenue MoM %],
 			    [Net Revenue]
 			)
-		formatString: #,##0
+		formatStringExpression: =IF([KPI Display Mode] = "Percentage", "0.00%", "#,##0.00")
 		displayFolder: Report Helpers
 		lineageTag: 0dde5298-cea7-449a-9eed-85ac4d72afa6
 

@@ -98,6 +98,30 @@ class BudgetSummary(BaseModel):
     ytd_achievement_pct: JsonDecimal = Field(default=Decimal("0"))
 
 
+class QuarterlyTargetVsActual(BaseModel):
+    """Quarterly aggregation of target vs actual."""
+
+    model_config = ConfigDict(frozen=True)
+
+    quarter: int
+    quarter_label: str
+    target_value: JsonDecimal
+    actual_value: JsonDecimal
+    variance: JsonDecimal
+    achievement_pct: JsonDecimal
+
+
+class QuarterlySummary(BaseModel):
+    """Quarterly target summary for a year."""
+
+    model_config = ConfigDict(frozen=True)
+
+    quarters: list[QuarterlyTargetVsActual]
+    ytd_target: JsonDecimal = Field(default=Decimal("0"))
+    ytd_actual: JsonDecimal = Field(default=Decimal("0"))
+    ytd_achievement_pct: JsonDecimal = Field(default=Decimal("0"))
+
+
 class AlertConfigCreate(BaseModel):
     """Input model for creating an alert configuration."""
 

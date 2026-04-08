@@ -92,7 +92,7 @@ export default function ReportsPage() {
         description="Generate parameterized reports from templates"
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_1fr] md:gap-6 lg:grid-cols-[280px_1fr]">
         {/* Template list */}
         <div className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">

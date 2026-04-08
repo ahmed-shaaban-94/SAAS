@@ -18,6 +18,8 @@ from datapulse.targets.models import (
     BudgetOriginSummary,
     BudgetSummary,
     BudgetVsActualItem,
+    QuarterlySummary,
+    QuarterlyTargetVsActual,
     TargetCreate,
     TargetResponse,
     TargetSummary,
@@ -189,13 +191,62 @@ class TargetsRepository:
             ytd_achievement_pct=ytd_achievement,
         )
 
+    def get_quarterly_summary(self, year: int) -> QuarterlySummary:
+        """Aggregate monthly targets vs actuals into quarterly buckets."""
+
+        summary = self.get_target_vs_actual(year)
+
+        quarter_data: dict[int, dict] = {}
+        for m in summary.monthly_targets:
+            month = int(m.period.split("-")[1])
+            q = (month - 1) // 3 + 1
+            if q not in quarter_data:
+                quarter_data[q] = {"target": _ZERO, "actual": _ZERO}
+            quarter_data[q]["target"] += m.target_value
+            quarter_data[q]["actual"] += m.actual_value
+
+        quarters = []
+        for q in sorted(quarter_data):
+            t = quarter_data[q]["target"]
+            a = quarter_data[q]["actual"]
+            v = a - t
+            pct = (a / t * _HUNDRED).quantize(Decimal("0.01")) if t != _ZERO else _ZERO
+            quarters.append(
+                QuarterlyTargetVsActual(
+                    quarter=q,
+                    quarter_label=f"Q{q} {year}",
+                    target_value=t,
+                    actual_value=a,
+                    variance=v,
+                    achievement_pct=pct,
+                )
+            )
+
+        return QuarterlySummary(
+            quarters=quarters,
+            ytd_target=summary.ytd_target,
+            ytd_actual=summary.ytd_actual,
+            ytd_achievement_pct=summary.ytd_achievement_pct,
+        )
+
     # ------------------------------------------------------------------
     # Budget (from seed_budget_2025)
     # ------------------------------------------------------------------
 
     _MONTH_NAMES = [
-        "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
     ]
 
     def get_budget_vs_actual(self, year: int) -> BudgetSummary:
@@ -274,9 +325,7 @@ class TargetsRepository:
                     ytd_actual=oa,
                     ytd_variance=oa - ob,
                     ytd_achievement_pct=(
-                        (oa / ob * _HUNDRED).quantize(Decimal("0.01"))
-                        if ob != _ZERO
-                        else _ZERO
+                        (oa / ob * _HUNDRED).quantize(Decimal("0.01")) if ob != _ZERO else _ZERO
                     ),
                 )
             )
@@ -386,7 +435,7 @@ class TargetsRepository:
                    l.fired_at, l.metric_value, l.threshold_value,
                    l.message, l.acknowledged
             FROM public.alerts_log l
-            LEFT JOIN public.alerts_config c ON l.alert_config_id = c.id
+            LEFT JOIN public.alert_configs c ON l.alert_config_id = c.id
             WHERE (:ack_only = FALSE OR l.acknowledged = FALSE)
             ORDER BY l.fired_at DESC
             LIMIT :limit

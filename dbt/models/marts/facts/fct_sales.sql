@@ -62,7 +62,7 @@ SELECT
         COALESCE(s.site_code, '') || '|' ||
         COALESCE(s.quantity::TEXT, '') || '|' ||
         COALESCE(s.billing_way, '')
-    ), 8))::BIT(32)::INT AS sales_key,
+    ), 16))::BIT(64)::BIGINT AS sales_key,
 
     -- Tenant
     s.tenant_id,

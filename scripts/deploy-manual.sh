@@ -130,8 +130,8 @@ fi
 # Step 5: Health check
 echo "[5/5] Running health check..."
 PASSED=false
-for i in $(seq 1 6); do
-  HTTP_CODE=$($SSH_CMD "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:3000" 2>/dev/null || echo "000")
+for i in $(seq 1 12); do
+  HTTP_CODE=$($SSH_CMD "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost/health" 2>/dev/null || echo "000")
   if [[ "$HTTP_CODE" == "200" ]]; then
     echo "Health check PASSED on attempt $i (HTTP $HTTP_CODE)"
     PASSED=true
