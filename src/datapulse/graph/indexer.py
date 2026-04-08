@@ -55,12 +55,15 @@ def main() -> None:
     print("DataPulse Graph — Indexing codebase...")
     result = index(root)
     print(f"Done in {result['elapsed_seconds']}s")
-    print(f"Files: {result['files_indexed']['total']} "
-          f"(dbt:{result['files_indexed']['dbt_models']} "
-          f"py:{result['files_indexed']['python_files']} "
-          f"ts:{result['files_indexed']['typescript_files']})")
-    print(f"Graph: {result['graph']['total_symbols']} symbols, "
-          f"{result['graph']['total_edges']} edges")
+    print(
+        f"Files: {result['files_indexed']['total']} "
+        f"(dbt:{result['files_indexed']['dbt_models']} "
+        f"py:{result['files_indexed']['python_files']} "
+        f"ts:{result['files_indexed']['typescript_files']})"
+    )
+    print(
+        f"Graph: {result['graph']['total_symbols']} symbols, {result['graph']['total_edges']} edges"
+    )
     print(f"Layers: {result['graph']['by_layer']}")
     print(f"Kinds:  {result['graph']['by_kind']}")
 

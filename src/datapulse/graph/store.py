@@ -123,9 +123,7 @@ def find_symbol(name: str, kind: str | None = None) -> list[dict]:
 def find_by_file(file_path: str) -> list[dict]:
     """Find all symbols defined in a specific file."""
     with _connect() as conn:
-        rows = conn.execute(
-            "SELECT * FROM symbols WHERE file_path = ?", (file_path,)
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM symbols WHERE file_path = ?", (file_path,)).fetchall()
         return [dict(r) for r in rows]
 
 
@@ -180,30 +178,34 @@ def impact_query(symbol_name: str, max_depth: int = 3) -> dict[int, list[dict]]:
                     if t["id"] not in visited:
                         visited.add(t["id"])
                         next_frontier.append(t["id"])
-                        depth_hits.append({
-                            "name": edge["name"],
-                            "kind": edge["sym_kind"],
-                            "file": edge["file_path"],
-                            "line": edge["line_number"],
-                            "layer": edge["layer"],
-                            "relationship": edge["kind"],
-                            "depth": depth,
-                        })
+                        depth_hits.append(
+                            {
+                                "name": edge["name"],
+                                "kind": edge["sym_kind"],
+                                "file": edge["file_path"],
+                                "line": edge["line_number"],
+                                "layer": edge["layer"],
+                                "relationship": edge["kind"],
+                                "depth": depth,
+                            }
+                        )
             for edge in get_edges_from(sid):
                 target = find_symbol(edge["name"], edge["sym_kind"])
                 for t in target:
                     if t["id"] not in visited:
                         visited.add(t["id"])
                         next_frontier.append(t["id"])
-                        depth_hits.append({
-                            "name": edge["name"],
-                            "kind": edge["sym_kind"],
-                            "file": edge["file_path"],
-                            "line": edge["line_number"],
-                            "layer": edge["layer"],
-                            "relationship": edge["kind"],
-                            "depth": depth,
-                        })
+                        depth_hits.append(
+                            {
+                                "name": edge["name"],
+                                "kind": edge["sym_kind"],
+                                "file": edge["file_path"],
+                                "line": edge["line_number"],
+                                "layer": edge["layer"],
+                                "relationship": edge["kind"],
+                                "depth": depth,
+                            }
+                        )
         if depth_hits:
             result[depth] = depth_hits
         frontier = next_frontier

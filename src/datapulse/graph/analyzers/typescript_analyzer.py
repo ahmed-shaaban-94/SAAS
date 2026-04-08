@@ -76,7 +76,7 @@ def analyze_file(file_path: str, project_root: str) -> None:
             name=name,
             kind="hook",
             file_path=rel_path,
-            line_number=content[:match.start()].count("\n") + 1,
+            line_number=content[: match.start()].count("\n") + 1,
             module=rel_path,
             layer=layer,
         )
@@ -92,7 +92,7 @@ def analyze_file(file_path: str, project_root: str) -> None:
             name=name,
             kind=kind,
             file_path=rel_path,
-            line_number=content[:match.start()].count("\n") + 1,
+            line_number=content[: match.start()].count("\n") + 1,
             module=rel_path,
             layer=layer,
         )
@@ -108,7 +108,7 @@ def analyze_file(file_path: str, project_root: str) -> None:
             name=name,
             kind=kind,
             file_path=rel_path,
-            line_number=content[:match.start()].count("\n") + 1,
+            line_number=content[: match.start()].count("\n") + 1,
             module=rel_path,
             layer=layer,
         )
@@ -120,7 +120,7 @@ def analyze_file(file_path: str, project_root: str) -> None:
         default = match.group(2)
         source = match.group(3)
 
-        if not source.startswith(("@/", "./", "../", "~/")) :
+        if not source.startswith(("@/", "./", "../", "~/")):
             continue
 
         imported_names = []
@@ -134,7 +134,7 @@ def analyze_file(file_path: str, project_root: str) -> None:
                 continue
             existing = store.find_symbol(imp_name)
             if existing:
-                for sym_name, sym_id in symbol_ids.items():
+                for _sym_name, sym_id in symbol_ids.items():
                     store.add_edge(sym_id, existing[0]["id"], "imports")
 
     # Extract API endpoint references → link frontend to API layer

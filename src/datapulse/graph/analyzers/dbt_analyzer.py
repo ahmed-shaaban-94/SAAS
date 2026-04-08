@@ -14,7 +14,9 @@ from datapulse.graph import store
 # ref('model_name') or ref('package', 'model_name')
 _REF_RE = re.compile(r"""\{\{\s*ref\(\s*['"]([^'"]+)['"]\s*(?:,\s*['"][^'"]*['"]\s*)?\)\s*\}\}""")
 # source('source_name', 'table_name')
-_SOURCE_RE = re.compile(r"""\{\{\s*source\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)\s*\}\}""")
+_SOURCE_RE = re.compile(
+    r"""\{\{\s*source\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)\s*\}\}"""
+)
 # Column references in SELECT: table_alias.column_name
 _COL_REF_RE = re.compile(r"\b(\w+)\.(\w+)\b")
 

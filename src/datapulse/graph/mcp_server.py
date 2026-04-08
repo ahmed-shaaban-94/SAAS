@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
@@ -46,20 +47,28 @@ def dp_impact(
     result = store.impact_query(symbol_name, max_depth=max_depth)
 
     if not result:
-        return json.dumps({"error": f"No symbol matching '{symbol_name}' found", "hint": "Try a partial name or use dp_query to search first"})
+        return json.dumps(
+            {
+                "error": f"No symbol matching '{symbol_name}' found",
+                "hint": "Try a partial name or use dp_query to search first",
+            }
+        )
 
-    output = {"symbol": symbol_name, "total_affected": sum(len(v) for v in result.values()), "by_depth": {}}
+    total = sum(len(v) for v in result.values())
+    output: dict[str, Any] = {"symbol": symbol_name, "total_affected": total, "by_depth": {}}
     for depth, hits in result.items():
         by_layer: dict[str, list] = {}
         for h in hits:
             layer = h.get("layer", "unknown")
-            by_layer.setdefault(layer, []).append({
-                "name": h["name"],
-                "kind": h["kind"],
-                "file": h["file"],
-                "line": h["line"],
-                "relationship": h["relationship"],
-            })
+            by_layer.setdefault(layer, []).append(
+                {
+                    "name": h["name"],
+                    "kind": h["kind"],
+                    "file": h["file"],
+                    "line": h["line"],
+                    "relationship": h["relationship"],
+                }
+            )
         output["by_depth"][f"depth_{depth}"] = by_layer
 
     return json.dumps(output, indent=2)
@@ -105,22 +114,30 @@ def dp_query(
     results = store.search_query(query, kind=kind, layer=layer)
 
     if not results:
-        return json.dumps({"results": [], "hint": f"No symbols matching '{query}'. Try a broader term."})
-
-    return json.dumps({
-        "count": len(results),
-        "results": [
+        return json.dumps(
             {
-                "name": r["name"],
-                "kind": r["kind"],
-                "file": r["file_path"],
-                "line": r["line_number"],
-                "layer": r["layer"],
-                "module": r["module"],
+                "results": [],
+                "hint": f"No symbols matching '{query}'. Try a broader term.",
             }
-            for r in results
-        ],
-    }, indent=2)
+        )
+
+    return json.dumps(
+        {
+            "count": len(results),
+            "results": [
+                {
+                    "name": r["name"],
+                    "kind": r["kind"],
+                    "file": r["file_path"],
+                    "line": r["line_number"],
+                    "layer": r["layer"],
+                    "module": r["module"],
+                }
+                for r in results
+            ],
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -136,20 +153,29 @@ def dp_detect_changes() -> str:
     try:
         diff_result = subprocess.run(
             ["git", "diff", "--name-only", "HEAD"],
-            capture_output=True, text=True, cwd=_PROJECT_ROOT, timeout=10,
+            capture_output=True,
+            text=True,
+            cwd=_PROJECT_ROOT,
+            timeout=10,
         )
         staged_result = subprocess.run(
             ["git", "diff", "--name-only", "--cached"],
-            capture_output=True, text=True, cwd=_PROJECT_ROOT, timeout=10,
+            capture_output=True,
+            text=True,
+            cwd=_PROJECT_ROOT,
+            timeout=10,
         )
         untracked_result = subprocess.run(
             ["git", "ls-files", "--others", "--exclude-standard"],
-            capture_output=True, text=True, cwd=_PROJECT_ROOT, timeout=10,
+            capture_output=True,
+            text=True,
+            cwd=_PROJECT_ROOT,
+            timeout=10,
         )
     except subprocess.TimeoutExpired:
         return json.dumps({"error": "git command timed out"})
 
-    changed_files = set()
+    changed_files: set[str] = set()
     for r in (diff_result, staged_result, untracked_result):
         if r.returncode == 0:
             changed_files.update(f.strip() for f in r.stdout.strip().split("\n") if f.strip())
@@ -163,23 +189,28 @@ def dp_detect_changes() -> str:
         for sym in file_syms:
             impact = store.impact_query(sym["name"], max_depth=2)
             downstream_count = sum(len(v) for v in impact.values())
-            affected.append({
-                "symbol": sym["name"],
-                "kind": sym["kind"],
-                "file": fpath,
-                "layer": sym["layer"],
-                "downstream_affected": downstream_count,
-            })
+            affected.append(
+                {
+                    "symbol": sym["name"],
+                    "kind": sym["kind"],
+                    "file": fpath,
+                    "layer": sym["layer"],
+                    "downstream_affected": downstream_count,
+                }
+            )
 
     # Sort by impact (most downstream affected first)
     affected.sort(key=lambda x: x["downstream_affected"], reverse=True)
 
-    return json.dumps({
-        "changed_files": sorted(changed_files),
-        "affected_symbols": affected[:30],
-        "total_symbols_in_changed_files": len(affected),
-        "risk_summary": _risk_summary(affected),
-    }, indent=2)
+    return json.dumps(
+        {
+            "changed_files": sorted(changed_files),
+            "affected_symbols": affected[:30],
+            "total_symbols_in_changed_files": len(affected),
+            "risk_summary": _risk_summary(affected),
+        },
+        indent=2,
+    )
 
 
 def _risk_summary(affected: list[dict]) -> str:

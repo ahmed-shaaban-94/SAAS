@@ -96,21 +96,19 @@ def analyze_file(file_path: str, project_root: str) -> None:
 
     # Pass 2: Extract imports → create "imports" edges
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module:
-            if node.module.startswith("datapulse"):
-                for alias in node.names:
-                    imported_name = alias.name
-                    existing = store.find_symbol(imported_name)
-                    if existing:
-                        # This file imports that symbol
-                        file_sym = store.upsert_symbol(
-                            name=Path(rel_path).stem,
-                            kind="module",
-                            file_path=rel_path,
-                            module=module,
-                            layer=layer,
-                        )
-                        store.add_edge(file_sym, existing[0]["id"], "imports")
+        if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("datapulse"):
+            for alias in node.names:
+                imported_name = alias.name
+                existing = store.find_symbol(imported_name)
+                if existing:
+                    file_sym = store.upsert_symbol(
+                        name=Path(rel_path).stem,
+                        kind="module",
+                        file_path=rel_path,
+                        module=module,
+                        layer=layer,
+                    )
+                    store.add_edge(file_sym, existing[0]["id"], "imports")
 
     # Pass 3: Extract function calls within functions/methods
     for node in ast.walk(tree):
