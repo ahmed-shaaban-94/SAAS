@@ -45,6 +45,7 @@ jobs:
   build-push:
     name: Build & Push Images
     needs: [gate]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
