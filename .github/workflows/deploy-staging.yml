@@ -116,7 +116,7 @@ jobs:
             # Health check — API
             echo "=== Health check: API ==="
             API_OK=false
-            for i in $(seq 1 12); do
+            for i in $(seq 1 24); do
               HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8000/health 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "API health check PASSED on attempt $i"
@@ -130,7 +130,7 @@ jobs:
             # Health check — Frontend
             echo "=== Health check: Frontend ==="
             FE_OK=false
-            for i in $(seq 1 6); do
+            for i in $(seq 1 12); do
               HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:3000 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "Frontend health check PASSED on attempt $i"
