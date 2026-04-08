@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -12,8 +13,10 @@ log = get_logger(__name__)
 
 _REF_PATTERN = re.compile(r"""\{\{\s*ref\(\s*['"](\w+)['"]\s*\)\s*\}\}""")
 
-# Default dbt models directory
-_DBT_DIR = Path(__file__).resolve().parents[3] / "dbt" / "models"
+# Default dbt models directory — use APP_ROOT env var in Docker (/app),
+# fall back to the repo root for local development.
+_APP_ROOT = Path(os.environ.get("APP_ROOT", Path(__file__).resolve().parents[3]))
+_DBT_DIR = _APP_ROOT / "dbt" / "models"
 
 
 def _classify_model(name: str) -> tuple[str, str]:
