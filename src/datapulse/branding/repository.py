@@ -28,8 +28,9 @@ class BrandingRepository:
 
     def get_branding(self, tenant_id: int) -> BrandingResponse:
         """Get branding config for a tenant, returning defaults if not set."""
-        row = self._session.execute(
-            text("""
+        row = (
+            self._session.execute(
+                text("""
                 SELECT tenant_id, company_name, logo_url, favicon_url,
                        primary_color, accent_color, sidebar_bg, font_family,
                        custom_domain, subdomain, email_from_name, email_logo_url,
@@ -39,8 +40,11 @@ class BrandingRepository:
                 FROM public.tenant_branding
                 WHERE tenant_id = :tid
             """),
-            {"tid": tenant_id},
-        ).mappings().fetchone()
+                {"tid": tenant_id},
+            )
+            .mappings()
+            .fetchone()
+        )
 
         if row is None:
             return BrandingResponse(tenant_id=tenant_id)
@@ -59,8 +63,9 @@ class BrandingRepository:
 
         cols = ", ".join(updates.keys() - {"tid"})
         vals = ", ".join(f":{k}" for k in updates if k != "tid")
-        row = self._session.execute(
-            text(f"""
+        row = (
+            self._session.execute(
+                text(f"""
                 INSERT INTO public.tenant_branding (tenant_id, {cols})
                 VALUES (:tid, {vals})
                 ON CONFLICT (tenant_id) DO UPDATE SET
@@ -73,8 +78,11 @@ class BrandingRepository:
                           hide_datapulse_branding, custom_login_bg,
                           created_at, updated_at
             """),
-            updates,
-        ).mappings().fetchone()
+                updates,
+            )
+            .mappings()
+            .fetchone()
+        )
 
         return BrandingResponse(**dict(row))  # type: ignore[arg-type]
 
@@ -102,8 +110,9 @@ class BrandingRepository:
 
     def get_public_branding_by_domain(self, domain: str) -> PublicBrandingResponse | None:
         """Look up public branding by custom domain or subdomain (no auth)."""
-        row = self._session.execute(
-            text("""
+        row = (
+            self._session.execute(
+                text("""
                 SELECT company_name, logo_url, favicon_url,
                        primary_color, accent_color, font_family,
                        hide_datapulse_branding, custom_login_bg
@@ -111,8 +120,11 @@ class BrandingRepository:
                 WHERE custom_domain = :domain OR subdomain = :domain
                 LIMIT 1
             """),
-            {"domain": domain},
-        ).mappings().fetchone()
+                {"domain": domain},
+            )
+            .mappings()
+            .fetchone()
+        )
 
         if row is None:
             return None

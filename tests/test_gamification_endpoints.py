@@ -61,7 +61,10 @@ def client(mock_service: MagicMock) -> TestClient:
 class TestProfileEndpoint:
     def test_get_profile(self, client, mock_service):
         mock_service.get_profile.return_value = GamificationProfile(
-            staff_key=42, level=5, total_xp=5000, current_tier="bronze",
+            staff_key=42,
+            level=5,
+            total_xp=5000,
+            current_tier="bronze",
             xp_to_next_level=1000,
         )
         resp = client.get("/api/v1/gamification/profile/42")
@@ -90,8 +93,12 @@ class TestBadgeEndpoints:
     def test_get_staff_badges(self, client, mock_service):
         mock_service.get_staff_badges.return_value = [
             StaffBadgeResponse(
-                badge_id=1, badge_key="first_sale", title_en="First Sale",
-                icon="sparkles", tier="bronze", category="milestone",
+                badge_id=1,
+                badge_key="first_sale",
+                title_en="First Sale",
+                icon="sparkles",
+                tier="bronze",
+                category="milestone",
                 earned_at=NOW,
             ),
         ]
@@ -142,8 +149,13 @@ class TestLeaderboardEndpoints:
     def test_get_leaderboard(self, client, mock_service):
         mock_service.get_leaderboard.return_value = [
             LeaderboardEntry(
-                rank=1, staff_key=42, staff_name="Ahmed",
-                level=10, total_xp=10000, current_tier="silver", badge_count=5,
+                rank=1,
+                staff_key=42,
+                staff_name="Ahmed",
+                level=10,
+                total_xp=10000,
+                current_tier="silver",
+                badge_count=5,
             ),
         ]
         resp = client.get("/api/v1/gamification/leaderboard")
@@ -166,9 +178,14 @@ class TestCompetitionEndpoints:
     def test_list_competitions(self, client, mock_service):
         mock_service.list_competitions.return_value = [
             CompetitionResponse(
-                competition_id=1, title="Q1 Race", competition_type="individual",
-                metric="revenue", start_date=date(2025, 1, 1),
-                end_date=date(2025, 3, 31), status="active", created_at=NOW,
+                competition_id=1,
+                title="Q1 Race",
+                competition_type="individual",
+                metric="revenue",
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 3, 31),
+                status="active",
+                created_at=NOW,
             ),
         ]
         resp = client.get("/api/v1/gamification/competitions")
@@ -177,25 +194,38 @@ class TestCompetitionEndpoints:
 
     def test_create_competition(self, client, mock_service):
         mock_service.create_competition.return_value = CompetitionResponse(
-            competition_id=1, title="March Madness", competition_type="individual",
-            metric="revenue", start_date=date(2025, 3, 1),
-            end_date=date(2025, 3, 31), status="upcoming", created_at=NOW,
+            competition_id=1,
+            title="March Madness",
+            competition_type="individual",
+            metric="revenue",
+            start_date=date(2025, 3, 1),
+            end_date=date(2025, 3, 31),
+            status="upcoming",
+            created_at=NOW,
         )
-        resp = client.post("/api/v1/gamification/competitions", json={
-            "title": "March Madness",
-            "metric": "revenue",
-            "start_date": "2025-03-01",
-            "end_date": "2025-03-31",
-        })
+        resp = client.post(
+            "/api/v1/gamification/competitions",
+            json={
+                "title": "March Madness",
+                "metric": "revenue",
+                "start_date": "2025-03-01",
+                "end_date": "2025-03-31",
+            },
+        )
         assert resp.status_code == 201
         assert resp.json()["title"] == "March Madness"
 
     def test_get_competition_detail(self, client, mock_service):
         mock_service.get_competition_detail.return_value = CompetitionDetail(
             competition=CompetitionResponse(
-                competition_id=1, title="Q1", competition_type="individual",
-                metric="revenue", start_date=date(2025, 1, 1),
-                end_date=date(2025, 3, 31), status="active", created_at=NOW,
+                competition_id=1,
+                title="Q1",
+                competition_type="individual",
+                metric="revenue",
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 3, 31),
+                status="active",
+                created_at=NOW,
             ),
             entries=[],
         )
@@ -221,8 +251,11 @@ class TestFeedEndpoints:
     def test_get_feed(self, client, mock_service):
         mock_service.get_feed.return_value = [
             FeedItem(
-                id=1, staff_key=1, event_type="badge_earned",
-                title="Earned badge", created_at=NOW,
+                id=1,
+                staff_key=1,
+                event_type="badge_earned",
+                title="Earned badge",
+                created_at=NOW,
             ),
         ]
         resp = client.get("/api/v1/gamification/feed")

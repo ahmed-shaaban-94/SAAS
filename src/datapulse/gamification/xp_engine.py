@@ -5,7 +5,7 @@ from __future__ import annotations
 # XP rewards per source type
 XP_TABLE: dict[str, int] = {
     "sale": 10,
-    "large_sale": 50,           # sale > 10k
+    "large_sale": 50,  # sale > 10k
     "daily_target_hit": 100,
     "monthly_target_hit": 500,
     "streak_bonus_7": 200,
@@ -27,7 +27,7 @@ def xp_for_level(level: int) -> int:
     """Return cumulative XP required to reach a given level."""
     if level <= 1:
         return 0
-    return int(1000 * (level ** 1.5))
+    return int(1000 * (level**1.5))
 
 
 def level_from_xp(total_xp: int) -> int:

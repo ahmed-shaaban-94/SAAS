@@ -12,6 +12,7 @@ from datapulse.types import JsonDecimal  # noqa: TC002
 # Badge models
 # ------------------------------------------------------------------
 
+
 class BadgeResponse(BaseModel):
     """A badge definition."""
 
@@ -49,6 +50,7 @@ class StaffBadgeResponse(BaseModel):
 # Streak models
 # ------------------------------------------------------------------
 
+
 class StreakResponse(BaseModel):
     """Current streak status for a staff member."""
 
@@ -63,6 +65,7 @@ class StreakResponse(BaseModel):
 # ------------------------------------------------------------------
 # XP & Level models
 # ------------------------------------------------------------------
+
 
 class XPEvent(BaseModel):
     """Single XP transaction."""
@@ -107,6 +110,7 @@ class GamificationProfile(BaseModel):
 # ------------------------------------------------------------------
 # Competition models
 # ------------------------------------------------------------------
+
 
 class CompetitionCreate(BaseModel):
     """Input model for creating a competition."""
@@ -161,6 +165,7 @@ class CompetitionDetail(BaseModel):
 # Leaderboard models
 # ------------------------------------------------------------------
 
+
 class LeaderboardEntry(BaseModel):
     """Entry in the XP leaderboard."""
 
@@ -178,6 +183,7 @@ class LeaderboardEntry(BaseModel):
 # ------------------------------------------------------------------
 # Activity feed
 # ------------------------------------------------------------------
+
 
 class FeedItem(BaseModel):
     """A single gamification activity event."""

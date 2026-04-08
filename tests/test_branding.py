@@ -67,6 +67,7 @@ def client(mock_service: MagicMock) -> TestClient:
     app.dependency_overrides[get_tenant_session] = lambda: MagicMock()
 
     from datapulse.api.routes.branding import get_branding_service
+
     app.dependency_overrides[get_branding_service] = lambda: mock_service
 
     return TestClient(app)

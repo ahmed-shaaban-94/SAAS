@@ -39,8 +39,9 @@ class GamificationRepository:
 
     def list_badges(self) -> list[BadgeResponse]:
         """Return all active badge definitions."""
-        rows = self._session.execute(
-            text("""
+        rows = (
+            self._session.execute(
+                text("""
                 SELECT badge_id, badge_key, title_en, title_ar,
                        description_en, description_ar, icon, tier,
                        category, is_active
@@ -48,13 +49,17 @@ class GamificationRepository:
                 WHERE is_active = TRUE
                 ORDER BY tier, category, badge_key
             """)
-        ).mappings().fetchall()
+            )
+            .mappings()
+            .fetchall()
+        )
         return [BadgeResponse(**r) for r in rows]
 
     def get_staff_badges(self, staff_key: int) -> list[StaffBadgeResponse]:
         """Return all badges earned by a given staff member."""
-        rows = self._session.execute(
-            text("""
+        rows = (
+            self._session.execute(
+                text("""
                 SELECT b.badge_id, b.badge_key, b.title_en, b.title_ar,
                        b.icon, b.tier, b.category,
                        sb.earned_at, sb.context
@@ -63,8 +68,11 @@ class GamificationRepository:
                 WHERE sb.staff_key = :staff_key
                 ORDER BY sb.earned_at DESC
             """),
-            {"staff_key": staff_key},
-        ).mappings().fetchall()
+                {"staff_key": staff_key},
+            )
+            .mappings()
+            .fetchall()
+        )
         return [StaffBadgeResponse(**r) for r in rows]
 
     def get_earned_badge_keys(self, staff_key: int) -> set[str]:
@@ -106,24 +114,32 @@ class GamificationRepository:
 
     def get_streaks(self, staff_key: int) -> list[StreakResponse]:
         """Return all streak records for a staff member."""
-        rows = self._session.execute(
-            text("""
+        rows = (
+            self._session.execute(
+                text("""
                 SELECT streak_type, current_count, best_count, last_date
                 FROM public.streaks
                 WHERE staff_key = :staff_key
                 ORDER BY streak_type
             """),
-            {"staff_key": staff_key},
-        ).mappings().fetchall()
+                {"staff_key": staff_key},
+            )
+            .mappings()
+            .fetchall()
+        )
         return [StreakResponse(**r) for r in rows]
 
     def update_streak(
-        self, staff_key: int, streak_type: str, today: date,
+        self,
+        staff_key: int,
+        streak_type: str,
+        today: date,
     ) -> StreakResponse:
         """Increment or reset a streak based on the date."""
         log.info("update_streak", staff_key=staff_key, streak_type=streak_type)
-        row = self._session.execute(
-            text("""
+        row = (
+            self._session.execute(
+                text("""
                 INSERT INTO public.streaks
                     (staff_key, streak_type, current_count, best_count, last_date)
                 VALUES (:staff_key, :streak_type, 1, 1, :today)
@@ -146,16 +162,23 @@ class GamificationRepository:
                     updated_at = NOW()
                 RETURNING streak_type, current_count, best_count, last_date
             """),
-            {"staff_key": staff_key, "streak_type": streak_type, "today": today},
-        ).mappings().fetchone()
-        return StreakResponse(**dict(row))  # type: ignore[arg-type]
+                {"staff_key": staff_key, "streak_type": streak_type, "today": today},
+            )
+            .mappings()
+            .fetchone()
+        )
+        assert row is not None, "INSERT ... RETURNING must return a row"
+        return StreakResponse(**dict(row))
 
     # ------------------------------------------------------------------
     # XP & Levels
     # ------------------------------------------------------------------
 
     def add_xp(
-        self, staff_key: int, xp_amount: int, source: str,
+        self,
+        staff_key: int,
+        xp_amount: int,
+        source: str,
         source_ref: str | None = None,
     ) -> None:
         """Record an XP event in the ledger."""
@@ -200,33 +223,43 @@ class GamificationRepository:
 
     def get_staff_level(self, staff_key: int) -> StaffLevelResponse | None:
         """Get level info for one staff member."""
-        row = self._session.execute(
-            text("""
+        row = (
+            self._session.execute(
+                text("""
                 SELECT staff_key, level, total_xp, current_tier
                 FROM public.staff_levels
                 WHERE staff_key = :sk
             """),
-            {"sk": staff_key},
-        ).mappings().fetchone()
+                {"sk": staff_key},
+            )
+            .mappings()
+            .fetchone()
+        )
         if row is None:
             return None
         from datapulse.gamification.xp_engine import xp_to_next
+
         return StaffLevelResponse(
-            **dict(row), xp_to_next_level=xp_to_next(row["total_xp"]),  # type: ignore[arg-type]
+            **dict(row),
+            xp_to_next_level=xp_to_next(row["total_xp"]),  # type: ignore[arg-type]
         )
 
     def get_xp_history(self, staff_key: int, limit: int = 50) -> list[XPEvent]:
         """Return recent XP events for a staff member."""
-        rows = self._session.execute(
-            text("""
+        rows = (
+            self._session.execute(
+                text("""
                 SELECT id, xp_amount, source, source_ref, earned_at
                 FROM public.xp_ledger
                 WHERE staff_key = :sk
                 ORDER BY earned_at DESC
                 LIMIT :lim
             """),
-            {"sk": staff_key, "lim": limit},
-        ).mappings().fetchall()
+                {"sk": staff_key, "lim": limit},
+            )
+            .mappings()
+            .fetchall()
+        )
         return [XPEvent(**r) for r in rows]
 
     # ------------------------------------------------------------------
@@ -235,8 +268,9 @@ class GamificationRepository:
 
     def get_leaderboard(self, limit: int = 20) -> list[LeaderboardEntry]:
         """Return top staff by XP with level and badge count."""
-        rows = self._session.execute(
-            text("""
+        rows = (
+            self._session.execute(
+                text("""
                 SELECT
                     ROW_NUMBER() OVER (ORDER BY sl.total_xp DESC) AS rank,
                     sl.staff_key,
@@ -255,8 +289,11 @@ class GamificationRepository:
                 ORDER BY sl.total_xp DESC
                 LIMIT :lim
             """),
-            {"lim": limit},
-        ).mappings().fetchall()
+                {"lim": limit},
+            )
+            .mappings()
+            .fetchall()
+        )
         return [LeaderboardEntry(**r) for r in rows]
 
     # ------------------------------------------------------------------
@@ -266,8 +303,9 @@ class GamificationRepository:
     def create_competition(self, data: CompetitionCreate, created_by: str) -> CompetitionResponse:
         """Create a new competition."""
         log.info("create_competition", title=data.title, metric=data.metric)
-        row = self._session.execute(
-            text("""
+        row = (
+            self._session.execute(
+                text("""
                 INSERT INTO public.competitions
                     (title, description, competition_type, metric, start_date, end_date,
                      prize_description, created_by)
@@ -276,47 +314,60 @@ class GamificationRepository:
                 RETURNING competition_id, title, description, competition_type, metric,
                           start_date, end_date, status, prize_description, created_at
             """),
-            {
-                "title": data.title,
-                "desc": data.description,
-                "ctype": data.competition_type,
-                "metric": data.metric,
-                "start": data.start_date,
-                "end": data.end_date,
-                "prize": data.prize_description,
-                "by": created_by,
-            },
-        ).mappings().fetchone()
-        return CompetitionResponse(**dict(row))  # type: ignore[arg-type]
+                {
+                    "title": data.title,
+                    "desc": data.description,
+                    "ctype": data.competition_type,
+                    "metric": data.metric,
+                    "start": data.start_date,
+                    "end": data.end_date,
+                    "prize": data.prize_description,
+                    "by": created_by,
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        assert row is not None, "INSERT ... RETURNING must return a row"
+        return CompetitionResponse(**dict(row))
 
     def list_competitions(self, status: str | None = None) -> list[CompetitionResponse]:
         """List competitions, optionally filtered by status."""
         if status:
-            rows = self._session.execute(
-                text("""
+            rows = (
+                self._session.execute(
+                    text("""
                     SELECT competition_id, title, description, competition_type, metric,
                            start_date, end_date, status, prize_description, created_at
                     FROM public.competitions
                     WHERE status = :status
                     ORDER BY start_date DESC
                 """),
-                {"status": status},
-            ).mappings().fetchall()
+                    {"status": status},
+                )
+                .mappings()
+                .fetchall()
+            )
         else:
-            rows = self._session.execute(
-                text("""
+            rows = (
+                self._session.execute(
+                    text("""
                     SELECT competition_id, title, description, competition_type, metric,
                            start_date, end_date, status, prize_description, created_at
                     FROM public.competitions
                     ORDER BY start_date DESC
                 """),
-            ).mappings().fetchall()
+                )
+                .mappings()
+                .fetchall()
+            )
         return [CompetitionResponse(**r) for r in rows]
 
     def get_competition_entries(self, competition_id: int) -> list[CompetitionEntryResponse]:
         """Return leaderboard entries for a competition."""
-        rows = self._session.execute(
-            text("""
+        rows = (
+            self._session.execute(
+                text("""
                 SELECT
                     ce.staff_key,
                     COALESCE(ds.staff_name, 'Staff #' || ce.staff_key) AS staff_name,
@@ -327,8 +378,11 @@ class GamificationRepository:
                 WHERE ce.competition_id = :cid
                 ORDER BY ce.score DESC
             """),
-            {"cid": competition_id},
-        ).mappings().fetchall()
+                {"cid": competition_id},
+            )
+            .mappings()
+            .fetchall()
+        )
         return [CompetitionEntryResponse(**r) for r in rows]
 
     def join_competition(self, competition_id: int, staff_key: int) -> bool:
@@ -358,6 +412,7 @@ class GamificationRepository:
     ) -> None:
         """Insert a gamification feed event."""
         import json
+
         self._session.execute(
             text("""
                 INSERT INTO public.gamification_feed
@@ -375,8 +430,9 @@ class GamificationRepository:
 
     def get_feed(self, limit: int = 30) -> list[FeedItem]:
         """Return recent activity feed items."""
-        rows = self._session.execute(
-            text("""
+        rows = (
+            self._session.execute(
+                text("""
                 SELECT
                     gf.id, gf.staff_key,
                     COALESCE(ds.staff_name, 'Staff #' || gf.staff_key) AS staff_name,
@@ -386,6 +442,9 @@ class GamificationRepository:
                 ORDER BY gf.created_at DESC
                 LIMIT :lim
             """),
-            {"lim": limit},
-        ).mappings().fetchall()
+                {"lim": limit},
+            )
+            .mappings()
+            .fetchall()
+        )
         return [FeedItem(**r) for r in rows]

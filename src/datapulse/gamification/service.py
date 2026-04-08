@@ -109,7 +109,10 @@ class GamificationService:
         return self._repo.get_streaks(staff_key)
 
     def record_streak(
-        self, staff_key: int, streak_type: str, today: date | None = None,
+        self,
+        staff_key: int,
+        streak_type: str,
+        today: date | None = None,
     ) -> StreakResponse:
         """Update a streak for today."""
         today = today or date.today()
@@ -135,7 +138,10 @@ class GamificationService:
     # ------------------------------------------------------------------
 
     def grant_xp(
-        self, staff_key: int, source: str, source_ref: str | None = None,
+        self,
+        staff_key: int,
+        source: str,
+        source_ref: str | None = None,
     ) -> StaffLevelResponse:
         """Grant XP to a staff member and recalculate level."""
         xp_amount = get_xp_for_source(source)

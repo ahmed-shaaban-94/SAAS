@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -71,7 +72,7 @@ def _check_zero_returns(m: StaffMetrics) -> bool:
     return m.monthly_returns == 0 and m.monthly_txn_count > 0
 
 
-BADGE_RULES: dict[str, callable] = {
+BADGE_RULES: dict[str, Callable[[StaffMetrics], bool]] = {
     "first_sale": _check_first_sale,
     "century_club": _check_century_club,
     "quarter_million": _check_quarter_million,

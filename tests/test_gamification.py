@@ -231,16 +231,24 @@ class TestModels:
 
     def test_badge_response(self):
         badge = BadgeResponse(
-            badge_id=1, badge_key="first_sale", title_en="First Sale",
-            icon="sparkles", tier="bronze", category="milestone",
+            badge_id=1,
+            badge_key="first_sale",
+            title_en="First Sale",
+            icon="sparkles",
+            tier="bronze",
+            category="milestone",
         )
         assert badge.badge_key == "first_sale"
         assert badge.tier == "bronze"
 
     def test_staff_badge_response(self):
         sb = StaffBadgeResponse(
-            badge_id=1, badge_key="first_sale", title_en="First Sale",
-            icon="sparkles", tier="bronze", category="milestone",
+            badge_id=1,
+            badge_key="first_sale",
+            title_en="First Sale",
+            icon="sparkles",
+            tier="bronze",
+            category="milestone",
             earned_at=NOW,
         )
         assert sb.earned_at == NOW
@@ -253,8 +261,11 @@ class TestModels:
 
     def test_gamification_profile(self):
         profile = GamificationProfile(
-            staff_key=1, level=5, total_xp=3000,
-            current_tier="bronze", xp_to_next_level=500,
+            staff_key=1,
+            level=5,
+            total_xp=3000,
+            current_tier="bronze",
+            xp_to_next_level=500,
         )
         assert profile.level == 5
         assert profile.badge_count == 0
@@ -270,8 +281,12 @@ class TestModels:
 
     def test_leaderboard_entry(self):
         entry = LeaderboardEntry(
-            rank=1, staff_key=42, staff_name="Ahmed",
-            level=10, total_xp=10000, current_tier="silver",
+            rank=1,
+            staff_key=42,
+            staff_name="Ahmed",
+            level=10,
+            total_xp=10000,
+            current_tier="silver",
             badge_count=5,
         )
         assert entry.rank == 1
@@ -279,8 +294,11 @@ class TestModels:
 
     def test_feed_item(self):
         item = FeedItem(
-            id=1, staff_key=1, event_type="badge_earned",
-            title="Earned badge", created_at=NOW,
+            id=1,
+            staff_key=1,
+            event_type="badge_earned",
+            title="Earned badge",
+            created_at=NOW,
         )
         assert item.event_type == "badge_earned"
 
@@ -316,12 +334,19 @@ class TestGamificationService:
 
     def test_get_profile_with_level(self, service, mock_repo):
         mock_repo.get_staff_level.return_value = StaffLevelResponse(
-            staff_key=42, level=5, total_xp=5000, current_tier="bronze",
+            staff_key=42,
+            level=5,
+            total_xp=5000,
+            current_tier="bronze",
         )
         mock_repo.get_staff_badges.return_value = [
             StaffBadgeResponse(
-                badge_id=1, badge_key="first_sale", title_en="First Sale",
-                icon="sparkles", tier="bronze", category="milestone",
+                badge_id=1,
+                badge_key="first_sale",
+                title_en="First Sale",
+                icon="sparkles",
+                tier="bronze",
+                category="milestone",
                 earned_at=NOW,
             )
         ]
@@ -342,7 +367,9 @@ class TestGamificationService:
         mock_repo.get_earned_badge_keys.return_value = set()
         mock_repo.award_badge.return_value = True
         mock_repo.get_staff_level.return_value = StaffLevelResponse(
-            staff_key=1, level=1, total_xp=0,
+            staff_key=1,
+            level=1,
+            total_xp=0,
         )
         mock_repo.get_total_xp.return_value = 150
 
@@ -361,7 +388,9 @@ class TestGamificationService:
 
     def test_grant_xp(self, service, mock_repo):
         mock_repo.get_staff_level.return_value = StaffLevelResponse(
-            staff_key=1, level=1, total_xp=0,
+            staff_key=1,
+            level=1,
+            total_xp=0,
         )
         mock_repo.get_total_xp.return_value = 10
 
@@ -372,7 +401,9 @@ class TestGamificationService:
 
     def test_grant_xp_unknown_source(self, service, mock_repo):
         mock_repo.get_staff_level.return_value = StaffLevelResponse(
-            staff_key=1, level=1, total_xp=100,
+            staff_key=1,
+            level=1,
+            total_xp=100,
         )
 
         service.grant_xp(1, "unknown_source")
@@ -380,7 +411,9 @@ class TestGamificationService:
 
     def test_grant_xp_level_up(self, service, mock_repo):
         mock_repo.get_staff_level.return_value = StaffLevelResponse(
-            staff_key=1, level=1, total_xp=2800,
+            staff_key=1,
+            level=1,
+            total_xp=2800,
         )
         mock_repo.get_total_xp.return_value = 2900
 
@@ -390,7 +423,10 @@ class TestGamificationService:
 
     def test_record_streak(self, service, mock_repo):
         mock_repo.update_streak.return_value = StreakResponse(
-            streak_type="daily_target", current_count=3, best_count=3, last_date=TODAY,
+            streak_type="daily_target",
+            current_count=3,
+            best_count=3,
+            last_date=TODAY,
         )
         mock_repo.get_staff_level.return_value = StaffLevelResponse(staff_key=1)
         mock_repo.get_total_xp.return_value = 0
@@ -401,7 +437,10 @@ class TestGamificationService:
 
     def test_record_streak_milestone_7(self, service, mock_repo):
         mock_repo.update_streak.return_value = StreakResponse(
-            streak_type="daily_target", current_count=7, best_count=7, last_date=TODAY,
+            streak_type="daily_target",
+            current_count=7,
+            best_count=7,
+            last_date=TODAY,
         )
         mock_repo.get_staff_level.return_value = StaffLevelResponse(staff_key=1)
         mock_repo.get_total_xp.return_value = 200
@@ -413,9 +452,14 @@ class TestGamificationService:
     def test_list_competitions(self, service, mock_repo):
         mock_repo.list_competitions.return_value = [
             CompetitionResponse(
-                competition_id=1, title="Q1 Race", competition_type="individual",
-                metric="revenue", start_date=date(2025, 1, 1),
-                end_date=date(2025, 3, 31), status="active", created_at=NOW,
+                competition_id=1,
+                title="Q1 Race",
+                competition_type="individual",
+                metric="revenue",
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 3, 31),
+                status="active",
+                created_at=NOW,
             )
         ]
         comps = service.list_competitions("active")
@@ -425,9 +469,14 @@ class TestGamificationService:
     def test_get_competition_detail(self, service, mock_repo):
         mock_repo.list_competitions.return_value = [
             CompetitionResponse(
-                competition_id=1, title="Q1 Race", competition_type="individual",
-                metric="revenue", start_date=date(2025, 1, 1),
-                end_date=date(2025, 3, 31), status="active", created_at=NOW,
+                competition_id=1,
+                title="Q1 Race",
+                competition_type="individual",
+                metric="revenue",
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 3, 31),
+                status="active",
+                created_at=NOW,
             )
         ]
         mock_repo.get_competition_entries.return_value = []
@@ -443,8 +492,11 @@ class TestGamificationService:
     def test_get_feed(self, service, mock_repo):
         mock_repo.get_feed.return_value = [
             FeedItem(
-                id=1, staff_key=1, event_type="badge_earned",
-                title="Earned badge", created_at=NOW,
+                id=1,
+                staff_key=1,
+                event_type="badge_earned",
+                title="Earned badge",
+                created_at=NOW,
             )
         ]
         feed = service.get_feed(10)
@@ -459,8 +511,12 @@ class TestGamificationService:
     def test_get_leaderboard(self, service, mock_repo):
         mock_repo.get_leaderboard.return_value = [
             LeaderboardEntry(
-                rank=1, staff_key=42, staff_name="Ahmed",
-                level=10, total_xp=10000, current_tier="silver",
+                rank=1,
+                staff_key=42,
+                staff_name="Ahmed",
+                level=10,
+                total_xp=10000,
+                current_tier="silver",
                 badge_count=5,
             )
         ]

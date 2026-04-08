@@ -58,6 +58,7 @@ def client(mock_service: MagicMock) -> TestClient:
     app.dependency_overrides[get_tenant_session] = lambda: MagicMock()
 
     from datapulse.api.routes.reseller import get_reseller_service
+
     app.dependency_overrides[get_reseller_service] = lambda: mock_service
 
     return TestClient(app)
@@ -95,16 +96,26 @@ class TestModels:
 
     def test_commission_response(self):
         c = CommissionResponse(
-            id=1, reseller_id=1, tenant_id=1, period="2025-06",
-            mrr_amount=Decimal("49"), commission_amount=Decimal("9.80"),
-            commission_pct=Decimal("20"), status="pending",
+            id=1,
+            reseller_id=1,
+            tenant_id=1,
+            period="2025-06",
+            mrr_amount=Decimal("49"),
+            commission_amount=Decimal("9.80"),
+            commission_pct=Decimal("20"),
+            status="pending",
         )
         assert c.status == "pending"
 
     def test_payout_response(self):
         p = PayoutResponse(
-            id=1, reseller_id=1, amount=Decimal("100"), status="completed",
-            period_from="2025-01", period_to="2025-06", created_at=NOW,
+            id=1,
+            reseller_id=1,
+            amount=Decimal("100"),
+            status="completed",
+            period_from="2025-01",
+            period_to="2025-06",
+            created_at=NOW,
         )
         assert p.currency == "USD"
 
@@ -137,9 +148,14 @@ class TestResellerService:
         ]
         mock_repo.get_commissions.return_value = [
             CommissionResponse(
-                id=1, reseller_id=1, tenant_id=1, period="2025-06",
-                mrr_amount=Decimal("49"), commission_amount=Decimal("9.80"),
-                commission_pct=Decimal("20"), status="pending",
+                id=1,
+                reseller_id=1,
+                tenant_id=1,
+                period="2025-06",
+                mrr_amount=Decimal("49"),
+                commission_amount=Decimal("9.80"),
+                commission_pct=Decimal("20"),
+                status="pending",
             ),
         ]
         mock_repo.get_pending_payout_total.return_value = Decimal("9.80")
@@ -168,9 +184,13 @@ class TestResellerEndpoints:
 
     def test_create_reseller(self, client, mock_service):
         mock_service.create_reseller.return_value = _reseller()
-        resp = client.post("/api/v1/reseller/", json={
-            "name": "Partner Co", "contact_email": "p@co.com",
-        })
+        resp = client.post(
+            "/api/v1/reseller/",
+            json={
+                "name": "Partner Co",
+                "contact_email": "p@co.com",
+            },
+        )
         assert resp.status_code == 201
 
     def test_get_dashboard(self, client, mock_service):
