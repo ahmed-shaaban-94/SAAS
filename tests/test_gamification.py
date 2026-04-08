@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
+from pydantic import ValidationError
 
 from datapulse.gamification.badge_rules import StaffMetrics, evaluate_badges
 from datapulse.gamification.models import (
@@ -19,7 +20,6 @@ from datapulse.gamification.models import (
     StaffBadgeResponse,
     StaffLevelResponse,
     StreakResponse,
-    XPEvent,
 )
 from datapulse.gamification.repository import GamificationRepository
 from datapulse.gamification.service import GamificationService
@@ -286,7 +286,7 @@ class TestModels:
 
     def test_frozen_models_immutable(self):
         badge = BadgeResponse(badge_id=1, badge_key="x", title_en="X")
-        with pytest.raises(Exception):
+        with pytest.raises((TypeError, AttributeError, ValidationError)):
             badge.badge_key = "y"
 
     def test_staff_level_response_defaults(self):
@@ -341,7 +341,9 @@ class TestGamificationService:
     def test_evaluate_and_award_new_badge(self, service, mock_repo):
         mock_repo.get_earned_badge_keys.return_value = set()
         mock_repo.award_badge.return_value = True
-        mock_repo.get_staff_level.return_value = StaffLevelResponse(staff_key=1, level=1, total_xp=0)
+        mock_repo.get_staff_level.return_value = StaffLevelResponse(
+            staff_key=1, level=1, total_xp=0,
+        )
         mock_repo.get_total_xp.return_value = 150
 
         metrics = StaffMetrics(staff_key=1, total_sales_count=1)
@@ -373,7 +375,7 @@ class TestGamificationService:
             staff_key=1, level=1, total_xp=100,
         )
 
-        result = service.grant_xp(1, "unknown_source")
+        service.grant_xp(1, "unknown_source")
         mock_repo.add_xp.assert_not_called()
 
     def test_grant_xp_level_up(self, service, mock_repo):

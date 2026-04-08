@@ -23,7 +23,6 @@ from datapulse.gamification.models import (
     GamificationProfile,
     LeaderboardEntry,
     StaffBadgeResponse,
-    StaffLevelResponse,
     StreakResponse,
     XPEvent,
 )

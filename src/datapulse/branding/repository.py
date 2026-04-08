@@ -44,7 +44,7 @@ class BrandingRepository:
 
         if row is None:
             return BrandingResponse(tenant_id=tenant_id)
-        return BrandingResponse(**row)
+        return BrandingResponse(**dict(row))  # type: ignore[arg-type]
 
     def update_branding(self, tenant_id: int, data: BrandingUpdate) -> BrandingResponse:
         """Update branding config (upsert pattern)."""
@@ -57,10 +57,12 @@ class BrandingRepository:
         set_clauses = ", ".join(f"{k} = :{k}" for k in updates)
         updates["tid"] = tenant_id
 
+        cols = ", ".join(updates.keys() - {"tid"})
+        vals = ", ".join(f":{k}" for k in updates if k != "tid")
         row = self._session.execute(
             text(f"""
-                INSERT INTO public.tenant_branding (tenant_id, {', '.join(updates.keys() - {'tid'})})
-                VALUES (:tid, {', '.join(f':{k}' for k in updates if k != 'tid')})
+                INSERT INTO public.tenant_branding (tenant_id, {cols})
+                VALUES (:tid, {vals})
                 ON CONFLICT (tenant_id) DO UPDATE SET
                     {set_clauses},
                     updated_at = NOW()
@@ -74,7 +76,7 @@ class BrandingRepository:
             updates,
         ).mappings().fetchone()
 
-        return BrandingResponse(**row)
+        return BrandingResponse(**dict(row))  # type: ignore[arg-type]
 
     def update_logo_url(self, tenant_id: int, logo_url: str | None) -> None:
         """Update the logo URL for a tenant."""
@@ -114,7 +116,7 @@ class BrandingRepository:
 
         if row is None:
             return None
-        return PublicBrandingResponse(**row)
+        return PublicBrandingResponse(**dict(row))  # type: ignore[arg-type]
 
     def resolve_tenant_by_domain(self, domain: str) -> int | None:
         """Resolve a custom domain or subdomain to a tenant_id."""

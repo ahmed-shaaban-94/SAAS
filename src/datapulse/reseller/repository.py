@@ -44,7 +44,7 @@ class ResellerRepository:
                 "cpct": data.commission_pct,
             },
         ).mappings().fetchone()
-        return ResellerResponse(**row, tenant_count=0)
+        return ResellerResponse(**dict(row), tenant_count=0)  # type: ignore[arg-type]
 
     def get_reseller(self, reseller_id: int) -> ResellerResponse | None:
         """Get a reseller by ID with tenant count."""

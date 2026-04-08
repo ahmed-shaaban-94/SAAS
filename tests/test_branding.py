@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from datapulse.api.app import create_app
 from datapulse.api.auth import get_current_user
@@ -99,7 +100,7 @@ class TestModels:
 
     def test_branding_response_frozen(self):
         br = BrandingResponse(tenant_id=1)
-        with pytest.raises(Exception):
+        with pytest.raises((TypeError, AttributeError, ValidationError)):
             br.company_name = "Other"
 
     def test_branding_update_partial(self):

@@ -5,7 +5,7 @@ All queries use parameterized placeholders to prevent SQL injection.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -124,7 +124,8 @@ class GamificationRepository:
         log.info("update_streak", staff_key=staff_key, streak_type=streak_type)
         row = self._session.execute(
             text("""
-                INSERT INTO public.streaks (staff_key, streak_type, current_count, best_count, last_date)
+                INSERT INTO public.streaks
+                    (staff_key, streak_type, current_count, best_count, last_date)
                 VALUES (:staff_key, :streak_type, 1, 1, :today)
                 ON CONFLICT (tenant_id, staff_key, streak_type) DO UPDATE SET
                     current_count = CASE
@@ -147,13 +148,16 @@ class GamificationRepository:
             """),
             {"staff_key": staff_key, "streak_type": streak_type, "today": today},
         ).mappings().fetchone()
-        return StreakResponse(**row)
+        return StreakResponse(**dict(row))  # type: ignore[arg-type]
 
     # ------------------------------------------------------------------
     # XP & Levels
     # ------------------------------------------------------------------
 
-    def add_xp(self, staff_key: int, xp_amount: int, source: str, source_ref: str | None = None) -> None:
+    def add_xp(
+        self, staff_key: int, xp_amount: int, source: str,
+        source_ref: str | None = None,
+    ) -> None:
         """Record an XP event in the ledger."""
         self._session.execute(
             text("""
@@ -171,7 +175,10 @@ class GamificationRepository:
     def get_total_xp(self, staff_key: int) -> int:
         """Return total XP for a staff member."""
         row = self._session.execute(
-            text("SELECT COALESCE(SUM(xp_amount), 0) AS total FROM public.xp_ledger WHERE staff_key = :sk"),
+            text(
+                "SELECT COALESCE(SUM(xp_amount), 0) AS total"
+                " FROM public.xp_ledger WHERE staff_key = :sk"
+            ),
             {"sk": staff_key},
         ).fetchone()
         return int(row[0]) if row else 0
@@ -204,7 +211,9 @@ class GamificationRepository:
         if row is None:
             return None
         from datapulse.gamification.xp_engine import xp_to_next
-        return StaffLevelResponse(**row, xp_to_next_level=xp_to_next(row["total_xp"]))
+        return StaffLevelResponse(
+            **dict(row), xp_to_next_level=xp_to_next(row["total_xp"]),  # type: ignore[arg-type]
+        )
 
     def get_xp_history(self, staff_key: int, limit: int = 50) -> list[XPEvent]:
         """Return recent XP events for a staff member."""
@@ -278,7 +287,7 @@ class GamificationRepository:
                 "by": created_by,
             },
         ).mappings().fetchone()
-        return CompetitionResponse(**row)
+        return CompetitionResponse(**dict(row))  # type: ignore[arg-type]
 
     def list_competitions(self, status: str | None = None) -> list[CompetitionResponse]:
         """List competitions, optionally filtered by status."""

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from decimal import Decimal
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -20,7 +19,6 @@ from datapulse.gamification.models import (
     GamificationProfile,
     LeaderboardEntry,
     StaffBadgeResponse,
-    StaffLevelResponse,
     StreakResponse,
     XPEvent,
 )

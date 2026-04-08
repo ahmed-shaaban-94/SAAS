@@ -6,8 +6,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from datapulse.types import JsonDecimal
-
+from datapulse.types import JsonDecimal  # noqa: TC002
 
 # ------------------------------------------------------------------
 # Badge models

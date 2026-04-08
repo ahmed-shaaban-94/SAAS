@@ -113,7 +113,8 @@ def get_public_branding(
     request: Request,
     response: Response,
     domain: str = Query(..., description="Custom domain or subdomain to look up"),
-    session: Session = Depends(get_tenant_session),
+    *,
+    session: Annotated[Session, Depends(get_tenant_session)],
 ) -> PublicBrandingResponse:
     """Get public branding by domain (no auth required, for login page)."""
     repo = BrandingRepository(session)

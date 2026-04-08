@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 # XP rewards per source type
 XP_TABLE: dict[str, int] = {
     "sale": 10,
