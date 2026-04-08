@@ -72,3 +72,6 @@ frontend/waitlist.json
 # Database backups
 backups/
 coverage.xml
+
+# Local MCP server config (machine-specific paths)
+.mcp.json
