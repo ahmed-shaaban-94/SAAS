@@ -153,7 +153,7 @@ jobs:
             echo "=== Health check: API ==="
             API_OK=false
             for i in $(seq 1 24); do
-              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8000/health 2>/dev/null || echo "000")
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost/health 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "API health check PASSED on attempt $i"
                 API_OK=true
@@ -167,7 +167,7 @@ jobs:
             echo "=== Health check: Frontend ==="
             FE_OK=false
             for i in $(seq 1 12); do
-              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:3000 2>/dev/null || echo "000")
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "Frontend health check PASSED on attempt $i"
                 FE_OK=true
@@ -181,7 +181,7 @@ jobs:
             echo "=== Smoke tests ==="
             SMOKE_OK=true
 
-            READY=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health/ready 2>/dev/null || echo "000")
+            READY=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/health/ready 2>/dev/null || echo "000")
             if [ "$READY" != "200" ]; then
               echo "FAIL: /health/ready → $READY"
               SMOKE_OK=false
@@ -190,7 +190,7 @@ jobs:
             fi
 
             # Check DB connectivity via health/ready (returns 503 if DB down)
-            HEALTH_BODY=$(curl -s http://localhost:8000/health/ready 2>/dev/null || echo "{}")
+            HEALTH_BODY=$(curl -s http://localhost/health/ready 2>/dev/null || echo "{}")
             echo "Health response: $HEALTH_BODY"
 
             echo "=== Container Status ==="
@@ -237,7 +237,7 @@ jobs:
 
                 # Verify rollback
                 sleep 15
-                ROLLBACK_CHECK=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8000/health 2>/dev/null || echo "000")
+                ROLLBACK_CHECK=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost/health 2>/dev/null || echo "000")
                 echo "Rollback health check: HTTP $ROLLBACK_CHECK"
               fi
               exit 1
