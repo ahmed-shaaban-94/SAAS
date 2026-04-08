@@ -25,6 +25,7 @@ import {
   ScrollText,
   ShieldCheck,
   Sparkles,
+  Trophy,
   Upload,
   LogOut,
   User,
@@ -60,6 +61,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Shield,
   ShieldCheck,
   ScrollText,
+  Trophy,
   Upload,
   CreditCard,
 };
