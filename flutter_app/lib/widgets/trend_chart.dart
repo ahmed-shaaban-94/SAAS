@@ -22,7 +22,7 @@ class TrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDark;
-    final gridColor = isDark ? Colors.white10 : Colors.black08;
+    final gridColor = isDark ? Colors.white10 : Colors.black12;
     final labelColor = isDark ? Colors.white38 : Colors.black38;
 
     return Card(

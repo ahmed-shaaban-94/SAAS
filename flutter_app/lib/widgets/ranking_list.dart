@@ -84,7 +84,7 @@ class _RankingRow extends StatelessWidget {
               decoration: BoxDecoration(
                 color: item.rank <= 3
                     ? AppColors.primary.withOpacity(0.1)
-                    : (isDark ? Colors.white10 : Colors.black06),
+                    : (isDark ? Colors.white10 : Colors.black12),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
