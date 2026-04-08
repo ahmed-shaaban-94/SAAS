@@ -21,6 +21,9 @@ FROM base AS api
 
 RUN pip install --no-cache-dir "."
 
+# Tell datapulse.lineage.parser where to find dbt models at runtime
+ENV APP_ROOT=/app
+
 # Include migration scripts — entrypoint runs them before uvicorn
 COPY scripts/prestart.sh /app/scripts/prestart.sh
 COPY scripts/entrypoint.sh /app/scripts/entrypoint.sh
