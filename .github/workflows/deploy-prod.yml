@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Image tag to deploy (default: latest staging tag)'
+        description: 'Image tag to deploy'
         required: false
+        default: 'staging'
         type: string
   push:
     tags:
