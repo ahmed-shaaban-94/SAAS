@@ -27,6 +27,7 @@ from datapulse.api.routes import (
     explore,
     export,
     forecasting,
+    gamification,
     health,
     lineage,
     members,
@@ -194,5 +195,6 @@ def create_app() -> FastAPI:
     app.include_router(report_schedules.router, prefix="/api/v1")
     app.include_router(upload.router, prefix="/api/v1")
     app.include_router(scenarios.router, prefix="/api/v1")
+    app.include_router(gamification.router, prefix="/api/v1")
 
     return app
