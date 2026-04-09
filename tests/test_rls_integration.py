@@ -129,9 +129,7 @@ class TestRLSTenantSessionBoundary:
         mock_session_b = MagicMock()
 
         # Return a different mock session on successive factory() calls
-        mock_factory.return_value = MagicMock(
-            side_effect=[mock_session_a, mock_session_b]
-        )
+        mock_factory.return_value = MagicMock(side_effect=[mock_session_a, mock_session_b])
 
         user_a = {"tenant_id": "10", "sub": "user-a"}
         user_b = {"tenant_id": "20", "sub": "user-b"}
@@ -145,12 +143,8 @@ class TestRLSTenantSessionBoundary:
         params_a = _first_execute_params(mock_session_a)
         params_b = _first_execute_params(mock_session_b)
 
-        assert params_a == {"tid": "10"}, (
-            f"Tenant A session must use tid='10', got {params_a!r}"
-        )
-        assert params_b == {"tid": "20"}, (
-            f"Tenant B session must use tid='20', got {params_b!r}"
-        )
+        assert params_a == {"tid": "10"}, f"Tenant A session must use tid='10', got {params_a!r}"
+        assert params_b == {"tid": "20"}, f"Tenant B session must use tid='20', got {params_b!r}"
         assert params_a != params_b, (
             "Different tenants must produce different SET LOCAL parameter values"
         )
@@ -163,9 +157,7 @@ class TestRLSTenantSessionBoundary:
     # ------------------------------------------------------------------
 
     @patch("datapulse.api.deps.get_session_factory")
-    def test_tenant_session_set_local_called_before_yield(
-        self, mock_factory: MagicMock
-    ) -> None:
+    def test_tenant_session_set_local_called_before_yield(self, mock_factory: MagicMock) -> None:
         """SET LOCAL must be issued during session setup, before the caller receives it.
 
         The RLS invariant requires that the session context variable is in place
