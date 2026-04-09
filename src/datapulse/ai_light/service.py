@@ -7,6 +7,7 @@ import statistics
 from datetime import date, timedelta
 from decimal import Decimal
 
+import httpx
 from sqlalchemy.orm import Session
 
 from datapulse.ai_light.client import OpenRouterClient
@@ -178,7 +179,7 @@ class AILightService:
                                 description=ai_description[:500],
                             )
                         )
-            except Exception as exc:
+            except (httpx.TransportError, httpx.HTTPStatusError, RuntimeError) as exc:
                 log.warning("ai_anomaly_detection_failed", error=str(exc))
 
         return AnomalyReport(
@@ -250,7 +251,7 @@ class AILightService:
                     top_movers="(product-level detail not available for this comparison)",
                 )
                 narrative = self._client.chat(SYSTEM_PROMPT, prompt)
-            except Exception as exc:
+            except (httpx.TransportError, httpx.HTTPStatusError, RuntimeError) as exc:
                 log.warning("ai_change_narrative_failed", error=str(exc))
 
         return ChangeNarrative(
