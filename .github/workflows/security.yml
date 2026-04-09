@@ -58,8 +58,7 @@ jobs:
         run: npm ci
       - name: Audit npm dependencies
         working-directory: frontend
-        run: npm audit --audit-level=high
-        continue-on-error: true  # Next.js 14 has known vulns; upgrade tracked separately
+        run: npm audit --audit-level=critical
 
   secret-scan:
     name: Secret Scanner (Gitleaks)
