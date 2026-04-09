@@ -29,12 +29,13 @@ test.describe("Marketing Landing Page", () => {
   });
 
   test("how it works shows 4 steps", async ({ page }) => {
-    await expect(page.locator("#how-it-works")).toBeVisible();
-    // 4 step labels
-    await expect(page.getByText("Import")).toBeVisible();
-    await expect(page.getByText("Clean")).toBeVisible();
-    await expect(page.getByText("Analyze")).toBeVisible();
-    await expect(page.getByText("Visualize")).toBeVisible();
+    const section = page.locator("#how-it-works");
+    await expect(section).toBeVisible();
+    // Scope to the section to avoid strict-mode violations (page has multiple "Import" nodes)
+    await expect(section.getByText("Import").first()).toBeVisible();
+    await expect(section.getByText("Clean").first()).toBeVisible();
+    await expect(section.getByText("Analyze").first()).toBeVisible();
+    await expect(section.getByText("Visualize").first()).toBeVisible();
   });
 
   test("pricing cards show 3 tiers", async ({ page }) => {
