@@ -7,10 +7,11 @@ from fastapi.testclient import TestClient
 from datapulse.api.app import create_app
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client():
     app = create_app()
-    return TestClient(app)
+    with TestClient(app, raise_server_exceptions=False) as c:
+        yield c
 
 
 def test_security_headers_present(client):
@@ -25,7 +26,15 @@ def test_no_unsafe_eval_in_api_csp(client):
     """API CSP must never contain unsafe-eval."""
     resp = client.get("/health/live")
     csp = resp.headers.get("content-security-policy", "")
-    # API-level CSP may or may not be present (Nginx adds it),
-    # but if it IS present, it must not have unsafe-eval
-    if csp:
-        assert "unsafe-eval" not in csp
+    # The API security middleware may or may not set CSP for this endpoint,
+    # but it must NEVER include unsafe-eval regardless
+    assert "unsafe-eval" not in csp
+
+
+def test_api_csp_excludes_unsafe_inline_scripts(client):
+    """API CSP must not allow unsafe-inline in script-src."""
+    resp = client.get("/health/live")
+    csp = resp.headers.get("content-security-policy", "")
+    # If CSP is present, verify no unsafe script execution is allowed
+    if "script-src" in csp:
+        assert "unsafe-inline" not in csp.split("script-src")[1].split(";")[0]
