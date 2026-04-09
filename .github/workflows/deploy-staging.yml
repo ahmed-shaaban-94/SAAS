@@ -15,10 +15,80 @@ env:
   IMAGE_PREFIX: ${{ github.repository_owner }}/data-pulse
 
 jobs:
-  build-push:
-    name: Build & Push Images
+  # ── Step 1: Gather deployment info for the reviewer ──────────────────
+  summary:
+    name: Deployment Summary
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      commit_sha: ${{ steps.info.outputs.commit_sha }}
+      commit_msg: ${{ steps.info.outputs.commit_msg }}
+      author: ${{ steps.info.outputs.author }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - name: Gather deployment info
+        id: info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA="${SHA:0:7}"
+
+          echo "commit_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "commit_msg=$(git log -1 --format='%s' "$SHA" 2>/dev/null || echo 'N/A')" >> "$GITHUB_OUTPUT"
+          echo "author=$(git log -1 --format='%an' "$SHA" 2>/dev/null || echo 'N/A')" >> "$GITHUB_OUTPUT"
+
+          # ── Write rich summary for the reviewer ──
+          {
+            echo "## Staging Deployment Review"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| **Branch** | \`main\` |"
+            echo "| **Commit** | \`$SHORT_SHA\` |"
+            echo "| **Author** | $(git log -1 --format='%an' "$SHA" 2>/dev/null || echo 'N/A') |"
+            echo "| **CI Run** | [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) |"
+            echo "| **Triggered at** | $(date -u +'%Y-%m-%d %H:%M UTC') |"
+            echo ""
+            echo "### Recent Commits (last 10)"
+            echo '```'
+            git log --oneline -10 "$SHA" 2>/dev/null || echo "Could not fetch log"
+            echo '```'
+            echo ""
+            echo "### Changed Files (last 5 commits)"
+            echo '```'
+            git diff --stat "$SHA~5..$SHA" 2>/dev/null || git diff --stat HEAD~5..HEAD 2>/dev/null || echo "Could not compute diff"
+            echo '```'
+            echo ""
+            echo "### Docker Images to Build"
+            echo "- \`ghcr.io/${{ env.IMAGE_PREFIX }}/api:staging\`"
+            echo "- \`ghcr.io/${{ env.IMAGE_PREFIX }}/frontend:staging\`"
+            echo ""
+            echo "---"
+            echo "> Approve the **staging** environment below to proceed with build & deploy."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Step 2: Manual approval gate ─────────────────────────────────────
+  review:
+    name: Review & Approve
+    needs: [summary]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Approved
+        run: |
+          echo "Deployment approved for commit ${{ needs.summary.outputs.commit_sha }}"
+          echo "Author: ${{ needs.summary.outputs.author }}"
+          echo "Message: ${{ needs.summary.outputs.commit_msg }}"
+
+  # ── Step 3: Build & push Docker images ───────────────────────────────
+  build-push:
+    name: Build & Push Images
+    needs: [review]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -56,11 +126,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ── Step 4: Deploy to staging server ─────────────────────────────────
   deploy:
     name: Deploy to Staging
     needs: [build-push]
     runs-on: ubuntu-latest
-    environment: staging
     steps:
       - uses: actions/checkout@v4
 
@@ -228,3 +298,29 @@ jobs:
                 dbt deps --profiles-dir . && \
                 dbt run --profiles-dir . \
               " || echo "::warning::dbt run failed — data models may be stale"
+
+      - name: Post deployment summary
+        if: always()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            echo "=== Post-Deploy Container Status ==="
+            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.prod.yml \
+              ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "=== Recent Logs (last 20 lines per service) ==="
+            for svc in api frontend postgres; do
+              echo "--- $svc ---"
+              docker compose \
+                -f docker-compose.yml \
+                -f docker-compose.prod.yml \
+                logs --tail=20 "$svc" 2>&1 || true
+              echo ""
+            done
