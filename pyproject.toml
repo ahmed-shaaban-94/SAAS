@@ -63,6 +63,9 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: requires a live PostgreSQL instance at localhost:5432",
+]
 
 [tool.coverage.run]
 source = ["datapulse"]

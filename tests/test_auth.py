@@ -255,10 +255,55 @@ class TestGetOptionalUser:
         assert result is not None
         assert result["sub"] == "dev-user"
 
-    def test_returns_none_on_failure(self):
+    def test_returns_none_on_401(self):
+        """401 Unauthorized (bad/missing credentials) must return None, not raise."""
         result = get_optional_user(
             credentials=None,
             api_key=None,
             settings=_settings(api_key="configured-key"),
         )
         assert result is None
+
+    def test_returns_none_on_403(self):
+        """403 Forbidden must return None — caller handles auth failure gracefully."""
+        creds = MagicMock()
+        creds.credentials = "expired-jwt"
+        with patch(
+            "datapulse.api.auth.verify_jwt",
+            side_effect=HTTPException(status_code=403, detail="Forbidden"),
+        ):
+            result = get_optional_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key", auth0_domain="example.auth0.com"),
+            )
+        assert result is None
+
+    def test_reraises_503_not_swallowed(self):
+        """503 Service Unavailable (Auth0 outage) must be re-raised, not swallowed.
+
+        H2.2 fix: get_optional_user must only catch 401/403; any 503 from the
+        auth provider must propagate so the caller (health endpoint, middleware)
+        can surface the dependency failure instead of silently granting access.
+
+        This test will FAIL against H1 (which catches all HTTPException) and
+        PASS after H2 is merged into main.
+        """
+        creds = MagicMock()
+        creds.credentials = "any-token"
+        with (
+            patch(
+                "datapulse.api.auth.verify_jwt",
+                side_effect=HTTPException(status_code=503, detail="Auth0 unavailable"),
+            ),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            get_optional_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key", auth0_domain="example.auth0.com"),
+            )
+        assert exc_info.value.status_code == 503, (
+            "get_optional_user must re-raise 503 (Auth0 outage) — "
+            "silently returning None would grant anonymous access during an auth provider outage."
+        )
