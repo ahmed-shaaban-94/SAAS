@@ -53,6 +53,8 @@ def create_checkout(
             success_url=body.success_url,
             cancel_url=body.cancel_url,
         )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
 

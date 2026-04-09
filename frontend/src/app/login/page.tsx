@@ -5,9 +5,15 @@ import { useSearchParams } from "next/navigation";
 import { Activity, LogIn } from "lucide-react";
 import { Suspense } from "react";
 
+/** Allow only relative paths to prevent open redirect to external domains. */
+function isSafeCallbackUrl(url: string): boolean {
+  return url.startsWith("/") && !url.startsWith("//");
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const rawCallback = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = isSafeCallbackUrl(rawCallback) ? rawCallback : "/dashboard";
   const error = searchParams.get("error");
 
   return (

@@ -13,12 +13,9 @@ DB_USER="${POSTGRES_USER:-datapulse}"
 
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-/app/migrations}"
 
-# Use fallback DB_READER_PASSWORD if not provided
-if [ -z "${DB_READER_PASSWORD:-}" ]; then
-    DB_READER_PASSWORD="datapulse_reader_$(date +%s)"
-    echo "[prestart] WARNING: DB_READER_PASSWORD not set. Using fallback password."
-    echo "[prestart] Set DB_READER_PASSWORD in .env for a fixed password."
-fi
+# DB_READER_PASSWORD must be a stable fixed value set in .env.
+# Using a time-based fallback would break existing reader role grants on restart.
+: "${DB_READER_PASSWORD:?DB_READER_PASSWORD must be set in .env — use a stable fixed value}"
 
 echo "[prestart] Connecting to ${DB_HOST}:${DB_PORT}/${DB_NAME} as ${DB_USER}..."
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from typing import Annotated, Any
 
 import structlog
@@ -47,9 +48,13 @@ def _build_rbac_service(session: Session) -> RBACService:
 
 def get_rbac_service(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
-) -> RBACService:
+) -> Generator[RBACService, None, None]:
+    """Yield an RBACService and guarantee the underlying session is closed."""
     session = _get_rbac_session(user)
-    return _build_rbac_service(session)
+    try:
+        yield _build_rbac_service(session)
+    finally:
+        session.close()
 
 
 def get_access_context(

@@ -91,7 +91,7 @@ jobs:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
           REDIS_URL: redis://localhost:6379/0
           SENTRY_ENVIRONMENT: test
-        run: pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+        run: pytest --cov=datapulse --cov-report=term-missing --cov-report=xml --cov-fail-under=95
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -154,7 +154,6 @@ jobs:
       - name: Run E2E tests
         working-directory: frontend
         run: npx playwright test --reporter=html
-        continue-on-error: true
         timeout-minutes: 15
         env:
           CI: "true"
