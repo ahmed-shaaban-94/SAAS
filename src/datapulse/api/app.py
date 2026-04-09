@@ -210,7 +210,6 @@ def create_app() -> FastAPI:
         excluded_handlers=["/health", "/metrics", "/openapi.json", "/docs"],
         should_group_status_codes=True,
         should_ignore_untemplated=True,
-        latency_lowr_buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
     ).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
     return app
