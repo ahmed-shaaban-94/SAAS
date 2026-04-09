@@ -3,7 +3,6 @@
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-from datapulse.api.auth import get_optional_user
 from datapulse.analytics.models import (
     CustomerAnalytics,
     KPISummary,
@@ -14,7 +13,7 @@ from datapulse.analytics.models import (
     TimeSeriesPoint,
     TrendResult,
 )
-
+from datapulse.api.auth import get_optional_user
 
 _AUTHED_USER = {
     "sub": "test-user",
