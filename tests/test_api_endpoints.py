@@ -74,6 +74,18 @@ def test_health_endpoint(api_client):
             "datapulse.api.routes.health._check_query_executor",
             return_value={"status": "ok", "latency_ms": 1},
         ),
+        patch(
+            "datapulse.api.routes.health._check_schema_version",
+            return_value={"status": "ok", "version": "abc1234"},
+        ),
+        patch(
+            "datapulse.api.routes.health._check_dbt_freshness",
+            return_value={"status": "ok", "last_updated_at": "2026-04-09T12:00:00"},
+        ),
+        patch(
+            "datapulse.api.routes.health._check_data_freshness",
+            return_value={"status": "ok", "last_loaded_at": "2026-04-09T12:00:00"},
+        ),
     ):
         mock_conn = MagicMock()
         mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
@@ -102,6 +114,18 @@ def test_health_endpoint_unauthenticated(api_client):
         patch(
             "datapulse.api.routes.health._check_query_executor",
             return_value={"status": "ok", "latency_ms": 1},
+        ),
+        patch(
+            "datapulse.api.routes.health._check_schema_version",
+            return_value={"status": "ok", "version": "abc1234"},
+        ),
+        patch(
+            "datapulse.api.routes.health._check_dbt_freshness",
+            return_value={"status": "ok", "last_updated_at": "2026-04-09T12:00:00"},
+        ),
+        patch(
+            "datapulse.api.routes.health._check_data_freshness",
+            return_value={"status": "ok", "last_loaded_at": "2026-04-09T12:00:00"},
         ),
     ):
         mock_conn = MagicMock()

@@ -69,6 +69,7 @@ def get_db_session() -> Generator[Session, None, None]:
         stacklevel=2,
     )
 
+    structlog.contextvars.bind_contextvars(tenant_id="1")
     session = get_session_factory()()
     try:
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": "1"})
@@ -84,6 +85,7 @@ def get_db_session() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+        structlog.contextvars.unbind_contextvars("tenant_id")
 
 
 def get_tenant_session(
@@ -96,6 +98,7 @@ def get_tenant_session(
     """
     tenant_id = user.get("tenant_id", "1")
     current_tenant_id.set(str(tenant_id))
+    structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
     session = get_session_factory()()
     try:
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
@@ -111,6 +114,7 @@ def get_tenant_session(
         raise
     finally:
         session.close()
+        structlog.contextvars.unbind_contextvars("tenant_id")
 
 
 # Type aliases for FastAPI dependency injection

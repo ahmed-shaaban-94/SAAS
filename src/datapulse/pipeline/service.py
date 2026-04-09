@@ -45,8 +45,15 @@ class PipelineService:
         data: PipelineRunCreate,
         tenant_id: int = 1,
     ) -> PipelineRunResponse:
-        log.info("pipeline_start_run", run_type=data.run_type)
-        return self._repo.create_run(data, tenant_id)
+        result = self._repo.create_run(data, tenant_id)
+        log.info(
+            "pipeline_started",
+            run_id=str(result.id),
+            run_type=data.run_type,
+            tenant_id=tenant_id,
+            trigger_source=data.trigger_source,
+        )
+        return result
 
     def update_status(
         self,
@@ -54,6 +61,16 @@ class PipelineService:
         data: PipelineRunUpdate,
     ) -> PipelineRunResponse | None:
         # Status validation is handled by PipelineRunUpdate's Pydantic field_validator
+        if data.last_completed_stage is not None:
+            log.info(
+                "pipeline_stage_completed",
+                run_id=str(run_id),
+                stage=data.last_completed_stage,
+                rows_affected=data.rows_loaded,
+                duration_seconds=(
+                    float(data.duration_seconds) if data.duration_seconds is not None else None
+                ),
+            )
         return self._repo.update_run(run_id, data)
 
     def complete_run(
@@ -75,7 +92,13 @@ class PipelineService:
             rows_loaded=rows_loaded,
             metadata=metadata,
         )
-        log.info("pipeline_complete_run", run_id=str(run_id), duration=float(duration))
+        log.info(
+            "pipeline_completed",
+            run_id=str(run_id),
+            duration_seconds=float(duration),
+            status="success",
+            rows_loaded=rows_loaded,
+        )
         result = self._repo.update_run(run_id, update)
         cache_invalidate_pattern("datapulse:analytics:*")
         return result
@@ -97,7 +120,12 @@ class PipelineService:
             duration_seconds=duration,
             error_message=error_message,
         )
-        log.error("pipeline_fail_run", run_id=str(run_id), error=error_message)
+        log.error(
+            "pipeline_failed",
+            run_id=str(run_id),
+            error_message=error_message,
+            error_type="pipeline_error",
+        )
         result = self._repo.update_run(run_id, update)
         cache_invalidate_pattern("datapulse:analytics:*")
         return result

@@ -6,6 +6,7 @@
 """
 
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -87,6 +88,20 @@ def _check_pool() -> dict:
             status = "critical"
         elif saturation > 0.8:
             status = "warning"
+        if saturation > 0.95:
+            logger.error(
+                "pool_saturation_critical",
+                checked_out=checked_out,
+                max_total=max_total,
+                saturation_pct=round(saturation * 100, 1),
+            )
+        elif saturation > 0.8:
+            logger.warning(
+                "pool_saturation_warning",
+                checked_out=checked_out,
+                max_total=max_total,
+                saturation_pct=round(saturation * 100, 1),
+            )
         return {
             "status": status,
             "size": size,
@@ -96,6 +111,80 @@ def _check_pool() -> dict:
         }
     except Exception as exc:
         logger.error("health_pool_error", error=str(exc))
+        return {"status": "error", "error": str(exc)[:100]}
+
+
+def _check_schema_version() -> dict:
+    """Return the latest applied Alembic migration revision."""
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).fetchone()
+        if row is None:
+            return {"status": "unknown", "version": None}
+        version = row[0]
+        return {"status": "ok", "version": version}
+    except Exception as exc:
+        logger.error("health_schema_version_error", error=str(exc))
+        return {"status": "error", "error": str(exc)[:100]}
+
+
+def _check_dbt_freshness() -> dict:
+    """Check when dbt models were last refreshed."""
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(
+                text("SELECT MAX(updated_at) FROM gold.metrics_summary")
+            ).fetchone()
+        last_updated = row[0] if row and row[0] else None
+        if last_updated is None:
+            return {"status": "unknown", "last_updated_at": None}
+        if last_updated.tzinfo is None:
+            last_updated = last_updated.replace(tzinfo=UTC)
+        age_hours = (datetime.now(UTC) - last_updated).total_seconds() / 3600
+        status = "stale" if age_hours > 24 else "ok"
+        if status == "stale":
+            logger.warning(
+                "dbt_freshness_stale",
+                last_updated_at=last_updated.isoformat(),
+                age_hours=round(age_hours, 1),
+            )
+        return {
+            "status": status,
+            "last_updated_at": last_updated.isoformat(),
+            "age_hours": round(age_hours, 1),
+        }
+    except Exception as exc:
+        logger.error("health_dbt_freshness_error", error=str(exc))
+        return {"status": "error", "error": str(exc)[:100]}
+
+
+def _check_data_freshness() -> dict:
+    """Check last successful data load into bronze layer."""
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(
+                text("SELECT MAX(loaded_at) FROM bronze.sales")
+            ).fetchone()
+        last_loaded = row[0] if row and row[0] else None
+        if last_loaded is None:
+            return {"status": "unknown", "last_loaded_at": None}
+        if last_loaded.tzinfo is None:
+            last_loaded = last_loaded.replace(tzinfo=UTC)
+        age_hours = (datetime.now(UTC) - last_loaded).total_seconds() / 3600
+        status = "stale" if age_hours > 24 else "ok"
+        if status == "stale":
+            logger.warning(
+                "data_freshness_stale",
+                last_loaded_at=last_loaded.isoformat(),
+                age_hours=round(age_hours, 1),
+            )
+        return {
+            "status": status,
+            "last_loaded_at": last_loaded.isoformat(),
+            "age_hours": round(age_hours, 1),
+        }
+    except Exception as exc:
+        logger.error("health_data_freshness_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
 
@@ -119,11 +208,17 @@ def health_check(
         "redis": _check_redis(),
         "query_executor": _check_query_executor(),
         "connection_pool": _check_pool(),
+        "schema_version": _check_schema_version(),
+        "dbt_freshness": _check_dbt_freshness(),
+        "data_freshness": _check_data_freshness(),
     }
 
     # Determine overall status
     db_ok = checks["database"]["status"] == "ok"
-    all_ok = all(c["status"] in ("ok", "disabled") for c in checks.values())
+    all_ok = all(
+        c["status"] in ("ok", "disabled", "stale", "unknown")
+        for c in checks.values()
+    )
 
     if not db_ok:
         overall = "unhealthy"
