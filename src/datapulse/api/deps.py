@@ -8,6 +8,7 @@ from typing import Annotated, Any
 import structlog
 from fastapi import Depends
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from datapulse.ai_light.service import AILightService
@@ -20,7 +21,7 @@ from datapulse.analytics.diagnostics import DiagnosticsRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.analytics.service import AnalyticsService
-from datapulse.api.auth import get_current_user, require_api_key
+from datapulse.api.auth import UserClaims, get_current_user, require_api_key
 from datapulse.billing.plans import PlanLimits, get_plan_limits
 from datapulse.billing.repository import BillingRepository
 from datapulse.billing.service import BillingService
@@ -74,7 +75,11 @@ def get_db_session() -> Generator[Session, None, None]:
         session.execute(text("SET LOCAL statement_timeout = '30s'"))
         yield session
         session.commit()
-    except Exception:
+    except SQLAlchemyError:
+        logger.exception("db_session_error", session_type="legacy")
+        session.rollback()
+        raise
+    except BaseException:
         session.rollback()
         raise
     finally:
@@ -82,7 +87,7 @@ def get_db_session() -> Generator[Session, None, None]:
 
 
 def get_tenant_session(
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[UserClaims, Depends(get_current_user)],
 ) -> Generator[Session, None, None]:
     """Create a DB session scoped to the authenticated user's tenant.
 
@@ -97,7 +102,11 @@ def get_tenant_session(
         session.execute(text("SET LOCAL statement_timeout = '30s'"))
         yield session
         session.commit()
-    except Exception:
+    except SQLAlchemyError:
+        logger.exception("db_session_error", session_type="tenant", tenant_id=str(tenant_id))
+        session.rollback()
+        raise
+    except BaseException:
         session.rollback()
         raise
     finally:
@@ -106,7 +115,7 @@ def get_tenant_session(
 
 # Type aliases for FastAPI dependency injection
 SessionDep = Annotated[Session, Depends(get_tenant_session)]
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_user)]
+CurrentUser = Annotated[UserClaims, Depends(get_current_user)]
 
 
 def get_analytics_service(
