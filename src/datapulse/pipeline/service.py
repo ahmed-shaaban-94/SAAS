@@ -67,7 +67,9 @@ class PipelineService:
                 run_id=str(run_id),
                 stage=data.last_completed_stage,
                 rows_affected=data.rows_loaded,
-                duration_seconds=float(data.duration_seconds) if data.duration_seconds is not None else None,
+                duration_seconds=(
+                    float(data.duration_seconds) if data.duration_seconds is not None else None
+                ),
             )
         return self._repo.update_run(run_id, data)
 
@@ -90,7 +92,13 @@ class PipelineService:
             rows_loaded=rows_loaded,
             metadata=metadata,
         )
-        log.info("pipeline_completed", run_id=str(run_id), duration_seconds=float(duration), status="success", rows_loaded=rows_loaded)
+        log.info(
+            "pipeline_completed",
+            run_id=str(run_id),
+            duration_seconds=float(duration),
+            status="success",
+            rows_loaded=rows_loaded,
+        )
         result = self._repo.update_run(run_id, update)
         cache_invalidate_pattern("datapulse:analytics:*")
         return result
@@ -112,7 +120,12 @@ class PipelineService:
             duration_seconds=duration,
             error_message=error_message,
         )
-        log.error("pipeline_failed", run_id=str(run_id), error_message=error_message, error_type="pipeline_error")
+        log.error(
+            "pipeline_failed",
+            run_id=str(run_id),
+            error_message=error_message,
+            error_type="pipeline_error",
+        )
         result = self._repo.update_run(run_id, update)
         cache_invalidate_pattern("datapulse:analytics:*")
         return result
