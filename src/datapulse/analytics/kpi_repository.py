@@ -15,8 +15,6 @@ from datapulse.analytics.models import (
     TimeSeriesPoint,
 )
 from datapulse.analytics.queries import (
-    SITE_DATE_ONLY,
-    build_where,
     compute_z_score,
     safe_growth,
     significance_level,
