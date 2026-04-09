@@ -171,6 +171,133 @@ class TestRefreshCatalog:
         mock_refresh.assert_called_once()
 
 
+class TestExecuteExploreQueryExtra:
+    @patch("datapulse.api.routes.explore._get_catalog", return_value=_FAKE_CATALOG)
+    @patch("datapulse.api.routes.explore.build_sql")
+    def test_sql_field_hidden_in_production(self, mock_build_sql, mock_cat):
+        client, mock_session = _make_explore_client()
+        mock_build_sql.return_value = ("SELECT 1", {})
+
+        mock_result = MagicMock()
+        mock_result.keys.return_value = ["col"]
+        mock_result.__iter__ = lambda self: iter([(1,)])
+        mock_session.execute.return_value = mock_result
+
+        # Patch os.getenv at the stdlib level — the route uses a local `import os`
+        with patch("os.getenv", return_value="production"):
+            resp = client.post(
+                "/api/v1/explore/query",
+                json={"model": "fct_sales", "dimensions": [], "metrics": []},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["sql"] == ""
+
+    @patch("datapulse.api.routes.explore._get_catalog", return_value=_FAKE_CATALOG)
+    @patch("datapulse.api.routes.explore.build_sql")
+    def test_sql_field_shown_in_development(self, mock_build_sql, mock_cat):
+        client, mock_session = _make_explore_client()
+        mock_build_sql.return_value = ("SELECT date_key FROM fct_sales", {})
+
+        mock_result = MagicMock()
+        mock_result.keys.return_value = ["date_key"]
+        mock_result.__iter__ = lambda self: iter([(20250101,)])
+        mock_session.execute.return_value = mock_result
+
+        with patch("os.getenv", return_value="development"):
+            resp = client.post(
+                "/api/v1/explore/query",
+                json={"model": "fct_sales", "dimensions": ["date_key"], "metrics": []},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["sql"] != ""
+
+    @patch("datapulse.api.routes.explore._get_catalog", return_value=_FAKE_CATALOG)
+    @patch("datapulse.api.routes.explore.build_sql")
+    def test_injection_attempt_rejected_as_422(self, mock_build_sql, mock_cat):
+        mock_build_sql.side_effect = ValueError("not in whitelist")
+        client, _ = _make_explore_client()
+
+        resp = client.post(
+            "/api/v1/explore/query",
+            json={
+                "model": "fct_sales",
+                "dimensions": ["; DROP TABLE fct_sales; --"],
+                "metrics": [],
+            },
+        )
+        assert resp.status_code == 422
+
+    @patch("datapulse.api.routes.explore._get_catalog", return_value=_FAKE_CATALOG)
+    @patch("datapulse.api.routes.explore.build_sql")
+    def test_empty_result_set(self, mock_build_sql, mock_cat):
+        mock_build_sql.return_value = ("SELECT date_key FROM fct_sales", {})
+        client, mock_session = _make_explore_client()
+
+        mock_result = MagicMock()
+        mock_result.keys.return_value = ["date_key"]
+        mock_result.__iter__ = lambda self: iter([])
+        mock_session.execute.return_value = mock_result
+
+        resp = client.post(
+            "/api/v1/explore/query",
+            json={"model": "fct_sales", "dimensions": ["date_key"], "metrics": []},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["row_count"] == 0
+        assert data["truncated"] is False
+
+    @patch("datapulse.api.routes.explore._get_catalog", return_value=_FAKE_CATALOG)
+    @patch("datapulse.api.routes.explore.build_sql")
+    def test_pagination_default_limit(self, mock_build_sql, mock_cat):
+        mock_build_sql.return_value = ("SELECT date_key FROM fct_sales", {})
+        client, mock_session = _make_explore_client()
+
+        rows = [(i,) for i in range(10)]
+        mock_result = MagicMock()
+        mock_result.keys.return_value = ["date_key"]
+        mock_result.__iter__ = lambda self: iter(rows)
+        mock_session.execute.return_value = mock_result
+
+        # Post without a "limit" key — uses ExploreQuery default (500)
+        resp = client.post(
+            "/api/v1/explore/query",
+            json={"model": "fct_sales", "dimensions": ["date_key"], "metrics": []},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["row_count"] == 10
+        assert data["truncated"] is False
+
+    @patch("datapulse.api.routes.explore._get_catalog", return_value=_FAKE_CATALOG)
+    @patch("datapulse.api.routes.explore.build_sql")
+    def test_filter_combinations(self, mock_build_sql, mock_cat):
+        mock_build_sql.return_value = ("SELECT 1", {"p0": "20250101"})
+        client, mock_session = _make_explore_client()
+
+        mock_result = MagicMock()
+        mock_result.keys.return_value = ["col"]
+        mock_result.__iter__ = lambda self: iter([(1,)])
+        mock_session.execute.return_value = mock_result
+
+        resp = client.post(
+            "/api/v1/explore/query",
+            json={
+                "model": "fct_sales",
+                "dimensions": ["date_key"],
+                "metrics": [],
+                "filters": [{"field": "date_key", "operator": "eq", "value": "20250101"}],
+            },
+        )
+        assert resp.status_code == 200
+        # Verify build_sql was called with a body that includes the filter
+        call_args = mock_build_sql.call_args
+        query_body = call_args[0][0]
+        assert len(query_body.filters) == 1
+        assert query_body.filters[0].field == "date_key"
+        assert query_body.filters[0].value == "20250101"
+
+
 class TestSerialise:
     def test_serialise_types(self):
         from datetime import date, datetime

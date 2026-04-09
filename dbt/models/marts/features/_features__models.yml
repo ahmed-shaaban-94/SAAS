@@ -6,6 +6,11 @@ models:
     description: "Daily revenue rolling features for forecasting. Grain: (tenant_id, date_key). Provides moving averages (7/30/90d), volatility, trend ratios, and lag comparisons."
     meta:
       label: "Revenue Daily Rolling"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - date_key
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -45,6 +50,11 @@ models:
     description: "Day-of-week seasonality indices. Grain: (tenant_id, day_of_week) — 7 rows per tenant. Egypt weekend: Fri(5) & Sat(6)."
     meta:
       label: "Daily Seasonality"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - day_of_week
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -74,6 +84,11 @@ models:
     description: "Monthly seasonality indices. Grain: (tenant_id, month) — 12 rows per tenant."
     meta:
       label: "Monthly Seasonality"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - month
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -100,6 +115,11 @@ models:
     description: "Customer RFM segmentation. Grain: (tenant_id, customer_key). Segments: Champion, Loyal, New, At Risk, Cant Lose, Hibernating, Potential Loyalist."
     meta:
       label: "Customer Segments"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - customer_key
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -140,6 +160,11 @@ models:
     description: "Product lifecycle classification. Grain: (tenant_id, product_key). Phases: Growth, Mature, Decline, Dormant."
     meta:
       label: "Product Lifecycle"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - product_key
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -170,6 +195,12 @@ models:
     description: "Per-site daily rolling features with cross-site comparison. Grain: (tenant_id, date_key, site_key)."
     meta:
       label: "Revenue Site Rolling"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - date_key
+            - site_key
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -195,6 +226,11 @@ models:
     description: "Customer Health Score — composite 0-100 score per customer based on recency, frequency, monetary value, return rate, and trend."
     meta:
       label: "Customer Health"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - customer_key
     columns:
       - name: tenant_id
         description: "Tenant identifier"
@@ -210,6 +246,11 @@ models:
     description: "Customer churn prediction. Grain: (tenant_id, customer_key). Logistic probability based on recency, frequency, trend, and health score."
     meta:
       label: "Churn Prediction"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - customer_key
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -228,6 +269,12 @@ models:
     description: "Product co-purchase affinity. Grain: (tenant_id, product_key_a, product_key_b). Shows co-occurrence count, support, and confidence for product pairs."
     meta:
       label: "Product Affinity"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - product_key_a
+            - product_key_b
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -247,6 +294,13 @@ models:
     description: "Staff quota attainment — actual sales vs targets per staff member per month. Grain: (tenant_id, staff_key, year, month)."
     meta:
       label: "Staff Quota"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - staff_key
+            - year
+            - month
     columns:
       - name: tenant_id
         tests: [not_null]
@@ -275,6 +329,13 @@ models:
     description: "Monthly gamification metrics per staff for badge evaluation. Grain: (tenant_id, staff_key, year, month). Aggregates sales, returns, growth, and quota achievement."
     meta:
       label: "Gamification Events"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - staff_key
+            - year
+            - month
     columns:
       - name: tenant_id
         tests: [not_null]

@@ -78,6 +78,39 @@ source = ["datapulse"]
 fail_under = 95
 show_missing = true
 
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_ignores = false
+strict_optional = true
+
+# Third-party packages without stubs — suppress missing-stubs errors per module
+[[tool.mypy.overrides]]
+module = [
+    "polars.*",
+    "pyarrow.*",
+    "fastexcel.*",
+    "structlog.*",
+    "redis.*",
+    "slowapi.*",
+    "fastapi_cache.*",
+    "dbt.*",
+    "celery.*",
+    "sentry_sdk.*",
+    "opentelemetry.*",
+    "httpx.*",
+    "passlib.*",
+    "jose.*",
+    "stripe.*",
+    "reportlab.*",
+    "statsmodels.*",
+    "apscheduler.*",
+    "openpyxl.*",
+    "prometheus_fastapi_instrumentator.*",
+    "mcp.*",
+]
+ignore_missing_imports = true
+
 [tool.bandit]
 # B608: SQLAlchemy text() with f-strings is a known false positive — all values
 # interpolated into text() are internal column/table identifiers whitelisted in

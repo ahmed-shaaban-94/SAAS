@@ -386,6 +386,22 @@ def get_product_detail(
     return result
 
 
+@router.get("/customers/churn", response_model=list[ChurnPrediction])
+@limiter.limit("60/minute")
+def get_churn_predictions(
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_tenant_session)],
+    risk_level: str | None = Query(None),
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list:
+    """Customer churn predictions sorted by probability."""
+    _set_cache(response, 300)
+    repo = ChurnRepository(session)
+    rows = repo.get_churn_predictions(risk_level=risk_level, limit=limit)
+    return [ChurnPrediction(**r) for r in rows]
+
+
 @router.get("/customers/{customer_key}", response_model=CustomerAnalytics)
 @limiter.limit("100/minute")
 def get_customer_detail(
@@ -563,19 +579,3 @@ def get_product_affinity(
     repo = AffinityRepository(session)
     rows = repo.get_affinity_for_product(product_key, limit=limit)
     return [AffinityPair(**r) for r in rows]
-
-
-@router.get("/customers/churn", response_model=list[ChurnPrediction])
-@limiter.limit("60/minute")
-def get_churn_predictions(
-    request: Request,
-    response: Response,
-    session: Annotated[Session, Depends(get_tenant_session)],
-    risk_level: str | None = Query(None),
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> list:
-    """Customer churn predictions sorted by probability."""
-    _set_cache(response, 300)
-    repo = ChurnRepository(session)
-    rows = repo.get_churn_predictions(risk_level=risk_level, limit=limit)
-    return [ChurnPrediction(**r) for r in rows]

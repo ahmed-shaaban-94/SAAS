@@ -34,7 +34,7 @@ def main() -> None:
 
     # Block main thread — observer runs in background thread
     try:
-        signal.pause()
+        signal.pause()  # type: ignore[attr-defined]  # Not available on Windows
     except AttributeError:
         # Windows fallback
         import time

@@ -6,6 +6,12 @@ models:
     description: "Daily sales aggregation. Grain: (date_key, site_key, billing_way)"
     meta:
       label: "Daily Sales"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - date_key
+            - site_key
+            - billing_way
     columns:
       - name: date_key
         description: "Foreign key to dim_date"
@@ -116,6 +122,12 @@ models:
     description: "Monthly sales aggregation with MoM and YoY growth. Grain: (year, month, site_key)"
     meta:
       label: "Monthly Sales"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - year
+            - month
+            - site_key
     columns:
       - name: year
         description: "Calendar year"
@@ -198,6 +210,12 @@ models:
     description: "Product sales aggregation with denormalized product attributes. Grain: (product_key, year, month)"
     meta:
       label: "Sales by Product"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - product_key
+            - year
+            - month
     columns:
       - name: product_key
         description: "Foreign key to dim_product"
@@ -272,6 +290,12 @@ models:
     description: "Customer sales aggregation with denormalized customer attributes. Grain: (customer_key, year, month)"
     meta:
       label: "Sales by Customer"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - customer_key
+            - year
+            - month
     columns:
       - name: customer_key
         description: "Foreign key to dim_customer"
@@ -338,6 +362,12 @@ models:
     description: "Site performance aggregation with volume, diversity, and ratio metrics. Grain: (site_key, year, month)"
     meta:
       label: "Sales by Site"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - site_key
+            - year
+            - month
     columns:
       - name: site_key
         description: "Foreign key to dim_site"
@@ -408,6 +438,12 @@ models:
     description: "Staff performance aggregation with volume, diversity, and avg transaction value. Grain: (staff_key, year, month)"
     meta:
       label: "Sales by Staff"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - staff_key
+            - year
+            - month
     columns:
       - name: staff_key
         description: "Foreign key to dim_staff"
@@ -472,6 +508,14 @@ models:
     description: "Returns analysis aggregation (only return transactions). Grain: (product_key, customer_key, year, month, billing_way)"
     meta:
       label: "Returns"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - product_key
+            - customer_key
+            - year
+            - month
+            - billing_way
     columns:
       - name: product_key
         description: "Foreign key to dim_product"
