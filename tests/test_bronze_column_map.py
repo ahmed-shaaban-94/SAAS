@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 from datapulse.bronze.column_map import COLUMN_MAP
 from datapulse.bronze.loader import ALLOWED_COLUMNS
-
 
 SNAKE_CASE_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 

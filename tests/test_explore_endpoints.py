@@ -219,7 +219,11 @@ class TestExecuteExploreQueryExtra:
 
         resp = client.post(
             "/api/v1/explore/query",
-            json={"model": "fct_sales", "dimensions": ["; DROP TABLE fct_sales; --"], "metrics": []},
+            json={
+                "model": "fct_sales",
+                "dimensions": ["; DROP TABLE fct_sales; --"],
+                "metrics": [],
+            },
         )
         assert resp.status_code == 422
 

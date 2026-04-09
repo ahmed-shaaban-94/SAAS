@@ -19,7 +19,6 @@ from datapulse.bronze.loader import (
     save_parquet,
 )
 
-
 # ---------------------------------------------------------------------------
 # TestValidateColumns
 # ---------------------------------------------------------------------------
@@ -188,9 +187,8 @@ class TestReadAndConcat:
         with patch(
             "datapulse.bronze.loader.read_single_file",
             side_effect=Exception("read error"),
-        ):
-            with pytest.raises(ValueError, match="All.*file"):
-                read_and_concat(files)
+        ), pytest.raises(ValueError, match="All.*file"):
+            read_and_concat(files)
 
     def test_all_fail_error_message_contains_count(self, tmp_path):
         """ValueError message includes the number of failed files."""
@@ -200,9 +198,8 @@ class TestReadAndConcat:
         with patch(
             "datapulse.bronze.loader.read_single_file",
             side_effect=Exception("boom"),
-        ):
-            with pytest.raises(ValueError, match="1"):
-                read_and_concat(files)
+        ), pytest.raises(ValueError, match="1"):
+            read_and_concat(files)
 
     def test_partial_failure_succeeds(self, tmp_path):
         """One file fails, one succeeds — result contains the successful file."""

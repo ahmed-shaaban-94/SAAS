@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
 from datapulse.ai_light.models import ChangeDelta
 from datapulse.ai_light.service import AILightService
 

@@ -8,13 +8,12 @@ T2.7 — Testing Fortress tier: covers /summary, /trends/daily, /trends/monthly,
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from fastapi.testclient import TestClient
 
 from datapulse.analytics.models import (
-    ChurnPrediction,
     CustomerHealthScore,
     KPISummary,
     RankingItem,
