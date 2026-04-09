@@ -6,6 +6,7 @@ import { Bookmark, X } from "lucide-react";
 import { useFilters } from "@/contexts/filter-context";
 import { useToast } from "@/components/ui/toast";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import { useSuccessAnimation, SuccessAnimation } from "@/components/shared/success-animation";
 
 interface SaveViewDialogProps {
   open: boolean;
@@ -21,6 +22,7 @@ export function SaveViewDialog({ open, onClose }: SaveViewDialogProps) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { isSuccess, trigger: triggerSuccess } = useSuccessAnimation(800);
 
   const activeFilters = Object.entries(filters).filter(
     ([, v]) => v !== undefined,
@@ -37,8 +39,9 @@ export function SaveViewDialog({ open, onClose }: SaveViewDialogProps) {
       }
       await createView(trimmed, pathname, filterRecord);
       success(`View "${trimmed}" saved`);
+      triggerSuccess();
       setName("");
-      onClose();
+      setTimeout(onClose, 600);
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Failed to save view";
@@ -140,8 +143,9 @@ export function SaveViewDialog({ open, onClose }: SaveViewDialogProps) {
           <button
             onClick={handleSave}
             disabled={!name.trim() || saving}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
+            <SuccessAnimation show={isSuccess} className="h-5 w-5" />
             {saving ? "Saving..." : "Save View"}
           </button>
         </div>
