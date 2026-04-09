@@ -62,9 +62,10 @@ UNION ALL
 
 SELECT
     -1                 AS site_key,
-    1                  AS tenant_id,
+    t.tenant_id,
     '__UNKNOWN__'      AS site_code,
     'Unknown'          AS site_name,
     'Unknown'          AS area_manager,
     'Unknown'          AS governorate,
     'Unknown'          AS governorate_ar
+FROM (SELECT DISTINCT tenant_id FROM {{ ref('stg_sales') }}) t

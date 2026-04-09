@@ -1,7 +1,16 @@
 {{
   config(
     materialized='table',
-    schema='public_marts',
+    schema='marts',
+    post_hook=[
+      "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
+      "ALTER TABLE {{ this }} FORCE ROW LEVEL SECURITY",
+      "DROP POLICY IF EXISTS owner_all ON {{ this }}",
+      "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
+      "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
+      "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
+      "CREATE INDEX IF NOT EXISTS idx_feat_customer_health_tenant_key ON {{ this }} (tenant_id, customer_key)"
+    ],
     tags=['analytics', 'customer_health']
   )
 }}
@@ -38,7 +47,7 @@ recent_activity AS (
         c.customer_key,
         c.customer_name,
         COUNT(DISTINCT f.date_key) AS frequency_3m,
-        COALESCE(SUM(f.sales), 0) AS monetary_3m,
+        COALESCE(SUM(f.net_amount), 0) AS monetary_3m,
         COUNT(DISTINCT f.product_key) AS product_diversity,
         SUM(CASE WHEN f.is_return THEN 1 ELSE 0 END) AS return_count_3m,
         COUNT(*) AS total_txn_3m
@@ -57,7 +66,7 @@ prior_activity AS (
         f.tenant_id,
         f.customer_key,
         COUNT(DISTINCT f.date_key) AS frequency_prev,
-        COALESCE(SUM(f.sales), 0) AS monetary_prev
+        COALESCE(SUM(f.net_amount), 0) AS monetary_prev
     FROM {{ ref('fct_sales') }} f
     CROSS JOIN date_bounds db
     JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key

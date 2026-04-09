@@ -29,14 +29,14 @@ WITH customer_rfm_raw AS (
         (CURRENT_DATE - MAX(d.full_date))::INT             AS days_since_last,
         -- Frequency: distinct invoices
         COUNT(DISTINCT f.invoice_id)::INT                  AS frequency,
-        -- Monetary: total net spend
-        ROUND(SUM(f.sales), 2)                              AS monetary,
+        -- Monetary: total net spend (after discounts)
+        ROUND(SUM(f.net_amount), 2)                         AS monetary,
         -- Additional context
         MIN(d.full_date)                                   AS first_purchase_date,
         MAX(d.full_date)                                   AS last_purchase_date,
         (MAX(d.full_date) - MIN(d.full_date))::INT         AS lifetime_days,
         ROUND(
-            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                  AS avg_basket_size,
         COUNT(DISTINCT f.product_key)::INT                 AS unique_products,

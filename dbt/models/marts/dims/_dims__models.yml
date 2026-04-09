@@ -67,19 +67,22 @@ models:
           - not_null
 
   - name: dim_customer
-    description: "Customer dimension (SCD Type 1 — latest attribute wins). Includes Unknown member (key=-1) for unmatched rows."
+    description: "Customer dimension (SCD Type 1 — latest attribute wins). Includes Unknown member (key=-1) per tenant for unmatched rows."
     meta:
       label: "Customer"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, customer_key]
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, customer_id]
     columns:
       - name: customer_key
-        description: "Surrogate key (INT). -1 = Unknown."
+        description: "Surrogate key (INT). -1 = Unknown per tenant."
         tests:
-          - unique
           - not_null
       - name: customer_id
         description: "Natural key from source system"
         tests:
-          - unique
           - not_null
       - name: customer_name
         description: "Customer display name (latest known)"
@@ -87,19 +90,22 @@ models:
           - not_null
 
   - name: dim_product
-    description: "Product/drug dimension (SCD Type 1 — latest attribute wins). Includes buyer and full classification hierarchy. Unknown member at key=-1. Note: drug_status is current-state only, not time-aware."
+    description: "Product/drug dimension (SCD Type 1 — latest attribute wins). Includes buyer and full classification hierarchy. Unknown member at key=-1 per tenant. Note: drug_status is current-state only, not time-aware."
     meta:
       label: "Product"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, product_key]
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, drug_code]
     columns:
       - name: product_key
-        description: "Surrogate key (INT). -1 = Unknown."
+        description: "Surrogate key (INT). -1 = Unknown per tenant."
         tests:
-          - unique
           - not_null
       - name: drug_code
-        description: "Natural key — unique material/drug code"
+        description: "Natural key — unique material/drug code per tenant"
         tests:
-          - unique
           - not_null
       - name: drug_name
         description: "Product/drug display name"
@@ -134,19 +140,22 @@ models:
               values: ['Pharma', 'Non-pharma', 'Services', 'HVI', 'Other']
 
   - name: dim_site
-    description: "Site/location dimension (SCD Type 1). Includes area_manager for geographic grouping and governorate (EN/AR) for Power BI Egypt shape map. Unknown member at key=-1."
+    description: "Site/location dimension (SCD Type 1). Includes area_manager for geographic grouping and governorate (EN/AR) for Power BI Egypt shape map. Unknown member at key=-1 per tenant."
     meta:
       label: "Site"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, site_key]
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, site_code]
     columns:
       - name: site_key
-        description: "Surrogate key (INT). -1 = Unknown."
+        description: "Surrogate key (INT). -1 = Unknown per tenant."
         tests:
-          - unique
           - not_null
       - name: site_code
-        description: "Natural key — site identifier"
+        description: "Natural key — site identifier per tenant"
         tests:
-          - unique
           - not_null
       - name: site_name
         description: "Site/pharmacy display name"
@@ -164,19 +173,22 @@ models:
           - not_null
 
   - name: dim_staff
-    description: "Staff/personnel dimension (SCD Type 1). Unknown member at key=-1."
+    description: "Staff/personnel dimension (SCD Type 1). Unknown member at key=-1 per tenant."
     meta:
       label: "Staff"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, staff_key]
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, staff_id]
     columns:
       - name: staff_key
-        description: "Surrogate key (INT). -1 = Unknown."
+        description: "Surrogate key (INT). -1 = Unknown per tenant."
         tests:
-          - unique
           - not_null
       - name: staff_id
-        description: "Natural key — personnel number"
+        description: "Natural key — personnel number per tenant"
         tests:
-          - unique
           - not_null
       - name: staff_name
         description: "Staff display name"

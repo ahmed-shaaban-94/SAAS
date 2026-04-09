@@ -45,6 +45,7 @@ UNION ALL
 
 SELECT
     -1                 AS customer_key,
-    1                  AS tenant_id,
+    t.tenant_id,
     '__UNKNOWN__'      AS customer_id,
     'Unknown'          AS customer_name
+FROM (SELECT DISTINCT tenant_id FROM {{ ref('stg_sales') }}) t

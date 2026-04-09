@@ -109,5 +109,5 @@ SELECT
     )::INT AS ytd_transactions
 FROM daily_totals t
 {% if is_incremental() %}
-WHERE t.full_date >= DATE_TRUNC('year', CURRENT_DATE)
+WHERE t.full_date >= CURRENT_DATE - INTERVAL '7 days'
 {% endif %}
