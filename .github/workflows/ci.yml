@@ -157,6 +157,10 @@ jobs:
         timeout-minutes: 15
         env:
           CI: "true"
+          # Dummy secret so NextAuth initialises without MissingSecretError.
+          # No real credentials — Auth0 sign-in will not complete in CI.
+          NEXTAUTH_SECRET: "ci-e2e-placeholder-not-for-production"
+          NEXTAUTH_URL: "http://localhost:3000"
       - name: Upload E2E report
         if: always()
         uses: actions/upload-artifact@v4
