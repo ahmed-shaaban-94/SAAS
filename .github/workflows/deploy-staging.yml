@@ -126,7 +126,7 @@ jobs:
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             export IMAGE_TAG=staging
             # Secrets are available as env vars (passed via envs: — not in shell history)
-            export POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
+            export API_KEY PIPELINE_WEBHOOK_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
 
             # Save current image digests for rollback
             echo "=== Saving current state for rollback ==="

@@ -154,7 +154,7 @@ jobs:
             cd ${{ secrets.PROD_DEPLOY_PATH }}
             export IMAGE_TAG="${{ needs.build-push.outputs.image_tag }}"
             # Secrets are available as env vars (passed via envs: — not in shell history)
-            export POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
+            export API_KEY PIPELINE_WEBHOOK_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
 
             # Save current state for rollback
             echo "=== Saving rollback state ==="
