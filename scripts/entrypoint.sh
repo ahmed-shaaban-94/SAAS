@@ -5,9 +5,7 @@ set -euo pipefail
 # This replaces the separate prestart container with an inline step.
 
 echo "[entrypoint] Running prestart migrations..."
-if ! /app/scripts/prestart.sh; then
-    echo "[entrypoint] WARNING: prestart.sh failed. Starting uvicorn anyway."
-fi
+/app/scripts/prestart.sh
 
 echo "[entrypoint] Starting uvicorn..."
 exec "$@"

@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/landing",    // Static landing page
   "/terms",
   "/privacy",
+  "/embed",      // Public embed route — token-based auth handled at route level
 ];
 
 /** Check if the request path starts with any public prefix. */

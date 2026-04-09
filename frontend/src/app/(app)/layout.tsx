@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSession, signIn } from "next-auth/react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Providers } from "@/components/providers";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -14,6 +15,19 @@ import { BrandProvider } from "@/components/branding/brand-provider";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useAIAnomalies } from "@/hooks/use-ai-anomalies";
 import { useAlertLog } from "@/hooks/use-alerts";
+
+/** Redirect to sign-in when the access token can no longer be refreshed. */
+function SessionGuard({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
+      signIn("auth0");
+    }
+  }, [session]);
+
+  return <>{children}</>;
+}
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
@@ -51,7 +65,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <ErrorBoundary>
         <ToastProvider>
           <BrandProvider>
-            <AppShell>{children}</AppShell>
+            <SessionGuard>
+              <AppShell>{children}</AppShell>
+            </SessionGuard>
           </BrandProvider>
         </ToastProvider>
       </ErrorBoundary>

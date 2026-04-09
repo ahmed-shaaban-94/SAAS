@@ -167,11 +167,15 @@ def get_optional_user(
     api_key: str | None = Security(_api_key_header),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
 ) -> dict[str, Any] | None:
-    """Same as get_current_user but returns None instead of raising on missing auth.
+    """Same as get_current_user but returns None on missing/invalid auth.
 
-    Useful for endpoints that behave differently for authenticated vs anonymous users.
+    Only silences 401/403 (unauthenticated / forbidden).
+    Other HTTP errors (e.g. 503 Auth0 outage) are re-raised so callers
+    receive a truthful error instead of silent anonymous access.
     """
     try:
         return get_current_user(credentials, api_key, settings)
-    except HTTPException:
+    except HTTPException as exc:
+        if exc.status_code not in (401, 403):
+            raise
         return None

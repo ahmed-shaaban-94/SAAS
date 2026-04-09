@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 import structlog
 
@@ -79,6 +80,9 @@ class BillingService:
         if not self._stripe.is_configured:
             msg = "Stripe is not configured"
             raise RuntimeError(msg)
+
+        _validate_callback_url(success_url, self._base_url)
+        _validate_callback_url(cancel_url, self._base_url)
 
         customer_id = self._repo.get_stripe_customer_id(tenant_id)
         if not customer_id:
@@ -258,6 +262,21 @@ class BillingService:
             event_type=_PAYMENT_FAILED,
             tenant_id=tenant_id,
             status="past_due",
+        )
+
+
+def _validate_callback_url(url: str | None, base_url: str) -> None:
+    """Raise ValueError if url is set but its netloc differs from base_url.
+
+    Prevents open redirects to phishing domains passed as success_url/cancel_url.
+    """
+    if url is None:
+        return
+    parsed = urlparse(url)
+    allowed_netloc = urlparse(base_url).netloc
+    if parsed.netloc != allowed_netloc:
+        raise ValueError(
+            f"Callback URL domain '{parsed.netloc}' is not allowed; must be '{allowed_netloc}'"
         )
 
 

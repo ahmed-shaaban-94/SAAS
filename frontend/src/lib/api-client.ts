@@ -133,6 +133,35 @@ export async function postAPI<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+export async function patchAPI<T>(path: string, body: unknown): Promise<T> {
+  const url = `${API_BASE_URL}${path}`;
+  return _request<T>(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteAPI(path: string): Promise<void> {
+  const url = `${API_BASE_URL}${path}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: authHeaders,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "Unknown error");
+      throw new ApiError(res.status, `API error ${res.status}: ${body}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /**
  * Build a stable, order-independent SWR cache key from a path and filter params.
  * Uses sorted URLSearchParams to avoid property-order sensitivity of JSON.stringify.

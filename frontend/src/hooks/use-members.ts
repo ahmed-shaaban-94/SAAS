@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import { fetchAPI, postAPI } from "@/lib/api-client";
+import { fetchAPI, postAPI, patchAPI, deleteAPI } from "@/lib/api-client";
 import type {
   AccessContextResponse,
   MemberResponse,
@@ -47,24 +47,13 @@ export function useMembers() {
     return res;
   }
 
-  async function updateMember(memberId: number, updates: Record<string, unknown>) {
-    const url = `/api/v1/members/${memberId}`;
-    const res = await fetchAPI<MemberResponse>(url, undefined);
-    // Use PATCH
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}${url}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-    if (!response.ok) throw new Error(`Failed to update member: ${response.status}`);
+  async function updateMember(memberId: number, updates: Record<string, unknown>): Promise<void> {
+    await patchAPI<MemberResponse>(`/api/v1/members/${memberId}`, updates);
     mutate();
-    return response.json();
   }
 
   async function removeMember(memberId: number) {
-    const url = `${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/members/${memberId}`;
-    const response = await fetch(url, { method: "DELETE" });
-    if (!response.ok) throw new Error(`Failed to remove member: ${response.status}`);
+    await deleteAPI(`/api/v1/members/${memberId}`);
     mutate();
   }
 
@@ -86,9 +75,7 @@ export function useSectors() {
   }
 
   async function deleteSector(sectorId: number) {
-    const url = `${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/sectors/${sectorId}`;
-    const response = await fetch(url, { method: "DELETE" });
-    if (!response.ok) throw new Error(`Failed to delete sector: ${response.status}`);
+    await deleteAPI(`/api/v1/sectors/${sectorId}`);
     mutate();
   }
 

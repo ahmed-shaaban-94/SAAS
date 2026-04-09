@@ -6,12 +6,14 @@
 """
 
 import time
+from typing import Any
 
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from datapulse.api.auth import get_optional_user
 from datapulse.api.deps import get_engine
 
 router = APIRouter(tags=["health"])
@@ -103,7 +105,10 @@ def _check_pool() -> dict:
 
 
 @router.get("/health")
-def health_check(request: Request) -> JSONResponse:
+def health_check(
+    request: Request,
+    user: dict[str, Any] | None = Depends(get_optional_user),  # noqa: B008
+) -> JSONResponse:
     """Full health check — database, Redis, query executor, connection pool.
 
     Returns detailed component status for authenticated callers (API key or JWT).
@@ -129,10 +134,9 @@ def health_check(request: Request) -> JSONResponse:
 
     status_code = 200 if overall == "healthy" else 503
 
-    # Only expose component details to callers with a valid auth header
-    has_auth = bool(request.headers.get("authorization") or request.headers.get("x-api-key"))
+    # Only expose component details to callers with a verified identity
     content: dict = {"status": overall}
-    if has_auth:
+    if user is not None:
         content["checks"] = checks
 
     return JSONResponse(status_code=status_code, content=content)

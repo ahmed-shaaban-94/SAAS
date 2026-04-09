@@ -3,6 +3,7 @@
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
+from datapulse.api.auth import get_optional_user
 from datapulse.analytics.models import (
     CustomerAnalytics,
     KPISummary,
@@ -13,6 +14,16 @@ from datapulse.analytics.models import (
     TimeSeriesPoint,
     TrendResult,
 )
+
+
+_AUTHED_USER = {
+    "sub": "test-user",
+    "email": "test@datapulse.local",
+    "preferred_username": "test",
+    "tenant_id": "1",
+    "roles": ["admin"],
+    "raw_claims": {},
+}
 
 
 def _make_trend_result() -> TrendResult:
@@ -56,6 +67,7 @@ def _make_kpi_summary() -> KPISummary:
 def test_health_endpoint(api_client):
     """GET /health returns 200 with status and component checks."""
     client, mock_repo, mock_detail_repo = api_client
+    client.app.dependency_overrides[get_optional_user] = lambda: _AUTHED_USER
     with (
         patch("datapulse.api.routes.health.get_engine") as mock_engine,
         patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),
@@ -81,9 +93,38 @@ def test_health_endpoint(api_client):
     assert data["checks"]["database"]["status"] == "ok"
 
 
+def test_health_endpoint_unauthenticated(api_client):
+    """GET /health without auth returns only overall status — no component details."""
+    client, mock_repo, mock_detail_repo = api_client
+    client.app.dependency_overrides[get_optional_user] = lambda: None
+    with (
+        patch("datapulse.api.routes.health.get_engine") as mock_engine,
+        patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),
+        patch(
+            "datapulse.api.routes.health._check_query_executor",
+            return_value={"status": "ok", "latency_ms": 1},
+        ),
+    ):
+        mock_conn = MagicMock()
+        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+        mock_pool = MagicMock()
+        mock_pool.size.return_value = 5
+        mock_pool.checkedout.return_value = 1
+        mock_pool.overflow.return_value = 0
+        mock_pool._max_overflow = 10
+        mock_engine.return_value.pool = mock_pool
+        resp = client.get("/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "healthy"
+    assert "checks" not in data
+
+
 def test_health_endpoint_degraded(api_client):
     """GET /health returns 503 when database is unreachable."""
     client, mock_repo, mock_detail_repo = api_client
+    client.app.dependency_overrides[get_optional_user] = lambda: _AUTHED_USER
     with (
         patch("datapulse.api.routes.health.get_engine") as mock_engine,
         patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),

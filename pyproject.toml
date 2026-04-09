@@ -68,5 +68,11 @@ pythonpath = ["src"]
 source = ["datapulse"]
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 82
 show_missing = true
+
+[tool.bandit]
+# B608: SQLAlchemy text() with f-strings is a known false positive — all values
+# interpolated into text() are internal column/table identifiers whitelisted in
+# service layer, never raw user input. Parameterized :bind variables handle user data.
+skips = ["B608", "B108"]

@@ -6,7 +6,7 @@ under ``/reseller/``.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from sqlalchemy.orm import Session
@@ -40,6 +40,26 @@ def get_reseller_service(
 
 
 ServiceDep = Annotated[ResellerService, Depends(get_reseller_service)]
+CurrentUserDep = Annotated[dict[str, Any], Depends(get_current_user)]
+
+_PLATFORM_ADMIN_ROLES = frozenset({"admin", "owner"})
+
+
+def _check_reseller_access(
+    reseller_id: int,
+    user: dict[str, Any],
+    service: ResellerService,
+) -> None:
+    """Raise 403 unless the caller's tenant is associated with this reseller.
+
+    Platform admins (roles: admin/owner) bypass the ownership check.
+    """
+    roles: list[str] = user.get("roles", [])
+    if _PLATFORM_ADMIN_ROLES.intersection(roles):
+        return
+    tenant_id = int(user.get("tenant_id", "0"))
+    if not service._repo.tenant_belongs_to_reseller(tenant_id, reseller_id):
+        raise HTTPException(status_code=403, detail="Access denied to this reseller")
 
 
 def _set_cache(response: Response, max_age: int) -> None:
@@ -74,11 +94,12 @@ def create_reseller(
 def get_dashboard(
     request: Request,
     response: Response,
-    reseller_id: int = Path(..., gt=0),
-    *,
     service: ServiceDep,
+    user: CurrentUserDep,
+    reseller_id: int = Path(..., gt=0),
 ) -> ResellerDashboard:
     """Get reseller dashboard overview."""
+    _check_reseller_access(reseller_id, user, service)
     _set_cache(response, 60)
     try:
         return service.get_dashboard(reseller_id)
@@ -91,11 +112,12 @@ def get_dashboard(
 def get_tenants(
     request: Request,
     response: Response,
-    reseller_id: int = Path(..., gt=0),
-    *,
     service: ServiceDep,
+    user: CurrentUserDep,
+    reseller_id: int = Path(..., gt=0),
 ) -> list[ResellerTenantResponse]:
     """Get tenants under a reseller."""
+    _check_reseller_access(reseller_id, user, service)
     _set_cache(response, 120)
     return service.get_tenants(reseller_id)
 
@@ -105,11 +127,12 @@ def get_tenants(
 def get_commissions(
     request: Request,
     response: Response,
-    reseller_id: int = Path(..., gt=0),
-    *,
     service: ServiceDep,
+    user: CurrentUserDep,
+    reseller_id: int = Path(..., gt=0),
 ) -> list[CommissionResponse]:
     """Get commission history for a reseller."""
+    _check_reseller_access(reseller_id, user, service)
     _set_cache(response, 120)
     return service.get_commissions(reseller_id)
 
@@ -119,10 +142,11 @@ def get_commissions(
 def get_payouts(
     request: Request,
     response: Response,
-    reseller_id: int = Path(..., gt=0),
-    *,
     service: ServiceDep,
+    user: CurrentUserDep,
+    reseller_id: int = Path(..., gt=0),
 ) -> list[PayoutResponse]:
     """Get payout history for a reseller."""
+    _check_reseller_access(reseller_id, user, service)
     _set_cache(response, 120)
     return service.get_payouts(reseller_id)
