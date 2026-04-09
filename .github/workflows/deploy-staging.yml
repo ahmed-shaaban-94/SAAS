@@ -147,13 +147,14 @@ jobs:
               -f docker-compose.prod.yml \
               pull
 
-            # Deploy — allow non-zero exit so the health-check loop below
-            # can run and dump diagnostic logs on failure instead of aborting.
+            # Deploy — recreate all services to ensure nginx picks up new upstreams.
+            # Without --force-recreate, nginx keeps stale references to old api/frontend
+            # containers and returns 503 until manually restarted.
             echo "=== Starting deployment ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
-              up -d --remove-orphans || echo "::warning::docker compose up exited non-zero — checking health..."
+              up -d --remove-orphans --force-recreate || echo "::warning::docker compose up exited non-zero — checking health..."
 
             # Immediate diagnostics — surface the real error before waiting
             echo "=== Container status after up ==="
@@ -161,11 +162,11 @@ jobs:
             echo "=== API logs (startup) ==="
             docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=80 api 2>&1 || true
 
-            # Health check — API
+            # Health check — API via nginx internal port (bypasses SSL/server_name)
             echo "=== Health check: API ==="
             API_OK=false
             for i in $(seq 1 24); do
-              HTTP_CODE=$(curl -skL -o /dev/null -w '%{http_code}' --connect-timeout 5 https://localhost/health 2>/dev/null || echo "000")
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8080/health 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "API health check PASSED on attempt $i"
                 API_OK=true
@@ -175,11 +176,11 @@ jobs:
               sleep 10
             done
 
-            # Health check — Frontend
+            # Health check — Frontend via HTTPS (tests full nginx → frontend path)
             echo "=== Health check: Frontend ==="
             FE_OK=false
             for i in $(seq 1 12); do
-              HTTP_CODE=$(curl -skL -o /dev/null -w '%{http_code}' --connect-timeout 5 https://localhost 2>/dev/null || echo "000")
+              HTTP_CODE=$(curl -skL -o /dev/null -w '%{http_code}' --connect-timeout 5 -H "Host: smartdatapulse.tech" https://localhost 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "Frontend health check PASSED on attempt $i"
                 FE_OK=true
@@ -193,8 +194,8 @@ jobs:
             echo "=== Smoke tests ==="
             SMOKE_OK=true
 
-            # Test /health/ready
-            READY=$(curl -skL -o /dev/null -w '%{http_code}' https://localhost/health/ready 2>/dev/null || echo "000")
+            # Test /health/ready (via nginx internal port — no SSL/Host needed)
+            READY=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health/ready 2>/dev/null || echo "000")
             if [ "$READY" != "200" ]; then
               echo "FAIL: /health/ready returned $READY"
               SMOKE_OK=false
@@ -202,8 +203,9 @@ jobs:
               echo "PASS: /health/ready"
             fi
 
-            # Test /api/v1/analytics/summary (with API key if set)
+            # Test /api/v1/analytics/summary (via HTTPS with Host header)
             SUMMARY=$(curl -skL -o /dev/null -w '%{http_code}' \
+              -H "Host: smartdatapulse.tech" \
               -H "X-API-Key: ${API_KEY:-}" \
               https://localhost/api/v1/analytics/summary 2>/dev/null || echo "000")
             if [ "$SUMMARY" != "200" ] && [ "$SUMMARY" != "401" ]; then
@@ -213,8 +215,9 @@ jobs:
               echo "PASS: /api/v1/analytics/summary ($SUMMARY)"
             fi
 
-            # Test /api/v1/reports
+            # Test /api/v1/reports (via HTTPS with Host header)
             REPORTS=$(curl -skL -o /dev/null -w '%{http_code}' \
+              -H "Host: smartdatapulse.tech" \
               -H "X-API-Key: ${API_KEY:-}" \
               https://localhost/api/v1/reports 2>/dev/null || echo "000")
             if [ "$REPORTS" != "200" ] && [ "$REPORTS" != "401" ]; then

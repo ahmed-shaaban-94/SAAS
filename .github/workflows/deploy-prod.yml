@@ -170,18 +170,18 @@ jobs:
               -f docker-compose.prod.yml \
               pull
 
-            # Deploy
+            # Deploy — recreate all services to ensure nginx picks up new upstreams
             echo "=== Starting deployment ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
-              up -d --remove-orphans
+              up -d --remove-orphans --force-recreate
 
-            # Health check — API (24 attempts × 10s = 4 min)
+            # Health check — API via nginx internal port (bypasses SSL/server_name)
             echo "=== Health check: API ==="
             API_OK=false
             for i in $(seq 1 24); do
-              HTTP_CODE=$(curl -skL -o /dev/null -w '%{http_code}' --connect-timeout 5 https://localhost/health 2>/dev/null || echo "000")
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8080/health 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "API health check PASSED on attempt $i"
                 API_OK=true
@@ -191,11 +191,11 @@ jobs:
               sleep 10
             done
 
-            # Health check — Frontend
+            # Health check — Frontend via HTTPS (tests full nginx → frontend path)
             echo "=== Health check: Frontend ==="
             FE_OK=false
             for i in $(seq 1 12); do
-              HTTP_CODE=$(curl -skL -o /dev/null -w '%{http_code}' --connect-timeout 5 https://localhost 2>/dev/null || echo "000")
+              HTTP_CODE=$(curl -skL -o /dev/null -w '%{http_code}' --connect-timeout 5 -H "Host: smartdatapulse.tech" https://localhost 2>/dev/null || echo "000")
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "Frontend health check PASSED on attempt $i"
                 FE_OK=true
@@ -209,7 +209,7 @@ jobs:
             echo "=== Smoke tests ==="
             SMOKE_OK=true
 
-            READY=$(curl -skL -o /dev/null -w '%{http_code}' https://localhost/health/ready 2>/dev/null || echo "000")
+            READY=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health/ready 2>/dev/null || echo "000")
             if [ "$READY" != "200" ]; then
               echo "FAIL: /health/ready → $READY"
               SMOKE_OK=false
@@ -218,7 +218,7 @@ jobs:
             fi
 
             # Check DB connectivity via health/ready (returns 503 if DB down)
-            HEALTH_BODY=$(curl -skL https://localhost/health/ready 2>/dev/null || echo "{}")
+            HEALTH_BODY=$(curl -s http://localhost:8080/health/ready 2>/dev/null || echo "{}")
             echo "Health response: $HEALTH_BODY"
 
             echo "=== Container Status ==="
@@ -265,7 +265,7 @@ jobs:
 
                 # Verify rollback
                 sleep 15
-                ROLLBACK_CHECK=$(curl -skL -o /dev/null -w '%{http_code}' --connect-timeout 5 https://localhost/health 2>/dev/null || echo "000")
+                ROLLBACK_CHECK=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://localhost:8080/health 2>/dev/null || echo "000")
                 echo "Rollback health check: HTTP $ROLLBACK_CHECK"
               fi
               exit 1
