@@ -60,7 +60,7 @@ jobs:
     name: Deploy to Staging
     needs: [build-push]
     runs-on: ubuntu-latest
-    environment: staging
+    environment: deploy
     steps:
       - uses: actions/checkout@v4
 
@@ -79,17 +79,19 @@ jobs:
           API_KEY: ${{ secrets.API_KEY }}
           PIPELINE_WEBHOOK_SECRET: ${{ secrets.PIPELINE_WEBHOOK_SECRET }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET
+          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD
           script: |
             set -e
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             export IMAGE_TAG=staging
-            # API_KEY, PIPELINE_WEBHOOK_SECRET, NEXTAUTH_SECRET are available as env vars
-            # (passed via envs: — not in shell history)
+            # Secrets are available as env vars (passed via envs: — not in shell history)
+            export POSTGRES_PASSWORD REDIS_PASSWORD
 
             # Save current image digests for rollback
             echo "=== Saving current state for rollback ==="
@@ -110,12 +112,19 @@ jobs:
               -f docker-compose.prod.yml \
               pull
 
-            # Deploy
+            # Deploy — allow non-zero exit so the health-check loop below
+            # can run and dump diagnostic logs on failure instead of aborting.
             echo "=== Starting deployment ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
-              up -d --remove-orphans
+              up -d --remove-orphans || echo "::warning::docker compose up exited non-zero — checking health..."
+
+            # Immediate diagnostics — surface the real error before waiting
+            echo "=== Container status after up ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps || true
+            echo "=== API logs (startup) ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=80 api 2>&1 || true
 
             # Health check — API
             echo "=== Health check: API ==="

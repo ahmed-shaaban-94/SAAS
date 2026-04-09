@@ -45,11 +45,15 @@ services:
       - "127.0.0.1:8000:8000"
     command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2"]
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')\""]
+      # Use /health/live (liveness) not /health/ready (readiness).
+      # Readiness depends on DB+Redis, which may take time on cold start.
+      # Docker only needs to know the process is alive; the deploy script
+      # smoke-tests /health/ready separately after all services are up.
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')\""]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 45s
+      retries: 12
+      start_period: 60s
     deploy:
       resources:
         limits:
