@@ -30,6 +30,8 @@ _HOOK_DEF_RE = re.compile(
 )
 _API_FETCH_RE = re.compile(r"""['"`](/api/[^'"`]+)['"`]""")
 _SWR_KEY_RE = re.compile(r"""useSWR\w*\(\s*['"`]?([^'"`),\s]+)""")
+# JSX usage: <ComponentName, <ComponentName>, <ComponentName />
+_JSX_USE_RE = re.compile(r"""<([A-Z][A-Za-z0-9]*)[\s/>]""")
 
 
 def _detect_kind(name: str, file_path: str) -> str:
@@ -163,6 +165,29 @@ def analyze_file(file_path: str, project_root: str) -> None:
             )
             for sym_id in symbol_ids.values():
                 store.add_edge(sym_id, ep_id, "calls")
+
+    # Extract JSX component usage: <ComponentName → "calls" edge from this file's symbols
+    for match in _JSX_USE_RE.finditer(content):
+        jsx_name = match.group(1)
+        # Skip HTML-like tags that start with uppercase but are not components (rare)
+        if jsx_name in symbol_ids:
+            continue  # self-reference, skip
+        existing = store.find_symbol(jsx_name, kind="component")
+        if not existing:
+            existing = store.find_symbol(jsx_name, kind="hook")
+        if existing:
+            for sym_id in symbol_ids.values():
+                store.add_edge(sym_id, existing[0]["id"], "calls")
+
+    # Next.js route convention: link *Loading component to its sibling page
+    # e.g. alerts/loading.tsx (AlertsLoading) → alerts/page.tsx symbols
+    if "loading" in rel_path and symbol_ids:
+        # Find the page.tsx in the same directory
+        page_path = rel_path.replace("loading.tsx", "page.tsx").replace("loading.ts", "page.ts")
+        page_syms = store.find_by_file(page_path)
+        for loading_id in symbol_ids.values():
+            for page_sym in page_syms:
+                store.add_edge(loading_id, page_sym["id"], "depends_on")
 
 
 def analyze_frontend_project(project_root: str) -> int:
