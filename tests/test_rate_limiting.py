@@ -40,6 +40,4 @@ def test_rate_limit_default_is_sixty_per_minute():
         for item in grp
         if hasattr(item, "limit")
     ]
-    assert found, (
-        f"Expected rate limit of {expected_amounts}/min, got {actual}"
-    )
+    assert found, f"Expected rate limit of {expected_amounts}/min, got {actual}"
