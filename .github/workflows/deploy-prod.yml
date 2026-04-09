@@ -143,17 +143,18 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          DB_READER_PASSWORD: ${{ secrets.DB_READER_PASSWORD }}
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD
+          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
             export IMAGE_TAG="${{ needs.build-push.outputs.image_tag }}"
             # Secrets are available as env vars (passed via envs: — not in shell history)
-            export POSTGRES_PASSWORD REDIS_PASSWORD
+            export POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
 
             # Save current state for rollback
             echo "=== Saving rollback state ==="

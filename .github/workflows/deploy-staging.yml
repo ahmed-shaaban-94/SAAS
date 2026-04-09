@@ -115,17 +115,18 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          DB_READER_PASSWORD: ${{ secrets.DB_READER_PASSWORD }}
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD
+          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD
           script: |
             set -e
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             export IMAGE_TAG=staging
             # Secrets are available as env vars (passed via envs: — not in shell history)
-            export POSTGRES_PASSWORD REDIS_PASSWORD
+            export POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
 
             # Save current image digests for rollback
             echo "=== Saving current state for rollback ==="
