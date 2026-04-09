@@ -27,7 +27,7 @@ def _make_limiter() -> Limiter:
     """
     redis_url = ""
     try:
-        from datapulse.core.config import get_settings
+        from datapulse.config import get_settings
 
         redis_url = get_settings().redis_url
     except Exception as exc:

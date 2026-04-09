@@ -100,7 +100,8 @@ class PipelineService:
             rows_loaded=rows_loaded,
         )
         result = self._repo.update_run(run_id, update)
-        cache_bump_version(str(run_id))
+        if result is not None:
+            cache_bump_version(str(run_id))
         return result
 
     def fail_run(
@@ -127,7 +128,8 @@ class PipelineService:
             error_type="pipeline_error",
         )
         result = self._repo.update_run(run_id, update)
-        cache_bump_version(str(run_id))
+        if result is not None:
+            cache_bump_version(str(run_id))
         return result
 
     def get_run(self, run_id: UUID) -> PipelineRunResponse | None:
