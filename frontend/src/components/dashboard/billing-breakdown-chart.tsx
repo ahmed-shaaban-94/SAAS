@@ -84,9 +84,21 @@ function HorizontalBarInner({
   );
 }
 
-/** Custom label showing value + percentage at the end of each bar */
-function BarLabel(props: any) {
-  const { x, y, width, height: barHeight, value, index, theme } = props;
+/** Custom label showing value + percentage at the end of each bar.
+ *  Recharts injects x/y/width/height/value/index at render time. */
+interface BarLabelProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  value?: number;
+  index?: number;
+  theme: { tickFill: string };
+  content?: { props?: { data?: Array<{ pct?: number }> } };
+}
+
+function BarLabel(props: BarLabelProps) {
+  const { x = 0, y = 0, width = 0, height: barHeight = 0, value = 0, index = 0, theme } = props;
   // Access the chart data from the parent — recharts passes the entry via props
   const entry = props.content?.props?.data?.[index];
   const pct = entry?.pct;

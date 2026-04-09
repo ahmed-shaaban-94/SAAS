@@ -106,7 +106,6 @@ def quality_api_client():
     # Override all deps so no real DB connection is attempted
     app.dependency_overrides[get_settings] = lambda: clean_settings
     app.dependency_overrides[deps.get_quality_service] = lambda: mock_quality_svc
-    app.dependency_overrides[deps.get_db_session] = lambda: MagicMock()
     app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
     app.dependency_overrides[deps.get_pipeline_service] = lambda: MagicMock()
     app.dependency_overrides[deps.get_pipeline_executor] = lambda: MagicMock()

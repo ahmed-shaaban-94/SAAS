@@ -155,8 +155,8 @@ export const WaterfallChart = memo(function WaterfallChart({ data }: WaterfallCh
               borderRadius: 8,
               fontSize: 12,
             }}
-            formatter={(value: number, _name: string, props: any) => [
-              `${formatCurrency(value)} (${formatPercent(props.payload.impactPct)})`,
+            formatter={(value: number, _name: string, props: { payload?: { impactPct: number } }) => [
+              `${formatCurrency(value)} (${formatPercent(props.payload?.impactPct ?? 0)})`,
               "Impact",
             ]}
             labelFormatter={(label) => {

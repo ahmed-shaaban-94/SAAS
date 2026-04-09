@@ -33,7 +33,6 @@ def mock_executor_and_client():
     mock_exec = MagicMock()
     app.dependency_overrides[get_settings] = lambda: clean_settings
     app.dependency_overrides[get_pipeline_executor] = lambda: mock_exec
-    app.dependency_overrides[deps.get_db_session] = lambda: MagicMock()
     app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
     app.dependency_overrides[get_current_user] = lambda: _dev_user
     app.dependency_overrides[require_pipeline_token] = lambda: None

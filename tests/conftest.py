@@ -218,7 +218,6 @@ def api_client():
     }
 
     app = create_app()
-    app.dependency_overrides[deps.get_db_session] = lambda: mock_session
     app.dependency_overrides[deps.get_tenant_session] = lambda: mock_session
     app.dependency_overrides[deps.get_analytics_service] = lambda: mock_svc
     app.dependency_overrides[get_current_user] = lambda: _dev_user
@@ -282,7 +281,6 @@ def pipeline_api_client():
     from datapulse.api.app import create_app
 
     app = create_app()
-    app.dependency_overrides[deps.get_db_session] = lambda: mock_session
     app.dependency_overrides[deps.get_tenant_session] = lambda: mock_session
     app.dependency_overrides[deps.get_pipeline_service] = lambda: mock_pl_svc
     app.dependency_overrides[get_current_user] = lambda: _dev_user

@@ -362,7 +362,6 @@ class TestAILightEndpoints:
 
         app = create_app()
         app.dependency_overrides[get_ai_light_service] = lambda: mock_svc
-        app.dependency_overrides[deps.get_db_session] = lambda: MagicMock()
         app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
         app.dependency_overrides[get_current_user] = lambda: _dev_user
         yield TestClient(app, headers={"X-API-Key": "test-api-key"})

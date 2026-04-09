@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class NotificationResponse(BaseModel):
@@ -23,11 +23,3 @@ class NotificationCount(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     unread: int
-
-
-class CreateNotification(BaseModel):
-    type: str = Field(..., pattern="^(urgent|info|success)$")
-    title: str = Field(..., min_length=1, max_length=200)
-    message: str = Field(..., min_length=1, max_length=1000)
-    link: str | None = None
-    user_id: str | None = None

@@ -1,5 +1,15 @@
 import type { AuthOptions } from "next-auth";
 import type { JWT } from "next-auth/jwt";
+import type { OAuthConfig } from "next-auth/providers/oauth";
+
+/** Auth0 OIDC profile shape */
+interface Auth0Profile {
+  sub: string;
+  name?: string;
+  nickname?: string;
+  email?: string;
+  picture?: string;
+}
 
 // Auth0 configuration
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || "";
@@ -63,7 +73,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   }
 }
 
-const auth0Provider: any = {
+const auth0Provider: OAuthConfig<Auth0Profile> = {
   id: "auth0",
   name: "Auth0",
   type: "oauth",
@@ -78,7 +88,7 @@ const auth0Provider: any = {
   },
   idToken: true,
   checks: ["pkce", "state"],
-  profile(profile: any) {
+  profile(profile: Auth0Profile) {
     return {
       id: profile.sub,
       name: profile.name ?? profile.nickname,

@@ -49,7 +49,6 @@ def _setup_app_overrides(app, mock_service):
     clean_settings = Settings(_env_file=None, api_key="test-api-key", database_url="")
     app.dependency_overrides[get_settings] = lambda: clean_settings
     app.dependency_overrides[get_pipeline_service] = lambda: mock_service
-    app.dependency_overrides[deps.get_db_session] = lambda: MagicMock()
     app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
     app.dependency_overrides[get_current_user] = lambda: _dev_user
     app.dependency_overrides[require_pipeline_token] = lambda: None

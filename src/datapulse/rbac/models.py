@@ -20,12 +20,6 @@ class RoleResponse(BaseModel):
     is_system: bool
 
 
-class PermissionResponse(BaseModel):
-    permission_key: str
-    category: str
-    description: str
-
-
 class RoleWithPermissions(RoleResponse):
     permissions: list[str] = Field(default_factory=list)
 

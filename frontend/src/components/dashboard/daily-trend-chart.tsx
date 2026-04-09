@@ -103,7 +103,7 @@ function TrendChartInner({
   activeIndex,
 }: TrendChartInnerProps) {
   const handleMouseMove = useCallback(
-    (state: any) => {
+    (state: { activeTooltipIndex?: number }) => {
       if (state?.activeTooltipIndex !== undefined && onMouseMove) {
         onMouseMove(state.activeTooltipIndex);
       }

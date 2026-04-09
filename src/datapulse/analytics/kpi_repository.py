@@ -313,8 +313,7 @@ class KpiRepository:
     def _significance_from_history(raw_history) -> str | None:
         """Compute significance from a JSON array of historical values.
 
-        Reuses the same z-score logic as _compute_growth_significance
-        but operates on pre-fetched data from the unified CTE — no extra queries.
+        Uses z-score logic on pre-fetched data from the unified CTE — no extra queries.
         """
         if raw_history is None:
             return None
@@ -332,79 +331,6 @@ class KpiRepository:
                 growths.append(g)
         if len(growths) < 3:
             return None
-        current_growth = growths[-1]
-        z = compute_z_score(current_growth, growths)
-        return significance_level(z)
-
-    def _compute_growth_significance(self, target_date: date, kind: str) -> str | None:
-        """Compute statistical significance for MoM or YoY growth.
-
-        Looks up the last 12 monthly MTD values (for MoM) or last 5 yearly YTD
-        values (for YoY) and computes a z-score of the current growth rate vs
-        the historical distribution of growth rates.
-        """
-        if kind == "mom":
-            # Get last 12 months' MTD amounts on the same day-of-month
-            # Uses date arithmetic instead of EXTRACT to allow index usage
-            stmt = text("""
-                SELECT mtd_gross_amount
-                FROM public_marts.metrics_summary
-                WHERE full_date IN (
-                    SELECT (CAST(:td AS date) - (n || ' months')::interval)::date
-                    FROM generate_series(1, 12) AS n
-                )
-                ORDER BY full_date DESC
-            """)
-        else:  # yoy
-            # Get last 5 years' YTD amounts on the same month+day
-            stmt = text("""
-                SELECT ytd_gross_amount
-                FROM public_marts.metrics_summary
-                WHERE full_date IN (
-                    SELECT (CAST(:td AS date) - (n || ' years')::interval)::date
-                    FROM generate_series(1, 5) AS n
-                )
-                ORDER BY full_date DESC
-            """)
-
-        try:
-            rows = self._session.execute(stmt, {"td": target_date}).fetchall()
-        except Exception as exc:
-            log.error(
-                "growth_significance_query_failed",
-                target_date=str(target_date),
-                kind=kind,
-                error=str(exc),
-            )
-            return None
-        if len(rows) < 3:
-            return None
-
-        values: list[Decimal] = []
-        for r in rows:
-            if r[0] is not None:
-                try:
-                    values.append(Decimal(str(r[0])))
-                except Exception as exc:
-                    log.warning(
-                        "growth_significance_decimal_error", value=str(r[0]), error=str(exc)
-                    )
-                    continue
-        if len(values) < 3:
-            return None
-
-        # Compute growth rates between consecutive values (reversed to chronological)
-        values.reverse()
-        growths: list[Decimal] = []
-        for i in range(1, len(values)):
-            g = safe_growth(values[i], values[i - 1])
-            if g is not None:
-                growths.append(g)
-
-        if len(growths) < 3:
-            return None
-
-        # Current growth rate (last growth in the series)
         current_growth = growths[-1]
         z = compute_z_score(current_growth, growths)
         return significance_level(z)

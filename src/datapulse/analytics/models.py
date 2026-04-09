@@ -512,39 +512,6 @@ class HealthDistribution(BaseModel):
     total: int = 0
 
 
-class HealthMovement(BaseModel):
-    """Customer movement between health bands."""
-
-    model_config = ConfigDict(frozen=True)
-
-    customer_key: int
-    customer_name: str
-    from_band: str
-    to_band: str
-    score_change: JsonDecimal
-
-
-class AnomalyAlert(BaseModel):
-    """Detected anomaly in a metric."""
-
-    model_config = ConfigDict(frozen=True)
-
-    id: int = 0
-    metric: str
-    dimension: str | None = None
-    dimension_key: int | None = None
-    dimension_name: str | None = None
-    period: date
-    actual_value: JsonDecimal
-    expected_value: JsonDecimal
-    z_score: JsonDecimal | None = None
-    severity: str  # "critical" | "high" | "medium" | "low"
-    direction: str  # "spike" | "drop"
-    is_suppressed: bool = False
-    suppression_reason: str | None = None
-    acknowledged: bool = False
-
-
 class ChurnPrediction(BaseModel):
     """Customer churn prediction result."""
 

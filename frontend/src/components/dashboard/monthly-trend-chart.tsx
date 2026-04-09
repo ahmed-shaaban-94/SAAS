@@ -103,7 +103,7 @@ function MonthlyChartInner({
   const maxValue = Math.max(...chartData.map((d) => d.value));
 
   const handleMouseMove = useCallback(
-    (state: any) => {
+    (state: { activeTooltipIndex?: number }) => {
       if (state?.activeTooltipIndex !== undefined && onMouseMove) {
         onMouseMove(state.activeTooltipIndex);
       }
