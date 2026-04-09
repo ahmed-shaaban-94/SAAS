@@ -60,7 +60,7 @@ jobs:
     name: Deploy to Staging
     needs: [build-push]
     runs-on: ubuntu-latest
-    environment: staging
+    environment: deploy
     steps:
       - uses: actions/checkout@v4
 
