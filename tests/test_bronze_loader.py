@@ -184,10 +184,13 @@ class TestReadAndConcat:
         for f in files:
             f.touch()
 
-        with patch(
-            "datapulse.bronze.loader.read_single_file",
-            side_effect=Exception("read error"),
-        ), pytest.raises(ValueError, match="All.*file"):
+        with (
+            patch(
+                "datapulse.bronze.loader.read_single_file",
+                side_effect=Exception("read error"),
+            ),
+            pytest.raises(ValueError, match="All.*file"),
+        ):
             read_and_concat(files)
 
     def test_all_fail_error_message_contains_count(self, tmp_path):
@@ -195,10 +198,13 @@ class TestReadAndConcat:
         files = [tmp_path / "Q1.2023.xlsx"]
         files[0].touch()
 
-        with patch(
-            "datapulse.bronze.loader.read_single_file",
-            side_effect=Exception("boom"),
-        ), pytest.raises(ValueError, match="1"):
+        with (
+            patch(
+                "datapulse.bronze.loader.read_single_file",
+                side_effect=Exception("boom"),
+            ),
+            pytest.raises(ValueError, match="1"),
+        ):
             read_and_concat(files)
 
     def test_partial_failure_succeeds(self, tmp_path):

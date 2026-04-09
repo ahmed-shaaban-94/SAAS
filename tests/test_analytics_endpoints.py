@@ -253,9 +253,7 @@ class TestCustomerHealth:
         assert resp.json() == []
         mock_service.get_customer_health.assert_called_once_with(band=None, limit=50)
 
-    def test_customer_health_with_data(
-        self, client: TestClient, mock_service: MagicMock
-    ) -> None:
+    def test_customer_health_with_data(self, client: TestClient, mock_service: MagicMock) -> None:
         mock_service.get_customer_health.return_value = [
             CustomerHealthScore(
                 customer_key=1,
