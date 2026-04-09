@@ -132,9 +132,7 @@ def _check_dbt_freshness() -> dict:
     """Check when dbt models were last refreshed."""
     try:
         with get_engine().connect() as conn:
-            row = conn.execute(
-                text("SELECT MAX(updated_at) FROM gold.metrics_summary")
-            ).fetchone()
+            row = conn.execute(text("SELECT MAX(updated_at) FROM gold.metrics_summary")).fetchone()
         last_updated = row[0] if row and row[0] else None
         if last_updated is None:
             return {"status": "unknown", "last_updated_at": None}
@@ -162,9 +160,7 @@ def _check_data_freshness() -> dict:
     """Check last successful data load into bronze layer."""
     try:
         with get_engine().connect() as conn:
-            row = conn.execute(
-                text("SELECT MAX(loaded_at) FROM bronze.sales")
-            ).fetchone()
+            row = conn.execute(text("SELECT MAX(loaded_at) FROM bronze.sales")).fetchone()
         last_loaded = row[0] if row and row[0] else None
         if last_loaded is None:
             return {"status": "unknown", "last_loaded_at": None}
@@ -215,10 +211,7 @@ def health_check(
 
     # Determine overall status
     db_ok = checks["database"]["status"] == "ok"
-    all_ok = all(
-        c["status"] in ("ok", "disabled", "stale", "unknown")
-        for c in checks.values()
-    )
+    all_ok = all(c["status"] in ("ok", "disabled", "stale", "unknown") for c in checks.values())
 
     if not db_ok:
         overall = "unhealthy"
