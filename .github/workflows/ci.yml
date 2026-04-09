@@ -76,7 +76,7 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install --require-hashes -r requirements-dev.lock
       - name: Run migrations
         env:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
