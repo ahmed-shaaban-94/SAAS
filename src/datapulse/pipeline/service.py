@@ -11,7 +11,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from datapulse.cache import cache_invalidate_pattern
+from datapulse.cache import cache_bump_version
 from datapulse.logging import get_logger
 from datapulse.pipeline.models import (
     PipelineRunCreate,
@@ -100,7 +100,7 @@ class PipelineService:
             rows_loaded=rows_loaded,
         )
         result = self._repo.update_run(run_id, update)
-        cache_invalidate_pattern("datapulse:analytics:*")
+        cache_bump_version(str(run_id))
         return result
 
     def fail_run(
@@ -127,7 +127,7 @@ class PipelineService:
             error_type="pipeline_error",
         )
         result = self._repo.update_run(run_id, update)
-        cache_invalidate_pattern("datapulse:analytics:*")
+        cache_bump_version(str(run_id))
         return result
 
     def get_run(self, run_id: UUID) -> PipelineRunResponse | None:
