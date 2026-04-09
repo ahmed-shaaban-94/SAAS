@@ -149,6 +149,20 @@ docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/da
 - **Print Report**: `/dashboard/report` page with print-optimized layout, `@media print` styles in globals.css
 - **Mobile**: Touch swipe-to-close on sidebar drawer (60px threshold)
 
+## Deployment
+
+- When deploying to the droplet, always check for `docker-compose.override.yml` that may force dev mode. Remove or rename it before production builds.
+- Always use `docker compose build --no-cache` when deploying code changes, and verify containers are running the latest image after deploy.
+- Each conversation/feature should use a separate git branch. Create a descriptive branch name before starting work.
+
+## Code Quality
+
+- After making code changes, always run CI lint checks locally before pushing. Use `ruff check src/ tests/` (Python) and `npx tsc --noEmit` (TypeScript) to catch failures early.
+
+## Data Pipeline
+
+- When fixing dbt models, verify that all referenced columns actually exist in the source data before applying transformations. Check both staging and production schemas.
+
 ## Future Phases
 
 Phases 1.3–2.8 + The Great Fix + Enhancements 2-3 + Phase 4 = all DONE.
