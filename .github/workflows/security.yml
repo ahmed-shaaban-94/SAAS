@@ -102,7 +102,7 @@ jobs:
       - name: Generate SBOM (CycloneDX)
         run: |
           pip install cyclonedx-bom
-          cyclonedx-py environment -o sbom.json --sv JSON
+          cyclonedx-py environment -o sbom.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
