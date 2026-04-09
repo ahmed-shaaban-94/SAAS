@@ -37,6 +37,7 @@ dependencies = [
     "openpyxl>=3.0,<4",
     "reportlab>=4.0,<5",
     "python-multipart>=0.0.7,<1",
+    "prometheus-fastapi-instrumentator>=6.0,<8",
 ]
 
 [project.optional-dependencies]
