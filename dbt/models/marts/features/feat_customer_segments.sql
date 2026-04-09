@@ -29,7 +29,7 @@ WITH customer_rfm_raw AS (
         (CURRENT_DATE - MAX(d.full_date))::INT             AS days_since_last,
         -- Frequency: distinct invoices
         COUNT(DISTINCT f.invoice_id)::INT                  AS frequency,
-        -- Monetary: total net spend
+        -- Monetary: total gross sales
         ROUND(SUM(f.sales), 2)                              AS monetary,
         -- Additional context
         MIN(d.full_date)                                   AS first_purchase_date,

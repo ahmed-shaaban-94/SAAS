@@ -65,7 +65,7 @@ UNION ALL
 
 SELECT
     -1                  AS product_key,
-    1                   AS tenant_id,
+    t.tenant_id,
     '__UNKNOWN__'       AS drug_code,
     'Unknown'           AS drug_name,
     'Unknown'           AS drug_brand,
@@ -78,3 +78,4 @@ SELECT
     'Unknown'           AS drug_segment,
     'Unknown'           AS buyer,
     'Other'             AS origin
+FROM (SELECT DISTINCT tenant_id FROM {{ ref('stg_sales') }}) t

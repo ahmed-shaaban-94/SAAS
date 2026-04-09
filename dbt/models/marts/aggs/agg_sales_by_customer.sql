@@ -54,6 +54,7 @@ SELECT
     cm.total_quantity,
     cm.total_sales,
     cm.total_discount,
+    cm.total_net_amount,
     cm.transaction_count,
     cm.return_count,
     cm.unique_products,

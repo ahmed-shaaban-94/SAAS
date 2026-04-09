@@ -15,18 +15,18 @@ export interface Notification {
 
 export function useNotifications(limit = 20) {
   const { data, error, isLoading, mutate } = useSWR<Notification[]>(
-    swrKey("/api/v1/notifications", { limit }),
-    () => fetchAPI<Notification[]>("/api/v1/notifications", { limit }),
+    swrKey("/notifications", { limit }),
+    () => fetchAPI<Notification[]>("/notifications", { limit }),
     { refreshInterval: 30000 },
   );
 
   const markRead = async (id: number) => {
-    await postAPI(`/api/v1/notifications/${id}/read`);
+    await postAPI(`/notifications/${id}/read`);
     mutate();
   };
 
   const markAllRead = async () => {
-    await postAPI("/api/v1/notifications/read-all");
+    await postAPI("/notifications/read-all");
     mutate();
   };
 
@@ -35,8 +35,8 @@ export function useNotifications(limit = 20) {
 
 export function useUnreadCount() {
   const { data, mutate } = useSWR<{ unread: number }>(
-    swrKey("/api/v1/notifications/count"),
-    () => fetchAPI<{ unread: number }>("/api/v1/notifications/count"),
+    swrKey("/notifications/count"),
+    () => fetchAPI<{ unread: number }>("/notifications/count"),
     { refreshInterval: 15000 },
   );
 

@@ -576,11 +576,6 @@ html {
   right: 0;
 }
 
-[dir="rtl"] .fixed.left-3 {
-  left: auto;
-  right: 0.75rem;
-}
-
 [dir="rtl"] .fixed.left-4 {
   left: auto;
   right: 1rem;
@@ -642,52 +637,6 @@ html {
 @keyframes gentleFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
-}
-
-/* --- Hero animated bars with heartbeat glow --- */
-.hero-bar {
-  height: 0;
-  animation: heroBarGrow 2s ease-out forwards, heroHeartbeat 2.4s ease-in-out 2.5s infinite;
-}
-@keyframes heroBarGrow {
-  from { height: 0; }
-  to { height: var(--bar-height); }
-}
-/* Heartbeat: double-pulse then rest (like a real heartbeat) */
-@keyframes heroHeartbeat {
-  0%   { height: var(--bar-height); filter: brightness(1) drop-shadow(0 0 0 transparent); }
-  8%   { height: calc(var(--bar-height) * 1.06); filter: brightness(1.3) drop-shadow(0 0 8px rgba(229, 160, 13, 0.5)); }
-  16%  { height: var(--bar-height); filter: brightness(1) drop-shadow(0 0 2px transparent); }
-  24%  { height: calc(var(--bar-height) * 1.04); filter: brightness(1.2) drop-shadow(0 0 6px rgba(229, 160, 13, 0.3)); }
-  32%  { height: var(--bar-height); filter: brightness(1) drop-shadow(0 0 0 transparent); }
-  100% { height: var(--bar-height); filter: brightness(1) drop-shadow(0 0 0 transparent); }
-}
-
-/* --- Hero dashboard heartbeat glow --- */
-.hero-dashboard-glow {
-  animation: dashboardHeartbeat 2.4s ease-in-out 3s infinite;
-}
-@keyframes dashboardHeartbeat {
-  0%   { box-shadow: 0 0 0 rgba(229, 160, 13, 0); }
-  8%   { box-shadow: 0 0 30px rgba(229, 160, 13, 0.15), 0 0 60px rgba(229, 160, 13, 0.05); }
-  16%  { box-shadow: 0 0 0 rgba(229, 160, 13, 0); }
-  24%  { box-shadow: 0 0 20px rgba(229, 160, 13, 0.1), 0 0 40px rgba(229, 160, 13, 0.03); }
-  32%  { box-shadow: 0 0 0 rgba(229, 160, 13, 0); }
-  100% { box-shadow: 0 0 0 rgba(229, 160, 13, 0); }
-}
-
-/* --- Hero pulse line --- */
-.hero-pulse-line {
-  stroke-dasharray: 1200;
-  stroke-dashoffset: 1200;
-  animation: heroLineDraw 3s ease-in-out forwards, heroLineGlow 5s ease-in-out 3s infinite;
-}
-@keyframes heroLineDraw {
-  to { stroke-dashoffset: 0; }
-}
-@keyframes heroLineGlow {
-  0%, 100% { opacity: 0.12; }
-  50% { opacity: 0.3; }
 }
 
 /* --- Shimmer CTA button --- */
@@ -854,66 +803,6 @@ html {
 }
 
 /* ═══════════════════════════════════════════════
-   Mobile responsive enhancements
-   ═══════════════════════════════════════════════ */
-
-/* Hide scrollbar for filter preset horizontal scroll */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* Safe area padding for notched devices (iPhone X+, etc.) */
-@supports (padding: env(safe-area-inset-bottom)) {
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-}
-
-/* Ensure touch targets are at least 44px on mobile */
-@media (max-width: 640px) {
-  /* Prevent text size adjust on orientation change */
-  html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-
-  /* Improve touch targets for filter buttons */
-  .filter-bar button {
-    min-height: 36px;
-  }
-
-  /* Reduce section spacing on mobile */
-  .mt-10 {
-    margin-top: 1.75rem;
-  }
-
-  /* Disable hover effects that cause sticky states on touch */
-  .glow-card:hover {
-    box-shadow: none;
-    border-color: inherit;
-  }
-
-  /* Prevent zoom on input focus (iOS) */
-  input[type="date"],
-  input[type="text"],
-  input[type="search"],
-  select {
-    font-size: 16px;
-  }
-}
-
-/* Responsive chart container heights */
-@media (max-width: 640px) {
-  .recharts-responsive-container {
-    min-height: 220px;
-  }
-}
-
-/* ═══════════════════════════════════════════════
    Reduced motion
    ═══════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
@@ -938,13 +827,8 @@ html {
   .float-card,
   .cta-shimmer,
   .rotating-border::before,
-  .trust-scroll,
-  .hero-bar,
-  .hero-pulse-line {
+  .trust-scroll {
     animation: none;
-  }
-  .hero-bar {
-    height: var(--bar-height);
   }
   .cta-shimmer::before {
     display: none;

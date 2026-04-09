@@ -1,7 +1,16 @@
 {{
   config(
     materialized='table',
-    schema='public_marts',
+    schema='marts',
+    post_hook=[
+      "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
+      "ALTER TABLE {{ this }} FORCE ROW LEVEL SECURITY",
+      "DROP POLICY IF EXISTS owner_all ON {{ this }}",
+      "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
+      "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
+      "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
+      "CREATE INDEX IF NOT EXISTS idx_feat_customer_health_tenant_key ON {{ this }} (tenant_id, customer_key)"
+    ],
     tags=['analytics', 'customer_health']
   )
 }}
