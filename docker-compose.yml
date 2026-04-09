@@ -43,7 +43,7 @@ services:
       BILLING_BASE_URL: ${BILLING_BASE_URL:-https://smartdatapulse.tech}
     ports:
       - "127.0.0.1:8000:8000"
-    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2"]
+    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2", "--timeout-graceful-shutdown", "30"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')\""]
       interval: 10s
@@ -58,6 +58,7 @@ services:
     networks:
       - backend
       - frontend-net
+    stop_grace_period: 35s  # 30s uvicorn drain + 5s buffer before SIGKILL
 
   postgres:
     image: postgres:16-alpine
