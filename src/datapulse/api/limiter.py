@@ -30,7 +30,7 @@ def _make_limiter() -> Limiter:
         from datapulse.config import get_settings
 
         redis_url = get_settings().redis_url
-    except Exception as exc:
+    except (ImportError, ValueError, OSError) as exc:
         _log.warning("limiter_config_error — falling back to memory: %s", exc)
 
     if redis_url:

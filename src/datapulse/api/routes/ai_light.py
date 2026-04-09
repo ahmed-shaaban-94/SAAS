@@ -14,6 +14,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+import httpx
+
 from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative
 from datapulse.ai_light.service import AILightService
 from datapulse.api.deps import get_ai_light_service
@@ -50,7 +52,7 @@ def get_summary(
         raise HTTPException(status_code=503, detail="OpenRouter API key not configured")
     try:
         return service.generate_summary(target_date)
-    except Exception as exc:
+    except (httpx.HTTPError, OSError, ValueError) as exc:
         log.error("ai_summary_failed", error=str(exc), exc_info=True)
         raise HTTPException(status_code=502, detail="AI service temporarily unavailable") from exc
 
@@ -66,7 +68,7 @@ def get_anomalies(
     """Detect anomalies in daily sales data."""
     try:
         return service.detect_anomalies(start_date, end_date)
-    except Exception as exc:
+    except (httpx.HTTPError, OSError, ValueError) as exc:
         log.error("ai_anomalies_failed", error=str(exc), exc_info=True)
         raise HTTPException(status_code=502, detail="AI service temporarily unavailable") from exc
 
@@ -82,6 +84,6 @@ def get_changes(
     """Compare two dates and explain the key changes."""
     try:
         return service.explain_changes(current_date, previous_date)
-    except Exception as exc:
+    except (httpx.HTTPError, OSError, ValueError) as exc:
         log.error("ai_changes_failed", error=str(exc), exc_info=True)
         raise HTTPException(status_code=502, detail="AI service temporarily unavailable") from exc

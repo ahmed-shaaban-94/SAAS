@@ -18,6 +18,7 @@ import time
 import uuid
 
 import redis
+import sqlalchemy.exc
 from sqlalchemy import text
 
 from datapulse.config import get_settings
@@ -27,10 +28,14 @@ from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 
-# Job TTL in Redis (1 hour)
-_JOB_TTL = 3600
-# Hard timeout for query execution (5 minutes)
-_QUERY_TIMEOUT = 300
+def _job_ttl() -> int:
+    """Job TTL in Redis — reads from settings."""
+    return get_settings().query_job_ttl
+
+
+def _query_timeout() -> int:
+    """Hard timeout for query execution — reads from settings."""
+    return get_settings().query_execution_timeout
 
 
 def _get_job_client():
@@ -44,14 +49,14 @@ def _get_job_client():
         url = f"{parts[0]}/2" if len(parts) == 2 and parts[1].isdigit() else f"{base.rstrip('/')}/2"
 
         return redis.from_url(url, decode_responses=True, socket_timeout=2)
-    except Exception as exc:
+    except (redis.ConnectionError, redis.RedisError, OSError) as exc:
         log.error("job_redis_connect_error", error=str(exc))
         return None
 
 
 def _set_job(client, job_id: str, data: dict) -> None:
     """Write job state to Redis with TTL."""
-    client.setex(f"datapulse:query:{job_id}", _JOB_TTL, json.dumps(data))
+    client.setex(f"datapulse:query:{job_id}", _job_ttl(), json.dumps(data))
 
 
 def _run_query_sync(
@@ -113,7 +118,7 @@ def _run_query_sync(
                 "duration_ms": duration_ms,
             },
         )
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         session.rollback()
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
         error_msg = str(exc)
@@ -131,7 +136,7 @@ def _run_query_sync(
                     "duration_ms": duration_ms,
                 },
             )
-        except Exception as redis_exc:
+        except (redis.RedisError, OSError) as redis_exc:
             log.error(
                 "job_redis_write_error",
                 job_id=job_id,
@@ -191,7 +196,7 @@ def get_job_result(job_id: str) -> dict | None:
             submitted_at = data.get("submitted_at")
             if submitted_at is not None:
                 elapsed = time.time() - submitted_at
-                stale_threshold = _QUERY_TIMEOUT + 60
+                stale_threshold = _query_timeout() + 60
                 if elapsed > stale_threshold:
                     log.warning(
                         "stale_job_detected",
@@ -215,6 +220,6 @@ def get_job_result(job_id: str) -> dict | None:
                     return failed_data
 
         return data
-    except Exception as exc:
+    except (redis.RedisError, json.JSONDecodeError, OSError) as exc:
         log.error("job_get_error", job_id=job_id, error=str(exc))
         return None

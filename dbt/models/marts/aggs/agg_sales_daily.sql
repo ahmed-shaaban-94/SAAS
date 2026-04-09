@@ -11,7 +11,8 @@
             "CREATE POLICY owner_all ON {{ this }} FOR ALL TO datapulse USING (true) WITH CHECK (true)",
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
             "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
-            "CREATE INDEX IF NOT EXISTS idx_agg_sales_daily_date_key ON {{ this }} (date_key)"
+            "CREATE INDEX IF NOT EXISTS idx_agg_sales_daily_date_key ON {{ this }} (date_key)",
+            "CREATE INDEX IF NOT EXISTS idx_agg_daily_tenant_date ON {{ this }} (tenant_id, date_key)"
         ]
     )
 }}

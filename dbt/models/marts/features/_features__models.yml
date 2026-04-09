@@ -206,9 +206,21 @@ models:
         tests: [not_null]
       - name: date_key
         description: "Foreign key to dim_date"
-        tests: [not_null]
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
       - name: site_key
         description: "Foreign key to dim_site"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_site')
+              field: site_key
+      - name: daily_gross_amount
+        tests: [not_null]
+      - name: daily_transactions
         tests: [not_null]
       - name: daily_net_amount
         tests: [not_null]
@@ -234,12 +246,23 @@ models:
     columns:
       - name: tenant_id
         description: "Tenant identifier"
+        tests: [not_null]
       - name: customer_key
         description: "FK to dim_customer"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_key
       - name: health_score
         description: "Composite health score (0-100)"
+        tests: [not_null]
       - name: health_band
         description: "Thriving / Healthy / Needs Attention / At Risk / Critical"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Thriving', 'Healthy', 'Needs Attention', 'At Risk', 'Critical']
 
   # -- feat_churn_prediction ------------------------------------------------------
   - name: feat_churn_prediction

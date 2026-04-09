@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
+import sqlalchemy.exc
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -104,7 +105,7 @@ class QualityRepository:
                 row = self._session.execute(stmt, params).fetchone()
                 responses.append(self._row_to_response(row))
             self._session.commit()
-        except Exception as exc:
+        except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
             log.error("quality_checks_save_failed", error=str(exc))
             self._session.rollback()
             raise

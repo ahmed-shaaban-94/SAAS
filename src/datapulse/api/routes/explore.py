@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+import sqlalchemy.exc
+
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.rbac.dependencies import require_permission
@@ -127,7 +129,7 @@ def execute_explore_query(
             sql=sql if show_sql else "",
             truncated=truncated,
         )
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, ValueError, OSError) as exc:
         log.error("explore_query_failed", error=str(exc), model=body.model)
         raise HTTPException(
             status_code=500,

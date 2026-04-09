@@ -11,6 +11,8 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+import sqlalchemy.exc
+
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
@@ -32,7 +34,7 @@ def rollback_bronze(session: Session, run_id: UUID) -> int:
         session.commit()
         log.info("rollback_bronze_done", run_id=str(run_id), rows_deleted=deleted)
         return deleted
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         session.rollback()
         log.error("rollback_bronze_failed", run_id=str(run_id), error=str(exc))
         return 0
@@ -53,7 +55,7 @@ def rollback_forecasting(session: Session, run_id: UUID) -> int:
         session.commit()
         log.info("rollback_forecasting_done", run_id=str(run_id), rows_deleted=deleted)
         return deleted
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         session.rollback()
         log.error("rollback_forecasting_failed", run_id=str(run_id), error=str(exc))
         return 0

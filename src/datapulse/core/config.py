@@ -109,6 +109,15 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
 
+    # Infrastructure tuning (extracted from hardcoded values)
+    redis_socket_timeout: int = 2
+    redis_retry_interval: int = 15
+    jwks_cache_ttl: int = 3600
+    query_job_ttl: int = 3600
+    query_execution_timeout: int = 300
+    sse_poll_interval: int = 2
+    sse_max_duration: int = 600
+
     # Forecasting
     forecast: ForecastConfig = ForecastConfig()
 

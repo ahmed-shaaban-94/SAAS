@@ -278,7 +278,7 @@ jobs:
                 cd /app/dbt && \
                 dbt deps --profiles-dir . && \
                 dbt run --profiles-dir . \
-              " || echo "::warning::dbt run failed — data models may be stale"
+              " || { echo "::error::dbt run FAILED"; exit 1; }
 
       - name: Post-deploy status
         if: always()

@@ -25,6 +25,7 @@ interface KPICardProps {
   accentGradient?: string;
   sparkline?: TimeSeriesPoint[];
   tooltip?: string;
+  "aria-label"?: string;
 }
 
 function AnimatedValue({ value, numericValue, isCurrency, isPercent, isDecimal }: {
@@ -50,7 +51,7 @@ function AnimatedValue({ value, numericValue, isCurrency, isPercent, isDecimal }
   return <>{animated}</>;
 }
 
-export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, isDecimal, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
+export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, isDecimal, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip, "aria-label": ariaLabel }: KPICardProps) {
   const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
@@ -77,6 +78,7 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
 
   return (
     <div
+      aria-label={ariaLabel}
       className={cn(
         "group relative overflow-hidden rounded-xl border border-border p-4 sm:p-5",
         // Glass morphism

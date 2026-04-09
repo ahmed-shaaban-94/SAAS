@@ -13,6 +13,30 @@ from typing import Any
 
 import structlog
 
+try:
+    import redis as _redis_mod
+
+    _REDIS_CONN_ERRORS: tuple[type[BaseException], ...] = (
+        _redis_mod.ConnectionError,
+        _redis_mod.TimeoutError,
+        OSError,
+    )
+    _REDIS_OP_ERRORS: tuple[type[BaseException], ...] = (
+        _redis_mod.RedisError,
+        json.JSONDecodeError,
+        OSError,
+    )
+    _REDIS_WRITE_ERRORS: tuple[type[BaseException], ...] = (
+        _redis_mod.RedisError,
+        TypeError,
+        OSError,
+    )
+except ImportError:  # pragma: no cover
+    _redis_mod = None  # type: ignore[assignment]
+    _REDIS_CONN_ERRORS = (OSError,)
+    _REDIS_OP_ERRORS = (OSError,)
+    _REDIS_WRITE_ERRORS = (OSError,)
+
 from datapulse.config import get_settings
 
 logger = structlog.get_logger()
@@ -26,14 +50,14 @@ current_tenant_id: contextvars.ContextVar[str] = contextvars.ContextVar(
 
 _redis_client = None
 _last_attempt: float = 0
-_RETRY_INTERVAL = 15  # seconds before retrying a failed connection
 
 
 def get_redis_client():
     """Return the shared Redis client, or None if unavailable.
 
-    Retries connection after ``_RETRY_INTERVAL`` seconds if the previous
-    attempt failed, allowing recovery from transient startup issues.
+    Retries connection after ``settings.redis_retry_interval`` seconds
+    if the previous attempt failed, allowing recovery from transient
+    startup issues.
     """
     global _redis_client, _last_attempt
 
@@ -41,16 +65,16 @@ def get_redis_client():
         try:
             _redis_client.ping()
             return _redis_client
-        except Exception:
+        except _REDIS_CONN_ERRORS:
             _redis_client = None
             # fall through to reconnect
 
+    settings = get_settings()
     now = time.monotonic()
-    if _last_attempt and (now - _last_attempt) < _RETRY_INTERVAL:
+    if _last_attempt and (now - _last_attempt) < settings.redis_retry_interval:
         return None
 
     _last_attempt = now
-    settings = get_settings()
     if not settings.redis_url:
         logger.info("redis_disabled", detail="REDIS_URL is empty — caching disabled")
         return None
@@ -61,14 +85,14 @@ def get_redis_client():
         client = redis.from_url(
             settings.redis_url,
             decode_responses=True,
-            socket_connect_timeout=2,
-            socket_timeout=2,
+            socket_connect_timeout=settings.redis_socket_timeout,
+            socket_timeout=settings.redis_socket_timeout,
             retry_on_timeout=True,
         )
         client.ping()
         _redis_client = client
         logger.info("redis_connected", url=settings.redis_url.split("@")[-1])
-    except Exception as exc:
+    except _REDIS_CONN_ERRORS as exc:
         logger.warning("redis_unavailable", error=str(exc))
 
     return _redis_client
@@ -89,7 +113,7 @@ def cache_get(key: str) -> Any | None:
             return None
         logger.debug("cache_hit", key=key)
         return json.loads(raw)
-    except Exception as exc:
+    except _REDIS_OP_ERRORS as exc:
         logger.error("cache_get_error", key=key, error=str(exc))
         return None
 
@@ -103,7 +127,7 @@ def cache_set(key: str, value: Any, ttl: int | None = None) -> None:
         ttl = get_settings().redis_default_ttl
     try:
         client.setex(key, ttl, json.dumps(value, default=str))
-    except Exception as exc:
+    except _REDIS_WRITE_ERRORS as exc:
         logger.error("cache_set_error", key=key, error=str(exc))
 
 
@@ -122,7 +146,7 @@ def cache_invalidate_pattern(pattern: str) -> int:
             logger.info("cache_invalidated", pattern=pattern, count=deleted)
             return deleted
         return 0
-    except Exception as exc:
+    except _REDIS_OP_ERRORS as exc:
         logger.error("cache_invalidate_error", pattern=pattern, error=str(exc))
         return 0
 
@@ -144,7 +168,7 @@ def cache_bump_version(run_id: str) -> None:
     try:
         client.set(_VERSION_KEY, run_id)
         logger.info("cache_version_bumped", run_id=run_id)
-    except Exception as exc:
+    except _REDIS_OP_ERRORS as exc:
         logger.error("cache_bump_version_error", run_id=run_id, error=str(exc))
 
 
@@ -156,5 +180,5 @@ def get_cache_version() -> str:
     try:
         version = client.get(_VERSION_KEY)
         return version if version else "v0"
-    except Exception:
+    except _REDIS_OP_ERRORS:
         return "v0"

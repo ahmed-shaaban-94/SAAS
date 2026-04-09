@@ -13,6 +13,7 @@ from functools import partial
 from typing import Annotated
 from uuid import UUID
 
+import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
@@ -150,7 +151,7 @@ async def stream_run_progress(
 
                 try:
                     current = await loop.run_in_executor(None, service.get_run, run_id)
-                except Exception as exc:
+                except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
                     log.error("sse_poll_error", run_id=str(run_id), error=str(exc))
                     yield _sse_event("error", {"message": "Internal error polling run status"})
                     return
