@@ -29,7 +29,6 @@ from unittest.mock import MagicMock, patch
 
 from datapulse.api.deps import get_tenant_session
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -47,8 +47,8 @@ class UploadService:
 
         try:
             normalized_id = str(uuid.UUID(file_id))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid file ID format")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid file ID format") from exc
 
         matching = list(TEMP_DIR.glob(f"{normalized_id}.*"))
         if not matching:
@@ -99,8 +99,8 @@ class UploadService:
         for fid in file_ids:
             try:
                 normalized_fid = str(uuid.UUID(fid))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid file ID format")
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Invalid file ID format") from exc
 
             matching = list(TEMP_DIR.glob(f"{normalized_fid}.*"))
             if not matching:
