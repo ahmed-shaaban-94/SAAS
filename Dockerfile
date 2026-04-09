@@ -4,7 +4,7 @@ FROM python:3.12-slim-bookworm AS base
 WORKDIR /app
 
 # git needed for dbt package resolution, postgresql-client for migrations
-RUN apt-get update && apt-get install -y --no-install-recommends git postgresql-client \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends git postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip to fix known CVEs
