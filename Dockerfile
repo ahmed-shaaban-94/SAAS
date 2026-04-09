@@ -20,7 +20,8 @@ COPY migrations/ migrations/
 FROM base AS api
 
 COPY requirements.lock .
-RUN pip install --no-cache-dir --require-hashes -r requirements.lock
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock \
+    && pip install --no-cache-dir --no-deps .
 
 # Tell datapulse.lineage.parser where to find dbt models at runtime
 ENV APP_ROOT=/app
