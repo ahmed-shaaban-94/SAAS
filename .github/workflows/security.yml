@@ -58,8 +58,7 @@ jobs:
         run: npm ci
       - name: Audit npm dependencies
         working-directory: frontend
-        run: npm audit --audit-level=high
-        continue-on-error: true  # Next.js 14 has known vulns; upgrade tracked separately
+        run: npm audit --audit-level=critical
 
   secret-scan:
     name: Secret Scanner (Gitleaks)
@@ -85,3 +84,40 @@ jobs:
         run: |
           pip install "bandit[toml]"
           bandit -r src/ -ll -c pyproject.toml
+
+  sbom-license:
+    name: SBOM & License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install project
+        run: pip install -e "."
+
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          pip install cyclonedx-bom
+          cyclonedx-py environment -o sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 90
+
+      - name: Check licenses
+        run: |
+          pip install pip-licenses
+          pip-licenses --format=csv --output-file=licenses.csv
+          # Warn on copyleft licenses in production deps
+          COPYLEFT=$(pip-licenses --allow-only="MIT;BSD-2-Clause;BSD-3-Clause;Apache-2.0;ISC;Python-2.0;PSF-2.0;MPL-2.0;LGPL-2.1-only;LGPL-3.0-only;Unlicense;Public Domain" 2>&1 || true)
+          if echo "$COPYLEFT" | grep -q "not allowed"; then
+            echo "::warning::Found dependencies with non-permissive licenses:"
+            echo "$COPYLEFT"
+          fi

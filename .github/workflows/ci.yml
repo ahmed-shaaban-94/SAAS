@@ -43,8 +43,25 @@ jobs:
       - name: Run mypy
         run: mypy src/datapulse/ --ignore-missing-imports
 
-  test:
-    name: Test
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install --require-hashes -r requirements-dev.lock
+      - name: Run unit tests
+        env:
+          DATABASE_URL: sqlite:///:memory:
+          SENTRY_ENVIRONMENT: test
+        run: pytest -m unit --cov --cov-report=term-missing -x -q
+
+  test-integration:
+    name: Integration Tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -76,7 +93,7 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install --require-hashes -r requirements-dev.lock
       - name: Run migrations
         env:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
@@ -86,12 +103,12 @@ jobs:
             echo "Applying $f..."
             psql -h localhost -U datapulse -d datapulse -f "$f" 2>&1 || true
           done
-      - name: Run tests
+      - name: Run integration tests
         env:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
           REDIS_URL: redis://localhost:6379/0
           SENTRY_ENVIRONMENT: test
-        run: pytest --cov=datapulse --cov-report=term-missing --cov-report=xml --cov-fail-under=82
+        run: pytest -m integration --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=95
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
