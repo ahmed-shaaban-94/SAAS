@@ -50,27 +50,15 @@ export const WaterfallChart = memo(function WaterfallChart({ data }: WaterfallCh
     [driversByDim],
   );
 
-  if (!data || !data.drivers.length) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h3 className="text-lg font-semibold mb-2">Revenue Change Drivers</h3>
-        <p className="text-text-secondary text-sm">
-          No significant drivers found for this period.
-        </p>
-      </div>
-    );
-  }
-
   // If selected tab has no data, fall back to first available
   const effectiveDim =
     (driversByDim[activeDim]?.length ?? 0) > 0
       ? activeDim
       : availableTabs[0]?.key ?? "product";
 
-  const filteredDrivers = driversByDim[effectiveDim] ?? [];
   const chartData = useMemo(
     () =>
-      filteredDrivers.slice(0, 10).map((d) => {
+      (driversByDim[effectiveDim] ?? []).slice(0, 10).map((d) => {
         const rawName = d.entity_name;
         return {
           name: rawName.length > 22 ? rawName.slice(0, 20) + "..." : rawName,
@@ -81,8 +69,19 @@ export const WaterfallChart = memo(function WaterfallChart({ data }: WaterfallCh
           direction: d.direction,
         };
       }),
-    [filteredDrivers],
+    [driversByDim, effectiveDim],
   );
+
+  if (!data || !data.drivers.length) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6">
+        <h3 className="text-lg font-semibold mb-2">Revenue Change Drivers</h3>
+        <p className="text-text-secondary text-sm">
+          No significant drivers found for this period.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-border bg-card p-6">
