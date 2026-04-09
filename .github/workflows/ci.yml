@@ -53,7 +53,7 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install dependencies
-        run: pip install --require-hashes -r requirements-dev.lock
+        run: pip install -e ".[dev]"
       - name: Run unit tests
         env:
           DATABASE_URL: "sqlite:///:memory:"
@@ -93,7 +93,7 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install dependencies
-        run: pip install --require-hashes -r requirements-dev.lock
+        run: pip install -e ".[dev]"
       - name: Run migrations
         env:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse

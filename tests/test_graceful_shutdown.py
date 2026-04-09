@@ -1,14 +1,14 @@
 # tests/test_graceful_shutdown.py
 """Verify graceful shutdown is properly configured."""
 
+from pathlib import Path
+
 import pytest
+import yaml
 
 
 def test_uvicorn_command_has_graceful_shutdown():
     """The docker-compose uvicorn command must include graceful shutdown timeout."""
-    import yaml
-    from pathlib import Path
-
     compose_path = Path("docker-compose.yml")
     if not compose_path.exists():
         pytest.skip("docker-compose.yml not found")
