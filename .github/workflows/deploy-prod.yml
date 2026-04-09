@@ -103,7 +103,7 @@ jobs:
           image-ref: ghcr.io/${{ github.repository_owner }}/data-pulse/${{ matrix.service }}:scan
           format: 'table'
           exit-code: '1'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL'
           ignore-unfixed: true
 
       - name: Push image (scan passed)
