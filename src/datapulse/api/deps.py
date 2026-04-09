@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Annotated, Any
+from typing import Annotated
 
 import structlog
 from fastapi import Depends

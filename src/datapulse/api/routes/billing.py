@@ -42,7 +42,7 @@ def create_checkout(
     """Create a Stripe Checkout session for plan upgrade."""
     tenant_id = int(user.get("tenant_id", "1"))
     email = user.get("email", "")
-    tenant_name = user.get("name", f"Tenant {tenant_id}")
+    tenant_name = str(user.get("name", f"Tenant {tenant_id}"))
 
     try:
         return service.create_checkout_session(
