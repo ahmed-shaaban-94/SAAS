@@ -35,7 +35,7 @@ WITH product_monthly AS (
         COUNT(DISTINCT f.customer_key)::INT                                     AS unique_customers,
         COUNT(DISTINCT f.site_key)::INT                                         AS unique_sites,
         ROUND(
-            SUM(f.net_amount) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
+            SUM(f.sales) / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                                       AS avg_basket_size
     FROM {{ ref('fct_sales') }} f

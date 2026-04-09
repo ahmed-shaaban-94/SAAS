@@ -40,9 +40,9 @@ WITH staff_monthly AS (
         -- Returns
         SUM(CASE WHEN f.is_return THEN 1 ELSE 0 END)    AS return_count,
 
-        -- Avg transaction value: net amount per distinct invoice (basket-level)
+        -- Avg transaction value: gross amount per distinct invoice (basket-level)
         ROUND(
-            SUM(f.net_amount)::NUMERIC
+            SUM(f.sales)::NUMERIC
             / NULLIF(COUNT(DISTINCT f.invoice_id), 0),
             2
         )                                                AS avg_transaction_value
