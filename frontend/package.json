@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
+    "build:budget": "next build && node scripts/check-bundle-budget.js",
     "start": "next start",
     "lint": "next lint",
     "test:e2e": "playwright test"
@@ -53,6 +55,24 @@
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "5.9.3",
-    "vitest": "^4.1.2"
-  }
+    "vitest": "^4.1.2",
+    "@next/bundle-analyzer": "^14.2.0"
+  },
+  "bundlesize": [
+    {
+      "path": ".next/static/chunks/pages/_app*.js",
+      "maxSize": "120 kB",
+      "compression": "gzip"
+    },
+    {
+      "path": ".next/static/chunks/main*.js",
+      "maxSize": "50 kB",
+      "compression": "gzip"
+    },
+    {
+      "path": ".next/static/chunks/framework*.js",
+      "maxSize": "50 kB",
+      "compression": "gzip"
+    }
+  ]
 }

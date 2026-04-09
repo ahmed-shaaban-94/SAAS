@@ -1,3 +1,15 @@
+# dbt package dependencies
+#
+# Version pins are EXACT — no ranges. This ensures reproducible builds.
+#
+# To update a package:
+#   1. Change the version here
+#   2. Run: make dbt-lock  (or: docker exec datapulse-api dbt deps --lock --project-dir /app/dbt)
+#   3. Commit the updated package-lock.yml alongside this file
+#
+# To regenerate the lockfile without changing versions:
+#   make dbt-lock
+
 packages:
   - package: calogica/dbt_expectations
-    version: [">=0.10.0", "<0.11.0"]
+    version: "0.10.4"

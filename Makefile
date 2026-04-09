@@ -131,6 +131,10 @@ dbt:
 dbt-test:
 	docker exec -it datapulse-api dbt test --project-dir /app/dbt
 
+dbt-lock:
+	docker exec -it datapulse-api dbt deps --lock --project-dir /app/dbt
+	@echo "package-lock.yml updated. Commit dbt/package-lock.yml alongside dbt/packages.yml."
+
 ## Data
 load:
 	docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales

@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -201,5 +202,14 @@ def create_app() -> FastAPI:
     app.include_router(branding.router, prefix="/api/v1")
     app.include_router(branding.public_router, prefix="/api/v1")
     app.include_router(reseller.router, prefix="/api/v1")
+
+    # Prometheus metrics — exposes /metrics endpoint with HTTP request
+    # counters and duration histograms.  Nginx should block external access
+    # (only internal/ops scraping).  Excluded paths keep cardinality low.
+    Instrumentator(
+        excluded_handlers=["/health", "/metrics", "/openapi.json", "/docs"],
+        should_group_status_codes=True,
+        should_ignore_untemplated=True,
+    ).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
     return app

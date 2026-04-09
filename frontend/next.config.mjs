@@ -1,5 +1,10 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import bundleAnalyzer from "@next/bundle-analyzer";
 import createNextIntlPlugin from "next-intl/plugin";
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -59,7 +64,11 @@ const sentryConfig = withSentryConfig(withNextIntl(nextConfig), {
   telemetry: false,
 });
 
-// Only wrap with Sentry if DSN is configured
-export default process.env.NEXT_PUBLIC_SENTRY_DSN
+// Build the final config:
+// - Always: bundle analyzer wrapper (no-op unless ANALYZE=true)
+// - Conditionally: Sentry wrapper (only when DSN is set)
+const baseConfig = process.env.NEXT_PUBLIC_SENTRY_DSN
   ? sentryConfig
   : withNextIntl(nextConfig);
+
+export default withBundleAnalyzer(baseConfig);
