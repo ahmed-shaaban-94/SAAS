@@ -21,13 +21,12 @@ logger = structlog.get_logger()
 
 
 def _validate_database_url(url: str) -> None:
-    """Warn if production DB connection does not use SSL."""
+    """Raise RuntimeError in production if DB connection does not use SSL."""
     env = os.getenv("SENTRY_ENVIRONMENT", "development")
     if env not in ("development", "test") and "sslmode=" not in url:
-        logger.warning(
-            "db_no_ssl",
-            detail="DATABASE_URL does not include sslmode parameter in non-dev environment",
-            environment=env,
+        raise RuntimeError(
+            "DATABASE_URL must include sslmode= in non-development environments. "
+            "Add ?sslmode=require (or sslmode=verify-full) to DATABASE_URL."
         )
 
 

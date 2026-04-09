@@ -110,22 +110,21 @@ class DetailRepository:
                 GROUP BY a.product_key, p.drug_code, p.drug_name,
                          p.drug_brand, p.drug_category
             ),
-            trend AS (
-                SELECT json_agg(
+            )
+            SELECT s.*,
+                (SELECT json_agg(
                     json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
-                                      'value', t.total_sales)
+                                      'value', a.total_sales)
                     ORDER BY a.month
-                ) AS points
+                )
                 FROM (
                     SELECT month, SUM(total_sales) AS total_sales
                     FROM public_marts.agg_sales_by_product
                     WHERE product_key = :product_key
                     GROUP BY month
-                ) a, LATERAL (SELECT a.total_sales) t
-            )
-            SELECT s.*, tr.points AS trend_points
+                ) a
+                ) AS trend_points
             FROM summary s
-            LEFT JOIN trend tr ON TRUE
         """)
         row = self._session.execute(stmt, {"product_key": product_key}).mappings().fetchone()
         if row is None:
@@ -168,22 +167,21 @@ class DetailRepository:
                 WHERE a.customer_key = :customer_key
                 GROUP BY a.customer_key, c.customer_id, c.customer_name
             ),
-            trend AS (
-                SELECT json_agg(
+            )
+            SELECT s.*,
+                (SELECT json_agg(
                     json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
-                                      'value', t.total_sales)
+                                      'value', a.total_sales)
                     ORDER BY a.month
-                ) AS points
+                )
                 FROM (
                     SELECT month, SUM(total_sales) AS total_sales
                     FROM public_marts.agg_sales_by_customer
                     WHERE customer_key = :customer_key
                     GROUP BY month
-                ) a, LATERAL (SELECT a.total_sales) t
-            )
-            SELECT s.*, tr.points AS trend_points
+                ) a
+                ) AS trend_points
             FROM summary s
-            LEFT JOIN trend tr ON TRUE
         """)
         row = self._session.execute(stmt, {"customer_key": customer_key}).mappings().fetchone()
         if row is None:
@@ -226,22 +224,21 @@ class DetailRepository:
                 WHERE a.staff_key = :staff_key
                 GROUP BY a.staff_key, s.staff_id, s.staff_name, s.position
             ),
-            trend AS (
-                SELECT json_agg(
+            )
+            SELECT s.*,
+                (SELECT json_agg(
                     json_build_object('period', TO_CHAR(a.month, 'YYYY-MM'),
-                                      'value', t.total_sales)
+                                      'value', a.total_sales)
                     ORDER BY a.month
-                ) AS points
+                )
                 FROM (
                     SELECT month, SUM(total_sales) AS total_sales
                     FROM public_marts.agg_sales_by_staff
                     WHERE staff_key = :staff_key
                     GROUP BY month
-                ) a, LATERAL (SELECT a.total_sales) t
-            )
-            SELECT s.*, tr.points AS trend_points
+                ) a
+                ) AS trend_points
             FROM summary s
-            LEFT JOIN trend tr ON TRUE
         """)
         row = self._session.execute(stmt, {"staff_key": staff_key}).mappings().fetchone()
         if row is None:
@@ -298,23 +295,22 @@ class DetailRepository:
                 WHERE a.site_key = :site_key
                 GROUP BY a.site_key, s.site_code, s.site_name, s.area_manager
             ),
-            trend AS (
-                SELECT json_agg(
+            )
+            SELECT s.*,
+                (SELECT json_agg(
                     json_build_object('period',
                         a.year::TEXT || '-' || LPAD(a.month::TEXT, 2, '0'),
                         'value', a.total_sales)
                     ORDER BY a.year, a.month
-                ) AS points
+                )
                 FROM (
                     SELECT year, month, SUM(total_sales) AS total_sales
                     FROM public_marts.agg_sales_by_site
                     WHERE site_key = :site_key
                     GROUP BY year, month
                 ) a
-            )
-            SELECT s.*, tr.points AS trend_points
+                ) AS trend_points
             FROM summary s
-            LEFT JOIN trend tr ON TRUE
         """)
         row = self._session.execute(stmt, {"site_key": site_key}).mappings().fetchone()
         if row is None:

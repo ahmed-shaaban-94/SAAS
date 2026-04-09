@@ -33,9 +33,9 @@ class Settings(BaseSettings):
     database_url: str
 
     # Database connection pool
-    db_pool_size: int = 10
-    db_pool_max_overflow: int = 20
-    db_pool_timeout: int = 30
+    db_pool_size: int = 5
+    db_pool_max_overflow: int = 10
+    db_pool_timeout: int = 10
     db_pool_recycle: int = 1800
 
     # Paths

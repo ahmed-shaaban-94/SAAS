@@ -177,7 +177,9 @@ def load_to_postgres(df: pl.DataFrame, engine: Engine, batch_size: int) -> int:
         # Pre-compute INSERT template from validated columns (not per-batch)
         placeholders = ", ".join(f":{c}" for c in db_columns)
         col_names = ", ".join(db_columns)
-        insert_sql = text(f"INSERT INTO bronze.sales ({col_names}) VALUES ({placeholders})")
+        insert_sql = text(
+            f"INSERT INTO bronze.sales ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING"
+        )
 
         for offset in range(0, total_rows, batch_size):
             batch = df_to_load.slice(offset, batch_size)

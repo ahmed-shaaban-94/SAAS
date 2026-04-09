@@ -12,7 +12,7 @@ When the corresponding config value is empty, the guard is skipped (dev mode).
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, TypedDict
 
 import structlog
 from fastapi import Depends, HTTPException, Security
@@ -23,6 +23,18 @@ from datapulse.config import Settings, get_settings
 from datapulse.core.security import compare_secrets
 
 _auth_logger = structlog.get_logger()
+
+
+class UserClaims(TypedDict):
+    """Typed structure for authenticated user JWT claims."""
+
+    sub: str
+    email: str
+    preferred_username: str
+    tenant_id: str
+    roles: list[str]
+    raw_claims: dict[str, Any]
+
 
 # Header schemes (auto_error=False so we control the error message)
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -70,7 +82,7 @@ def get_current_user(
     ),
     api_key: str | None = Security(_api_key_header),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
-) -> dict[str, Any]:
+) -> UserClaims:
     """Authenticate the current user via JWT Bearer token or API key fallback.
 
     Priority:
@@ -166,7 +178,7 @@ def get_optional_user(
     ),
     api_key: str | None = Security(_api_key_header),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
-) -> dict[str, Any] | None:
+) -> UserClaims | None:
     """Same as get_current_user but returns None on missing/invalid auth.
 
     Only silences 401/403 (unauthenticated / forbidden).

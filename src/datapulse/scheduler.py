@@ -36,15 +36,34 @@ scheduler = AsyncIOScheduler(timezone="UTC")
 # ---------------------------------------------------------------------------
 
 
+_STAGE_ORDER = ["bronze", "dbt-staging", "silver", "dbt-marts", "gold", "forecasting"]
+
+
+def _stage_index(stage: str) -> int:
+    """Return the ordinal position of a stage name, or -1 if unknown."""
+    try:
+        return _STAGE_ORDER.index(stage)
+    except ValueError:
+        return -1
+
+
 async def run_pipeline(
     run_id: UUID,
     source_dir: str,
     tenant_id: int = 1,
+    resume_from: str | None = None,
 ) -> None:
     """Execute full pipeline: Bronze → Quality → Silver → Quality → Gold → Quality → Forecasting.
 
     Runs each stage via the PipelineExecutor (in a thread), checks quality
     gates between stages, and updates run status in the database.
+
+    Args:
+        run_id: UUID of the existing pipeline_runs record to update.
+        source_dir: Path to raw source files for the bronze loader.
+        tenant_id: Tenant scoping for RLS and notifications.
+        resume_from: Stage name to resume from (skips all prior stages).
+            Valid values: "bronze", "dbt-staging", "dbt-marts", "forecasting".
     """
     from sqlalchemy import text as sa_text
 
@@ -69,11 +88,21 @@ async def run_pipeline(
         session.execute(sa_text("SET LOCAL statement_timeout = '600s'"))
         return session
 
-    def _update_status(status: str, error_message: str | None = None, rows: int | None = None):
+    def _update_status(
+        status: str,
+        error_message: str | None = None,
+        rows: int | None = None,
+        last_completed_stage: str | None = None,
+    ) -> None:
         session = _get_session()
         try:
             repo = PipelineRepository(session)
-            update = PipelineRunUpdate(status=status, error_message=error_message, rows_loaded=rows)
+            update = PipelineRunUpdate(
+                status=status,
+                error_message=error_message,
+                rows_loaded=rows,
+                last_completed_stage=last_completed_stage,
+            )
             repo.update_run(run_id, update)
             session.commit()
         finally:
@@ -121,9 +150,20 @@ async def run_pipeline(
 
     _update_status("running")
     total_rows = 0
+    resume_idx = _stage_index(resume_from) if resume_from else -1
 
     try:
         for status_name, stage, execute_fn in stages:
+            # Skip stages before resume_from when resuming a partial run
+            if resume_from and _stage_index(stage) < resume_idx:
+                log.info(
+                    "pipeline_stage_skipped",
+                    run_id=run_id_str,
+                    stage=stage,
+                    reason=f"resume_from={resume_from}",
+                )
+                continue
+
             if execute_fn:
                 # Execute stage in thread
                 result = await asyncio.to_thread(execute_fn)
@@ -136,6 +176,7 @@ async def run_pipeline(
                     return
                 if result.rows_loaded:
                     total_rows = result.rows_loaded
+                _update_status("running", last_completed_stage=stage)
                 log.info(
                     "pipeline_stage_done",
                     run_id=run_id_str,

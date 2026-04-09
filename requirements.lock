@@ -416,6 +416,7 @@ fastapi==0.135.3 \
     --hash=sha256:bd6d7caf1a2bdd8d676843cdcd2287729572a1ef524fc4d65c17ae002a1be654
     # via
     #   datapulse (pyproject.toml)
+    #   prometheus-fastapi-instrumentator
     #   sentry-sdk
 fastexcel==0.19.0 \
     --hash=sha256:216c3719ee90963bd93a0bf8c10b177233046ac975b67651152fdaedd3c99aa1 \
@@ -1030,6 +1031,14 @@ polars-runtime-32==1.39.3 \
     --hash=sha256:ef5884711e3c617d7dc93519a7d038e242f5741cfe5fe9afd32d58845d86c562 \
     --hash=sha256:f49f51461de63f13e5dd4eb080421c8f23f856945f3f8bd5b2b1f59da52c2860
     # via polars
+prometheus-client==0.24.1 \
+    --hash=sha256:150db128af71a5c2482b36e588fc8a6b95e498750da4b17065947c16070f4055 \
+    --hash=sha256:7e0ced7fbbd40f7b84962d5d2ab6f17ef88a72504dcf7c0b40737b43b2a461f9
+    # via prometheus-fastapi-instrumentator
+prometheus-fastapi-instrumentator==6.1.0 \
+    --hash=sha256:1820d7a90389ce100f7d1285495ead388818ae0882e761c1f3e6e62a410bdf13 \
+    --hash=sha256:2279ac1cf5b9566a4c3a07f78c9c5ee19648ed90976ab87d73d672abc1bfa017
+    # via datapulse (pyproject.toml)
 protobuf==6.33.6 \
     --hash=sha256:0cd27b587afca21b7cfa59a74dcbd48a50f0a6400cfb59391340ad729d91d326 \
     --hash=sha256:77179e006c476e69bf8e8ce866640091ec42e1beb80b213c3900006ecfba6901 \

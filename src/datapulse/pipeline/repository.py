@@ -39,6 +39,7 @@ _UPDATABLE_COLUMNS = frozenset(
         "rows_loaded",
         "error_message",
         "metadata",
+        "last_completed_stage",
     }
 )
 

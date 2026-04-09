@@ -59,6 +59,7 @@ class PipelineRunUpdate(BaseModel):
     rows_loaded: int | None = None
     error_message: str | None = None
     metadata: dict[str, Any] | None = None
+    last_completed_stage: str | None = None
 
     @field_validator("status")
     @classmethod
