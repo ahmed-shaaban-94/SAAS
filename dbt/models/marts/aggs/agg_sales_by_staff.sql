@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        unique_key=['tenant_id', 'staff_key', 'year', 'month'],
+        incremental_strategy='merge',
         schema='marts',
         post_hook=[
             "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
@@ -49,6 +51,15 @@ WITH staff_monthly AS (
 
     FROM {{ ref('fct_sales') }} f
     INNER JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key
+    {% if is_incremental() %}
+    WHERE f.date_key >= (
+        SELECT TO_CHAR(
+            MAKE_DATE(MAX(year), MAX(month), 1) - INTERVAL '90 days',
+            'YYYYMMDD'
+        )::INT
+        FROM {{ this }}
+    )
+    {% endif %}
     GROUP BY f.tenant_id, f.staff_key, d.year, d.month
 )
 
