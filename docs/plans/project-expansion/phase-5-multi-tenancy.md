@@ -73,7 +73,7 @@ Phase 5 — Multi-tenancy & Billing
     updated_at TIMESTAMPTZ DEFAULT now();
   ```
 - API routes: `POST /api/v1/tenants`, `GET /api/v1/tenants/me`, `PATCH /api/v1/tenants/me`
-- Keycloak: auto-create realm group per tenant, map `tenant_id` to JWT claims
+- Auth0: auto-create organization per tenant, map `tenant_id` to JWT claims
 
 **Frontend**:
 - Onboarding wizard: company name, slug, industry → auto-provision tenant
@@ -160,7 +160,7 @@ Phase 5 — Multi-tenancy & Billing
 
 **Backend**:
 - `src/datapulse/tenants/members.py` — Member management (CRUD, role assignment)
-- Keycloak integration: sync member roles to Keycloak groups
+- Auth0 integration: sync member roles to Auth0 roles/organizations
 - API routes:
   - `GET /api/v1/tenants/me/members` — List members
   - `POST /api/v1/tenants/me/members/invite` — Send invitation email
@@ -203,7 +203,7 @@ Phase 5 — Multi-tenancy & Billing
 - RLS bypass attempts (direct SQL, API parameter manipulation)
 - Billing edge cases (downgrade mid-cycle, payment failure, reactivation)
 - Concurrent tenant operations (race conditions)
-- Keycloak token manipulation tests
+- Auth0 token manipulation tests
 
 **Deliverables**:
 - Security test suite: ~20 dedicated isolation tests

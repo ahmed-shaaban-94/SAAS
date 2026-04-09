@@ -411,7 +411,7 @@ tests/
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache for n8n |
 | `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
-| `keycloak` | datapulse-keycloak | 8080 | Auth (OAuth2/OIDC) |
+| `auth0` | Auth0 (managed SaaS) | — | Auth (OAuth2/OIDC) |
 
 ```bash
 docker compose up -d --build
@@ -500,7 +500,7 @@ docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/da
 - Inline comments: Arabic where helpful for clarity (mixed)
 
 ### Security
-- **Authentication**: Keycloak OIDC — backend JWT validation (`src/datapulse/api/jwt.py`), frontend NextAuth (`frontend/src/lib/auth.ts`)
+- **Authentication**: Auth0 OIDC — backend JWT validation (`src/datapulse/api/jwt.py`), frontend NextAuth (`frontend/src/lib/auth.ts`)
 - Multi-strategy auth: Bearer JWT (primary) + API Key (service-to-service) + dev mode fallback
 - All credentials via `.env` file (never hardcoded in source)
 - Docker ports bound to `127.0.0.1` only

@@ -2,7 +2,7 @@
 
 ## Your Role
 
-You own the platform layer that everyone else builds on: the FastAPI application factory, multi-strategy authentication (Keycloak OIDC), tenant-scoped RLS sessions, Redis caching with graceful degradation, dependency injection factories, rate limiting, Docker Compose infrastructure, CI/CD, and Nginx. When the API is down or auth breaks, it starts with you.
+You own the platform layer that everyone else builds on: the FastAPI application factory, multi-strategy authentication (Auth0 OIDC), tenant-scoped RLS sessions, Redis caching with graceful degradation, dependency injection factories, rate limiting, Docker Compose infrastructure, CI/CD, and Nginx. When the API is down or auth breaks, it starts with you.
 
 ## Your Files
 
@@ -11,7 +11,7 @@ src/datapulse/api/
   app.py                     # App factory: CORS, security headers, global exception handler,
                              #   rate limiter, request logging, 12 router registrations
   auth.py                    # Multi-strategy auth: Bearer JWT + API Key + dev mode fallback
-  jwt.py                     # Keycloak OIDC token validation + claims extraction
+  jwt.py                     # Auth0 OIDC token validation + claims extraction
   deps.py                    # All DI factories: get_tenant_session, get_analytics_service,
                              #   get_pipeline_service, get_forecasting_service, etc.
   limiter.py                 # slowapi rate limiter (60/min analytics, 5/min mutations)
@@ -78,7 +78,7 @@ def create_app() -> FastAPI:
 
 ### Multi-Strategy Auth + Tenant Session
 
-Auth tries: (1) Bearer JWT from Keycloak, (2) X-API-Key header, (3) dev mode when both unconfigured. The tenant session extracts `tenant_id` from JWT claims and sets it via `SET LOCAL` for PostgreSQL RLS.
+Auth tries: (1) Bearer JWT from Auth0, (2) X-API-Key header, (3) dev mode when both unconfigured. The tenant session extracts `tenant_id` from JWT claims and sets it via `SET LOCAL` for PostgreSQL RLS.
 
 ```python
 # src/datapulse/api/deps.py
@@ -261,7 +261,7 @@ src/datapulse/
 ├── api/
 │   ├── app.py                   # App factory
 │   ├── auth.py                  # Multi-strategy auth
-│   ├── jwt.py                   # Keycloak OIDC validation
+│   ├── jwt.py                   # Auth0 OIDC validation
 │   ├── deps.py                  # DI factories
 │   ├── limiter.py               # Rate limiter
 │   └── routes/
@@ -294,7 +294,7 @@ tests/
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache for n8n |
 | `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
-| `keycloak` | datapulse-keycloak | 8080 | Auth (OAuth2/OIDC) |
+| `auth0` | Auth0 (managed SaaS) | — | Auth (OAuth2/OIDC) |
 
 ```bash
 docker compose up -d --build
@@ -338,7 +338,7 @@ All settings via environment variables or `.env` file (Pydantic Settings):
 - Functions < 50 lines, no nesting > 4 levels
 
 ### Security
-- **Authentication**: Keycloak OIDC — JWT validation in `src/datapulse/api/jwt.py`
+- **Authentication**: Auth0 OIDC — JWT validation in `src/datapulse/api/jwt.py`
 - Multi-strategy: Bearer JWT -> API Key -> dev mode fallback
 - All credentials via `.env` (never hardcoded)
 - Docker ports bound to `127.0.0.1` only

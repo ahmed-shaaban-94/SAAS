@@ -54,7 +54,7 @@ function LoginForm() {
 
         {/* Footer */}
         <p className="text-center text-xs text-text-secondary">
-          Secured by Keycloak OIDC
+          Secured by Auth0
         </p>
       </div>
     </div>

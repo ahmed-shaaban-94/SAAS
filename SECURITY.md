@@ -24,7 +24,7 @@ We will respond within 48 hours and work with you to resolve the issue.
 ## Security Measures
 
 ### Authentication & Authorization
-- **Keycloak OIDC**: OAuth2/OpenID Connect authentication
+- **Auth0 OIDC**: OAuth2/OpenID Connect authentication
 - **JWT Validation**: Backend validates tokens via `src/datapulse/api/jwt.py`
 - **NextAuth**: Frontend session management via `frontend/src/lib/auth.ts`
 - **Demo Users**: `demo-admin` (admin role), `demo-viewer` (viewer role)

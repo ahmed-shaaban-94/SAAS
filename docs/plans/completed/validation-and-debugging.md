@@ -1,5 +1,7 @@
 # Validation & Debugging (COMPLETED)
 
+> **Note (2026-04)**: Keycloak references below are historical. Auth is now handled by Auth0.
+
 > All validation, testing, and debugging documentation consolidated. This is the reference document.
 
 ---

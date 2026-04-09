@@ -11,7 +11,7 @@ flowchart TB
 
     subgraph INFRA["Infrastructure (Docker Compose)"]
         subgraph AUTH["Authentication"]
-            KEYCLOAK["Keycloak :8080<br/>OAuth2 / OIDC"]
+            AUTH0["Auth0<br/>OAuth2 / OIDC"]
         end
 
         subgraph API_LAYER["API Layer"]
@@ -35,10 +35,10 @@ flowchart TB
     end
 
     BROWSER -->|"HTTP + JWT"| FASTAPI
-    BROWSER -->|"OIDC Login"| KEYCLOAK
+    BROWSER -->|"OIDC Login"| AUTH0
     POWERBI -->|"Direct SQL"| POSTGRES
     FASTAPI -->|"SQLAlchemy"| POSTGRES
-    FASTAPI -->|"JWT Verify"| KEYCLOAK
+    FASTAPI -->|"JWT Verify"| AUTH0
     N8N -->|"Webhook Trigger"| FASTAPI
     N8N --- REDIS
     APP -->|"Load Raw Data"| POSTGRES
@@ -122,7 +122,7 @@ flowchart LR
 flowchart TD
     CLIENT["Browser / Client"] -->|"HTTP Request"| CORS["CORS Middleware"]
     CORS --> RATE["Rate Limiter<br/>60/min analytics<br/>5/min mutations"]
-    RATE --> JWT["JWT Validation<br/>(Keycloak Token)"]
+    RATE --> JWT["JWT Validation<br/>(Auth0 Token)"]
     JWT --> ROUTER{"Router"}
 
     ROUTER -->|"/health"| HEALTH["Health Check<br/>DB connectivity"]
@@ -246,8 +246,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    USER["User"] -->|"Login"| KEYCLOAK_AUTH["Keycloak OIDC<br/>demo-admin / demo-viewer"]
-    KEYCLOAK_AUTH -->|"JWT Token"| FRONTEND_AUTH["NextAuth<br/>Session Management"]
+    USER["User"] -->|"Login"| AUTH0_AUTH["Auth0 OIDC"]
+    AUTH0_AUTH -->|"JWT Token"| FRONTEND_AUTH["NextAuth<br/>Session Management"]
     FRONTEND_AUTH -->|"Authorization Header"| API_AUTH["FastAPI JWT Middleware"]
 
     API_AUTH -->|"Extract tenant_id"| TENANT["SET LOCAL app.tenant_id"]

@@ -1,5 +1,7 @@
 # Implementation Plan: DataPulse Android App
 
+> **Note (2026-04)**: Keycloak references below are historical. Auth is now handled by Auth0.
+
 ## 1. Requirements Restatement
 
 ### What We Are Building

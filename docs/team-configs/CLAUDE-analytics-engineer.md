@@ -289,7 +289,7 @@ tests/                           # 80 test files
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache |
 | `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
-| `keycloak` | datapulse-keycloak | 8080 | Auth (OAuth2/OIDC) |
+| `auth0` | Auth0 (managed SaaS) | — | Auth (OAuth2/OIDC) |
 
 ```bash
 docker compose up -d --build
@@ -340,7 +340,7 @@ All settings via environment variables or `.env` file (Pydantic Settings):
 - Immutable patterns — always create new objects, never mutate
 
 ### Security
-- **Authentication**: Keycloak OIDC — backend JWT, frontend NextAuth
+- **Authentication**: Auth0 OIDC — backend JWT, frontend NextAuth
 - Tenant-scoped RLS: session variable `SET LOCAL app.tenant_id = '<id>'`
 - SQL: `text()` with `:param` only — no f-string values
 - Table/column names: validate against frozenset allowlist before SQL

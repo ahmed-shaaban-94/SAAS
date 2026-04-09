@@ -1,5 +1,7 @@
 # The Great Fix — DataPulse Full Project Remediation Report
 
+> **Note (2026-04)**: Keycloak has been fully replaced by Auth0 OIDC. All Keycloak-related findings in this report are now resolved.
+
 > **Status**: COMPLETED
 > **Period**: 2026-03-29 to 2026-03-30
 > **PRs Merged**: #23, #24, #25, #28, #29

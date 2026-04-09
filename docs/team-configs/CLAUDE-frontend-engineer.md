@@ -311,7 +311,7 @@ A data analytics platform for sales data: import raw Excel/CSV files, clean and 
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
 | `redis` | datapulse-redis | (internal) | Redis cache |
 | `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
-| `keycloak` | datapulse-keycloak | 8080 | Auth (OAuth2/OIDC) |
+| `auth0` | Auth0 (managed SaaS) | — | Auth (OAuth2/OIDC) |
 
 ```bash
 docker compose up -d --build
@@ -354,7 +354,7 @@ docker compose up -d --build
 - **Mobile**: Touch swipe-to-close on sidebar drawer (60px threshold).
 
 ### Security
-- Authentication: NextAuth with Keycloak OIDC (`frontend/src/lib/auth.ts`)
+- Authentication: NextAuth with Auth0 OIDC (`frontend/src/lib/auth.ts`)
 - Route protection: `src/middleware.ts`
 - API calls include `Authorization: Bearer <token>` from NextAuth session
 - 15s fetch timeout (AbortController) on all API calls

@@ -158,9 +158,8 @@ services:
   # Saves 512MB RAM + eliminates n8n container + n8n-init container.
 
   # ---------- Lightdash REMOVED — Next.js dashboard replaces it (Wild Wolf beta) ----------
-  # ---------- Keycloak REMOVED — migrated to Auth0 (Wild Wolf beta) ----------
   # Auth0 is a managed SaaS service — no container needed.
-  # Saves 512MB+ RAM. Configure via AUTH0_* env vars.
+  # Configure via AUTH0_* env vars.
 
 volumes:
   pgdata:

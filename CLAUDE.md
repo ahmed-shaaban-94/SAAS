@@ -72,9 +72,8 @@ tests/                  # pytest: reader, type_detector, config, validator, load
 | `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
-| `redis` | datapulse-redis | (internal) | Redis cache for n8n |
-| `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
-| `keycloak` | datapulse-keycloak | 8080 | Auth (OAuth2/OIDC) |
+| `redis` | datapulse-redis | (internal) | Redis cache |
+| Auth0 | Managed SaaS | — | Auth (OAuth2/OIDC) |
 
 ```bash
 docker compose up -d --build

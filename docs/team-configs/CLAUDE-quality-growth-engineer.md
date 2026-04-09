@@ -327,7 +327,7 @@ tests/                    # YOUR responsibility — all 80 files
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache |
 | `n8n` | datapulse-n8n | 5678 | n8n workflow automation |
-| `keycloak` | datapulse-keycloak | 8080 | Auth (OAuth2/OIDC) |
+| `auth0` | Auth0 (managed SaaS) | — | Auth (OAuth2/OIDC) |
 
 ```bash
 docker compose up -d --build
@@ -373,7 +373,7 @@ docker compose up -d --build
 - `create_autospec` for repository mocks (enforces real interface)
 
 ### Security
-- Auth: Keycloak OIDC (backend JWT) + NextAuth (frontend)
+- Auth: Auth0 OIDC (backend JWT) + NextAuth (frontend)
 - RLS: tenant-scoped via `SET LOCAL app.tenant_id`
 - In tests: auth bypassed via `app.dependency_overrides[get_current_user]`
 

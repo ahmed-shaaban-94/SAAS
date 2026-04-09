@@ -20,7 +20,7 @@ DataPulse has completed **Phases 1–4**:
 | — | The Great Fix | DONE |
 | — | Enhancement 2 (Full Stack Flex) | DONE |
 
-**What we have**: Medallion pipeline, 10+ analytics endpoints, Next.js dashboard, n8n automation, quality gates, Keycloak auth, RLS, Slack notifications, AI insights, public website, Android skeleton.
+**What we have**: Medallion pipeline, 10+ analytics endpoints, Next.js dashboard, n8n automation, quality gates, Auth0 auth, RLS, Slack notifications, AI insights, public website, Android skeleton.
 
 **What we need**: Multi-tenancy, billing, more data sources, self-service analytics, deeper AI, collaboration, and production-grade infrastructure.
 

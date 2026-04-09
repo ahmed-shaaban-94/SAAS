@@ -1,5 +1,7 @@
 # DataPulse -- Opus Full Project Review
 
+> **Note (2026-04)**: Keycloak has been replaced by Auth0. Security findings SEC-03 and SEC-07 are resolved.
+
 > **Date**: 2026-03-30
 > **Reviewer**: Claude Opus 4.6
 > **Scope**: Security + Architecture + UI/UX

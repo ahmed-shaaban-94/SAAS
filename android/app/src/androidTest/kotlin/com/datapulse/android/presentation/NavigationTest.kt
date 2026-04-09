@@ -20,6 +20,6 @@ class NavigationTest {
                 DataPulseNavGraph(isAuthenticated = false)
             }
         }
-        composeTestRule.onNodeWithText("Sign in with Keycloak").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sign in with Auth0").assertIsDisplayed()
     }
 }

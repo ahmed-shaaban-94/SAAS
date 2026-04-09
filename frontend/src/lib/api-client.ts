@@ -64,7 +64,7 @@ async function getAccessToken(): Promise<string | null> {
     return _cachedToken;
   }
 
-  // Try NextAuth session (Keycloak)
+  // Try NextAuth session (Auth0)
   try {
     const session = await getSession();
     if (session?.accessToken) {

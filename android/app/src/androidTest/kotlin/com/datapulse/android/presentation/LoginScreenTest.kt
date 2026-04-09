@@ -22,6 +22,6 @@ class LoginScreenTest {
         }
         composeTestRule.onNodeWithText("DataPulse").assertIsDisplayed()
         composeTestRule.onNodeWithText("Business Analytics").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sign in with Keycloak").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sign in with Auth0").assertIsDisplayed()
     }
 }
