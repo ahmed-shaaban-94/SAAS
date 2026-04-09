@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        unique_key=['tenant_id', 'date_key', 'site_key', 'billing_way'],
+        incremental_strategy='merge',
         schema='marts',
         post_hook=[
             "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
@@ -38,6 +40,15 @@ WITH daily AS (
             2
         )                                        AS avg_basket_size
     FROM {{ ref('fct_sales') }} f
+    {% if is_incremental() %}
+    WHERE f.date_key >= (
+        SELECT TO_CHAR(
+            TO_DATE(MAX(date_key)::TEXT, 'YYYYMMDD') - INTERVAL '3 days',
+            'YYYYMMDD'
+        )::INT
+        FROM {{ this }}
+    )
+    {% endif %}
     GROUP BY f.tenant_id, f.date_key, f.site_key, f.billing_way
 )
 

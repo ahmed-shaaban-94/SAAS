@@ -101,7 +101,8 @@ class TestAnalyticsCacheKeyTenantIsolation:
             current_tenant_id.reset(token)
 
         assert "t3" in key
-        assert key.startswith("datapulse:analytics:t3:summary")
+        assert ":t3:summary" in key
+        assert key.startswith("dp:")
 
     def test_analytics_different_tenants_different_keys(self):
         from datapulse.analytics.service import _cache_key

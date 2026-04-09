@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        unique_key=['tenant_id', 'product_key', 'year', 'month'],
+        incremental_strategy='merge',
         schema='marts',
         post_hook=[
             "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
@@ -40,6 +42,15 @@ WITH product_monthly AS (
         )                                                                       AS avg_basket_size
     FROM {{ ref('fct_sales') }} f
     INNER JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key
+    {% if is_incremental() %}
+    WHERE f.date_key >= (
+        SELECT TO_CHAR(
+            MAKE_DATE(MAX(year), MAX(month), 1) - INTERVAL '90 days',
+            'YYYYMMDD'
+        )::INT
+        FROM {{ this }}
+    )
+    {% endif %}
     GROUP BY f.tenant_id, f.product_key, d.year, d.month, d.month_name
 ),
 

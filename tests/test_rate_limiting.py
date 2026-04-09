@@ -21,16 +21,25 @@ def test_rate_limiter_is_configured(client):
 
 
 def test_rate_limit_default_is_sixty_per_minute():
-    """Default rate limit is 60/minute."""
-    from datapulse.api.limiter import limiter
+    """Default rate limit is 60/minute (Redis) or 60//workers (fallback)."""
+    from datapulse.api.limiter import _WORKERS, limiter
 
     assert len(limiter._default_limits) > 0, "No default limits configured"
 
-    # Iterate LimitGroup objects to find the 60/minute limit
+    # Accept either 60 (Redis-backed) or 60//workers (in-memory fallback)
+    expected_amounts = {60, max(1, 60 // _WORKERS)}
     found = any(
-        limit.limit.amount == 60 and limit.limit.multiples == 1
+        limit.limit.amount in expected_amounts and limit.limit.multiples == 1
         for limit_group in limiter._default_limits
         for limit in limit_group
         if hasattr(limit, "limit")
     )
-    assert found, "Expected to find a 60/minute default rate limit in slowapi limiter"
+    actual = [
+        item.limit.amount
+        for grp in limiter._default_limits
+        for item in grp
+        if hasattr(item, "limit")
+    ]
+    assert found, (
+        f"Expected rate limit of {expected_amounts}/min, got {actual}"
+    )

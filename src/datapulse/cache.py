@@ -125,3 +125,36 @@ def cache_invalidate_pattern(pattern: str) -> int:
     except Exception as exc:
         logger.error("cache_invalidate_error", pattern=pattern, error=str(exc))
         return 0
+
+
+_VERSION_KEY = "dp:v:current"
+
+
+def cache_bump_version(run_id: str) -> None:
+    """Bump the global cache version to the given pipeline run_id.
+
+    All analytics cache keys embed the current version, so bumping it
+    effectively orphans all existing cache entries — they expire via TTL
+    without any O(N) SCAN invalidation.
+    """
+    client = get_redis_client()
+    if client is None:
+        logger.warning("cache_bump_version_skipped", reason="redis_unavailable", run_id=run_id)
+        return
+    try:
+        client.set(_VERSION_KEY, run_id)
+        logger.info("cache_version_bumped", run_id=run_id)
+    except Exception as exc:
+        logger.error("cache_bump_version_error", run_id=run_id, error=str(exc))
+
+
+def get_cache_version() -> str:
+    """Return the current pipeline run_id (cache version), or 'v0' if unset."""
+    client = get_redis_client()
+    if client is None:
+        return "v0"
+    try:
+        version = client.get(_VERSION_KEY)
+        return version if version else "v0"
+    except Exception:
+        return "v0"

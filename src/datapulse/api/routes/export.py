@@ -219,7 +219,7 @@ def export_products(
     start_date: str | None = None,
     end_date: str | None = None,
     category: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=10000)] = 100,
+    limit: Annotated[int, Query(ge=1, le=100000)] = 10000,
 ) -> StreamingResponse:
     """Export top products data as CSV or Excel."""
     f = _build_filter(start_date, end_date, limit, category=category)
@@ -240,7 +240,7 @@ def export_customers(
     format: Annotated[str, Query(pattern="^(csv|xlsx|pdf)$")] = "csv",
     start_date: str | None = None,
     end_date: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=10000)] = 100,
+    limit: Annotated[int, Query(ge=1, le=100000)] = 10000,
 ) -> StreamingResponse:
     """Export top customers data as CSV or Excel."""
     f = _build_filter(start_date, end_date, limit)
@@ -261,7 +261,7 @@ def export_staff(
     format: Annotated[str, Query(pattern="^(csv|xlsx|pdf)$")] = "csv",
     start_date: str | None = None,
     end_date: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=10000)] = 100,
+    limit: Annotated[int, Query(ge=1, le=100000)] = 10000,
 ) -> StreamingResponse:
     """Export staff performance data as CSV or Excel."""
     f = _build_filter(start_date, end_date, limit)

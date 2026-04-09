@@ -41,7 +41,7 @@ from datapulse.analytics.models import (
     WaterfallAnalysis,
 )
 from datapulse.analytics.repository import AnalyticsRepository
-from datapulse.cache import cache_get, cache_set, current_tenant_id
+from datapulse.cache import cache_get, cache_set, current_tenant_id, get_cache_version
 from datapulse.cache_decorator import cached
 from datapulse.logging import get_logger
 
@@ -51,14 +51,21 @@ _CACHE_PREFIX = "datapulse:analytics"
 
 
 def _cache_key(method: str, params: dict[str, Any] | None = None) -> str:
-    """Build a deterministic, tenant-scoped cache key."""
+    """Build a deterministic, versioned, tenant-scoped cache key.
+
+    Key format: dp:v{run_id}:t{tenant}:{method}:{args_hash}
+    Bumping the pipeline run_id version orphans all prior keys; they
+    expire naturally via TTL — no O(N) SCAN invalidation needed.
+    """
     tid = current_tenant_id.get("")
     tenant_segment = f"t{tid}" if tid else "t0"
+    version = get_cache_version()
+    prefix = f"dp:{version}:{tenant_segment}"
     if params:
         raw = json.dumps(params, sort_keys=True, default=str)
         h = hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()[:12]
-        return f"{_CACHE_PREFIX}:{tenant_segment}:{method}:{h}"
-    return f"{_CACHE_PREFIX}:{tenant_segment}:{method}"
+        return f"{prefix}:{method}:{h}"
+    return f"{prefix}:{method}"
 
 
 class AnalyticsService:
