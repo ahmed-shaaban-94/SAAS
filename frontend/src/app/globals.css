@@ -15,6 +15,15 @@
   --accent-color: #D97706;
   --chart-blue: #4F46E5;
   --chart-amber: #D97706;
+  /* Multi-series palette — 8 colors */
+  --chart-1: #4F46E5;
+  --chart-2: #D97706;
+  --chart-3: #8B5CF6;
+  --chart-4: #0891B2;
+  --chart-5: #059669;
+  --chart-6: #6366F1;
+  --chart-7: #EA580C;
+  --chart-8: #2563EB;
   --growth-green: #059669;
   --growth-green-rgb: 5, 150, 105;
   --growth-red: #DC2626;
@@ -56,6 +65,15 @@
   --accent-color: #E5A00D;
   --chart-blue: #6366F1;
   --chart-amber: #E5A00D;
+  /* Multi-series palette — dark */
+  --chart-1: #6366F1;
+  --chart-2: #E5A00D;
+  --chart-3: #A78BFA;
+  --chart-4: #22D3EE;
+  --chart-5: #34D399;
+  --chart-6: #818CF8;
+  --chart-7: #FB923C;
+  --chart-8: #60A5FA;
   --growth-green: #34D399;
   --growth-green-rgb: 52, 211, 153;
   --growth-red: #F87171;

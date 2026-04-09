@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
@@ -18,6 +19,28 @@ import { formatCurrency, formatCompact } from "@/lib/formatters";
 import { CHART_COLORS } from "@/lib/constants";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import { ChartSpotlight, SpotlightTrigger } from "@/components/shared/chart-spotlight";
+
+/** Custom legend showing colored dot + label for each billing group */
+function BillingLegend({
+  chartData,
+}: {
+  chartData: Array<{ name: string; value: number; pct: number; count: number }>;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-2">
+      {chartData.map((d, i) => (
+        <div key={d.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+          />
+          <span>{d.name}</span>
+          <span className="font-medium text-text-primary">{d.pct.toFixed(1)}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function CustomTooltip(props: Record<string, unknown>) {
   const { active, payload } = props;
@@ -150,6 +173,7 @@ export const BillingBreakdownChart = memo(function BillingBreakdownChart() {
           height={barHeight}
           CHART_THEME={CHART_THEME}
         />
+        <BillingLegend chartData={chartData} />
       </div>
 
       <ChartSpotlight

@@ -2,6 +2,7 @@
 
 import { Download } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useSuccessAnimation, SuccessAnimation } from "@/components/shared/success-animation";
 
 interface CsvExportButtonProps {
   data: Record<string, unknown>[];
@@ -44,6 +45,7 @@ export default function CsvExportButton({
   className,
 }: CsvExportButtonProps) {
   const { success } = useToast();
+  const { isSuccess, trigger: triggerSuccess } = useSuccessAnimation();
 
   const handleExport = () => {
     const csv = toCsvString(data);
@@ -58,6 +60,7 @@ export default function CsvExportButton({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
+    triggerSuccess();
     success(`Exported ${data.length} rows to ${link.download}`);
   };
 
@@ -68,7 +71,11 @@ export default function CsvExportButton({
       aria-label={`Export ${data.length} rows as CSV`}
       className={`inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors hover:bg-card hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50 ${className ?? ""}`}
     >
-      <Download className="h-4 w-4" />
+      {isSuccess ? (
+        <SuccessAnimation show={isSuccess} className="h-4 w-4" />
+      ) : (
+        <Download className="h-4 w-4" />
+      )}
       Export CSV
     </button>
   );

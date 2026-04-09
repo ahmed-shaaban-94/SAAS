@@ -8,6 +8,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
+  LabelList,
   ResponsiveContainer,
   Cell,
   Line,
@@ -76,6 +78,28 @@ function ChartTypeSwitcher({
 }
 
 import { findPeakValley } from "@/lib/chart-utils";
+
+/** Custom legend with dot indicators for multi-series charts */
+function renderMonthlyLegend(props: any) {
+  const { payload } = props;
+  if (!payload?.length) return null;
+  return (
+    <div className="flex items-center justify-center gap-4 pt-2">
+      {payload.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{
+              backgroundColor: entry.color,
+              opacity: entry.dataKey === "prev" ? 0.5 : 1,
+            }}
+          />
+          {entry.dataKey === "value" ? "Current period" : "Previous period"}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface MonthlyChartInnerProps {
   chartData: Array<{ month: string; value: number; prev?: number }>;
@@ -196,17 +220,26 @@ function MonthlyChartInner({
                 fill={entry.value === maxValue ? "url(#barGradient)" : "url(#barGradientDim)"}
               />
             ))}
+            <LabelList
+              dataKey="value"
+              position="top"
+              formatter={(v: number) => formatCompact(v)}
+              style={{ fill: CHART_THEME.tickFill, fontSize: 10 }}
+            />
           </Bar>
           {compare && hasPrev && (
-            <Line
-              type="monotone"
-              dataKey="prev"
-              stroke={CHART_THEME.chartBlue}
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              strokeOpacity={0.5}
-              dot={false}
-            />
+            <>
+              <Legend content={renderMonthlyLegend} />
+              <Line
+                type="monotone"
+                dataKey="prev"
+                stroke={CHART_THEME.chartBlue}
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                strokeOpacity={0.5}
+                dot={false}
+              />
+            </>
           )}
         </ComposedChart>
       </ResponsiveContainer>

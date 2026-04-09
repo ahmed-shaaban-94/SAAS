@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  LabelList,
   ResponsiveContainer,
   Cell,
 } from "recharts";
@@ -37,7 +38,7 @@ export function RankingChart({ items, className }: RankingChartProps) {
   return (
     <div className={className}>
       <ResponsiveContainer width="100%" height={items.length * 44 + 20}>
-        <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
+        <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 80 }}>
           <XAxis
             type="number"
             tick={{ fill: CHART_THEME.tickFill, fontSize: CHART_THEME.tickFontSize }}
@@ -67,6 +68,12 @@ export function RankingChart({ items, className }: RankingChartProps) {
                 fillOpacity={1 - index * 0.06}
               />
             ))}
+            <LabelList
+              dataKey="value"
+              position="right"
+              formatter={(v: number) => formatCurrency(v)}
+              style={{ fill: CHART_THEME.tickFill, fontSize: 10 }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>

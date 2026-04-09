@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, File, Check, X, Eye } from "lucide-react";
+import { Upload, File, Check, X, Eye, Loader2 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constants";
 import { getSession } from "next-auth/react";
 import { LoadingCard } from "@/components/loading-card";
@@ -32,6 +32,7 @@ interface PreviewData {
 export function UploadOverview() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -85,6 +86,7 @@ export function UploadOverview() {
   };
 
   const handleConfirm = async () => {
+    setConfirming(true);
     try {
       const headers = await getAuthHeaders();
       headers["Content-Type"] = "application/json";
@@ -96,6 +98,8 @@ export function UploadOverview() {
       setConfirmed(true);
     } catch (e) {
       console.error("Confirm failed", e);
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -154,9 +158,15 @@ export function UploadOverview() {
           {!confirmed && (
             <button
               onClick={handleConfirm}
-              className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+              disabled={confirming}
+              className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
             >
-              <Check className="h-4 w-4" /> Confirm Import
+              {confirming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              {confirming ? "Importing..." : "Confirm Import"}
             </button>
           )}
 

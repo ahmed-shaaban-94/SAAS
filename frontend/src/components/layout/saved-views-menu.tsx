@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Bookmark, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSavedViews, type SavedView } from "@/hooks/use-saved-views";
+import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface SavedViewsMenuProps {
   onNavigate?: () => void;
@@ -13,10 +15,12 @@ interface SavedViewsMenuProps {
 
 export function SavedViewsMenu({ onNavigate }: SavedViewsMenuProps) {
   const { views, isLoading, deleteView } = useSavedViews();
+  const { success, error: toastError } = useToast();
   const router = useRouter();
   const [expanded, setExpanded] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
 
   const MAX_VISIBLE = 5;
   const visibleViews = showAll ? views : views.slice(0, MAX_VISIBLE);
@@ -35,14 +39,23 @@ export function SavedViewsMenu({ onNavigate }: SavedViewsMenuProps) {
     onNavigate?.();
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
+  const requestDelete = (e: React.MouseEvent, id: number, name: string) => {
     e.stopPropagation();
     e.preventDefault();
-    setDeletingId(id);
+    setConfirmDelete({ id, name });
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    setDeletingId(confirmDelete.id);
     try {
-      await deleteView(id);
+      await deleteView(confirmDelete.id);
+      success(`View "${confirmDelete.name}" deleted`);
+    } catch {
+      toastError("Failed to delete view");
     } finally {
       setDeletingId(null);
+      setConfirmDelete(null);
     }
   };
 
@@ -101,7 +114,7 @@ export function SavedViewsMenu({ onNavigate }: SavedViewsMenuProps) {
                     </span>
                   </button>
                   <button
-                    onClick={(e) => handleDelete(e, view.id)}
+                    onClick={(e) => requestDelete(e, view.id, view.name)}
                     disabled={deletingId === view.id}
                     className="mr-2 hidden rounded-md p-1 text-text-secondary/50 transition-colors hover:bg-growth-red/10 hover:text-growth-red group-hover:block"
                     aria-label={`Delete view "${view.name}"`}
@@ -123,6 +136,16 @@ export function SavedViewsMenu({ onNavigate }: SavedViewsMenuProps) {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete Saved View"
+        description={`Delete "${confirmDelete?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

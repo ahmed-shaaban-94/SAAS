@@ -8,6 +8,7 @@ import {
   Bar,
   LineChart,
   Line,
+  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,

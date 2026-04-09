@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
 import { fetchAPI, postAPI } from "@/lib/api-client";
 import { LoadingCard } from "@/components/loading-card";
+import { useToast } from "@/components/ui/toast";
 import { FileText, Play, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ interface RenderedReport {
 }
 
 export default function ReportsPage() {
+  const { success, error: toastError, info } = useToast();
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
   const [paramValues, setParamValues] = useState<Record<string, string | number>>({});
@@ -77,12 +79,15 @@ export default function ReportsPage() {
         { parameters: paramValues },
       );
       setReport(result);
+      success(`Report "${selectedTemplate.name}" generated`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      toastError(`Failed to generate report: ${msg}`);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedTemplate, paramValues]);
+  }, [selectedTemplate, paramValues, success, toastError]);
 
   return (
     <PageTransition>
@@ -188,7 +193,7 @@ export default function ReportsPage() {
                   </button>
                   {report && (
                     <button
-                      onClick={() => window.print()}
+                      onClick={() => { info("Printing report..."); window.print(); }}
                       className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
                     >
                       <Printer className="h-4 w-4" />

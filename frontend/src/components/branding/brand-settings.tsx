@@ -5,6 +5,8 @@ import { useBranding, type BrandingConfig } from "@/hooks/use-branding";
 import { postAPI } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/constants";
 import { LoadingCard } from "@/components/loading-card";
+import { useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import { Save, RotateCcw } from "lucide-react";
 
 async function updateBranding(data: Partial<BrandingConfig>): Promise<BrandingConfig> {
@@ -22,6 +24,7 @@ async function updateBranding(data: Partial<BrandingConfig>): Promise<BrandingCo
 
 export function BrandSettings() {
   const { data: branding, isLoading, mutate } = useBranding();
+  const { success, error: toastError } = useToast();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<BrandingConfig>>({});
@@ -42,8 +45,11 @@ export function BrandSettings() {
       const updated = await updateBranding(form);
       mutate(updated, false);
       setForm({});
+      success("Branding settings saved");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      const msg = err instanceof Error ? err.message : "Failed to save";
+      setError(msg);
+      toastError(msg);
     } finally {
       setSaving(false);
     }
@@ -174,19 +180,20 @@ export function BrandSettings() {
       {/* Actions */}
       {hasChanges && (
         <div className="flex items-center justify-end gap-3">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleReset}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:bg-divider"
           >
             <RotateCcw className="h-4 w-4" /> Reset
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50"
+            loading={saving}
           >
-            <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}
-          </button>
+            <Save className="h-4 w-4" /> Save Changes
+          </Button>
         </div>
       )}
     </div>
