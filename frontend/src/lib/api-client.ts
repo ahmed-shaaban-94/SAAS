@@ -49,40 +49,21 @@ function buildQueryString(params?: FilterParams): string {
 }
 
 /**
- * Retrieve the access token with in-memory caching.
- * Caches for 5 minutes to avoid expensive getSession() calls on every fetch.
+ * Retrieve the current access token from the NextAuth session.
+ * Relies on NextAuth's own session cache (window.__NEXT_AUTH.session) — no
+ * extra network request on repeated calls. Avoids stale-token-after-sign-out
+ * that a module-level cache would cause.
  */
-let _cachedToken: string | null = null;
-let _tokenExpiresAt = 0;
-const TOKEN_CACHE_MS = 5 * 60 * 1000; // 5 minutes
-
 async function getAccessToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
-  // Return cached token if still valid
-  if (_cachedToken && Date.now() < _tokenExpiresAt) {
-    return _cachedToken;
-  }
-
-  // Try NextAuth session (Auth0)
   try {
     const session = await getSession();
-    if (session?.accessToken) {
-      _cachedToken = session.accessToken;
-      _tokenExpiresAt = Date.now() + TOKEN_CACHE_MS;
-      return _cachedToken;
-    }
+    return session?.accessToken ?? null;
   } catch {
-    // getSession may fail during SSR or before hydration — fall through
+    // getSession may fail during SSR or before hydration
+    return null;
   }
-
-  // Fallback: localStorage
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    _cachedToken = token;
-    _tokenExpiresAt = Date.now() + TOKEN_CACHE_MS;
-  }
-  return token;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {

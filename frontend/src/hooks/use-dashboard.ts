@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import { fetchAPI } from "@/lib/api-client";
+import { fetchAPI, swrKey } from "@/lib/api-client";
 import type { FilterParams } from "@/types/filters";
 import type { KPISummary, TrendResult, RankingResult, FilterOptions } from "@/types/api";
 
@@ -19,20 +19,14 @@ export interface DashboardData {
   filter_options: FilterOptions;
 }
 
+const DASHBOARD_PATH = "/api/v1/analytics/dashboard";
+
 export function useDashboard(filters?: FilterParams) {
-  const qp = new URLSearchParams();
-  if (filters?.start_date) qp.set("start_date", filters.start_date);
-  if (filters?.end_date) qp.set("end_date", filters.end_date);
-  if (filters?.category) qp.set("category", filters.category);
-  if (filters?.brand) qp.set("brand", filters.brand);
-  if (filters?.site_key) qp.set("site_key", String(filters.site_key));
-  if (filters?.staff_key) qp.set("staff_key", String(filters.staff_key));
-  const qs = qp.toString();
-  const key = `/api/v1/analytics/dashboard${qs ? `?${qs}` : ""}`;
+  const key = swrKey(DASHBOARD_PATH, filters);
 
   const { data, error, isLoading, mutate } = useSWR(
     key,
-    () => fetchAPI<DashboardData>(key),
+    () => fetchAPI<DashboardData>(DASHBOARD_PATH, filters),
     { refreshInterval: 300000 },
   );
 

@@ -8,10 +8,16 @@ import { ErrorRetry } from "@/components/error-retry";
 import { TrendingUp, TrendingDown, Brain } from "lucide-react";
 
 export const ForecastCard = memo(function ForecastCard() {
-  const { data, isLoading, error } = useForecastSummary();
+  const { data, isLoading, error, mutate } = useForecastSummary();
 
   if (isLoading) return <LoadingCard className="h-48" />;
-  if (error) return <ErrorRetry description="Failed to load forecast" />;
+  if (error)
+    return (
+      <ErrorRetry
+        description="Failed to load forecast"
+        onRetry={() => mutate()}
+      />
+    );
 
   const hasNoData = !data || (data.next_30d_revenue === 0 && data.next_3m_revenue === 0);
 

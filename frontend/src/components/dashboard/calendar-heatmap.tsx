@@ -1,9 +1,11 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { useHeatmap } from "@/hooks/use-heatmap";
 import { formatCurrency } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 
 function getColor(value: number, min: number, max: number, isDark: boolean): string {
   if (max === min) return isDark ? "var(--divider)" : "var(--divider)";
@@ -20,10 +22,10 @@ const DAYS = ["Mon", "", "Wed", "", "Fri", "", ""];
 export const CalendarHeatmap = memo(function CalendarHeatmap() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
-  const { data, isLoading } = useHeatmap(year);
+  const { data, error, isLoading, mutate } = useHeatmap(year);
 
   // Auto-fallback: if current year has no data, try previous year
-  const { data: fallbackData } = useHeatmap(year - 1);
+  const { data: fallbackData, error: fallbackError } = useHeatmap(year - 1);
   const effectiveData = data?.cells?.length ? data : fallbackData;
   const effectiveYear = data?.cells?.length ? year : year - 1;
   const [hoveredCell, setHoveredCell] = useState<{
@@ -33,9 +35,10 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
     y: number;
   } | null>(null);
 
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = !mounted || resolvedTheme === "dark";
 
   const grid = useMemo(() => {
     if (!effectiveData?.cells.length) return [];
@@ -81,6 +84,14 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
   }, [effectiveData, effectiveYear]);
 
   if (isLoading) return <LoadingCard className="h-48" />;
+  if (error && fallbackError)
+    return (
+      <ErrorRetry
+        description="Failed to load revenue heatmap"
+        onRetry={() => mutate()}
+        className="h-48"
+      />
+    );
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">

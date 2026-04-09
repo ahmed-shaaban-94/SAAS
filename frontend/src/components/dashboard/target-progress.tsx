@@ -5,6 +5,7 @@ import { useTargetSummary } from "@/hooks/use-targets";
 import { useBudgetSummary } from "@/hooks/use-budget";
 import { formatCurrency, formatAbsolutePercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 import { Target, TrendingUp, TrendingDown } from "lucide-react";
 
 function ProgressRing({ pct, size = 80 }: { pct: number; size?: number }) {
@@ -44,8 +45,8 @@ function ProgressRing({ pct, size = 80 }: { pct: number; size?: number }) {
 }
 
 export const TargetProgress = memo(function TargetProgress() {
-  const { data: targetData, isLoading: targetLoading } = useTargetSummary();
-  const { data: budgetData, isLoading: budgetLoading } = useBudgetSummary();
+  const { data: targetData, isLoading: targetLoading, error: targetError, mutate: targetMutate } = useTargetSummary();
+  const { data: budgetData, isLoading: budgetLoading, error: budgetError, mutate: budgetMutate } = useBudgetSummary();
 
   const isLoading = targetLoading || budgetLoading;
 
@@ -98,6 +99,13 @@ export const TargetProgress = memo(function TargetProgress() {
   }, [hasTargets, hasBudget, targetData, budgetData]);
 
   if (isLoading) return <LoadingCard className="h-64" />;
+  if (targetError && budgetError)
+    return (
+      <ErrorRetry
+        description="Failed to load target data"
+        onRetry={() => { targetMutate(); budgetMutate(); }}
+      />
+    );
 
   if (!normalized) {
     return (

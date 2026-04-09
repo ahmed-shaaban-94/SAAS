@@ -4,6 +4,7 @@ import { useSites } from "@/hooks/use-sites";
 import { useFilters } from "@/contexts/filter-context";
 import { formatCurrency } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
+import { ErrorRetry } from "@/components/error-retry";
 import { MapPin } from "lucide-react";
 
 // Simplified Egypt SVG path (outline)
@@ -54,9 +55,17 @@ function getSitePosition(name: string, index: number) {
 
 export function EgyptMap() {
   const { filters } = useFilters();
-  const { data, isLoading } = useSites(filters);
+  const { data, error, isLoading, mutate } = useSites(filters);
 
   if (isLoading) return <LoadingCard className="h-72" />;
+  if (error)
+    return (
+      <ErrorRetry
+        description="Failed to load site data"
+        onRetry={() => mutate()}
+        className="h-72"
+      />
+    );
 
   const sites = data?.items ?? [];
 

@@ -4,11 +4,11 @@ import { fetchAPI } from "@/lib/api-client";
 import type { ForecastResult, ForecastSummary } from "@/types/api";
 
 export function useForecastSummary() {
-  const { data, error, isLoading } = useSWR<ForecastSummary>(
+  const { data, error, isLoading, mutate } = useSWR<ForecastSummary>(
     "/api/v1/forecasting/summary",
     () => fetchAPI<ForecastSummary>("/api/v1/forecasting/summary"),
   );
-  return { data, error, isLoading };
+  return { data, error, isLoading, mutate };
 }
 
 export function useRevenueForecast(granularity: "daily" | "monthly" = "daily") {
