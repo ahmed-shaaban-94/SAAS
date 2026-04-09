@@ -5,6 +5,12 @@
  * cookie (signed with NEXTAUTH_SECRET) and saves it to e2e/.auth/user.json so
  * that every test fixture starts as an authenticated user.
  *
+ * Token fields mirror what the real jwt() callback stores on first sign-in
+ * (auth.ts lines 134-141). Crucially, `expiresAt` must be set far in the
+ * future so the jwt() callback takes the early-return branch and never calls
+ * refreshAccessToken() — which would otherwise try to reach the Auth0 token
+ * endpoint and fail with EAI_AGAIN in the offline CI environment.
+ *
  * Tests that specifically need an *unauthenticated* context (auth.spec.ts)
  * already create their own browser context with `storageState: undefined`,
  * which overrides this global state.
@@ -24,7 +30,13 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   const secret =
     process.env.NEXTAUTH_SECRET ?? "ci-e2e-placeholder-not-for-production";
 
+  const nowSec = Math.floor(Date.now() / 1000);
+  const ttl = 60 * 60 * 24; // 24 hours
+
   // Mint a valid NextAuth JWT using the same encoder the framework uses.
+  // `expiresAt` (Auth0 access-token expiry) prevents refreshAccessToken() from
+  // being invoked — without it the jwt() callback always attempts a token
+  // refresh that fails in CI (no Auth0 reachable).
   const sessionToken = await encode({
     token: {
       sub: "auth0|ci-test-user-001",
@@ -33,11 +45,15 @@ async function globalSetup(_config: FullConfig): Promise<void> {
       picture: null,
       tenant_id: "1",
       roles: ["admin"],
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 24 h
+      // Match the shape written by the real jwt() callback on first sign-in:
+      accessToken: "ci-dummy-access-token",
+      refreshToken: "ci-dummy-refresh-token",
+      expiresAt: nowSec + ttl, // ← key: keeps jwt() in the fast-return branch
+      iat: nowSec,
+      exp: nowSec + ttl,
     },
     secret,
-    maxAge: 60 * 60 * 24, // 24 h
+    maxAge: ttl,
   });
 
   // Inject the token as a cookie and persist the browser storage state.
