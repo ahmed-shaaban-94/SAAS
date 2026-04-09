@@ -288,12 +288,12 @@ class AnalyticsRepository:
                 mh.vals AS mom_history,
                 yh.vals AS yoy_history
             FROM daily d
-            LEFT JOIN basket b ON TRUE
-            LEFT JOIN prev_month pm ON TRUE
-            LEFT JOIN prev_year py ON TRUE
-            LEFT JOIN sparkline sp ON TRUE
-            LEFT JOIN mom_history mh ON TRUE
-            LEFT JOIN yoy_history yh ON TRUE
+            CROSS JOIN basket b
+            CROSS JOIN prev_month pm
+            CROSS JOIN prev_year py
+            CROSS JOIN sparkline sp
+            CROSS JOIN mom_history mh
+            CROSS JOIN yoy_history yh
         """)
 
         row = (
@@ -623,9 +623,9 @@ class AnalyticsRepository:
                 p.prev_net,
                 sp.points AS sparkline_points
             FROM range_agg r
-            LEFT JOIN basket b ON TRUE
-            LEFT JOIN prev_period p ON TRUE
-            LEFT JOIN sparkline sp ON TRUE
+            CROSS JOIN basket b
+            CROSS JOIN prev_period p
+            CROSS JOIN sparkline sp
         """)
 
         row = self._session.execute(stmt, params).mappings().fetchone()
@@ -765,10 +765,10 @@ class AnalyticsRepository:
                 p.prev_net,
                 sp.points AS sparkline_points
             FROM range_agg r
-            LEFT JOIN last_day l ON TRUE
-            LEFT JOIN basket b ON TRUE
-            LEFT JOIN prev_period p ON TRUE
-            LEFT JOIN sparkline sp ON TRUE
+            CROSS JOIN last_day l
+            CROSS JOIN basket b
+            CROSS JOIN prev_period p
+            CROSS JOIN sparkline sp
         """)
 
         sparkline_start = end - timedelta(days=7)
