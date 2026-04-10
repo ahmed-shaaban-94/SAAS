@@ -19,7 +19,6 @@ from datapulse.explore.models import (
 )
 from datapulse.explore.sql_builder import build_sql
 
-
 # ---------------------------------------------------------------------------
 # Fixtures — minimal catalog for testing
 # ---------------------------------------------------------------------------

@@ -9,10 +9,10 @@ from uuid import uuid4
 import pytest
 
 from datapulse.pipeline.quality_engine import (
-    CHECK_REGISTRY,
-    DEFAULT_RULES,
     _SAFE_IDENTIFIER_RE,
     _STAGE_TABLE,
+    CHECK_REGISTRY,
+    DEFAULT_RULES,
     _check_custom_sql,
     _check_freshness,
     _check_null_rate,

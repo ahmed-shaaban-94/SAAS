@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.config import get_settings
-from datapulse.rbac.dependencies import require_permission
 from datapulse.explore.manifest_parser import get_catalog as _get_cached_catalog
 from datapulse.explore.manifest_parser import invalidate_catalog
 from datapulse.explore.models import (
@@ -29,6 +28,7 @@ from datapulse.explore.models import (
 )
 from datapulse.explore.sql_builder import build_sql
 from datapulse.logging import get_logger
+from datapulse.rbac.dependencies import require_permission
 
 log = get_logger(__name__)
 
