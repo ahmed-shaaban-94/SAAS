@@ -33,7 +33,7 @@ def _check_db() -> dict:
         return {"status": "ok", "latency_ms": latency}
     except Exception as exc:
         logger.error("health_db_error", error=str(exc))
-        return {"status": "error", "error": str(exc)[:100]}
+        return {"status": "error"}
 
 
 def _check_redis() -> dict:
