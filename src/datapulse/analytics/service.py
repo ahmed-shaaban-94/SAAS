@@ -558,7 +558,9 @@ class AnalyticsService:
         if self._feature_store_repo is None:
             raise RuntimeError("FeatureStoreRepository not configured")
         rows = self._feature_store_repo.get_revenue_site_rolling(
-            site_key=site_key, days=days, limit=limit,
+            site_key=site_key,
+            days=days,
+            limit=limit,
         )
         return [RevenueSiteRolling(**r) for r in rows]
 
