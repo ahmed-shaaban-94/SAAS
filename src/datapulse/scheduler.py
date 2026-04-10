@@ -119,6 +119,73 @@ async def run_pipeline(
         finally:
             session.close()
 
+    def _update_usage(tid: int, rows_loaded: int) -> None:
+        """Update usage_metrics after a successful pipeline run."""
+        from sqlalchemy.exc import SQLAlchemyError
+
+        from datapulse.billing.repository import BillingRepository
+
+        session = _get_session()
+        try:
+            billing_repo = BillingRepository(session)
+            # Count distinct data sources for this tenant
+            source_count_row = session.execute(
+                sa_text(
+                    "SELECT COUNT(DISTINCT source_file) FROM bronze.sales "
+                    "WHERE tenant_id = :tid"
+                ),
+                {"tid": tid},
+            ).scalar()
+            # Count total rows for this tenant
+            row_count = session.execute(
+                sa_text("SELECT COUNT(*) FROM bronze.sales WHERE tenant_id = :tid"),
+                {"tid": tid},
+            ).scalar()
+
+            billing_repo.upsert_usage(
+                tid,
+                data_sources_count=source_count_row or 0,
+                total_rows=row_count or rows_loaded,
+            )
+            session.commit()
+            log.info(
+                "usage_metrics_updated",
+                tenant_id=tid,
+                data_sources=source_count_row,
+                total_rows=row_count or rows_loaded,
+            )
+        except SQLAlchemyError:
+            session.rollback()
+            log.error("usage_metrics_update_failed", tenant_id=tid, exc_info=True)
+        finally:
+            session.close()
+
+    def _check_plan_limits_under_lock(tid: int) -> str | None:
+        """Re-validate plan limits under advisory lock (TOCTOU defense).
+
+        Returns None if OK, or an error message if limits are exceeded.
+        """
+        from datapulse.billing.repository import BillingRepository
+        from datapulse.billing.service import BillingService, PlanLimitExceededError
+        from datapulse.billing.stripe_client import StripeClient
+
+        session = _get_session()
+        try:
+            billing_repo = BillingRepository(session)
+            client = StripeClient(settings.stripe_secret_key)
+            billing_svc = BillingService(
+                billing_repo,
+                client,
+                price_to_plan=settings.stripe_price_to_plan_map,
+                base_url=settings.billing_base_url,
+            )
+            billing_svc.check_plan_limits(tid)
+            return None
+        except PlanLimitExceededError as e:
+            return str(e)
+        finally:
+            session.close()
+
     stages = [
         ("running", "bronze", lambda: executor.run_bronze(run_id=run_id, source_dir=source_dir)),
         ("bronze_complete", "bronze", None),  # quality check
@@ -147,6 +214,21 @@ async def run_pipeline(
     except Exception:
         lock_session.close()
         raise
+
+    # Re-validate plan limits under lock (TOCTOU defense)
+    limit_error = await asyncio.to_thread(_check_plan_limits_under_lock, tenant_id)
+    if limit_error:
+        _update_status("failed", error_message=f"Plan limit exceeded: {limit_error}")
+        notify_pipeline_failure(run_id_str, "plan_check", limit_error)
+        log.warning("pipeline_plan_limit_exceeded", run_id=run_id_str, tenant_id=tenant_id)
+        # Release lock early
+        try:
+            lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
+            lock_session.commit()
+        finally:
+            lock_session.close()
+        clear_contextvars()
+        return
 
     _update_status("running")
     total_rows = 0
@@ -199,6 +281,10 @@ async def run_pipeline(
         elapsed = round(time.perf_counter() - t0, 2)
         _update_status("success", rows=total_rows)
         cache_invalidate_pattern("datapulse:analytics:*")
+
+        # Update usage metrics for billing enforcement (in thread — avoids blocking event loop)
+        await asyncio.to_thread(_update_usage, tenant_id, total_rows)
+
         notify_pipeline_success(run_id_str, elapsed, total_rows)
         log.info("pipeline_complete", run_id=run_id_str, duration=elapsed, rows=total_rows)
 

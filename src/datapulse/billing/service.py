@@ -29,6 +29,20 @@ _SUB_DELETED = "customer.subscription.deleted"
 _PAYMENT_FAILED = "invoice.payment_failed"
 
 
+class PlanLimitExceededError(Exception):
+    """Raised when a tenant operation would exceed their plan limits."""
+
+    def __init__(self, limit_type: str, current: int, limit: int, plan: str) -> None:
+        self.limit_type = limit_type
+        self.current = current
+        self.limit = limit
+        self.plan = plan
+        super().__init__(
+            f"{limit_type} limit exceeded: {current}/{limit} on {plan} plan. "
+            f"Upgrade to increase your limit."
+        )
+
+
 class BillingService:
     """Coordinates billing operations between Stripe, DB, and plan enforcement."""
 
@@ -44,6 +58,102 @@ class BillingService:
         self._stripe = stripe_client
         self._price_to_plan = price_to_plan
         self._base_url = base_url
+
+    def check_plan_limits(
+        self,
+        tenant_id: int,
+        *,
+        additional_rows: int = 0,
+        additional_sources: int = 0,
+    ) -> None:
+        """Validate that the tenant has not exceeded their plan limits.
+
+        Raises PlanLimitExceededError if:
+        - Current usage already meets or exceeds the limit, OR
+        - Adding the requested resources would exceed the limit.
+        A limit of -1 means unlimited.
+        """
+        plan_name = self._repo.get_tenant_plan(tenant_id)
+        limits = get_plan_limits(plan_name)
+        usage = self._repo.get_usage(tenant_id)
+
+        # Check data sources limit (current + projected)
+        if limits.data_sources != -1:
+            current_sources = usage["data_sources_count"]
+            if current_sources >= limits.data_sources:
+                raise PlanLimitExceededError(
+                    limit_type="data_sources",
+                    current=current_sources,
+                    limit=limits.data_sources,
+                    plan=plan_name,
+                )
+            if additional_sources > 0 and current_sources + additional_sources > limits.data_sources:
+                raise PlanLimitExceededError(
+                    limit_type="data_sources",
+                    current=current_sources,
+                    limit=limits.data_sources,
+                    plan=plan_name,
+                )
+
+        # Check row limit (current + projected)
+        if limits.max_rows != -1:
+            current_rows = usage["total_rows"]
+            if current_rows >= limits.max_rows:
+                raise PlanLimitExceededError(
+                    limit_type="total_rows",
+                    current=current_rows,
+                    limit=limits.max_rows,
+                    plan=plan_name,
+                )
+            if additional_rows > 0 and current_rows + additional_rows > limits.max_rows:
+                raise PlanLimitExceededError(
+                    limit_type="total_rows",
+                    current=current_rows,
+                    limit=limits.max_rows,
+                    plan=plan_name,
+                )
+
+        logger.info(
+            "plan_limits_checked",
+            tenant_id=tenant_id,
+            plan=plan_name,
+        )
+
+    _FEATURE_FLAGS: frozenset[str] = frozenset({
+        "ai_insights", "pipeline_automation", "quality_gates",
+    })
+
+    def check_feature_access(self, tenant_id: int, feature: str) -> bool:
+        """Check if a tenant's plan includes a specific feature.
+
+        Only boolean feature flags defined in PlanLimits are allowed.
+        Raises ValueError for unknown feature names.
+        """
+        if feature not in self._FEATURE_FLAGS:
+            raise ValueError(f"Unknown feature flag: {feature!r}")
+        plan_name = self._repo.get_tenant_plan(tenant_id)
+        limits = get_plan_limits(plan_name)
+        return bool(getattr(limits, feature))
+
+    def update_usage(
+        self,
+        tenant_id: int,
+        *,
+        data_sources_count: int | None = None,
+        total_rows: int | None = None,
+    ) -> None:
+        """Update usage metrics for a tenant after a pipeline run or data source change."""
+        self._repo.upsert_usage(
+            tenant_id,
+            data_sources_count=data_sources_count,
+            total_rows=total_rows,
+        )
+        logger.info(
+            "usage_updated",
+            tenant_id=tenant_id,
+            data_sources_count=data_sources_count,
+            total_rows=total_rows,
+        )
 
     def get_billing_status(self, tenant_id: int) -> BillingStatus:
         plan_name = self._repo.get_tenant_plan(tenant_id)
