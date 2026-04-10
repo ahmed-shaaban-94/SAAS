@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import column, select
 
 from datapulse.api.filters import (
     ALLOWED_FIELDS,
     FilterCondition,
     FilterOp,
+    apply_filters,
     parse_filters,
 )
 
@@ -107,3 +109,18 @@ class TestAllowedFields:
     def test_rejects_dangerous_fields(self):
         for bad_field in ["password", "1=1;--", "admin", "__proto__"]:
             assert bad_field not in ALLOWED_FIELDS
+
+
+class TestApplyFilters:
+    def test_like_escapes_wildcards(self):
+        brand_col = column("brand")
+        query = select(brand_col)
+
+        result = apply_filters(
+            query,
+            [FilterCondition(field="brand", op=FilterOp.LIKE, value=r"100%_pure\demo")],
+            {"brand": brand_col},
+        )
+
+        compiled = result.compile()
+        assert r"%100\%\_pure\\demo%" in compiled.params.values()

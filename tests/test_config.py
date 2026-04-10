@@ -3,6 +3,9 @@
 import os
 from unittest.mock import patch
 
+import pytest
+from pydantic import ValidationError
+
 from datapulse.config import Settings, get_settings
 
 # ---------------------------------------------------------------------------
@@ -42,6 +45,14 @@ class TestSettings:
     def test_default_bronze_batch_size(self):
         s = _settings()
         assert s.bronze_batch_size == 50_000
+
+    def test_default_db_pool_size(self):
+        s = _settings()
+        assert s.db_pool_size == 10
+
+    def test_default_db_pool_max_overflow(self):
+        s = _settings()
+        assert s.db_pool_max_overflow == 20
 
     def test_max_file_size_bytes_property(self):
         s = _settings()
@@ -100,6 +111,20 @@ class TestSettings:
 
         s = _settings()
         assert isinstance(s.processed_data_dir, Path)
+
+    def test_non_dev_requires_critical_secrets(self):
+        with pytest.raises(ValidationError, match="API_KEY"):
+            _settings(sentry_environment="production")
+
+    def test_non_dev_allows_configured_secrets(self):
+        s = _settings(
+            sentry_environment="production",
+            api_key="secret123",
+            auth0_domain="example.auth0.com",
+            db_reader_password="reader-secret",
+            pipeline_webhook_secret="pipeline-secret",
+        )
+        assert s.sentry_environment == "production"
 
 
 class TestGetSettings:

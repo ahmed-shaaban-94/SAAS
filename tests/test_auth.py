@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from datapulse.api.auth import (
     get_current_user,
@@ -167,6 +168,23 @@ class TestGetCurrentUser:
             )
         assert result["tenant_id"] == "7"
 
+    @pytest.mark.parametrize("tenant_id", ["abc", "12345678901", "1 OR 1=1", "12-34"])
+    def test_invalid_tenant_id_claim_raises_401(self, tenant_id):
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {"sub": "user123", "tenant_id": tenant_id}
+        with (
+            patch("datapulse.api.auth.verify_jwt", return_value=fake_claims),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            get_current_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key", auth0_domain="example.auth0.com"),
+            )
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Invalid tenant context"
+
     def test_api_key_fallback_valid(self):
         """No Bearer token, valid API key -> returns stub claims with configured roles."""
         result = get_current_user(
@@ -216,18 +234,13 @@ class TestGetCurrentUser:
         assert result["sub"] == "dev-user"
         assert result["tenant_id"] == "1"
 
-    def test_dev_mode_non_dev_environment_raises_503(self):
-        """Dev mode in non-dev SENTRY_ENVIRONMENT raises 503 (security hardening)."""
+    def test_production_settings_validation_fails_before_dev_fallback(self):
+        """Startup validation should reject production auth misconfiguration early."""
         with (
             patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}),
-            pytest.raises(HTTPException) as exc_info,
+            pytest.raises(ValidationError, match="API_KEY"),
         ):
-            get_current_user(
-                credentials=None,
-                api_key=None,
-                settings=_settings(api_key="", auth0_domain=""),
-            )
-        assert exc_info.value.status_code == 503
+            _settings(api_key="", auth0_domain="")
 
     def test_no_auth_but_configured_raises_401(self):
         """No credentials but auth IS configured -> 401."""

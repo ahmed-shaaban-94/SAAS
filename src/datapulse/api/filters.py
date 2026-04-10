@@ -16,6 +16,7 @@ from sqlalchemy import Column, and_
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
+_LIKE_ESCAPE_CHAR = "\\"
 
 # Allowed fields for filtering — prevents SQL injection via field names
 ALLOWED_FIELDS = frozenset(
@@ -170,7 +171,13 @@ def apply_filters(
                     reason="expected two comma-separated values",
                 )
         elif f.op == FilterOp.LIKE:
-            conditions.append(col.ilike(f"%{f.value}%"))
+            escaped = (
+                str(f.value)
+                .replace(_LIKE_ESCAPE_CHAR, _LIKE_ESCAPE_CHAR * 2)
+                .replace("%", f"{_LIKE_ESCAPE_CHAR}%")
+                .replace("_", f"{_LIKE_ESCAPE_CHAR}_")
+            )
+            conditions.append(col.ilike(f"%{escaped}%", escape=_LIKE_ESCAPE_CHAR))
         elif f.op == FilterOp.IS_NULL:
             if str(f.value).lower() == "true":
                 conditions.append(col.is_(None))
