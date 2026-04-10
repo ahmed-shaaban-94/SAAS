@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        unique_key=['tenant_id', 'product_key', 'year', 'month'],
+        incremental_strategy='merge',
         schema='marts',
         post_hook=[
             "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
@@ -10,7 +12,8 @@
             "DROP POLICY IF EXISTS reader_tenant ON {{ this }}",
             "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_product_year_month ON {{ this }} (year, month)",
-            "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_product_product_key ON {{ this }} (product_key)"
+            "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_product_product_key ON {{ this }} (product_key)",
+            "CREATE INDEX IF NOT EXISTS idx_agg_product_tenant_cat ON {{ this }} (tenant_id, drug_category)"
         ]
     )
 }}
@@ -40,6 +43,15 @@ WITH product_monthly AS (
         )                                                                       AS avg_basket_size
     FROM {{ ref('fct_sales') }} f
     INNER JOIN {{ ref('dim_date') }} d ON f.date_key = d.date_key
+    {% if is_incremental() %}
+    WHERE f.date_key >= (
+        SELECT TO_CHAR(
+            MAKE_DATE(MAX(year), MAX(month), 1) - INTERVAL '90 days',
+            'YYYYMMDD'
+        )::INT
+        FROM {{ this }}
+    )
+    {% endif %}
     GROUP BY f.tenant_id, f.product_key, d.year, d.month, d.month_name
 ),
 

@@ -6,26 +6,43 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   Activity,
+  BarChart3,
   BarChartBig,
   Bell,
+  Brain,
+  Building2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
+  Database,
   FileBarChart,
+  FlaskConical,
+  GitBranch,
   LayoutDashboard,
+  LayoutGrid,
+  LogOut,
   Menu,
   Package,
-  Target,
-  Users,
-  UserCog,
-  Building2,
+  Palette,
   RotateCcw,
-  GitBranch,
+  ScrollText,
+  Settings,
+  Shield,
+  ShieldCheck,
   Sparkles,
-  LogOut,
+  Target,
+  Trophy,
+  Upload,
   User,
+  UserCog,
+  Users,
+  Users2,
+  Workflow,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "@/lib/constants";
+import { NAV_GROUPS, type NavGroup } from "@/lib/constants";
 import { HealthIndicator } from "./health-indicator";
 import { SavedViewsMenu } from "./saved-views-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -38,8 +55,10 @@ interface SidebarProps {
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
-  Target,
+  LayoutGrid,
+  BarChart3,
   BarChartBig,
+  Target,
   Package,
   Users,
   UserCog,
@@ -50,9 +69,21 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Bell,
   Sparkles,
   CreditCard,
+  Database,
+  Brain,
+  FlaskConical,
+  Workflow,
+  Upload,
+  ShieldCheck,
+  Users2,
+  Shield,
+  Trophy,
+  ScrollText,
+  Settings,
+  Palette,
 };
 
-function UserInfo() {
+function UserInfo({ collapsed }: { collapsed?: boolean }) {
   const { data: session } = useSession();
 
   if (!session?.user) return null;
@@ -65,10 +96,26 @@ function UserInfo() {
     .toUpperCase()
     .slice(0, 2);
 
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-xs font-bold text-accent">
+          {initials || <User className="h-4 w-4" />}
+        </div>
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-divider hover:text-text-primary"
+          title="Sign Out"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3">
-        {/* Avatar */}
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-xs font-bold text-accent">
           {initials || <User className="h-4 w-4" />}
         </div>
@@ -94,58 +141,170 @@ function UserInfo() {
   );
 }
 
-function NavLinks({
+function NavGroupSection({
+  group,
   pathname,
+  collapsed,
   onNavigate,
   anomalyCount = 0,
   alertCount = 0,
+  defaultOpen,
 }: {
+  group: NavGroup;
   pathname: string;
+  collapsed?: boolean;
   onNavigate?: () => void;
   anomalyCount?: number;
   alertCount?: number;
+  defaultOpen?: boolean;
 }) {
+  const hasActiveItem = group.items.some(
+    (item) => pathname === item.href || pathname?.startsWith(item.href + "/"),
+  );
+  const [open, setOpen] = useState(defaultOpen || hasActiveItem);
+  const GroupIcon = iconMap[group.icon];
+
+  // Collapsed mode: show only group icon as a button with tooltip
+  if (collapsed) {
+    return (
+      <div className="relative group/grp">
+        <div
+          className={cn(
+            "flex h-9 w-9 items-center justify-center rounded-lg mx-auto transition-colors cursor-pointer",
+            hasActiveItem
+              ? "bg-accent/10 text-accent"
+              : "text-text-secondary hover:bg-divider hover:text-text-primary",
+          )}
+          title={group.label}
+        >
+          {GroupIcon && <GroupIcon className="h-5 w-5" />}
+        </div>
+
+        {/* Flyout menu on hover */}
+        <div className="pointer-events-none absolute left-full top-0 z-50 ml-2 opacity-0 transition-all duration-150 group-hover/grp:pointer-events-auto group-hover/grp:opacity-100">
+          <div className="rounded-lg border border-border bg-card py-1.5 shadow-xl min-w-[180px]">
+            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
+              {group.label}
+            </div>
+            {group.items.map((item) => {
+              const Icon = iconMap[item.icon];
+              const isActive =
+                pathname === item.href ||
+                pathname?.startsWith(item.href + "/");
+              const showInsightsBadge =
+                item.label === "Insights" && anomalyCount > 0;
+              const showAlertsBadge =
+                item.label === "Alerts" && alertCount > 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-accent/10 text-accent"
+                      : "text-text-secondary hover:bg-divider hover:text-text-primary",
+                  )}
+                >
+                  {Icon && <Icon className="h-4 w-4" />}
+                  <span>{item.label}</span>
+                  {showInsightsBadge && (
+                    <span className="ml-auto rounded-full bg-chart-amber px-1.5 py-0.5 text-xs font-bold text-black">
+                      {anomalyCount}
+                    </span>
+                  )}
+                  {showAlertsBadge && (
+                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                      {alertCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
-      {NAV_ITEMS.map((item) => {
-        const Icon = iconMap[item.icon];
-        const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-        const showInsightsBadge = item.label === "Insights" && anomalyCount > 0;
-        const showAlertsBadge = item.label === "Alerts" && alertCount > 0;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-accent/10 text-accent"
-                : "text-text-secondary hover:bg-divider hover:text-text-primary"
-            )}
-          >
-            {Icon && <Icon className="h-5 w-5" />}
-            <span>{item.label}</span>
-            {showInsightsBadge && (
-              <span className="ml-auto rounded-full bg-chart-amber px-1.5 py-0.5 text-xs font-bold text-black">
-                {anomalyCount}
-              </span>
-            )}
-            {showAlertsBadge && (
-              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-                {alertCount}
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </>
+    <div>
+      {/* Group header */}
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors",
+          hasActiveItem
+            ? "text-accent"
+            : "text-text-secondary hover:text-text-primary",
+        )}
+        aria-expanded={open}
+      >
+        {GroupIcon && <GroupIcon className="h-4 w-4" />}
+        <span>{group.label}</span>
+        <ChevronDown
+          className={cn(
+            "ml-auto h-3.5 w-3.5 transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {/* Group items */}
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-200",
+          open ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
+        )}
+      >
+        <div className="ml-2 space-y-0.5 border-l border-border/50 pl-2">
+          {group.items.map((item) => {
+            const Icon = iconMap[item.icon];
+            const isActive =
+              pathname === item.href ||
+              pathname?.startsWith(item.href + "/");
+            const showInsightsBadge =
+              item.label === "Insights" && anomalyCount > 0;
+            const showAlertsBadge =
+              item.label === "Alerts" && alertCount > 0;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-accent/10 text-accent"
+                    : "text-text-secondary hover:bg-divider hover:text-text-primary",
+                )}
+              >
+                {Icon && <Icon className="h-4 w-4" />}
+                <span>{item.label}</span>
+                {showInsightsBadge && (
+                  <span className="ml-auto rounded-full bg-chart-amber px-1.5 py-0.5 text-xs font-bold text-black">
+                    {anomalyCount}
+                  </span>
+                )}
+                {showAlertsBadge && (
+                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                    {alertCount}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
 export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -168,8 +327,18 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
     return () => document.removeEventListener("keydown", handleEsc);
   }, [mobileOpen]);
 
+  const sidebarWidth = collapsed ? "w-16" : "w-60";
+  const mainMargin = collapsed ? "lg:ml-16" : "lg:ml-60";
+
   return (
     <>
+      {/* CSS variable for main content offset */}
+      <style jsx global>{`
+        :root {
+          --sidebar-width: ${collapsed ? "4rem" : "15rem"};
+        }
+      `}</style>
+
       {/* Mobile hamburger button */}
       <button
         onClick={() => setMobileOpen(true)}
@@ -182,20 +351,25 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
 
       {/* Mobile overlay + drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60"
             onClick={() => setMobileOpen(false)}
           />
-          {/* Drawer */}
+          {/* Drawer — always expanded on mobile */}
           <aside
             className="absolute left-0 top-0 flex h-screen w-60 flex-col border-r border-border bg-card shadow-xl animate-slide-in-left"
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
             {/* Logo + close */}
-            <div className="flex h-16 items-center justify-between px-6">
+            <div className="flex h-14 items-center justify-between px-4">
               <div className="flex items-center gap-2">
                 <Activity className="h-6 w-6 text-accent" />
                 <span className="text-xl font-bold text-accent">DataPulse</span>
@@ -209,16 +383,26 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
               </button>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 space-y-1 px-3 py-4">
-              <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} anomalyCount={anomalyCount} alertCount={alertCount} />
+            {/* Navigation groups */}
+            <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+              {NAV_GROUPS.map((group) => (
+                <NavGroupSection
+                  key={group.id}
+                  group={group}
+                  pathname={pathname}
+                  onNavigate={() => setMobileOpen(false)}
+                  anomalyCount={anomalyCount}
+                  alertCount={alertCount}
+                  defaultOpen
+                />
+              ))}
             </nav>
 
             {/* Saved Views */}
             <SavedViewsMenu onNavigate={() => setMobileOpen(false)} />
 
             {/* Footer */}
-            <div className="border-t border-border px-4 py-4 space-y-3">
+            <div className="border-t border-border px-4 py-3 space-y-3">
               <UserInfo />
               <ThemeToggle />
               <LanguageToggle />
@@ -230,28 +414,85 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col border-r border-border bg-card lg:flex">
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-2 px-6">
-          <Activity className="h-6 w-6 text-accent" />
-          <span className="text-xl font-bold text-accent">DataPulse</span>
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-40 hidden h-screen flex-col border-r border-border bg-card transition-all duration-200 lg:flex",
+          sidebarWidth,
+        )}
+      >
+        {/* Logo + collapse toggle */}
+        <div
+          className={cn(
+            "flex h-14 items-center border-b border-border",
+            collapsed ? "justify-center px-2" : "justify-between px-4",
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Activity className="h-6 w-6 text-accent flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-lg font-bold text-accent">DataPulse</span>
+            )}
+          </div>
+          <button
+            onClick={() => setCollapsed((prev) => !prev)}
+            className={cn(
+              "rounded-md p-1.5 text-text-secondary transition-colors hover:bg-divider hover:text-text-primary",
+              collapsed && "mx-auto mt-2",
+            )}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          <NavLinks pathname={pathname} anomalyCount={anomalyCount} alertCount={alertCount} />
+        {/* Navigation groups */}
+        <nav
+          className={cn(
+            "flex-1 overflow-y-auto py-3",
+            collapsed ? "px-1 space-y-2" : "px-2 space-y-1",
+          )}
+        >
+          {NAV_GROUPS.map((group) => (
+            <NavGroupSection
+              key={group.id}
+              group={group}
+              pathname={pathname}
+              collapsed={collapsed}
+              anomalyCount={anomalyCount}
+              alertCount={alertCount}
+            />
+          ))}
         </nav>
 
-        {/* Saved Views */}
-        <SavedViewsMenu />
+        {/* Saved Views — hidden when collapsed */}
+        {!collapsed && <SavedViewsMenu />}
 
         {/* Footer */}
-        <div className="border-t border-border px-4 py-4 space-y-3">
-          <UserInfo />
-          <ThemeToggle />
-          <LanguageToggle />
-          <HealthIndicator />
-          <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
+        <div
+          className={cn(
+            "border-t border-border py-3 space-y-2",
+            collapsed ? "px-2 flex flex-col items-center" : "px-4",
+          )}
+        >
+          <UserInfo collapsed={collapsed} />
+          {!collapsed && (
+            <>
+              <ThemeToggle />
+              <LanguageToggle />
+              <HealthIndicator />
+              <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
+            </>
+          )}
+          {collapsed && (
+            <div className="flex flex-col items-center gap-2">
+              <ThemeToggle />
+              <HealthIndicator />
+            </div>
+          )}
         </div>
       </aside>
     </>

@@ -210,7 +210,7 @@ class AdvancedRepository:
                 period=str(r[0]),
                 return_count=int(r[1]) if r[1] else 0,
                 return_amount=Decimal(str(r[2])) if r[2] else _ZERO,
-                return_rate=Decimal(str(r[3])) if r[3] else _ZERO,
+                return_rate=(Decimal(str(r[3])) * 100).quantize(Decimal("0.01")) if r[3] else _ZERO,
             )
             for r in rows
         ]
@@ -219,7 +219,7 @@ class AdvancedRepository:
         total_amount = Decimal(sum(p.return_amount for p in points))
         total_transactions = sum(int(r[4]) if r[4] else 0 for r in rows)
         avg_rate = (
-            (Decimal(total_returns) / Decimal(total_transactions)).quantize(Decimal("0.0001"))
+            (Decimal(total_returns) * 100 / Decimal(total_transactions)).quantize(Decimal("0.01"))
             if total_transactions > 0
             else _ZERO
         )

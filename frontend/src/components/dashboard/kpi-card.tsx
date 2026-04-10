@@ -1,10 +1,10 @@
 "use client";
 
-import { memo, useId } from "react";
+import { memo, useEffect, useId, useRef } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { useCountUp } from "@/hooks/use-count-up";
 import { MetricTooltip } from "@/components/shared/metric-tooltip";
 import type { TimeSeriesPoint } from "@/types/api";
 
@@ -25,32 +25,89 @@ interface KPICardProps {
   accentGradient?: string;
   sparkline?: TimeSeriesPoint[];
   tooltip?: string;
+  "aria-label"?: string;
 }
 
-function AnimatedValue({ value, numericValue, isCurrency, isPercent, isDecimal }: {
+function formatValue(n: number, decimals: number, suffix: string): string {
+  const fixed = n.toFixed(decimals);
+  const [intPart, decPart] = fixed.split(".");
+  const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return (decPart !== undefined ? `${formatted}.${decPart}` : formatted) + suffix;
+}
+
+const isDigitChar = (ch: string) => ch >= "0" && ch <= "9";
+
+const AnimatedValue = memo(function AnimatedValue({ value, numericValue, isCurrency, isPercent, isDecimal }: {
   value: string;
   numericValue?: number;
   isCurrency?: boolean;
   isPercent?: boolean;
   isDecimal?: boolean;
 }) {
-  const animated = useCountUp({
-    end: numericValue ?? 0,
-    duration: 1400,
-    decimals: isPercent ? 1 : isDecimal ? 2 : 0,
-    prefix: "",
-    suffix: isCurrency ? " EGP" : isPercent ? "%" : "",
-    separator: ",",
+  const reducedMotion = useReducedMotion();
+  const decimals = isPercent ? 1 : isDecimal ? 2 : 0;
+  const suffix = isCurrency ? " EGP" : isPercent ? "%" : "";
+  const prevFormattedRef = useRef<string>("");
+
+  const formatted =
+    numericValue !== undefined && numericValue !== null
+      ? formatValue(numericValue, decimals, suffix)
+      : "";
+
+  useEffect(() => {
+    if (formatted) {
+      prevFormattedRef.current = formatted;
+    }
   });
 
   if (numericValue === undefined || numericValue === null) {
     return <>{value}</>;
   }
 
-  return <>{animated}</>;
-}
+  if (reducedMotion) {
+    return <>{formatted}</>;
+  }
 
-export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, isDecimal, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip }: KPICardProps) {
+  const prev = prevFormattedRef.current;
+  const chars = formatted.split("");
+
+  return (
+    <span style={{ display: "inline-flex", alignItems: "baseline", overflow: "visible" }}>
+      {chars.map((char, i) => {
+        const prevChar = prev[i];
+        const changed = prevChar !== undefined && prevChar !== char;
+        const isDigit = isDigitChar(char);
+
+        return (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              overflow: "hidden",
+              lineHeight: "1.2em",
+              verticalAlign: "bottom",
+            }}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={char + String(i)}
+                initial={changed && isDigit ? { y: 20, opacity: 0 } : { opacity: changed ? 0 : 1 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={isDigit ? { y: -20, opacity: 0 } : { opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                style={{ display: "inline-block" }}
+              >
+                {char}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+        );
+      })}
+    </span>
+  );
+});
+
+export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, isDecimal, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip, "aria-label": ariaLabel }: KPICardProps) {
   const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
@@ -77,6 +134,7 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
 
   return (
     <div
+      aria-label={ariaLabel}
       className={cn(
         "group relative overflow-hidden rounded-xl border border-border p-4 sm:p-5",
         // Glass morphism

@@ -128,7 +128,7 @@ export function RadarComparison() {
               </div>
               <div className="grid grid-cols-2 gap-1 text-[10px]">
                 <span className="text-text-secondary">Revenue: <span className="text-text-primary">{formatCurrency(filteredRevenue)}</span></span>
-                <span className="text-text-secondary">Return Rate: <span className={s.return_rate > 5 ? "text-red-500" : "text-green-500"}>{(s.return_rate * 100).toFixed(1)}%</span></span>
+                <span className="text-text-secondary">Return Rate: <span className={s.return_rate > 5 ? "text-red-500" : "text-green-500"}>{s.return_rate.toFixed(1)}%</span></span>
               </div>
             </div>
           );

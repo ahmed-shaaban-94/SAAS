@@ -43,7 +43,7 @@ export function SiteDetailView({ site }: SiteDetailViewProps) {
     { label: "Unique Staff", value: site.unique_staff.toLocaleString() },
     { label: "Walk-in Ratio", value: `${(site.walk_in_ratio * 100).toFixed(1)}%` },
     { label: "Insurance Ratio", value: `${(site.insurance_ratio * 100).toFixed(1)}%` },
-    { label: "Return Rate", value: `${(site.return_rate * 100).toFixed(1)}%` },
+    { label: "Return Rate", value: `${site.return_rate.toFixed(1)}%` },
   ];
 
   const trendData = (site.monthly_trend ?? []).map((p) => ({

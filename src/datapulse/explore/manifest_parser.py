@@ -158,7 +158,7 @@ def parse_dbt_yaml(yaml_path: Path) -> list[ExploreModel]:
     for model_dict in data["models"]:
         try:
             models.append(_parse_model_yaml(model_dict))
-        except Exception as exc:
+        except (OSError, KeyError, ValueError) as exc:
             log.warning(
                 "yaml_parse_error",
                 file=str(yaml_path),

@@ -59,7 +59,7 @@ class CustomerHealthRepository:
                 recency_days=int(r[4]),
                 frequency_3m=int(r[5]),
                 monetary_3m=Decimal(str(r[6])),
-                return_rate=Decimal(str(r[7])),
+                return_rate=(Decimal(str(r[7])) * 100).quantize(Decimal("0.01")),
                 product_diversity=int(r[8]),
                 trend=str(r[9]),
             )
@@ -116,7 +116,7 @@ class CustomerHealthRepository:
                 recency_days=int(r[4]),
                 frequency_3m=int(r[5]),
                 monetary_3m=Decimal(str(r[6])),
-                return_rate=Decimal(str(r[7])),
+                return_rate=(Decimal(str(r[7])) * 100).quantize(Decimal("0.01")),
                 product_diversity=int(r[8]),
                 trend=str(r[9]),
             )

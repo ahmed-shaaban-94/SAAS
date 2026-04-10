@@ -111,6 +111,15 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
 
+    # Infrastructure tuning (extracted from hardcoded values)
+    redis_socket_timeout: int = 2
+    redis_retry_interval: int = 15
+    jwks_cache_ttl: int = 3600
+    query_job_ttl: int = 3600
+    query_execution_timeout: int = 300
+    sse_poll_interval: int = 2
+    sse_max_duration: int = 600
+
     # Forecasting
     forecast: ForecastConfig = ForecastConfig()
 
@@ -124,6 +133,17 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_price_pro_monthly: str = ""  # price_xxx from Stripe Dashboard
     billing_base_url: str = "https://smartdatapulse.tech"
+
+    @model_validator(mode="after")
+    def _require_auth_in_production(self) -> "Settings":
+        """Fail fast at startup if auth is unconfigured in non-dev environments."""
+        env = self.sentry_environment
+        if env not in ("development", "test") and not self.api_key and not self.auth0_domain:
+            raise ValueError(
+                f"Auth must be configured in production/staging (environment={env!r}). "
+                "Set API_KEY or AUTH0_DOMAIN in the environment."
+            )
+        return self
 
     @property
     def stripe_price_to_plan_map(self) -> dict[str, str]:

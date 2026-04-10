@@ -8,6 +8,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
+  LabelList,
   ResponsiveContainer,
   Cell,
   Line,
@@ -51,7 +53,7 @@ function ChartTypeSwitcher({
   onChange: (v: ChartVariant) => void;
 }) {
   return (
-    <div className="flex items-center rounded-lg border border-border bg-page/50 p-0.5">
+    <div className="flex items-center rounded-lg border border-border bg-page/50 p-0.5" role="tablist" aria-label="Chart type">
       {(["bar", "area", "line"] as ChartVariant[]).map((v) => {
         const Icon = VARIANT_ICONS[v];
         return (
@@ -64,6 +66,8 @@ function ChartTypeSwitcher({
                 ? "bg-chart-blue/20 text-chart-blue shadow-sm"
                 : "text-text-secondary hover:text-chart-blue hover:bg-chart-blue/10",
             )}
+            role="tab"
+            aria-selected={value === v}
             aria-label={`Switch to ${v} chart`}
             title={v.charAt(0).toUpperCase() + v.slice(1)}
           >
@@ -76,6 +80,28 @@ function ChartTypeSwitcher({
 }
 
 import { findPeakValley } from "@/lib/chart-utils";
+
+/** Custom legend with dot indicators for multi-series charts */
+function renderMonthlyLegend(props: any) {
+  const { payload } = props as { payload?: Array<{ color?: string; dataKey?: string; value?: string }> };
+  if (!payload?.length) return null;
+  return (
+    <div className="flex items-center justify-center gap-4 pt-2">
+      {payload.map((entry) => (
+        <div key={entry.dataKey ?? entry.value} className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{
+              backgroundColor: entry.color ?? "currentColor",
+              opacity: entry.dataKey === "prev" ? 0.5 : 1,
+            }}
+          />
+          {entry.dataKey === "value" ? "Current period" : "Previous period"}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface MonthlyChartInnerProps {
   chartData: Array<{ month: string; value: number; prev?: number }>;
@@ -103,7 +129,7 @@ function MonthlyChartInner({
   const maxValue = Math.max(...chartData.map((d) => d.value));
 
   const handleMouseMove = useCallback(
-    (state: any) => {
+    (state: { activeTooltipIndex?: number }) => {
       if (state?.activeTooltipIndex !== undefined && onMouseMove) {
         onMouseMove(state.activeTooltipIndex);
       }
@@ -190,23 +216,32 @@ function MonthlyChartInner({
           {commonYAxis}
           {tooltip}
           <Bar dataKey="value" radius={[6, 6, 0, 0]} animationDuration={1200} animationEasing="ease-out">
-            {chartData.map((entry, index) => (
+            {chartData.map((entry) => (
               <Cell
-                key={`cell-${index}`}
+                key={entry.month}
                 fill={entry.value === maxValue ? "url(#barGradient)" : "url(#barGradientDim)"}
               />
             ))}
+            <LabelList
+              dataKey="value"
+              position="top"
+              formatter={(v: number) => formatCompact(v)}
+              style={{ fill: CHART_THEME.tickFill, fontSize: 10 }}
+            />
           </Bar>
           {compare && hasPrev && (
-            <Line
-              type="monotone"
-              dataKey="prev"
-              stroke={CHART_THEME.chartBlue}
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              strokeOpacity={0.5}
-              dot={false}
-            />
+            <>
+              <Legend content={renderMonthlyLegend} />
+              <Line
+                type="monotone"
+                dataKey="prev"
+                stroke={CHART_THEME.chartBlue}
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                strokeOpacity={0.5}
+                dot={false}
+              />
+            </>
           )}
         </ComposedChart>
       </ResponsiveContainer>

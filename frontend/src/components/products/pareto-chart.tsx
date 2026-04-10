@@ -82,7 +82,7 @@ export function ParetoChart() {
               if (name === "revenue") return [formatCurrency(value), "Revenue"];
               return [`${value.toFixed(1)}%`, "Cumulative %"];
             }}
-            labelFormatter={(_label: string, payload: any[]) => {
+            labelFormatter={(_label: string, payload: Array<{ payload?: { fullName?: string } }>) => {
               return payload?.[0]?.payload?.fullName || _label;
             }}
           />
@@ -98,8 +98,8 @@ export function ParetoChart() {
             dataKey="revenue"
             radius={[4, 4, 0, 0]}
             fill="#4F46E5"
-            shape={(props: any) => {
-              const { x, y, width, height, payload } = props;
+            shape={(props: unknown) => {
+              const { x, y, width, height, payload } = props as { x: number; y: number; width: number; height: number; payload: { class: string } };
               return (
                 <rect
                   x={x}

@@ -19,7 +19,13 @@ from datapulse.config import Settings
 
 
 def _settings(**overrides) -> Settings:
-    defaults = dict(_env_file=None, api_key="", database_url="", pipeline_webhook_secret="")
+    defaults = dict(
+        _env_file=None,
+        api_key="",
+        database_url="",
+        pipeline_webhook_secret="",
+        sentry_environment="test",
+    )
     defaults.update(overrides)
     return Settings(**defaults)
 
@@ -234,13 +240,19 @@ class TestGetCurrentUser:
         assert result["sub"] == "dev-user"
         assert result["tenant_id"] == "1"
 
-    def test_production_settings_validation_fails_before_dev_fallback(self):
-        """Startup validation should reject production auth misconfiguration early."""
-        with (
-            patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}),
-            pytest.raises(ValidationError, match="API_KEY"),
-        ):
-            _settings(api_key="", auth0_domain="")
+    def test_dev_mode_non_dev_environment_raises_at_startup(self):
+        """Unconfigured auth in production raises ValueError at startup (T1.1)."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="Auth must be configured"):
+            Settings(
+                _env_file=None,
+                api_key="",
+                auth0_domain="",
+                database_url="",
+                pipeline_webhook_secret="",
+                sentry_environment="production",
+            )
 
     def test_no_auth_but_configured_raises_401(self):
         """No credentials but auth IS configured -> 401."""

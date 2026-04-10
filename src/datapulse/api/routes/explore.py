@@ -10,11 +10,11 @@ from __future__ import annotations
 import time
 from typing import Annotated, Any
 
+import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.config import get_settings
@@ -28,13 +28,14 @@ from datapulse.explore.models import (
 )
 from datapulse.explore.sql_builder import build_sql
 from datapulse.logging import get_logger
+from datapulse.rbac.dependencies import require_permission
 
 log = get_logger(__name__)
 
 router = APIRouter(
     prefix="/explore",
     tags=["explore"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(require_permission("analytics:custom_query"))],
 )
 
 
@@ -127,7 +128,7 @@ def execute_explore_query(
             sql=sql if show_sql else "",
             truncated=truncated,
         )
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, ValueError, OSError) as exc:
         log.error("explore_query_failed", error=str(exc), model=body.model)
         raise HTTPException(
             status_code=500,

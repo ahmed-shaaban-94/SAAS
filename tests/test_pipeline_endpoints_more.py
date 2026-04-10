@@ -56,11 +56,15 @@ def _make_pipeline_client():
     mock_quality_svc = MagicMock(spec=QualityService)
 
     app = create_app()
-    app.dependency_overrides[deps.get_db_session] = lambda: mock_session
+    mock_billing_svc = MagicMock()
+    mock_billing_svc.check_plan_limits.return_value = None
+    mock_billing_svc.check_feature_access.return_value = True
+
     app.dependency_overrides[deps.get_tenant_session] = lambda: mock_session
     app.dependency_overrides[deps.get_pipeline_service] = lambda: mock_pl_svc
     app.dependency_overrides[deps.get_pipeline_executor] = lambda: mock_executor
     app.dependency_overrides[deps.get_quality_service] = lambda: mock_quality_svc
+    app.dependency_overrides[deps.get_billing_service] = lambda: mock_billing_svc
     app.dependency_overrides[get_current_user] = lambda: _dev_user
     app.dependency_overrides[require_pipeline_token] = lambda: None
 

@@ -32,11 +32,17 @@ from datapulse.analytics.models import (
     HealthDistribution,
     HeatmapData,
     KPISummary,
+    LifecycleDistribution,
     ProductHierarchy,
+    ProductLifecycle,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
     ReturnsTrend,
+    RevenueDailyRolling,
+    RevenueSiteRolling,
+    SeasonalityDaily,
+    SeasonalityMonthly,
     SegmentSummary,
     SiteDetail,
     StaffPerformance,
@@ -579,3 +585,87 @@ def get_product_affinity(
     repo = AffinityRepository(session)
     rows = repo.get_affinity_for_product(product_key, limit=limit)
     return [AffinityPair(**r) for r in rows]
+
+
+# ------------------------------------------------------------------
+# Feature Store: Revenue Rolling, Seasonality, Product Lifecycle
+# ------------------------------------------------------------------
+
+
+@router.get("/revenue/rolling", response_model=list[RevenueDailyRolling])
+@limiter.limit("60/minute")
+def get_revenue_daily_rolling(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    days: Annotated[int, Query(ge=1, le=730)] = 90,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+) -> list[RevenueDailyRolling]:
+    """Daily revenue with 7/30/90-day MAs, volatility, and trend ratios."""
+    _set_cache(response, 300)
+    return service.get_revenue_daily_rolling(days=days, limit=limit)
+
+
+@router.get("/revenue/rolling/by-site", response_model=list[RevenueSiteRolling])
+@limiter.limit("60/minute")
+def get_revenue_site_rolling(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    site_key: int | None = Query(None),
+    days: Annotated[int, Query(ge=1, le=365)] = 30,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+) -> list[RevenueSiteRolling]:
+    """Per-site daily rolling MAs with cross-site comparison."""
+    _set_cache(response, 300)
+    return service.get_revenue_site_rolling(site_key=site_key, days=days, limit=limit)
+
+
+@router.get("/seasonality/monthly", response_model=list[SeasonalityMonthly])
+@limiter.limit("60/minute")
+def get_seasonality_monthly(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> list[SeasonalityMonthly]:
+    """Monthly seasonal indices (12 rows) for forecasting and pattern analysis."""
+    _set_cache(response, 600)
+    return service.get_seasonality_monthly()
+
+
+@router.get("/seasonality/daily", response_model=list[SeasonalityDaily])
+@limiter.limit("60/minute")
+def get_seasonality_daily(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> list[SeasonalityDaily]:
+    """Day-of-week seasonal indices (7 rows) for scheduling and pattern analysis."""
+    _set_cache(response, 600)
+    return service.get_seasonality_daily()
+
+
+@router.get("/products/lifecycle", response_model=list[ProductLifecycle])
+@limiter.limit("60/minute")
+def get_product_lifecycle(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    phase: Annotated[str | None, Query(pattern="^(Growth|Mature|Decline|Dormant)$")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[ProductLifecycle]:
+    """Product lifecycle classification with optional phase filter."""
+    _set_cache(response, 300)
+    return service.get_product_lifecycle(phase=phase, limit=limit)
+
+
+@router.get("/products/lifecycle/distribution", response_model=LifecycleDistribution)
+@limiter.limit("60/minute")
+def get_lifecycle_distribution(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> LifecycleDistribution:
+    """Distribution of products across lifecycle phases."""
+    _set_cache(response, 300)
+    return service.get_lifecycle_distribution()

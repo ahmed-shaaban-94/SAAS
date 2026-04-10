@@ -10,6 +10,7 @@ import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
+import { RankingTableSkeleton } from "@/components/ui/table-skeleton";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 export function CustomerOverview() {
@@ -26,7 +27,9 @@ export function CustomerOverview() {
         </div>
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <LoadingCard lines={8} className="h-96" />
-          <LoadingCard lines={8} className="h-96" />
+          <div className="rounded-xl border border-border bg-card p-5">
+            <RankingTableSkeleton rows={8} />
+          </div>
         </div>
       </div>
     );

@@ -6,7 +6,11 @@ from datetime import UTC
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
+
 from datapulse.pipeline.quality_engine import (
+    _SAFE_IDENTIFIER_RE,
+    _STAGE_TABLE,
     CHECK_REGISTRY,
     DEFAULT_RULES,
     _check_custom_sql,
@@ -188,8 +192,12 @@ class TestCheckCustomSQL:
         assert "SELECT" in result.message
 
     def test_handles_sql_error(self):
+        import sqlalchemy.exc
+
         session = MagicMock()
-        session.execute.side_effect = Exception("syntax error")
+        session.execute.side_effect = sqlalchemy.exc.OperationalError(
+            "statement", {}, Exception("syntax error")
+        )
         result = _check_custom_sql(
             session,
             "bronze",
@@ -204,8 +212,13 @@ class TestCheckCustomSQL:
 
 class TestRunConfigurableChecks:
     def test_uses_default_rules_when_none_provided(self):
+        from datetime import datetime, timedelta
+
         session = MagicMock()
-        session.execute.return_value.scalar_one.return_value = 1000
+        recent_date = datetime.now(UTC) - timedelta(hours=1)
+        # Bronze defaults: row_count (scalar_one=1000), null_rate (fetchone),
+        # freshness (scalar_one=recent_date)
+        session.execute.return_value.scalar_one.side_effect = [1000, recent_date]
         session.execute.return_value.fetchone.return_value = [0.0, 0.0, 0.0, 0.0]
 
         run_id = uuid4()
@@ -267,8 +280,12 @@ class TestRunConfigurableChecks:
         assert "Unknown check" in report.checks[0].message
 
     def test_handles_check_exception(self):
+        import sqlalchemy.exc
+
         session = MagicMock()
-        session.execute.side_effect = Exception("DB down")
+        session.execute.side_effect = sqlalchemy.exc.OperationalError(
+            "statement", {}, Exception("DB down")
+        )
 
         run_id = uuid4()
         rules = [
@@ -297,3 +314,344 @@ class TestRunConfigurableChecks:
         assert "bronze" in DEFAULT_RULES
         assert "silver" in DEFAULT_RULES
         assert "gold" in DEFAULT_RULES
+
+
+# ---------------------------------------------------------------------------
+# T6.2 — Default rules loading
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestDefaultRulesLoading:
+    def test_bronze_has_row_count_and_null_rate(self):
+        check_names = [r["check_name"] for r in DEFAULT_RULES["bronze"]]
+        assert "row_count" in check_names
+        assert "null_rate" in check_names
+
+    def test_silver_has_null_rate_and_row_count(self):
+        check_names = [r["check_name"] for r in DEFAULT_RULES["silver"]]
+        assert "null_rate" in check_names
+        assert "row_count" in check_names
+
+    def test_gold_has_row_count(self):
+        check_names = [r["check_name"] for r in DEFAULT_RULES["gold"]]
+        assert "row_count" in check_names
+
+    def test_all_rules_have_required_keys(self):
+        for stage, rules in DEFAULT_RULES.items():
+            for rule in rules:
+                assert "check_name" in rule, f"Missing check_name in {stage}"
+                assert "severity" in rule, f"Missing severity in {stage}"
+                assert "config" in rule, f"Missing config in {stage}"
+
+    def test_run_uses_defaults_when_rules_none(self):
+        """Verify that run_configurable_checks with rules=None loads defaults for the stage."""
+        from datetime import datetime, timedelta
+
+        session = MagicMock()
+        recent_date = datetime.now(UTC) - timedelta(hours=1)
+        # Bronze defaults: row_count (scalar_one), null_rate (fetchone), freshness (scalar_one)
+        session.execute.return_value.scalar_one.side_effect = [1000, recent_date]
+        session.execute.return_value.fetchone.return_value = [0.0, 0.0, 0.0, 0.0]
+
+        run_id = uuid4()
+        report = run_configurable_checks(session, run_id, "bronze", rules=None)
+
+        # Should have run bronze default rules (at least row_count + null_rate)
+        check_names = [c.check_name for c in report.checks]
+        assert "row_count" in check_names
+        assert "null_rate" in check_names
+
+    def test_unknown_stage_returns_empty_defaults(self):
+        """A stage not in DEFAULT_RULES should run zero checks and pass."""
+        session = MagicMock()
+        run_id = uuid4()
+        report = run_configurable_checks(session, run_id, "unknown_stage", rules=None)
+
+        assert len(report.checks) == 0
+        assert report.gate_passed is True
+        assert report.all_passed is True
+
+
+# ---------------------------------------------------------------------------
+# T6.2 — Each check type
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestCheckTypeRowCount:
+    def test_exact_boundary_passes(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 1
+        result = _check_row_count(session, "bronze", {"min_rows": 1})
+        assert result.passed is True
+
+    def test_silver_stage(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 500
+        result = _check_row_count(session, "silver", {"min_rows": 1})
+        assert result.passed is True
+        assert result.stage == "silver"
+
+    def test_gold_stage(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 10
+        result = _check_row_count(session, "gold", {"min_rows": 1})
+        assert result.passed is True
+        assert result.stage == "gold"
+
+    def test_default_min_rows_is_one(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 1
+        result = _check_row_count(session, "bronze", {})
+        assert result.passed is True
+
+
+@pytest.mark.unit
+class TestCheckTypeNullRate:
+    def test_null_rate_with_none_fetchone(self):
+        """When fetchone returns None (empty table), null pcts should be 0."""
+        session = MagicMock()
+        session.execute.return_value.fetchone.return_value = None
+        result = _check_null_rate(
+            session,
+            "bronze",
+            {"threshold": 5.0, "columns": ["reference_no"]},
+        )
+        # 0% null rate < 5% threshold => passes
+        assert result.passed is True
+
+    def test_threshold_at_exact_boundary_fails(self):
+        """A null rate equal to threshold should fail (>= check)."""
+        session = MagicMock()
+        session.execute.return_value.fetchone.return_value = [5.0]
+        result = _check_null_rate(
+            session,
+            "bronze",
+            {"threshold": 5.0, "columns": ["reference_no"]},
+        )
+        assert result.passed is False
+
+
+@pytest.mark.unit
+class TestCheckTypeDuplicateCheck:
+    """Tests around the custom_sql check (used for duplicate detection among other things)."""
+
+    def test_custom_sql_duplicate_check(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 0
+        result = _check_custom_sql(
+            session,
+            "bronze",
+            {
+                "query": "SELECT COUNT(*) - COUNT(DISTINCT reference_no) FROM bronze.sales",
+                "expected": "0",
+            },
+        )
+        assert result.passed is True
+
+    def test_custom_sql_timeout(self):
+        """Timeout errors should produce a descriptive message."""
+        import sqlalchemy.exc
+
+        session = MagicMock()
+        session.execute.side_effect = sqlalchemy.exc.OperationalError(
+            "statement", {}, Exception("canceling statement due to statement timeout")
+        )
+        result = _check_custom_sql(
+            session,
+            "bronze",
+            {"query": "SELECT 1", "expected": "1", "timeout_ms": 1000},
+        )
+        assert result.passed is False
+        assert "timed out" in result.message
+
+
+# ---------------------------------------------------------------------------
+# T6.2 — Custom rule override
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestCustomRuleOverride:
+    def test_custom_rules_replace_defaults(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 50
+
+        run_id = uuid4()
+        custom_rules = [
+            {"check_name": "row_count", "severity": "warn", "config": {"min_rows": 10}},
+        ]
+        report = run_configurable_checks(session, run_id, "bronze", rules=custom_rules)
+
+        assert len(report.checks) == 1
+        assert report.checks[0].check_name == "row_count"
+        assert report.checks[0].severity == "warn"
+        assert report.checks[0].passed is True
+
+    def test_severity_override_from_rule(self):
+        """The severity from the rule dict overrides the checker's default."""
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 0
+
+        run_id = uuid4()
+        rules = [
+            {"check_name": "row_count", "severity": "warn", "config": {"min_rows": 1}},
+        ]
+        report = run_configurable_checks(session, run_id, "bronze", rules=rules)
+
+        # row_count fails but severity is warn, so gate should pass
+        assert report.checks[0].passed is False
+        assert report.checks[0].severity == "warn"
+        assert report.gate_passed is True
+
+
+# ---------------------------------------------------------------------------
+# T6.2 — Severity levels (error blocks, warning passes)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestSeverityLevels:
+    def test_error_severity_blocks_gate(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 0
+
+        run_id = uuid4()
+        rules = [
+            {"check_name": "row_count", "severity": "error", "config": {"min_rows": 1}},
+        ]
+        report = run_configurable_checks(session, run_id, "bronze", rules=rules)
+
+        assert report.checks[0].passed is False
+        assert report.gate_passed is False
+
+    def test_warn_severity_does_not_block_gate(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 0
+
+        run_id = uuid4()
+        rules = [
+            {"check_name": "row_count", "severity": "warn", "config": {"min_rows": 1}},
+        ]
+        report = run_configurable_checks(session, run_id, "bronze", rules=rules)
+
+        assert report.checks[0].passed is False
+        assert report.gate_passed is True
+        assert report.all_passed is False
+
+    def test_mixed_severities(self):
+        """error passes + warn fails => gate_passed=True, all_passed=False."""
+        session = MagicMock()
+        # First call for row_count (passes), second for freshness (stale)
+        from datetime import datetime, timedelta
+
+        old_date = datetime.now(UTC) - timedelta(hours=100)
+        session.execute.return_value.scalar_one.side_effect = [500, old_date]
+
+        run_id = uuid4()
+        rules = [
+            {"check_name": "row_count", "severity": "error", "config": {"min_rows": 1}},
+            {
+                "check_name": "freshness",
+                "severity": "warn",
+                "config": {"max_age_hours": 24, "date_column": "date"},
+            },
+        ]
+        report = run_configurable_checks(session, run_id, "bronze", rules=rules)
+
+        assert report.gate_passed is True
+        assert report.all_passed is False
+
+
+# ---------------------------------------------------------------------------
+# T6.2 — Safe identifier regex
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestSafeIdentifierRegex:
+    @pytest.mark.parametrize(
+        "identifier",
+        ["date", "net_sales", "reference_no", "a123", "col_name_2"],
+    )
+    def test_valid_identifiers(self, identifier: str):
+        assert _SAFE_IDENTIFIER_RE.match(identifier) is not None
+
+    @pytest.mark.parametrize(
+        "identifier",
+        [
+            "DROP TABLE;--",
+            "1starts_with_digit",
+            "UPPER_CASE",
+            "with space",
+            "with-dash",
+            "",
+            "col.name",
+        ],
+    )
+    def test_invalid_identifiers(self, identifier: str):
+        assert _SAFE_IDENTIFIER_RE.match(identifier) is None
+
+
+# ---------------------------------------------------------------------------
+# T6.2 — Empty table edge case
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestEmptyTableEdgeCase:
+    def test_row_count_zero_fails(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = 0
+        result = _check_row_count(session, "bronze", {"min_rows": 1})
+        assert result.passed is False
+        assert "0 rows" in result.message
+
+    def test_null_rate_empty_table(self):
+        """When table is empty, null pcts should default to 0 and pass."""
+        session = MagicMock()
+        session.execute.return_value.fetchone.return_value = None
+        result = _check_null_rate(
+            session,
+            "bronze",
+            {"threshold": 5.0, "columns": ["reference_no", "date"]},
+        )
+        assert result.passed is True
+
+    def test_freshness_no_data(self):
+        session = MagicMock()
+        session.execute.return_value.scalar_one.return_value = None
+        result = _check_freshness(
+            session,
+            "bronze",
+            {"max_age_hours": 48, "date_column": "date"},
+        )
+        assert result.passed is False
+        assert "No data found" in result.message
+
+    def test_empty_rules_list_passes_gate(self):
+        session = MagicMock()
+        run_id = uuid4()
+        report = run_configurable_checks(session, run_id, "bronze", rules=[])
+        assert report.gate_passed is True
+        assert report.all_passed is True
+        assert len(report.checks) == 0
+
+
+# ---------------------------------------------------------------------------
+# T6.2 — Stage table mapping
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestStageTableMapping:
+    def test_all_known_stages_mapped(self):
+        assert "bronze" in _STAGE_TABLE
+        assert "silver" in _STAGE_TABLE
+        assert "gold" in _STAGE_TABLE
+
+    def test_stage_table_values(self):
+        assert _STAGE_TABLE["bronze"] == ("bronze", "sales")
+        assert _STAGE_TABLE["silver"] == ("public_staging", "stg_sales")
+        assert _STAGE_TABLE["gold"] == ("public_marts", "fct_sales")

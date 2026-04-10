@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useActiveAnomalies, acknowledgeAnomaly } from "@/hooks/use-anomalies";
 import { formatCurrency } from "@/lib/formatters";
+import { useToast } from "@/components/ui/toast";
 import type { AnomalyAlertItem } from "@/types/api";
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -21,13 +22,19 @@ const SEVERITY_BADGE: Record<string, string> = {
 
 export function AnomalyBanner() {
   const { data: alerts, isLoading, mutate } = useActiveAnomalies(10);
+  const { success, error: toastError } = useToast();
   const [expanded, setExpanded] = useState(false);
 
   if (isLoading || !alerts?.length) return null;
 
   const handleAcknowledge = async (id: number) => {
-    await acknowledgeAnomaly(id);
-    mutate();
+    try {
+      await acknowledgeAnomaly(id);
+      mutate();
+      success("Anomaly acknowledged");
+    } catch {
+      toastError("Failed to acknowledge anomaly");
+    }
   };
 
   return (

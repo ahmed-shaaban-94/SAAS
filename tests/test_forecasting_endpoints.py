@@ -39,7 +39,6 @@ def forecast_api_client():
     mock_svc = ForecastingService(mock_repo)
 
     app = create_app()
-    app.dependency_overrides[deps.get_db_session] = lambda: mock_session
     app.dependency_overrides[deps.get_tenant_session] = lambda: mock_session
     app.dependency_overrides[deps.get_forecasting_service] = lambda: mock_svc
     app.dependency_overrides[get_current_user] = lambda: _dev_user

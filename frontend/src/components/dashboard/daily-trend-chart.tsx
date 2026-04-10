@@ -8,6 +8,7 @@ import {
   Bar,
   LineChart,
   Line,
+  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -52,7 +53,7 @@ function ChartTypeSwitcher({
   onChange: (v: ChartVariant) => void;
 }) {
   return (
-    <div className="flex items-center rounded-lg border border-border bg-page/50 p-0.5">
+    <div className="flex items-center rounded-lg border border-border bg-page/50 p-0.5" role="tablist" aria-label="Chart type">
       {(["area", "bar", "line"] as ChartVariant[]).map((v) => {
         const Icon = VARIANT_ICONS[v];
         return (
@@ -65,6 +66,8 @@ function ChartTypeSwitcher({
                 ? "bg-accent/20 text-accent shadow-sm"
                 : "text-text-secondary hover:text-accent hover:bg-accent/10",
             )}
+            role="tab"
+            aria-selected={value === v}
             aria-label={`Switch to ${v} chart`}
             title={v.charAt(0).toUpperCase() + v.slice(1)}
           >
@@ -103,7 +106,7 @@ function TrendChartInner({
   activeIndex,
 }: TrendChartInnerProps) {
   const handleMouseMove = useCallback(
-    (state: any) => {
+    (state: { activeTooltipIndex?: number }) => {
       if (state?.activeTooltipIndex !== undefined && onMouseMove) {
         onMouseMove(state.activeTooltipIndex);
       }
@@ -251,7 +254,7 @@ function TrendChartInner({
           <Bar dataKey="value" radius={[4, 4, 0, 0]} animationDuration={1000}>
             {chartData.map((entry, i) => (
               <Cell
-                key={i}
+                key={entry.date}
                 fill={entry.value === maxValue ? "url(#dailyBarGrad)" : "url(#dailyBarDim)"}
               />
             ))}

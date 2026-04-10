@@ -45,7 +45,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <OnboardingOverlay />
       <KeyboardShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <main id="main-content" className="min-h-screen p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-14 sm:p-4 sm:pt-16 lg:ml-60 lg:p-6 lg:pt-6">
+      <main id="main-content" className="main-content min-h-screen p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-14 sm:p-4 sm:pt-16 lg:p-6 lg:pt-6 transition-[margin] duration-200">
         {/* Header actions */}
         <div className="fixed right-3 top-3.5 z-40 flex items-center gap-2 sm:right-4 sm:top-4 lg:right-6 lg:top-4">
           <div className="relative">

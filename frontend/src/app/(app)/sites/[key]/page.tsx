@@ -1,7 +1,7 @@
 "use client";
 
-import { use } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -11,13 +11,9 @@ import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
 import { useSiteDetail } from "@/hooks/use-site-detail";
 
-export default function SiteDetailPage({
-  params,
-}: {
-  params: Promise<{ key: string }>;
-}) {
-  const { key } = use(params);
-  const siteKey = parseInt(key, 10);
+export default function SiteDetailPage() {
+  const params = useParams<{ key: string }>();
+  const siteKey = parseInt(params.key, 10);
   const { data, isLoading, error } = useSiteDetail(
     isNaN(siteKey) ? null : siteKey,
   );

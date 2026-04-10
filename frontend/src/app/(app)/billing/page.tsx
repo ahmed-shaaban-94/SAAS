@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CreditCard, ExternalLink, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import { useBilling, createCheckout, createPortalSession } from "@/hooks/use-billing";
+import { useToast } from "@/components/ui/toast";
 
 function UsageMeter({
   label,
@@ -54,6 +55,7 @@ function FeatureFlag({ label, enabled }: { label: string; enabled: boolean }) {
 
 export default function BillingPage() {
   const { billing, isLoading, isError } = useBilling();
+  const { error: toastError, info } = useToast();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   if (isLoading) {
@@ -84,22 +86,26 @@ export default function BillingPage() {
 
   async function handleUpgrade() {
     setIsRedirecting(true);
+    info("Redirecting to checkout...");
     try {
       const url = await createCheckout(
         process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY || "",
       );
       window.location.href = url;
     } catch {
+      toastError("Failed to start checkout. Please try again.");
       setIsRedirecting(false);
     }
   }
 
   async function handleManage() {
     setIsRedirecting(true);
+    info("Opening billing portal...");
     try {
       const url = await createPortalSession();
       window.location.href = url;
     } catch {
+      toastError("Failed to open billing portal. Please try again.");
       setIsRedirecting(false);
     }
   }

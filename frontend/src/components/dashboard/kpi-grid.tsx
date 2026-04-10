@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { KPICard } from "./kpi-card";
 import { LoadingCard } from "@/components/loading-card";
 import { useDashboardData } from "@/contexts/dashboard-data-context";
@@ -64,7 +64,7 @@ function getGrowthStatus(growthPct: number | null): string | undefined {
   return "Healthy momentum";
 }
 
-export function KPIGrid() {
+export const KPIGrid = memo(function KPIGrid() {
   const { data: dashboardData, isLoading } = useDashboardData();
   const { filters } = useFilters();
   const { data: targetData } = useTargetSummary();
@@ -79,6 +79,75 @@ export function KPIGrid() {
     const monthStr = format(now, "yyyy-MM");
     return targetData.monthly_targets.find((t) => t.period?.startsWith(monthStr)) ?? null;
   }, [targetData]);
+
+  // Units metrics — daily_quantity is already net (returns are negative in DB)
+  // daily_transactions is already net (total_transactions - total_returns) from backend
+  const totalUnits = data?.daily_quantity ?? 0;
+  const unitsPerTxn = data && data.daily_transactions > 0 ? totalUnits / data.daily_transactions : 0;
+
+  const cards = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        label: "Selected Period Revenue",
+        value: formatCurrency(data.today_gross),
+        numericValue: data.today_gross,
+        isCurrency: true,
+        icon: Zap,
+        tooltip: TOOLTIPS.periodRevenue,
+        sparkline: data.sparkline,
+        comparisonLine: data.mom_growth_pct !== null
+          ? `${formatPercent(data.mom_growth_pct)} vs previous period`
+          : undefined,
+      },
+      {
+        label: "Total Units",
+        value: formatNumber(Math.round(totalUnits)),
+        numericValue: totalUnits,
+        icon: Package,
+        tooltip: TOOLTIPS.totalUnits,
+      },
+      {
+        label: "Units per Transaction",
+        value: unitsPerTxn.toFixed(2),
+        numericValue: unitsPerTxn,
+        isDecimal: true,
+        icon: Divide,
+        tooltip: TOOLTIPS.unitsPerTxn,
+      },
+      {
+        label: "Growth",
+        value: data.mom_growth_pct !== null ? `${data.mom_growth_pct.toFixed(1)}%` : "N/A",
+        numericValue: data.mom_growth_pct ?? undefined,
+        isPercent: true,
+        trend: data.mom_growth_pct,
+        trendLabel: "vs previous period",
+        icon: TrendingUp,
+        tooltip: TOOLTIPS.momGrowth,
+        hero: true,
+        comparisonLine: getGrowthStatus(data.mom_growth_pct),
+        className: "col-span-2 md:col-span-1 order-first md:order-none",
+      },
+      {
+        label: "Completed Transactions",
+        value: formatNumber(data.daily_transactions),
+        numericValue: data.daily_transactions,
+        subtitle: data.daily_returns > 0
+          ? `${formatNumber(data.daily_transactions + data.daily_returns)} sales - ${formatNumber(data.daily_returns)} returns`
+          : undefined,
+        icon: Receipt,
+        tooltip: TOOLTIPS.completedTxn,
+      },
+      {
+        label: "Average Order Value",
+        value: formatCurrency(data.avg_basket_size),
+        numericValue: data.avg_basket_size,
+        isCurrency: true,
+        icon: ShoppingCart,
+        tooltip: TOOLTIPS.avgOrderValue,
+      },
+    ];
+  }, [data, totalUnits, unitsPerTxn]);
 
   if (isLoading) {
     return (
@@ -100,88 +169,6 @@ export function KPIGrid() {
     );
   }
 
-  // Units metrics — daily_quantity is already net (returns are negative in DB)
-  // daily_transactions is already net (total_transactions - total_returns) from backend
-  const totalUnits = data.daily_quantity ?? 0;
-  const unitsPerTxn = data.daily_transactions > 0 ? totalUnits / data.daily_transactions : 0;
-
-  const cards: Array<{
-    label: string;
-    value: string;
-    numericValue?: number;
-    isCurrency?: boolean;
-    isPercent?: boolean;
-    isDecimal?: boolean;
-    trend?: number | null;
-    trendLabel?: string;
-    icon: React.ComponentType<{ className?: string }>;
-    tooltip: string;
-    sparkline?: { period: string; value: number }[];
-    subtitle?: string;
-    comparisonLine?: string;
-    hero?: boolean;
-    className?: string;
-  }> = [
-    {
-      label: "Selected Period Revenue",
-      value: formatCurrency(data.today_gross),
-      numericValue: data.today_gross,
-      isCurrency: true,
-      icon: Zap,
-      tooltip: TOOLTIPS.periodRevenue,
-      sparkline: data.sparkline,
-      comparisonLine: data.mom_growth_pct !== null
-        ? `${formatPercent(data.mom_growth_pct)} vs previous period`
-        : undefined,
-    },
-    {
-      label: "Total Units",
-      value: formatNumber(Math.round(totalUnits)),
-      numericValue: totalUnits,
-      icon: Package,
-      tooltip: TOOLTIPS.totalUnits,
-    },
-    {
-      label: "Units per Transaction",
-      value: unitsPerTxn.toFixed(2),
-      numericValue: unitsPerTxn,
-      isDecimal: true,
-      icon: Divide,
-      tooltip: TOOLTIPS.unitsPerTxn,
-    },
-    {
-      label: "Growth",
-      value: data.mom_growth_pct !== null ? `${data.mom_growth_pct.toFixed(1)}%` : "N/A",
-      numericValue: data.mom_growth_pct ?? undefined,
-      isPercent: true,
-      trend: data.mom_growth_pct,
-      trendLabel: "vs previous period",
-      icon: TrendingUp,
-      tooltip: TOOLTIPS.momGrowth,
-      hero: true,
-      comparisonLine: getGrowthStatus(data.mom_growth_pct),
-      className: "col-span-2 md:col-span-1 order-first md:order-none",
-    },
-    {
-      label: "Completed Transactions",
-      value: formatNumber(data.daily_transactions),
-      numericValue: data.daily_transactions,
-      subtitle: data.daily_returns > 0
-        ? `${formatNumber(data.daily_transactions + data.daily_returns)} sales - ${formatNumber(data.daily_returns)} returns`
-        : undefined,
-      icon: Receipt,
-      tooltip: TOOLTIPS.completedTxn,
-    },
-    {
-      label: "Average Order Value",
-      value: formatCurrency(data.avg_basket_size),
-      numericValue: data.avg_basket_size,
-      isCurrency: true,
-      icon: ShoppingCart,
-      tooltip: TOOLTIPS.avgOrderValue,
-    },
-  ];
-
   return (
     <div className="space-y-3">
       {periodLabel && (
@@ -195,10 +182,11 @@ export function KPIGrid() {
           <KPICard
             key={card.label}
             {...card}
+            aria-label={`${card.label}: ${card.value}`}
             className={`${card.className ?? ""} stagger-${i + 1} animate-fade-in opacity-0`.trim()}
           />
         ))}
       </div>
     </div>
   );
-}
+});

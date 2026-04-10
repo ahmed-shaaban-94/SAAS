@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        unique_key=['tenant_id', 'customer_key'],
+        incremental_strategy='merge',
         schema='marts',
         post_hook=[
             "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
@@ -31,6 +33,9 @@ WITH ranked AS (
         ) AS rn
     FROM {{ ref('stg_sales') }}
     WHERE customer_id IS NOT NULL
+    {% if is_incremental() %}
+      AND loaded_at >= (SELECT MAX(loaded_at) - INTERVAL '7 days' FROM {{ ref('stg_sales') }})
+    {% endif %}
 )
 
 SELECT
@@ -41,6 +46,7 @@ SELECT
 FROM ranked
 WHERE rn = 1
 
+{% if not is_incremental() %}
 UNION ALL
 
 SELECT
@@ -49,3 +55,4 @@ SELECT
     '__UNKNOWN__'      AS customer_id,
     'Unknown'          AS customer_name
 FROM (SELECT DISTINCT tenant_id FROM {{ ref('stg_sales') }}) t
+{% endif %}

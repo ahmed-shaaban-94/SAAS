@@ -15,6 +15,15 @@
   --accent-color: #D97706;
   --chart-blue: #4F46E5;
   --chart-amber: #D97706;
+  /* Multi-series palette — 8 colors */
+  --chart-1: #4F46E5;
+  --chart-2: #D97706;
+  --chart-3: #8B5CF6;
+  --chart-4: #0891B2;
+  --chart-5: #059669;
+  --chart-6: #6366F1;
+  --chart-7: #EA580C;
+  --chart-8: #2563EB;
   --growth-green: #059669;
   --growth-green-rgb: 5, 150, 105;
   --growth-red: #DC2626;
@@ -56,6 +65,15 @@
   --accent-color: #E5A00D;
   --chart-blue: #6366F1;
   --chart-amber: #E5A00D;
+  /* Multi-series palette — dark */
+  --chart-1: #6366F1;
+  --chart-2: #E5A00D;
+  --chart-3: #A78BFA;
+  --chart-4: #22D3EE;
+  --chart-5: #34D399;
+  --chart-6: #818CF8;
+  --chart-7: #FB923C;
+  --chart-8: #60A5FA;
   --growth-green: #34D399;
   --growth-green-rgb: 52, 211, 153;
   --growth-red: #F87171;
@@ -140,6 +158,46 @@ td, th,
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.30s; }
 .stagger-7 { animation-delay: 0.35s; }
+
+/* ═══════════════════════════════════════════════
+   Stagger container — viewport-triggered reveal
+   Used by <LazySection stagger> wrapper.
+   Children with .stagger-N fade/slide in with
+   staggered delays once parent gains .stagger-visible.
+   ═══════════════════════════════════════════════ */
+.stagger-container .stagger-1,
+.stagger-container .stagger-2,
+.stagger-container .stagger-3,
+.stagger-container .stagger-4,
+.stagger-container .stagger-5,
+.stagger-container .stagger-6,
+.stagger-container .stagger-7 {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.stagger-container.stagger-visible .stagger-1 { transition-delay: 0.05s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-2 { transition-delay: 0.10s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-3 { transition-delay: 0.15s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-4 { transition-delay: 0.20s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-5 { transition-delay: 0.25s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-6 { transition-delay: 0.30s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-7 { transition-delay: 0.35s; opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-container .stagger-1,
+  .stagger-container .stagger-2,
+  .stagger-container .stagger-3,
+  .stagger-container .stagger-4,
+  .stagger-container .stagger-5,
+  .stagger-container .stagger-6,
+  .stagger-container .stagger-7 {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
 
 /* Smooth scroll for anchor links */
 html {
@@ -368,6 +426,15 @@ html {
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
   stroke-opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Sidebar-aware main content margin
+   ═══════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  .main-content {
+    margin-left: var(--sidebar-width, 15rem);
+  }
 }
 
 /* ═══════════════════════════════════════════════

@@ -15,6 +15,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useMembers, useMyAccess, useRoles, useSectors } from "@/hooks/use-members";
+import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { MemberResponse, RoleKey, SectorResponse } from "@/types/members";
 
 const ROLE_COLORS: Record<RoleKey, string> = {
@@ -646,15 +648,72 @@ export default function TeamPage() {
   const { access, isLoading: accessLoading } = useMyAccess();
   const { members, isLoading: membersLoading, inviteMember, updateMember, removeMember } = useMembers();
   const { sectors, isLoading: sectorsLoading, createSector, deleteSector } = useSectors();
+  const { success, error: toastError } = useToast();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<MemberResponse | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<{ id: number; name: string } | null>(null);
+  const [confirmDeleteSector, setConfirmDeleteSector] = useState<{ id: number; name: string } | null>(null);
 
   const isLoading = accessLoading || membersLoading || sectorsLoading;
   const canManage = access?.is_admin ?? false;
   const actorRole = access?.role_key ?? "viewer";
 
-  function handleToggleActive(memberId: number, active: boolean) {
-    updateMember(memberId, { is_active: active });
+  async function handleToggleActive(memberId: number, active: boolean) {
+    try {
+      await updateMember(memberId, { is_active: active });
+      success(active ? "Member activated" : "Member deactivated");
+    } catch {
+      toastError("Failed to update member status");
+    }
+  }
+
+  function requestRemoveMember(memberId: number) {
+    const member = members?.find((m) => m.member_id === memberId);
+    setConfirmRemove({ id: memberId, name: member?.display_name || member?.email || "member" });
+  }
+
+  async function handleRemoveMember() {
+    if (!confirmRemove) return;
+    try {
+      await removeMember(confirmRemove.id);
+      success("Member removed");
+    } catch {
+      toastError("Failed to remove member");
+    } finally {
+      setConfirmRemove(null);
+    }
+  }
+
+  async function handleInviteMember(email: string, role: RoleKey, name: string, sectorIds: number[]) {
+    await inviteMember(email, role, name, sectorIds);
+    success(`Invitation sent to ${email}`);
+  }
+
+  async function handleUpdateMember(memberId: number, updates: Record<string, unknown>) {
+    await updateMember(memberId, updates);
+    success("Member updated");
+  }
+
+  async function handleCreateSector(data: { sector_key: string; sector_name: string; description?: string; site_codes?: string[] }) {
+    await createSector(data);
+    success(`Sector "${data.sector_name}" created`);
+  }
+
+  function requestDeleteSector(sectorId: number) {
+    const sector = sectors?.find((s) => s.sector_id === sectorId);
+    setConfirmDeleteSector({ id: sectorId, name: sector?.sector_name || "sector" });
+  }
+
+  async function handleDeleteSector() {
+    if (!confirmDeleteSector) return;
+    try {
+      await deleteSector(confirmDeleteSector.id);
+      success("Sector deleted");
+    } catch {
+      toastError("Failed to delete sector");
+    } finally {
+      setConfirmDeleteSector(null);
+    }
   }
 
   if (isLoading) {
@@ -725,7 +784,7 @@ export default function TeamPage() {
               isCurrentUser={m.user_id === access?.user_id}
               canManage={canManage}
               actorRole={actorRole}
-              onRemove={removeMember}
+              onRemove={requestRemoveMember}
               onEdit={setEditingMember}
               onToggleActive={handleToggleActive}
             />
@@ -753,10 +812,10 @@ export default function TeamPage() {
               key={s.sector_id}
               sector={s}
               canManage={canManage}
-              onDelete={deleteSector}
+              onDelete={requestDeleteSector}
             />
           ))}
-          {canManage && <CreateSectorForm onSubmit={async (data) => { await createSector(data); }} />}
+          {canManage && <CreateSectorForm onSubmit={handleCreateSector} />}
         </div>
       </section>
 
@@ -764,7 +823,7 @@ export default function TeamPage() {
       <InviteDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
-        onInvite={async (email, role, name, sectorIds) => { await inviteMember(email, role, name, sectorIds); }}
+        onInvite={handleInviteMember}
         sectors={sectors || []}
         actorRole={actorRole}
       />
@@ -773,11 +832,31 @@ export default function TeamPage() {
         <EditMemberDialog
           member={editingMember}
           onClose={() => setEditingMember(null)}
-          onSave={updateMember}
+          onSave={handleUpdateMember}
           sectors={sectors || []}
           actorRole={actorRole}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title="Remove Member"
+        description={`Are you sure you want to remove ${confirmRemove?.name}? They will lose access immediately.`}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={handleRemoveMember}
+        onCancel={() => setConfirmRemove(null)}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDeleteSector}
+        title="Delete Sector"
+        description={`Delete sector "${confirmDeleteSector?.name}"? Members assigned to this sector will lose their sector-based access.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDeleteSector}
+        onCancel={() => setConfirmDeleteSector(null)}
+      />
     </div>
   );
 }

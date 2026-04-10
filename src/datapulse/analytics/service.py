@@ -13,6 +13,7 @@ from datapulse.analytics.comparison_repository import ComparisonRepository
 from datapulse.analytics.customer_health import CustomerHealthRepository
 from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.diagnostics import DiagnosticsRepository
+from datapulse.analytics.feature_store_repository import FeatureStoreRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.models import (
     ABCAnalysis,
@@ -28,11 +29,17 @@ from datapulse.analytics.models import (
     HealthDistribution,
     HeatmapData,
     KPISummary,
+    LifecycleDistribution,
     ProductHierarchy,
+    ProductLifecycle,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
     ReturnsTrend,
+    RevenueDailyRolling,
+    RevenueSiteRolling,
+    SeasonalityDaily,
+    SeasonalityMonthly,
     SegmentSummary,
     SiteDetail,
     StaffPerformance,
@@ -41,7 +48,7 @@ from datapulse.analytics.models import (
     WaterfallAnalysis,
 )
 from datapulse.analytics.repository import AnalyticsRepository
-from datapulse.cache import cache_get, cache_set, current_tenant_id
+from datapulse.cache import cache_get, cache_set, current_tenant_id, get_cache_version
 from datapulse.cache_decorator import cached
 from datapulse.logging import get_logger
 
@@ -51,14 +58,21 @@ _CACHE_PREFIX = "datapulse:analytics"
 
 
 def _cache_key(method: str, params: dict[str, Any] | None = None) -> str:
-    """Build a deterministic, tenant-scoped cache key."""
+    """Build a deterministic, versioned, tenant-scoped cache key.
+
+    Key format: dp:v{run_id}:t{tenant}:{method}:{args_hash}
+    Bumping the pipeline run_id version orphans all prior keys; they
+    expire naturally via TTL — no O(N) SCAN invalidation needed.
+    """
     tid = current_tenant_id.get("")
     tenant_segment = f"t{tid}" if tid else "t0"
+    version = get_cache_version()
+    prefix = f"dp:{version}:{tenant_segment}"
     if params:
         raw = json.dumps(params, sort_keys=True, default=str)
         h = hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()[:12]
-        return f"{_CACHE_PREFIX}:{tenant_segment}:{method}:{h}"
-    return f"{_CACHE_PREFIX}:{tenant_segment}:{method}"
+        return f"{prefix}:{method}:{h}"
+    return f"{prefix}:{method}"
 
 
 class AnalyticsService:
@@ -74,6 +88,7 @@ class AnalyticsService:
         advanced_repo: AdvancedRepository | None = None,
         diagnostics_repo: DiagnosticsRepository | None = None,
         customer_health_repo: CustomerHealthRepository | None = None,
+        feature_store_repo: FeatureStoreRepository | None = None,
     ) -> None:
         self._repo = repo
         self._detail_repo = detail_repo
@@ -83,6 +98,7 @@ class AnalyticsService:
         self._advanced_repo = advanced_repo
         self._diagnostics_repo = diagnostics_repo
         self._customer_health_repo = customer_health_repo
+        self._feature_store_repo = feature_store_repo
 
     def get_date_range(self) -> DataDateRange:
         """Return the min/max dates of available data (cached 3600s)."""
@@ -514,3 +530,72 @@ class AnalyticsService:
         if self._customer_health_repo is None:
             raise RuntimeError("CustomerHealthRepository not configured")
         return self._customer_health_repo.get_at_risk_customers(limit=limit)
+
+    # ------------------------------------------------------------------
+    # Feature Store: Revenue Rolling, Seasonality, Product Lifecycle
+    # ------------------------------------------------------------------
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_revenue_daily_rolling(
+        self,
+        days: int = 90,
+        limit: int = 200,
+    ) -> list[RevenueDailyRolling]:
+        """Daily revenue with rolling MAs and trend ratios (cached 300s)."""
+        if self._feature_store_repo is None:
+            raise RuntimeError("FeatureStoreRepository not configured")
+        rows = self._feature_store_repo.get_revenue_daily_rolling(days=days, limit=limit)
+        return [RevenueDailyRolling(**r) for r in rows]
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_revenue_site_rolling(
+        self,
+        site_key: int | None = None,
+        days: int = 30,
+        limit: int = 200,
+    ) -> list[RevenueSiteRolling]:
+        """Per-site rolling with cross-site comparison (cached 300s)."""
+        if self._feature_store_repo is None:
+            raise RuntimeError("FeatureStoreRepository not configured")
+        rows = self._feature_store_repo.get_revenue_site_rolling(
+            site_key=site_key,
+            days=days,
+            limit=limit,
+        )
+        return [RevenueSiteRolling(**r) for r in rows]
+
+    @cached(ttl=600, prefix=_CACHE_PREFIX)
+    def get_seasonality_monthly(self) -> list[SeasonalityMonthly]:
+        """Monthly seasonal indices (cached 600s)."""
+        if self._feature_store_repo is None:
+            raise RuntimeError("FeatureStoreRepository not configured")
+        rows = self._feature_store_repo.get_seasonality_monthly()
+        return [SeasonalityMonthly(**r) for r in rows]
+
+    @cached(ttl=600, prefix=_CACHE_PREFIX)
+    def get_seasonality_daily(self) -> list[SeasonalityDaily]:
+        """Day-of-week seasonal indices (cached 600s)."""
+        if self._feature_store_repo is None:
+            raise RuntimeError("FeatureStoreRepository not configured")
+        rows = self._feature_store_repo.get_seasonality_daily()
+        return [SeasonalityDaily(**r) for r in rows]
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_product_lifecycle(
+        self,
+        phase: str | None = None,
+        limit: int = 50,
+    ) -> list[ProductLifecycle]:
+        """Product lifecycle classification (cached 300s)."""
+        if self._feature_store_repo is None:
+            raise RuntimeError("FeatureStoreRepository not configured")
+        rows = self._feature_store_repo.get_product_lifecycle(phase=phase, limit=limit)
+        return [ProductLifecycle(**r) for r in rows]
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_lifecycle_distribution(self) -> LifecycleDistribution:
+        """Distribution of products across lifecycle phases (cached 300s)."""
+        if self._feature_store_repo is None:
+            raise RuntimeError("FeatureStoreRepository not configured")
+        data = self._feature_store_repo.get_lifecycle_distribution()
+        return LifecycleDistribution(**data)

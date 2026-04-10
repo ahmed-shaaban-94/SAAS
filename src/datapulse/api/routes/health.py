@@ -9,6 +9,8 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
+import redis
+import sqlalchemy.exc
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -34,7 +36,7 @@ def _check_db() -> dict:
             conn.execute(text("SELECT 1"))
         latency = round((time.monotonic() - t0) * 1000)
         return {"status": "ok", "latency_ms": latency}
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         logger.error("health_db_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
@@ -51,7 +53,7 @@ def _check_redis() -> dict:
         client.ping()
         latency = round((time.monotonic() - t0) * 1000)
         return {"status": "ok", "latency_ms": latency}
-    except Exception as exc:
+    except (redis.RedisError, OSError) as exc:
         logger.error("health_redis_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
@@ -68,7 +70,7 @@ def _check_query_executor() -> dict:
         client.ping()
         latency = round((time.monotonic() - t0) * 1000)
         return {"status": "ok", "latency_ms": latency}
-    except Exception as exc:
+    except (redis.RedisError, OSError) as exc:
         logger.error("health_query_executor_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
@@ -109,7 +111,7 @@ def _check_pool() -> dict:
             "overflow": overflow,
             "saturation_pct": round(saturation * 100, 1),
         }
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, AttributeError, OSError) as exc:
         logger.error("health_pool_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
@@ -123,7 +125,7 @@ def _check_schema_version() -> dict:
             return {"status": "unknown", "version": None}
         version = row[0]
         return {"status": "ok", "version": version}
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         logger.error("health_schema_version_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
@@ -151,7 +153,7 @@ def _check_dbt_freshness() -> dict:
             "last_updated_at": last_updated.isoformat(),
             "age_hours": round(age_hours, 1),
         }
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         logger.error("health_dbt_freshness_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
@@ -179,7 +181,7 @@ def _check_data_freshness() -> dict:
             "last_loaded_at": last_loaded.isoformat(),
             "age_hours": round(age_hours, 1),
         }
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         logger.error("health_data_freshness_error", error=str(exc))
         return {"status": "error", "error": str(exc)[:100]}
 
@@ -210,17 +212,25 @@ def health_check(
     }
 
     # Determine overall status
+    # Core checks: database must be up. Redis/pool/executor degrade gracefully.
+    # Informational checks (schema_version, dbt_freshness, data_freshness) are
+    # non-critical — missing tables on fresh deploy shouldn't block health.
     db_ok = checks["database"]["status"] == "ok"
-    all_ok = all(c["status"] in ("ok", "disabled", "stale", "unknown") for c in checks.values())
+    critical_keys = ("database", "redis", "query_executor", "connection_pool")
+    critical_ok = all(
+        checks[k]["status"] in ("ok", "disabled", "stale", "unknown")
+        for k in critical_keys
+        if k in checks
+    )
 
     if not db_ok:
         overall = "unhealthy"
-    elif not all_ok:
+    elif not critical_ok:
         overall = "degraded"
     else:
         overall = "healthy"
 
-    status_code = 200 if overall == "healthy" else 503
+    status_code = 200 if overall in ("healthy", "degraded") else 503
 
     # Only expose component details to callers with a verified identity
     content: dict = {"status": overall}

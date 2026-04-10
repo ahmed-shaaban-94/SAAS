@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+import sqlalchemy.exc
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -408,7 +409,7 @@ def run_dbt_tests(
             message=error_msg,
             details={"stdout": "", "stderr": error_msg},
         )
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         error_msg = str(exc)
         log.error("quality_dbt_test_error", run_id=str(run_id), error=error_msg)
         return QualityCheckResult(

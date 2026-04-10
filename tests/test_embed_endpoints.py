@@ -26,7 +26,6 @@ def _make_embed_client():
 
     mock_session = MagicMock()
     app = create_app()
-    app.dependency_overrides[deps.get_db_session] = lambda: mock_session
     app.dependency_overrides[deps.get_tenant_session] = lambda: mock_session
     app.dependency_overrides[get_current_user] = lambda: _dev_user
 
@@ -140,7 +139,7 @@ class TestEmbedQuery:
         def _side_effect(*a, **kw):
             call_count["n"] += 1
             if call_count["n"] > 1:
-                raise Exception("DB down")
+                raise OSError("DB down")
             return MagicMock()
 
         mock_session.execute.side_effect = _side_effect

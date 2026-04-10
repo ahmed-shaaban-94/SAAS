@@ -18,6 +18,7 @@ from datapulse.analytics.comparison_repository import ComparisonRepository
 from datapulse.analytics.customer_health import CustomerHealthRepository
 from datapulse.analytics.detail_repository import DetailRepository
 from datapulse.analytics.diagnostics import DiagnosticsRepository
+from datapulse.analytics.feature_store_repository import FeatureStoreRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.repository import AnalyticsRepository
 from datapulse.analytics.service import AnalyticsService
@@ -133,6 +134,7 @@ def get_analytics_service(
     advanced_repo = AdvancedRepository(session)
     diagnostics_repo = DiagnosticsRepository(session)
     customer_health_repo = CustomerHealthRepository(session)
+    feature_store_repo = FeatureStoreRepository(session)
     return AnalyticsService(
         repo,
         detail_repo,
@@ -142,6 +144,7 @@ def get_analytics_service(
         advanced_repo,
         diagnostics_repo,
         customer_health_repo,
+        feature_store_repo,
     )
 
 

@@ -168,7 +168,7 @@ def get_current_user(
             "email": "dev@datapulse.local",
             "preferred_username": "dev",
             "tenant_id": settings.default_tenant_id,
-            "roles": ["admin"],
+            "roles": ["viewer"],
             "raw_claims": {},
         }
 
