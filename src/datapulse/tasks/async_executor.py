@@ -28,6 +28,7 @@ from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 
+
 def _job_ttl() -> int:
     """Job TTL in Redis — reads from settings."""
     return get_settings().query_job_ttl

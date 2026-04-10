@@ -205,7 +205,10 @@ async def run_pipeline(
         log.info("pipeline_complete", run_id=run_id_str, duration=elapsed, rows=total_rows)
 
     except (
-        sqlalchemy.exc.SQLAlchemyError, OSError, RuntimeError, subprocess.SubprocessError,
+        sqlalchemy.exc.SQLAlchemyError,
+        OSError,
+        RuntimeError,
+        subprocess.SubprocessError,
     ) as exc:
         elapsed = round(time.perf_counter() - t0, 2)
         error_msg = str(exc)[:200]

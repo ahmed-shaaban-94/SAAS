@@ -37,28 +37,38 @@ def _make_catalog(
     if dims is None:
         dims = [
             Dimension(
-                name="date", label="Date",
-                dimension_type=DimensionType.date, model=model_name,
+                name="date",
+                label="Date",
+                dimension_type=DimensionType.date,
+                model=model_name,
             ),
             Dimension(
-                name="category", label="Category",
-                dimension_type=DimensionType.string, model=model_name,
+                name="category",
+                label="Category",
+                dimension_type=DimensionType.string,
+                model=model_name,
             ),
             Dimension(
-                name="region", label="Region",
-                dimension_type=DimensionType.string, model=model_name,
+                name="region",
+                label="Region",
+                dimension_type=DimensionType.string,
+                model=model_name,
             ),
         ]
     if metrics is None:
         metrics = [
             Metric(
-                name="total_sales", label="Total Sales",
-                metric_type=MetricType.sum, column="net_sales",
+                name="total_sales",
+                label="Total Sales",
+                metric_type=MetricType.sum,
+                column="net_sales",
                 model=model_name,
             ),
             Metric(
-                name="avg_quantity", label="Avg Quantity",
-                metric_type=MetricType.average, column="quantity",
+                name="avg_quantity",
+                label="Avg Quantity",
+                metric_type=MetricType.average,
+                column="quantity",
                 model=model_name,
             ),
         ]
@@ -443,7 +453,8 @@ class TestJoinQueries:
             schema_name="public_marts",
             dimensions=[
                 Dimension(
-                    name="customer_name", label="Customer",
+                    name="customer_name",
+                    label="Customer",
                     dimension_type=DimensionType.string,
                     model="dim_customer",
                 ),
@@ -452,10 +463,12 @@ class TestJoinQueries:
             joins=[],
         )
         catalog = _make_catalog(
-            joins=[JoinPath(
-                join_model="dim_customer",
-                sql_on="${fct_sales.customer_id} = ${dim_customer.id}",
-            )],
+            joins=[
+                JoinPath(
+                    join_model="dim_customer",
+                    sql_on="${fct_sales.customer_id} = ${dim_customer.id}",
+                )
+            ],
             extra_models=[dim_customer],
         )
         query = ExploreQuery(
@@ -493,8 +506,10 @@ class TestAggregationTypes:
         catalog = _make_catalog(
             metrics=[
                 Metric(
-                    name="test_metric", label="Test",
-                    metric_type=metric_type, column="net_sales",
+                    name="test_metric",
+                    label="Test",
+                    metric_type=metric_type,
+                    column="net_sales",
                     model="fct_sales",
                 ),
             ],

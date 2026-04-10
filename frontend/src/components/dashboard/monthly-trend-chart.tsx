@@ -82,13 +82,12 @@ function ChartTypeSwitcher({
 import { findPeakValley } from "@/lib/chart-utils";
 
 /** Custom legend with dot indicators for multi-series charts */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderMonthlyLegend(props: any) {
-  const { payload } = props;
+  const { payload } = props as { payload?: Array<{ color?: string; dataKey?: string; value?: string }> };
   if (!payload?.length) return null;
   return (
     <div className="flex items-center justify-center gap-4 pt-2">
-      {payload.map((entry: { color?: string; dataKey?: string; value?: string }) => (
+      {payload.map((entry) => (
         <div key={entry.dataKey ?? entry.value} className="flex items-center gap-1.5 text-xs text-text-secondary">
           <span
             className="inline-block h-2.5 w-2.5 rounded-full"

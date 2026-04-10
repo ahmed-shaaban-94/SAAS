@@ -18,8 +18,8 @@ ALLOWED_EXTENSIONS = {".xlsx", ".csv", ".xls"}
 MAX_PREVIEW_ROWS = 100
 
 # Magic bytes for file type validation
-_MAGIC_XLSX = b"PK\x03\x04"          # OOXML (xlsx, docx, zip)
-_MAGIC_XLS = b"\xd0\xcf\x11\xe0"     # OLE2 Compound Document (xls, doc)
+_MAGIC_XLSX = b"PK\x03\x04"  # OOXML (xlsx, docx, zip)
+_MAGIC_XLS = b"\xd0\xcf\x11\xe0"  # OLE2 Compound Document (xls, doc)
 
 
 def _validate_magic_bytes(ext: str, content: bytes) -> None:
@@ -43,9 +43,7 @@ def _validate_magic_bytes(ext: str, content: bytes) -> None:
         try:
             sample.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise ValueError(
-                "CSV file is not valid UTF-8. Upload a UTF-8 encoded CSV."
-            ) from exc
+            raise ValueError("CSV file is not valid UTF-8. Upload a UTF-8 encoded CSV.") from exc
 
 
 class UploadService:
