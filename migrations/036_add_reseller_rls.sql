@@ -20,16 +20,19 @@ BEGIN
     END IF;
 END $$;
 
--- Backfill tenant_id from reseller_commissions (best available match)
-UPDATE public.reseller_payouts
-SET tenant_id = (
-    SELECT rc.tenant_id
+-- Backfill tenant_id from reseller_commissions.
+-- Safety: only backfill when a reseller has commissions for exactly ONE tenant.
+-- Multi-tenant resellers are left NULL (must be resolved manually before NOT NULL is enforced).
+UPDATE public.reseller_payouts rp
+SET tenant_id = sub.tenant_id
+FROM (
+    SELECT rc.reseller_id, rc.tenant_id
     FROM public.reseller_commissions rc
-    WHERE rc.reseller_id = reseller_payouts.reseller_id
-    ORDER BY rc.created_at DESC
-    LIMIT 1
-)
-WHERE tenant_id IS NULL;
+    GROUP BY rc.reseller_id, rc.tenant_id
+    HAVING COUNT(DISTINCT rc.tenant_id) OVER (PARTITION BY rc.reseller_id) = 1
+) sub
+WHERE sub.reseller_id = rp.reseller_id
+  AND rp.tenant_id IS NULL;
 
 -- Enforce NOT NULL now that backfill is done
 -- Allow NULL only if no commissions exist yet (edge case for brand-new resellers)

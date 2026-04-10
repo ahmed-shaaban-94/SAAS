@@ -2,7 +2,7 @@
     config(
         materialized='incremental',
         incremental_strategy='delete+insert',
-        unique_key=['tenant_id', 'reference_no', 'date', 'material', 'customer', 'site'],
+        unique_key=['tenant_id', 'invoice_id', 'invoice_date', 'drug_code', 'customer_id', 'site_code'],
         on_schema_change='sync_all_columns',
         schema='staging',
         post_hook=[
