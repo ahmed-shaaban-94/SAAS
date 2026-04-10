@@ -76,7 +76,7 @@ export const InsightChips = memo(function InsightChips({
         const Icon = chip.icon;
         return (
           <span
-            key={i}
+            key={chip.label}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
               colorMap[chip.type],

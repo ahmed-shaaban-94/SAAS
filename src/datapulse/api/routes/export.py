@@ -11,21 +11,22 @@ import io
 from datetime import date
 from typing import Annotated, Any
 
+import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from datapulse.analytics.service import AnalyticsService
-from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_analytics_service
 from datapulse.api.limiter import limiter
 from datapulse.logging import get_logger
+from datapulse.rbac.dependencies import require_permission
 
 log = get_logger(__name__)
 
 router = APIRouter(
     prefix="/export",
     tags=["export"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(require_permission("analytics:export"))],
 )
 
 ServiceDep = Annotated[AnalyticsService, Depends(get_analytics_service)]
@@ -190,7 +191,7 @@ def export_dashboard_pdf(
         products = service.get_product_insights(f)
         customers = service.get_customer_insights(f)
         staff = service.get_staff_leaderboard(f)
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError, ValueError) as exc:
         log.error("export_dashboard_pdf_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Failed to generate PDF.") from exc
 
@@ -225,7 +226,7 @@ def export_products(
     f = _build_filter(start_date, end_date, limit, category=category)
     try:
         result = service.get_product_insights(f)
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError, ValueError) as exc:
         log.error("export_products_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Failed to generate product export.") from exc
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []
@@ -246,7 +247,7 @@ def export_customers(
     f = _build_filter(start_date, end_date, limit)
     try:
         result = service.get_customer_insights(f)
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError, ValueError) as exc:
         log.error("export_customers_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Failed to generate customer export.") from exc
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []
@@ -267,7 +268,7 @@ def export_staff(
     f = _build_filter(start_date, end_date, limit)
     try:
         result = service.get_staff_leaderboard(f)
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError, ValueError) as exc:
         log.error("export_staff_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Failed to generate staff export.") from exc
     data = [item.model_dump() for item in result.items] if hasattr(result, "items") else []

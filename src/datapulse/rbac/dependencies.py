@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import Annotated, Any
 
+import sqlalchemy.exc
 import structlog
 from fastapi import Depends, HTTPException
 from sqlalchemy import text
@@ -86,7 +87,7 @@ def get_access_context(
     except ValueError as e:
         session.rollback()
         raise HTTPException(status_code=403, detail=str(e)) from e
-    except Exception:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError):
         session.rollback()
         raise
     finally:

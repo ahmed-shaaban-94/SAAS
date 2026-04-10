@@ -58,7 +58,7 @@ jobs:
         env:
           DATABASE_URL: "sqlite:///:memory:"
           SENTRY_ENVIRONMENT: test
-        run: pytest -m unit --cov --cov-report=term-missing --cov-fail-under=0 -x -q
+        run: pytest -m unit --cov --cov-report=term-missing --cov-fail-under=45 -x -q
 
   test-integration:
     name: Integration Tests
@@ -108,7 +108,7 @@ jobs:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
           REDIS_URL: redis://localhost:6379/0
           SENTRY_ENVIRONMENT: test
-        run: pytest -m integration --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=0
+        run: pytest -m integration --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=50
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4

@@ -187,7 +187,7 @@ class TestReadAndConcat:
         with (
             patch(
                 "datapulse.bronze.loader.read_single_file",
-                side_effect=Exception("read error"),
+                side_effect=OSError("read error"),
             ),
             pytest.raises(ValueError, match="All.*file"),
         ):
@@ -201,7 +201,7 @@ class TestReadAndConcat:
         with (
             patch(
                 "datapulse.bronze.loader.read_single_file",
-                side_effect=Exception("boom"),
+                side_effect=OSError("boom"),
             ),
             pytest.raises(ValueError, match="1"),
         ):
@@ -220,7 +220,7 @@ class TestReadAndConcat:
         def side_effect(fp):
             call_count["n"] += 1
             if call_count["n"] == 1:
-                raise Exception("read error")
+                raise OSError("read error")
             return good_df
 
         with patch("datapulse.bronze.loader.read_single_file", side_effect=side_effect):
@@ -240,7 +240,7 @@ class TestReadAndConcat:
         def side_effect(fp):
             call_count["n"] += 1
             if call_count["n"] == 1:
-                raise Exception("fail first")
+                raise OSError("fail first")
             return good_df
 
         with patch("datapulse.bronze.loader.read_single_file", side_effect=side_effect):

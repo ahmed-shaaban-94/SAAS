@@ -139,7 +139,7 @@ class TestEmbedQuery:
         def _side_effect(*a, **kw):
             call_count["n"] += 1
             if call_count["n"] > 1:
-                raise Exception("DB down")
+                raise OSError("DB down")
             return MagicMock()
 
         mock_session.execute.side_effect = _side_effect

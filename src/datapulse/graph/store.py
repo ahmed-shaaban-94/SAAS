@@ -93,6 +93,7 @@ def upsert_symbol(
             "SELECT id FROM symbols WHERE name=? AND kind=? AND file_path=? AND line_number=?",
             (name, kind, file_path, line_number),
         ).fetchone()
+        assert row is not None, f"upsert_symbol failed for {name!r}"
         return row["id"]
 
 

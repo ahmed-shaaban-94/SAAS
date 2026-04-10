@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from datapulse.tasks.async_executor import (
-    _QUERY_TIMEOUT,
+    _query_timeout,
     _serialise,
     get_job_result,
 )
@@ -69,12 +69,17 @@ def test_get_job_client_returns_none_when_redis_empty():
 
 def test_get_job_client_returns_none_on_exception():
     """Returns None when Redis connection fails."""
+    import redis as _real_redis
+
     with (
         patch("datapulse.tasks.async_executor.get_settings") as mock_settings,
         patch("datapulse.tasks.async_executor.redis") as mock_redis,
     ):
         mock_settings.return_value = MagicMock(redis_url="redis://localhost:6379/0")
-        mock_redis.from_url.side_effect = ConnectionError("refused")
+        # Preserve real exception classes so `except` clauses work
+        mock_redis.ConnectionError = _real_redis.ConnectionError
+        mock_redis.RedisError = _real_redis.RedisError
+        mock_redis.from_url.side_effect = _real_redis.ConnectionError("refused")
 
         from datapulse.tasks.async_executor import _get_job_client
 
@@ -115,7 +120,7 @@ def test_get_job_result_returns_complete_job():
 
 def test_get_job_result_detects_stale_running_job():
     """Marks a running job as failed if it exceeds the stale threshold."""
-    stale_time = time.time() - (_QUERY_TIMEOUT + 120)
+    stale_time = time.time() - (_query_timeout() + 120)
     job_data = {"status": "running", "submitted_at": stale_time}
     mock_client = MagicMock()
     mock_client.get.return_value = json.dumps(job_data)
@@ -173,9 +178,15 @@ def test_run_query_sync_stores_result_in_redis():
 
 def test_run_query_sync_handles_query_error():
     """Query failure stores error status in Redis."""
+    import sqlalchemy.exc
+
     mock_client = MagicMock()
     mock_session = MagicMock()
-    mock_session.execute.side_effect = [None, None, RuntimeError("column not found")]
+    mock_session.execute.side_effect = [
+        None,
+        None,
+        sqlalchemy.exc.OperationalError("SELECT bad", {}, Exception("column not found")),
+    ]
 
     with (
         patch("datapulse.tasks.async_executor._get_job_client", return_value=mock_client),

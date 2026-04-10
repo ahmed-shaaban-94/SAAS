@@ -12,10 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.logging import get_logger
+from datapulse.rbac.dependencies import require_permission
 from datapulse.reports.models import RenderedReport, ReportTemplate
 from datapulse.reports.template_engine import get_template, get_templates, render_report
 
@@ -24,7 +24,7 @@ log = get_logger(__name__)
 router = APIRouter(
     prefix="/reports",
     tags=["reports"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(require_permission("reports:view"))],
 )
 
 
@@ -53,7 +53,11 @@ def get_template_detail(request: Request, template_id: str) -> ReportTemplate:
     return template
 
 
-@router.post("/{template_id}/render", response_model=RenderedReport)
+@router.post(
+    "/{template_id}/render",
+    response_model=RenderedReport,
+    dependencies=[Depends(require_permission("reports:create"))],
+)
 @limiter.limit("20/minute")
 def render_report_endpoint(
     request: Request,

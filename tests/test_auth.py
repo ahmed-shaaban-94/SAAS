@@ -18,7 +18,13 @@ from datapulse.config import Settings
 
 
 def _settings(**overrides) -> Settings:
-    defaults = dict(_env_file=None, api_key="", database_url="", pipeline_webhook_secret="")
+    defaults = dict(
+        _env_file=None,
+        api_key="",
+        database_url="",
+        pipeline_webhook_secret="",
+        sentry_environment="test",
+    )
     defaults.update(overrides)
     return Settings(**defaults)
 
@@ -216,18 +222,19 @@ class TestGetCurrentUser:
         assert result["sub"] == "dev-user"
         assert result["tenant_id"] == "1"
 
-    def test_dev_mode_non_dev_environment_raises_503(self):
-        """Dev mode in non-dev SENTRY_ENVIRONMENT raises 503 (security hardening)."""
-        with (
-            patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "production"}),
-            pytest.raises(HTTPException) as exc_info,
-        ):
-            get_current_user(
-                credentials=None,
-                api_key=None,
-                settings=_settings(api_key="", auth0_domain=""),
+    def test_dev_mode_non_dev_environment_raises_at_startup(self):
+        """Unconfigured auth in production raises ValueError at startup (T1.1)."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="Auth must be configured"):
+            Settings(
+                _env_file=None,
+                api_key="",
+                auth0_domain="",
+                database_url="",
+                pipeline_webhook_secret="",
+                sentry_environment="production",
             )
-        assert exc_info.value.status_code == 503
 
     def test_no_auth_but_configured_raises_401(self):
         """No credentials but auth IS configured -> 401."""

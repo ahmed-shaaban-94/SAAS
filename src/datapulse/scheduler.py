@@ -15,9 +15,11 @@ On-demand:
 from __future__ import annotations
 
 import asyncio
+import subprocess
 import time
 from uuid import UUID
 
+import sqlalchemy.exc
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -144,7 +146,7 @@ async def run_pipeline(
             _update_status("failed", error_message="Another pipeline is already running")
             notify_pipeline_failure(run_id_str, "lock", "Another pipeline is already running")
             return
-    except Exception:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError):
         lock_session.close()
         raise
 
@@ -202,7 +204,12 @@ async def run_pipeline(
         notify_pipeline_success(run_id_str, elapsed, total_rows)
         log.info("pipeline_complete", run_id=run_id_str, duration=elapsed, rows=total_rows)
 
-    except Exception as exc:
+    except (
+        sqlalchemy.exc.SQLAlchemyError,
+        OSError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as exc:
         elapsed = round(time.perf_counter() - t0, 2)
         error_msg = str(exc)[:200]
         _update_status("failed", error_message=error_msg)
@@ -213,7 +220,7 @@ async def run_pipeline(
         try:
             lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
             lock_session.commit()
-        except Exception:
+        except (sqlalchemy.exc.SQLAlchemyError, OSError):
             pass
         finally:
             lock_session.close()
@@ -277,7 +284,7 @@ async def _quality_digest() -> None:
             checks_passed=passed,
         )
         log.info("quality_digest_sent", run_id=str(latest.id))
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         log.error("quality_digest_failed", error=str(exc))
     finally:
         session.close()
@@ -317,7 +324,7 @@ async def _ai_digest() -> None:
                 anomaly_count=len(anomalies.get("anomalies", [])),
             )
             log.info("ai_digest_sent")
-    except Exception as exc:
+    except (httpx.HTTPError, httpx.TimeoutException, OSError, KeyError) as exc:
         log.error("ai_digest_failed", error=str(exc))
 
 

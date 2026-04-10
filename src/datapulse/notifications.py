@@ -32,7 +32,7 @@ def _send_slack(channel: str, text: str, icon: str = ":robot_face:") -> None:
             timeout=10.0,
         )
         log.info("slack_sent", channel=channel)
-    except Exception as exc:
+    except (httpx.HTTPError, OSError) as exc:
         log.warning("slack_failed", channel=channel, error=str(exc))
 
 

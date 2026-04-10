@@ -89,7 +89,7 @@ class DataFileHandler(FileSystemEventHandler):
         log.info("trigger_firing", file_count=len(files), files=files)
         try:
             self._trigger_callback(files)
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             log.error("trigger_failed", error=str(exc))
 
     def stop(self) -> None:

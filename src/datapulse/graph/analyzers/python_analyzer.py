@@ -145,12 +145,12 @@ def analyze_file(file_path: str, project_root: str) -> None:
 
         # Class-level base classes: class Foo(BaseModel, SomeBase)
         elif isinstance(node, ast.ClassDef):
-            class_id = symbol_ids.get(node.name)
-            if class_id is None:
+            _cls_id = symbol_ids.get(node.name)
+            if _cls_id is None:
                 continue
             for base in node.bases:
                 if isinstance(base, ast.Name) and base.id in imported_datapulse:
-                    store.add_edge(class_id, imported_datapulse[base.id], "depends_on")
+                    store.add_edge(_cls_id, imported_datapulse[base.id], "depends_on")
 
         # Keyword arguments in decorators/calls: response_model=SomeClass, Depends(SomeClass)
         elif isinstance(node, ast.Call):

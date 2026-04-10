@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import sqlalchemy.exc
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -293,7 +294,7 @@ def _check_custom_sql(
             message=None if passed else f"Expected {expected}, got {actual}",
             details={"query": query[:200], "expected": str(expected), "actual": actual},
         )
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         error_msg = str(exc)[:100]
         if "canceling statement due to statement timeout" in str(exc):
             error_msg = f"Custom SQL timed out after {timeout_ms}ms"
@@ -370,7 +371,7 @@ def run_configurable_checks(
                     details=result.details,
                 )
             )
-        except Exception as exc:
+        except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
             log.error(
                 "quality_check_error",
                 check_name=check_name,
