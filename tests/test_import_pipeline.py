@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,7 +11,6 @@ import pytest
 from datapulse.import_pipeline.models import DetectedType, FileFormat
 from datapulse.import_pipeline.type_detector import detect_column_types
 from datapulse.import_pipeline.validator import ValidationError, validate_file
-
 
 # ============================================================
 # Helpers

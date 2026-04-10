@@ -23,7 +23,11 @@ from datapulse.analytics.diagnostics import DiagnosticsRepository
 from datapulse.analytics.feature_store_repository import FeatureStoreRepository
 from datapulse.analytics.hierarchy_repository import HierarchyRepository
 from datapulse.analytics.repository import AnalyticsRepository
+from datapulse.analytics.search_service import SearchService
 from datapulse.analytics.service import AnalyticsService
+
+# Service imports for newly added factory functions
+from datapulse.annotations.service import AnnotationService
 from datapulse.api.auth import UserClaims, get_current_user, require_api_key
 from datapulse.billing.plans import PlanLimits, get_plan_limits
 from datapulse.billing.repository import BillingRepository
@@ -42,11 +46,7 @@ from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
 from datapulse.pipeline.repository import PipelineRepository
 from datapulse.pipeline.service import PipelineService
-
-# Service imports for newly added factory functions
-from datapulse.annotations.service import AnnotationService
 from datapulse.reports.schedule_service import ScheduleService
-from datapulse.analytics.search_service import SearchService
 
 logger = structlog.get_logger()
 
