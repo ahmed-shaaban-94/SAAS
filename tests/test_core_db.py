@@ -59,6 +59,8 @@ class TestGetEngine:
             max_overflow=7,
             pool_timeout=15,
             pool_recycle=900,
+            use_insertmanyvalues=True,
+            insertmanyvalues_page_size=1000,
         )
 
 
