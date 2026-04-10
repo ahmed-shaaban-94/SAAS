@@ -12,6 +12,7 @@ When the corresponding config value is empty, the guard is skipped (dev mode).
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, TypedDict
 
 import structlog
@@ -23,6 +24,7 @@ from datapulse.config import Settings, get_settings
 from datapulse.core.security import compare_secrets
 
 _auth_logger = structlog.get_logger()
+_TENANT_ID_RE = re.compile(r"^\d{1,10}$")
 
 
 class UserClaims(TypedDict):
@@ -112,6 +114,10 @@ def get_current_user(
                 sub=claims.get("sub"),
                 detail="Falling back to default_tenant_id; add tenant_id claim to Auth0 Action",
             )
+        tenant_id_str = str(tenant_id)
+        if tenant_id_str and not _TENANT_ID_RE.match(tenant_id_str):
+            _auth_logger.warning("invalid_tenant_id", raw=tenant_id)
+            raise HTTPException(status_code=401, detail="Invalid tenant context")
         # Extract roles — Auth0 uses a namespaced custom claim or permissions
         # Auth0 custom rule/action can set roles at a namespace like
         # "https://datapulse.tech/roles" or in the "permissions" claim.
@@ -125,7 +131,7 @@ def get_current_user(
             "sub": claims.get("sub", ""),
             "email": claims.get("email", ""),
             "preferred_username": claims.get("preferred_username", ""),
-            "tenant_id": str(tenant_id),
+            "tenant_id": tenant_id_str,
             "roles": roles,
             "raw_claims": claims,
         }

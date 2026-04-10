@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from datapulse.api.auth import (
     get_current_user,
@@ -173,6 +174,23 @@ class TestGetCurrentUser:
             )
         assert result["tenant_id"] == "7"
 
+    @pytest.mark.parametrize("tenant_id", ["abc", "12345678901", "1 OR 1=1", "12-34"])
+    def test_invalid_tenant_id_claim_raises_401(self, tenant_id):
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {"sub": "user123", "tenant_id": tenant_id}
+        with (
+            patch("datapulse.api.auth.verify_jwt", return_value=fake_claims),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            get_current_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key", auth0_domain="example.auth0.com"),
+            )
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Invalid tenant context"
+
     def test_api_key_fallback_valid(self):
         """No Bearer token, valid API key -> returns stub claims with configured roles."""
         result = get_current_user(
@@ -224,8 +242,6 @@ class TestGetCurrentUser:
 
     def test_dev_mode_non_dev_environment_raises_at_startup(self):
         """Unconfigured auth in production raises ValueError at startup (T1.1)."""
-        from pydantic import ValidationError
-
         with pytest.raises(ValidationError, match="Auth must be configured"):
             Settings(
                 _env_file=None,

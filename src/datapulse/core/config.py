@@ -1,5 +1,6 @@
 """Application settings loaded from environment variables."""
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -33,8 +34,8 @@ class Settings(BaseSettings):
     database_url: str
 
     # Database connection pool
-    db_pool_size: int = 5
-    db_pool_max_overflow: int = 10
+    db_pool_size: int = 10
+    db_pool_max_overflow: int = 20
     db_pool_timeout: int = 10
     db_pool_recycle: int = 1800
 
@@ -69,6 +70,7 @@ class Settings(BaseSettings):
 
     # API security
     api_key: str = ""
+    db_reader_password: str = ""
     api_key_roles: list[str] = ["api-reader"]
     default_tenant_id: str = "1"
 
@@ -154,6 +156,28 @@ class Settings(BaseSettings):
     @property
     def max_file_size_bytes(self) -> int:
         return self.max_file_size_mb * 1024 * 1024
+
+    @model_validator(mode="after")
+    def validate_required_secrets(self) -> "Settings":
+        """Fail fast in non-dev environments when critical secrets are missing."""
+        if self.sentry_environment in ("development", "test"):
+            return self
+
+        missing: list[str] = []
+        if not self.api_key:
+            missing.append("API_KEY")
+        if not self.auth0_domain:
+            missing.append("AUTH0_DOMAIN")
+        if not self.db_reader_password:
+            missing.append("DB_READER_PASSWORD")
+        if not self.pipeline_webhook_secret and os.getenv("PIPELINE_AUTH_DISABLED", "").lower() != "true":
+            missing.append("PIPELINE_WEBHOOK_SECRET")
+
+        if missing:
+            missing_list = ", ".join(missing)
+            raise ValueError(f"Missing required secrets for {self.sentry_environment}: {missing_list}")
+
+        return self
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
