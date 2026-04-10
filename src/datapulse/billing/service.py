@@ -290,7 +290,7 @@ class BillingService:
             status=sub["status"],
             current_period_start=_ts_to_dt(sub["current_period_start"]),
             current_period_end=_ts_to_dt(sub["current_period_end"]),
-            cancel_at_period_end=bool(sub.cancel_at_period_end),
+            cancel_at_period_end=bool(sub["cancel_at_period_end"]),
         )
         self._repo.update_tenant_plan(tenant_id, plan)
 

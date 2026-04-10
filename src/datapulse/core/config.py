@@ -170,12 +170,17 @@ class Settings(BaseSettings):
             missing.append("AUTH0_DOMAIN")
         if not self.db_reader_password:
             missing.append("DB_READER_PASSWORD")
-        if not self.pipeline_webhook_secret and os.getenv("PIPELINE_AUTH_DISABLED", "").lower() != "true":
+        if (
+            not self.pipeline_webhook_secret
+            and os.getenv("PIPELINE_AUTH_DISABLED", "").lower() != "true"
+        ):
             missing.append("PIPELINE_WEBHOOK_SECRET")
 
         if missing:
             missing_list = ", ".join(missing)
-            raise ValueError(f"Missing required secrets for {self.sentry_environment}: {missing_list}")
+            raise ValueError(
+                f"Missing required secrets for {self.sentry_environment}: {missing_list}"
+            )
 
         return self
 
