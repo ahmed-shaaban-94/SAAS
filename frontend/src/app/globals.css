@@ -1,6 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+@custom-variant dark (.dark &);
+
+@theme {
+  /* ── Custom color tokens (reference CSS vars for dynamic dark/light theming) ── */
+  --color-page: var(--bg-page);
+  --color-card: var(--bg-card);
+  --color-border: var(--border-color);
+  --color-divider: var(--divider);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent-color);
+  --color-chart-blue: var(--chart-blue);
+  --color-chart-amber: var(--chart-amber);
+  --color-growth-green: var(--growth-green);
+  --color-growth-red: var(--growth-red);
+
+  /* ── Font family ── */
+  --font-sans: 'Inter Variable', Inter, 'Segoe UI', system-ui, sans-serif;
+
+  /* ── Custom animations ── */
+  --animate-fade-in: fadeIn 0.4s ease-out forwards;
+  --animate-slide-up: slideUp 0.5s ease-out forwards;
+  --animate-slide-in-left: slideInLeft 0.2s ease-out forwards;
+}
 
 /* ═══════════════════════════════════════════════
    Light theme tokens (default)
@@ -158,6 +181,46 @@ td, th,
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.30s; }
 .stagger-7 { animation-delay: 0.35s; }
+
+/* ═══════════════════════════════════════════════
+   Stagger container — viewport-triggered reveal
+   Used by <LazySection stagger> wrapper.
+   Children with .stagger-N fade/slide in with
+   staggered delays once parent gains .stagger-visible.
+   ═══════════════════════════════════════════════ */
+.stagger-container .stagger-1,
+.stagger-container .stagger-2,
+.stagger-container .stagger-3,
+.stagger-container .stagger-4,
+.stagger-container .stagger-5,
+.stagger-container .stagger-6,
+.stagger-container .stagger-7 {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.stagger-container.stagger-visible .stagger-1 { transition-delay: 0.05s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-2 { transition-delay: 0.10s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-3 { transition-delay: 0.15s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-4 { transition-delay: 0.20s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-5 { transition-delay: 0.25s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-6 { transition-delay: 0.30s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-7 { transition-delay: 0.35s; opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-container .stagger-1,
+  .stagger-container .stagger-2,
+  .stagger-container .stagger-3,
+  .stagger-container .stagger-4,
+  .stagger-container .stagger-5,
+  .stagger-container .stagger-6,
+  .stagger-container .stagger-7 {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
 
 /* Smooth scroll for anchor links */
 html {
@@ -386,6 +449,15 @@ html {
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
   stroke-opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Sidebar-aware main content margin
+   ═══════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  .main-content {
+    margin-left: var(--sidebar-width, 15rem);
+  }
 }
 
 /* ═══════════════════════════════════════════════

@@ -11,6 +11,7 @@ from datapulse.anomalies.models import AnomalyAlertResponse
 from datapulse.anomalies.repository import AnomalyRepository
 from datapulse.anomalies.service import AnomalyService
 from datapulse.api.auth import get_current_user
+from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import SessionDep
 from datapulse.api.limiter import limiter
 
@@ -29,10 +30,6 @@ def _get_anomaly_service(session: SessionDep) -> AnomalyService:
 _ServiceDep = Annotated[AnomalyService, Depends(_get_anomaly_service)]
 
 
-def _set_cache(response: Response, max_age: int) -> None:
-    response.headers["Cache-Control"] = f"max-age={max_age}, private"
-
-
 @router.get("/active", response_model=list[AnomalyAlertResponse])
 @limiter.limit("60/minute")
 def get_active_alerts(
@@ -42,7 +39,7 @@ def get_active_alerts(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[AnomalyAlertResponse]:
     """Return unacknowledged, unsuppressed anomaly alerts."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     return service.get_active_alerts(limit=limit)
 
 
@@ -57,7 +54,7 @@ def get_alert_history(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[AnomalyAlertResponse]:
     """Return anomaly alert history with optional date range filter."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_history(start_date, end_date, limit)
 
 

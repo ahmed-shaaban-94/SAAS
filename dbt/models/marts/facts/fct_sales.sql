@@ -1,6 +1,9 @@
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        unique_key='sales_key',
+        incremental_strategy='merge',
+        on_schema_change='append_new_columns',
         schema='marts',
         post_hook=[
             "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
@@ -16,7 +19,8 @@
             "CREATE INDEX IF NOT EXISTS idx_fct_sales_site_key ON {{ this }} (site_key)",
             "CREATE INDEX IF NOT EXISTS idx_fct_sales_staff_key ON {{ this }} (staff_key)",
             "CREATE INDEX IF NOT EXISTS idx_fct_sales_billing_key ON {{ this }} (billing_key)",
-            "CREATE INDEX IF NOT EXISTS idx_fct_sales_is_return ON {{ this }} (is_return) WHERE is_return = TRUE"
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_is_return ON {{ this }} (is_return) WHERE is_return = TRUE",
+            "CREATE INDEX IF NOT EXISTS idx_fct_sales_loaded_at ON {{ this }} (loaded_at)"
         ]
     )
 }}
@@ -26,9 +30,14 @@
 -- Integer surrogate keys via JOINs to dimensions (incl. billing_key)
 -- COALESCE all dimension FKs to -1 for unknown/unmatched members
 -- Financials rounded to 2 decimals
+-- Incremental: merges by sales_key using loaded_at watermark; use --full-refresh to rebuild
 
 WITH stg AS (
     SELECT * FROM {{ ref('stg_sales') }}
+    {% if is_incremental() %}
+    -- Only process rows newer than the latest loaded_at already in the table
+    WHERE loaded_at > (SELECT MAX(loaded_at) FROM {{ this }})
+    {% endif %}
 ),
 
 dim_product AS (
@@ -66,6 +75,9 @@ SELECT
 
     -- Tenant
     s.tenant_id,
+
+    -- Watermark for incremental loads
+    s.loaded_at,
 
     -- Foreign keys (clean integers, -1 = Unknown)
     TO_CHAR(s.invoice_date, 'YYYYMMDD')::INT    AS date_key,

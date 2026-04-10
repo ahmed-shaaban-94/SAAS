@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
+from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.targets.models import (
@@ -49,16 +50,6 @@ ServiceDep = Annotated[TargetsService, Depends(get_targets_service)]
 
 
 # ------------------------------------------------------------------
-# Cache-Control helper
-# ------------------------------------------------------------------
-
-
-def _set_cache(response: Response, max_age: int) -> None:
-    """Set Cache-Control header for browser caching (always private for RLS)."""
-    response.headers["Cache-Control"] = f"max-age={max_age}, private"
-
-
-# ------------------------------------------------------------------
 # Target endpoints
 # ------------------------------------------------------------------
 
@@ -85,7 +76,7 @@ def list_targets(
     period: Annotated[str | None, Query(max_length=10)] = None,
 ) -> list[TargetResponse]:
     """List sales targets with optional filters."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     return service.list_targets(
         target_type=target_type,
         granularity=granularity,
@@ -115,7 +106,7 @@ def get_target_summary(
     year: Annotated[int, Query(ge=2020, le=2100, description="Year for summary")] = 2025,
 ) -> TargetSummary:
     """Target vs actual revenue summary for a given year."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_target_summary(year)
 
 
@@ -128,7 +119,7 @@ def get_quarterly_summary(
     year: Annotated[int, Query(ge=2020, le=2100)] = 2025,
 ):
     """Quarterly target vs actual summary for a given year."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_quarterly_summary(year)
 
 
@@ -146,7 +137,7 @@ def get_budget_summary(
     year: Annotated[int, Query(ge=2020, le=2100, description="Year for budget")] = 2025,
 ) -> BudgetSummary:
     """Budget vs actual revenue by origin for a given year."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_budget_summary(year)
 
 
@@ -163,7 +154,7 @@ def list_alert_configs(
     service: ServiceDep,
 ) -> list[AlertConfigResponse]:
     """List all alert configurations."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     return service.list_alert_configs()
 
 
@@ -208,7 +199,7 @@ def get_alert_logs(
     unacknowledged_only: bool = False,
 ) -> list[AlertLogResponse]:
     """Get alert history log."""
-    _set_cache(response, 30)
+    set_cache_headers(response, 30)
     return service.get_active_alerts(
         limit=limit,
         unacknowledged_only=unacknowledged_only,

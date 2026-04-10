@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-// eslint-disable-next-line
-const ReactGridLayout = require("react-grid-layout");
+import { Responsive, useContainerWidth, type Layout } from "react-grid-layout";
 import { Settings, Plus, Save, X } from "lucide-react";
 import {
   useDashboardLayout,
@@ -14,10 +13,6 @@ import { WidgetPicker } from "./widget-picker";
 import { useToast } from "@/components/ui/toast";
 
 import "react-grid-layout/css/styles.css";
-
-const ResponsiveGridLayout = ReactGridLayout.WidthProvider(
-  ReactGridLayout.Responsive,
-);
 
 interface GridLayoutItem {
   i: string;
@@ -35,6 +30,7 @@ interface DashboardGridProps {
 }
 
 export function DashboardGrid({ widgets }: DashboardGridProps) {
+  const { width, containerRef, mounted } = useContainerWidth();
   const { layout: savedLayout, saveLayout } = useDashboardLayout();
   const [editMode, setEditMode] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -51,7 +47,7 @@ export function DashboardGrid({ widgets }: DashboardGridProps) {
       : DEFAULT_LAYOUT;
 
   const handleLayoutChange = useCallback(
-    (layout: GridLayoutItem[]) => {
+    (layout: Layout) => {
       if (!editMode) return;
       setCurrentLayout(
         layout.map((l) => ({
@@ -101,7 +97,7 @@ export function DashboardGrid({ widgets }: DashboardGridProps) {
   const activeWidgetIds = effectiveLayout.map((l) => l.i);
 
   return (
-    <div>
+    <div ref={containerRef}>
       {/* Toolbar */}
       <div className="mb-4 flex items-center justify-end gap-2">
         {editMode ? (
@@ -143,39 +139,41 @@ export function DashboardGrid({ widgets }: DashboardGridProps) {
       </div>
 
       {/* Grid */}
-      <ResponsiveGridLayout
-        layouts={{ lg: effectiveLayout }}
-        breakpoints={{ lg: 1024, md: 768, sm: 480 }}
-        cols={{ lg: 12, md: 8, sm: 4 }}
-        rowHeight={60}
-        isDraggable={editMode}
-        isResizable={editMode}
-        draggableHandle=".drag-handle"
-        onLayoutChange={handleLayoutChange}
-        containerPadding={[0, 0]}
-        margin={[16, 16]}
-      >
-        {effectiveLayout.map((item) => {
-          const widgetDef = WIDGET_REGISTRY.find((w) => w.id === item.i);
-          return (
-            <div key={item.i}>
-              <WidgetWrapper
-                title={widgetDef?.label ?? item.i}
-                editMode={editMode}
-                onRemove={
-                  editMode ? () => handleRemoveWidget(item.i) : undefined
-                }
-              >
-                {widgets[item.i] ?? (
-                  <div className="flex h-full items-center justify-center text-sm text-text-secondary">
-                    Widget: {item.i}
-                  </div>
-                )}
-              </WidgetWrapper>
-            </div>
-          );
-        })}
-      </ResponsiveGridLayout>
+      {mounted && (
+        <Responsive
+          width={width}
+          layouts={{ lg: effectiveLayout }}
+          breakpoints={{ lg: 1024, md: 768, sm: 480 }}
+          cols={{ lg: 12, md: 8, sm: 4 }}
+          rowHeight={60}
+          dragConfig={{ enabled: editMode, handle: ".drag-handle" }}
+          resizeConfig={{ enabled: editMode }}
+          onLayoutChange={handleLayoutChange}
+          containerPadding={[0, 0]}
+          margin={[16, 16]}
+        >
+          {effectiveLayout.map((item) => {
+            const widgetDef = WIDGET_REGISTRY.find((w) => w.id === item.i);
+            return (
+              <div key={item.i}>
+                <WidgetWrapper
+                  title={widgetDef?.label ?? item.i}
+                  editMode={editMode}
+                  onRemove={
+                    editMode ? () => handleRemoveWidget(item.i) : undefined
+                  }
+                >
+                  {widgets[item.i] ?? (
+                    <div className="flex h-full items-center justify-center text-sm text-text-secondary">
+                      Widget: {item.i}
+                    </div>
+                  )}
+                </WidgetWrapper>
+              </div>
+            );
+          })}
+        </Responsive>
+      )}
 
       {/* Widget Picker */}
       <WidgetPicker

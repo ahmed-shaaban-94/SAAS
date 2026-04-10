@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState } from "react";
 import { Responsive, useContainerWidth } from "react-grid-layout";
 import {
   Save,
@@ -19,6 +19,7 @@ import {
   CATEGORY_LABELS,
   type WidgetDef,
 } from "@/components/dashboard-builder/widget-catalog";
+import { useToast } from "@/components/ui/toast";
 
 import "react-grid-layout/css/styles.css";
 
@@ -110,6 +111,7 @@ function WidgetPickerPanel({
 export default function MyDashboardPage() {
   const { layout: savedLayout, isLoading, saveLayout } = useDashboardLayout();
   const { containerRef, width } = useContainerWidth();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [layout, setLayout] = useState<LayoutItem[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -172,6 +174,9 @@ export default function MyDashboardPage() {
     try {
       await saveLayout(layout);
       setDirty(false);
+      toastSuccess("Dashboard layout saved!");
+    } catch {
+      toastError("Failed to save layout. Please try again.");
     } finally {
       setSaving(false);
     }

@@ -10,5 +10,10 @@ if (dsn) {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT === "production" ? 1.0 : 0,
     debug: false,
+    integrations: [
+      // Captures Core Web Vitals (LCP, INP, CLS, FCP, TTFB) and sends them
+      // as performance spans to Sentry — visible in the Performance dashboard.
+      Sentry.browserTracingIntegration(),
+    ],
   });
 }

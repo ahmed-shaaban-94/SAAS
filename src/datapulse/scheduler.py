@@ -15,9 +15,11 @@ On-demand:
 from __future__ import annotations
 
 import asyncio
+import subprocess
 import time
 from uuid import UUID
 
+import sqlalchemy.exc
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -119,6 +121,72 @@ async def run_pipeline(
         finally:
             session.close()
 
+    def _update_usage(tid: int, rows_loaded: int) -> None:
+        """Update usage_metrics after a successful pipeline run."""
+        from sqlalchemy.exc import SQLAlchemyError
+
+        from datapulse.billing.repository import BillingRepository
+
+        session = _get_session()
+        try:
+            billing_repo = BillingRepository(session)
+            # Count distinct data sources for this tenant
+            source_count_row = session.execute(
+                sa_text(
+                    "SELECT COUNT(DISTINCT source_file) FROM bronze.sales WHERE tenant_id = :tid"
+                ),
+                {"tid": tid},
+            ).scalar()
+            # Count total rows for this tenant
+            row_count = session.execute(
+                sa_text("SELECT COUNT(*) FROM bronze.sales WHERE tenant_id = :tid"),
+                {"tid": tid},
+            ).scalar()
+
+            billing_repo.upsert_usage(
+                tid,
+                data_sources_count=source_count_row or 0,
+                total_rows=row_count or rows_loaded,
+            )
+            session.commit()
+            log.info(
+                "usage_metrics_updated",
+                tenant_id=tid,
+                data_sources=source_count_row,
+                total_rows=row_count or rows_loaded,
+            )
+        except SQLAlchemyError:
+            session.rollback()
+            log.error("usage_metrics_update_failed", tenant_id=tid, exc_info=True)
+        finally:
+            session.close()
+
+    def _check_plan_limits_under_lock(tid: int) -> str | None:
+        """Re-validate plan limits under advisory lock (TOCTOU defense).
+
+        Returns None if OK, or an error message if limits are exceeded.
+        """
+        from datapulse.billing.repository import BillingRepository
+        from datapulse.billing.service import BillingService, PlanLimitExceededError
+        from datapulse.billing.stripe_client import StripeClient
+
+        session = _get_session()
+        try:
+            billing_repo = BillingRepository(session)
+            client = StripeClient(settings.stripe_secret_key)
+            billing_svc = BillingService(
+                billing_repo,
+                client,
+                price_to_plan=settings.stripe_price_to_plan_map,
+                base_url=settings.billing_base_url,
+            )
+            billing_svc.check_plan_limits(tid)
+            return None
+        except PlanLimitExceededError as e:
+            return str(e)
+        finally:
+            session.close()
+
     stages = [
         ("running", "bronze", lambda: executor.run_bronze(run_id=run_id, source_dir=source_dir)),
         ("bronze_complete", "bronze", None),  # quality check
@@ -144,9 +212,24 @@ async def run_pipeline(
             _update_status("failed", error_message="Another pipeline is already running")
             notify_pipeline_failure(run_id_str, "lock", "Another pipeline is already running")
             return
-    except Exception:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError):
         lock_session.close()
         raise
+
+    # Re-validate plan limits under lock (TOCTOU defense)
+    limit_error = await asyncio.to_thread(_check_plan_limits_under_lock, tenant_id)
+    if limit_error:
+        _update_status("failed", error_message=f"Plan limit exceeded: {limit_error}")
+        notify_pipeline_failure(run_id_str, "plan_check", limit_error)
+        log.warning("pipeline_plan_limit_exceeded", run_id=run_id_str, tenant_id=tenant_id)
+        # Release lock early
+        try:
+            lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
+            lock_session.commit()
+        finally:
+            lock_session.close()
+        clear_contextvars()
+        return
 
     _update_status("running")
     total_rows = 0
@@ -199,10 +282,19 @@ async def run_pipeline(
         elapsed = round(time.perf_counter() - t0, 2)
         _update_status("success", rows=total_rows)
         cache_invalidate_pattern("datapulse:analytics:*")
+
+        # Update usage metrics for billing enforcement (in thread — avoids blocking event loop)
+        await asyncio.to_thread(_update_usage, tenant_id, total_rows)
+
         notify_pipeline_success(run_id_str, elapsed, total_rows)
         log.info("pipeline_complete", run_id=run_id_str, duration=elapsed, rows=total_rows)
 
-    except Exception as exc:
+    except (
+        sqlalchemy.exc.SQLAlchemyError,
+        OSError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as exc:
         elapsed = round(time.perf_counter() - t0, 2)
         error_msg = str(exc)[:200]
         _update_status("failed", error_message=error_msg)
@@ -213,7 +305,7 @@ async def run_pipeline(
         try:
             lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
             lock_session.commit()
-        except Exception:
+        except (sqlalchemy.exc.SQLAlchemyError, OSError):
             pass
         finally:
             lock_session.close()
@@ -277,7 +369,7 @@ async def _quality_digest() -> None:
             checks_passed=passed,
         )
         log.info("quality_digest_sent", run_id=str(latest.id))
-    except Exception as exc:
+    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
         log.error("quality_digest_failed", error=str(exc))
     finally:
         session.close()
@@ -317,7 +409,7 @@ async def _ai_digest() -> None:
                 anomaly_count=len(anomalies.get("anomalies", [])),
             )
             log.info("ai_digest_sent")
-    except Exception as exc:
+    except (httpx.HTTPError, httpx.TimeoutException, OSError, KeyError) as exc:
         log.error("ai_digest_failed", error=str(exc))
 
 

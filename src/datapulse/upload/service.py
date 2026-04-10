@@ -17,20 +17,51 @@ TEMP_DIR = Path("/tmp/datapulse-uploads")  # noqa: S108
 ALLOWED_EXTENSIONS = {".xlsx", ".csv", ".xls"}
 MAX_PREVIEW_ROWS = 100
 
+# Magic bytes for file type validation
+_MAGIC_XLSX = b"PK\x03\x04"  # OOXML (xlsx, docx, zip)
+_MAGIC_XLS = b"\xd0\xcf\x11\xe0"  # OLE2 Compound Document (xls, doc)
+
+
+def _validate_magic_bytes(ext: str, content: bytes) -> None:
+    """Raise ValueError if content magic bytes don't match the declared extension."""
+    if not content:
+        raise ValueError("Uploaded file is empty")
+
+    if ext in (".xlsx", ".xls"):
+        # Accept both OOXML (.xlsx) and OLE2 (.xls) magic bytes for both extensions
+        # since users sometimes rename files
+        if not (content[:4] == _MAGIC_XLSX or content[:4] == _MAGIC_XLS):
+            raise ValueError(
+                f"File declared as {ext} but content does not match Excel format. "
+                "Expected XLSX (PK\\x03\\x04) or XLS (OLE2) magic bytes."
+            )
+    elif ext == ".csv":
+        # CSV: first 1 KB must be valid UTF-8 with no null bytes
+        sample = content[:1024]
+        if b"\x00" in sample:
+            raise ValueError("CSV file contains null bytes — likely a binary file")
+        try:
+            sample.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("CSV file is not valid UTF-8. Upload a UTF-8 encoded CSV.") from exc
+
 
 class UploadService:
-    def __init__(self, raw_data_dir: str = "/app/data/raw/sales") -> None:
+    def __init__(self, raw_data_dir: str = "/app/data/raw/sales", tenant_id: str = "0") -> None:
         self._raw_dir = Path(raw_data_dir)
-        TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        self._tenant_dir = TEMP_DIR / str(tenant_id)
+        self._tenant_dir.mkdir(parents=True, exist_ok=True)
 
     def save_temp_file(self, filename: str, content: bytes) -> UploadedFile:
-        """Save uploaded file to temp directory, return file metadata."""
+        """Save uploaded file to per-tenant temp directory, return file metadata."""
         ext = Path(filename).suffix.lower()
         if ext not in ALLOWED_EXTENSIONS:
             raise ValueError(f"Unsupported file type: {ext}. Allowed: {ALLOWED_EXTENSIONS}")
 
+        _validate_magic_bytes(ext, content)
+
         file_id = str(uuid.uuid4())
-        dest = TEMP_DIR / f"{file_id}{ext}"
+        dest = self._tenant_dir / f"{file_id}{ext}"
         dest.write_bytes(content)
 
         log.info("file_uploaded", file_id=file_id, filename=filename, size=len(content))
@@ -50,7 +81,7 @@ class UploadService:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="Invalid file ID format") from exc
 
-        matching = list(TEMP_DIR.glob(f"{normalized_id}.*"))
+        matching = list(self._tenant_dir.glob(f"{normalized_id}.*"))
         if not matching:
             raise FileNotFoundError(f"File {file_id} not found")
 
@@ -102,7 +133,7 @@ class UploadService:
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="Invalid file ID format") from exc
 
-            matching = list(TEMP_DIR.glob(f"{normalized_fid}.*"))
+            matching = list(self._tenant_dir.glob(f"{normalized_fid}.*"))
             if not matching:
                 continue
             src = matching[0]

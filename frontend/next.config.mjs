@@ -12,6 +12,8 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig = {
   output: "standalone",
   experimental: {
+    // Tree-shake named exports from large icon/chart packages so only used
+    // symbols are included in the client bundle (verified with ANALYZE=true).
     optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
   },
   // Proxy /api/v1/* and /health to the FastAPI backend.

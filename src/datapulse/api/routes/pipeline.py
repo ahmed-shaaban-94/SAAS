@@ -13,15 +13,18 @@ from functools import partial
 from typing import Annotated
 from uuid import UUID
 
+import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from datapulse.api.auth import get_current_user, require_pipeline_token
 from datapulse.api.deps import (
+    get_billing_service,
     get_pipeline_executor,
     get_pipeline_service,
     get_quality_service,
 )
+from datapulse.billing.service import BillingService, PlanLimitExceededError
 from datapulse.cache import cache_invalidate_pattern
 from datapulse.logging import get_logger
 from datapulse.pipeline.checkpoint import get_completed_stages, get_last_successful_stage
@@ -150,7 +153,7 @@ async def stream_run_progress(
 
                 try:
                     current = await loop.run_in_executor(None, service.get_run, run_id)
-                except Exception as exc:
+                except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
                     log.error("sse_poll_error", run_id=str(run_id), error=str(exc))
                     yield _sse_event("error", {"message": "Internal error polling run status"})
                     return
@@ -257,14 +260,45 @@ def update_run(
 )
 async def trigger_pipeline(
     service: ServiceDep,
+    billing: Annotated[BillingService, Depends(get_billing_service)],
+    user: Annotated[dict, Depends(get_current_user)],
     body: TriggerRequest | None = None,
 ) -> TriggerResponse:
     """Trigger a full pipeline run.
 
-    Creates a pipeline_run record (pending), then starts the pipeline
-    orchestrator in the background. Returns immediately.
+    Checks plan limits before starting. Creates a pipeline_run record (pending),
+    then starts the pipeline orchestrator in the background. Returns immediately.
+    Uses JWT-derived tenant_id for all authorization — never the request body.
     """
     req = body or TriggerRequest()
+    # Tenant ID from JWT claims — never trust the request body for authorization
+    tenant_id = int(user.get("tenant_id", "1"))
+
+    # 0. Enforce plan limits — reject if tenant would exceed row/source caps
+    try:
+        billing.check_plan_limits(tenant_id)
+    except PlanLimitExceededError as e:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_limit_exceeded",
+                "limit_type": e.limit_type,
+                "message": f"Your {e.limit_type} limit has been reached. "
+                "Upgrade your plan to continue.",
+            },
+        ) from e
+
+    # Check pipeline_automation feature access
+    if not billing.check_feature_access(tenant_id, "pipeline_automation"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "feature_not_available",
+                "feature": "pipeline_automation",
+                "message": "Pipeline automation is not available on your current plan. "
+                "Upgrade to Pro or Enterprise to enable automated pipelines.",
+            },
+        )
 
     # 1. Create the run record
     run = service.start_run(
@@ -273,7 +307,7 @@ async def trigger_pipeline(
             trigger_source="api",
             metadata={"source_dir": req.source_dir},
         ),
-        tenant_id=req.tenant_id,
+        tenant_id=tenant_id,
     )
 
     # 2. Run pipeline in background (replaces n8n webhook)
@@ -283,7 +317,7 @@ async def trigger_pipeline(
         run_pipeline(
             run_id=run.id,
             source_dir=req.source_dir,
-            tenant_id=req.tenant_id,
+            tenant_id=tenant_id,
         )
     )
 

@@ -141,7 +141,7 @@ class DetailRepository:
             total_quantity=Decimal(str(row["total_quantity"])),
             total_sales=Decimal(str(row["total_sales"])),
             total_net_amount=Decimal(str(row["total_sales"])),
-            return_rate=Decimal(str(row["return_rate"])),
+            return_rate=(Decimal(str(row["return_rate"])) * 100).quantize(Decimal("0.01")),
             unique_customers=int(row["unique_customers"]),
             monthly_trend=trend,
         )
@@ -329,6 +329,6 @@ class DetailRepository:
             unique_staff=int(row["unique_staff"]),
             walk_in_ratio=Decimal(str(row["walk_in_ratio"])).quantize(Decimal("0.0001")),
             insurance_ratio=Decimal(str(row["insurance_ratio"])).quantize(Decimal("0.0001")),
-            return_rate=Decimal(str(row["return_rate"])).quantize(Decimal("0.0001")),
+            return_rate=(Decimal(str(row["return_rate"])) * 100).quantize(Decimal("0.01")),
             monthly_trend=trend,
         )

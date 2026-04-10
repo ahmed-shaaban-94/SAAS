@@ -122,7 +122,7 @@ def holt_winters_forecast(
         std_err = float(np.std(residuals))
         z = _z_for_confidence(confidence)
 
-    except Exception as exc:
+    except (ArithmeticError, ValueError, RuntimeError) as exc:
         log.error("holt_winters_fallback_to_sma", reason="fit_failed", error=str(exc))
         return sma_forecast(series, horizon, start_date=start_date, monthly=monthly)
 

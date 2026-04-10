@@ -32,11 +32,17 @@ from datapulse.analytics.models import (
     HealthDistribution,
     HeatmapData,
     KPISummary,
+    LifecycleDistribution,
     ProductHierarchy,
+    ProductLifecycle,
     ProductPerformance,
     RankingResult,
     ReturnAnalysis,
     ReturnsTrend,
+    RevenueDailyRolling,
+    RevenueSiteRolling,
+    SeasonalityDaily,
+    SeasonalityMonthly,
     SegmentSummary,
     SiteDetail,
     StaffPerformance,
@@ -47,6 +53,7 @@ from datapulse.analytics.models import (
 )
 from datapulse.analytics.service import AnalyticsService
 from datapulse.api.auth import get_current_user
+from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import get_analytics_service, get_tenant_session
 from datapulse.api.limiter import limiter
 
@@ -55,16 +62,6 @@ router = APIRouter(
     tags=["analytics"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-# ------------------------------------------------------------------
-# Cache-Control helper
-# ------------------------------------------------------------------
-
-
-def _set_cache(response: Response, max_age: int) -> None:
-    """Set Cache-Control header for browser caching (always private for RLS)."""
-    response.headers["Cache-Control"] = f"max-age={max_age}, private"
 
 
 # ------------------------------------------------------------------
@@ -152,7 +149,7 @@ def get_dashboard(
     Accepts all standard analytics filters (date range, site, category, brand, staff).
     Falls back to a 30-day window from the latest data date when no range is given.
     """
-    _set_cache(response, 600)
+    set_cache_headers(response, 600)
     filters = _to_filter(params)
     return service.get_dashboard_data(target_date=target_date, filters=filters)
 
@@ -165,7 +162,7 @@ def get_date_range(
     service: ServiceDep,
 ) -> DataDateRange:
     """Return the min/max dates of available data for frontend preset calculation."""
-    _set_cache(response, 3600)
+    set_cache_headers(response, 3600)
     return service.get_date_range()
 
 
@@ -178,7 +175,7 @@ def get_summary(
     target_date: Annotated[date | None, Query()] = None,
 ) -> KPISummary:
     """Executive KPI snapshot for the dashboard header."""
-    _set_cache(response, 600)
+    set_cache_headers(response, 600)
     return service.get_dashboard_summary(target_date)
 
 
@@ -191,7 +188,7 @@ def get_daily_trend(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
     """Daily net-sales trend line."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     filters = _to_filter(params)
     return service.get_daily_trend(filters)
 
@@ -205,7 +202,7 @@ def get_monthly_trend(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> TrendResult:
     """Monthly net-sales trend line."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     filters = _to_filter(params)
     return service.get_monthly_trend(filters)
 
@@ -219,7 +216,7 @@ def get_top_products(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Top products ranked by net revenue."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_product_insights(_to_filter(params))
 
 
@@ -232,7 +229,7 @@ def get_top_customers(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Top customers ranked by net revenue."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_customer_insights(_to_filter(params))
 
 
@@ -245,7 +242,7 @@ def get_top_staff(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Staff leaderboard ranked by net revenue."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_staff_leaderboard(_to_filter(params))
 
 
@@ -258,7 +255,7 @@ def get_sites(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> RankingResult:
     """Site comparison ranked by net revenue."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_site_comparison(_to_filter(params))
 
 
@@ -270,7 +267,7 @@ def get_filter_options(
     service: ServiceDep,
 ) -> FilterOptions:
     """Return available filter values for slicer/dropdown population."""
-    _set_cache(response, 3600)
+    set_cache_headers(response, 3600)
     return service.get_filter_options()
 
 
@@ -283,7 +280,7 @@ def get_billing_breakdown(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> BillingBreakdown:
     """Billing method distribution (cash, credit, delivery, etc.)."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_billing_breakdown(_to_filter(params))
 
 
@@ -296,7 +293,7 @@ def get_customer_type_breakdown(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> CustomerTypeBreakdown:
     """Walk-in vs insurance vs other distribution by month."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_customer_type_breakdown(_to_filter(params))
 
 
@@ -309,7 +306,7 @@ def get_origin_breakdown(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> list[dict]:
     """Revenue breakdown by product origin (Pharma, Non-pharma, HVI, etc.)."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_origin_breakdown(_to_filter(params))
 
 
@@ -324,7 +321,7 @@ def get_top_movers(
     limit: Annotated[int, Query(ge=1, le=20)] = 5,
 ) -> TopMovers:
     """Top gainers and losers vs previous period."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_top_movers(entity_type, _to_filter(params), limit)
 
 
@@ -337,7 +334,7 @@ def get_product_hierarchy(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> ProductHierarchy:
     """Product hierarchy: Category > Brand > Product."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_product_hierarchy(_to_filter(params))
 
 
@@ -350,7 +347,7 @@ def get_returns(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> list[ReturnAnalysis]:
     """Top returns/credit notes by amount."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_return_report(_to_filter(params))
 
 
@@ -363,7 +360,7 @@ def get_site_detail(
     service: ServiceDep,
 ) -> SiteDetail:
     """Detailed site metrics with monthly trend."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     result = service.get_site_detail(site_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -379,7 +376,7 @@ def get_product_detail(
     service: ServiceDep,
 ) -> ProductPerformance:
     """Detailed product performance metrics."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     result = service.get_product_detail(product_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -396,7 +393,7 @@ def get_churn_predictions(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list:
     """Customer churn predictions sorted by probability."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     repo = ChurnRepository(session)
     rows = repo.get_churn_predictions(risk_level=risk_level, limit=limit)
     return [ChurnPrediction(**r) for r in rows]
@@ -411,7 +408,7 @@ def get_customer_detail(
     service: ServiceDep,
 ) -> CustomerAnalytics:
     """Detailed customer analytics."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     result = service.get_customer_detail(customer_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -427,7 +424,7 @@ def get_staff_detail(
     service: ServiceDep,
 ) -> StaffPerformance:
     """Detailed staff performance metrics."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     result = service.get_staff_detail(staff_key)
     if result is None:
         raise HTTPException(status_code=404, detail="Staff member not found")
@@ -449,7 +446,7 @@ def get_abc_analysis(
     entity: Annotated[str, Query(pattern="^(product|customer)$")] = "product",
 ) -> ABCAnalysis:
     """ABC/Pareto analysis for products or customers."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_abc_analysis(entity, _to_filter(params))
 
 
@@ -462,7 +459,7 @@ def get_heatmap(
     year: Annotated[int, Query(ge=2020, le=2030)] = 2025,
 ) -> HeatmapData:
     """Calendar heatmap — daily revenue for a year."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_heatmap(year)
 
 
@@ -475,7 +472,7 @@ def get_returns_trend(
     params: Annotated[AnalyticsQueryParams, Depends()],
 ) -> ReturnsTrend:
     """Monthly returns trend."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_returns_trend(_to_filter(params))
 
 
@@ -487,7 +484,7 @@ def get_segment_summary(
     service: ServiceDep,
 ) -> list[SegmentSummary]:
     """Customer RFM segment summary."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_segment_summary()
 
 
@@ -506,7 +503,7 @@ def get_why_changed(
     driver_limit: Annotated[int, Query(ge=1, le=50)] = 15,
 ) -> WaterfallAnalysis:
     """Revenue change decomposition — why did revenue change?"""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_why_changed(_to_filter(params), limit=driver_limit)
 
 
@@ -520,7 +517,7 @@ def get_customer_health(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[CustomerHealthScore]:
     """Customer health scores with optional band filter."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_customer_health(band=band, limit=limit)
 
 
@@ -532,7 +529,7 @@ def get_health_distribution(
     service: ServiceDep,
 ) -> HealthDistribution:
     """Distribution of customers across health bands."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_health_distribution()
 
 
@@ -545,7 +542,7 @@ def get_at_risk_customers(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[CustomerHealthScore]:
     """At-risk and critical customers, lowest score first."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_at_risk_customers(limit=limit)
 
 
@@ -560,7 +557,7 @@ def get_staff_quota(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list:
     """Staff quota attainment — actual vs target per staff member."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     rows = service._repo.get_staff_quota(year=year, month=month, limit=limit)
     return [StaffQuota(**r) for r in rows]
 
@@ -575,7 +572,91 @@ def get_product_affinity(
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> list:
     """Top co-purchased products for a given product."""
-    _set_cache(response, 600)
+    set_cache_headers(response, 600)
     repo = AffinityRepository(session)
     rows = repo.get_affinity_for_product(product_key, limit=limit)
     return [AffinityPair(**r) for r in rows]
+
+
+# ------------------------------------------------------------------
+# Feature Store: Revenue Rolling, Seasonality, Product Lifecycle
+# ------------------------------------------------------------------
+
+
+@router.get("/revenue/rolling", response_model=list[RevenueDailyRolling])
+@limiter.limit("60/minute")
+def get_revenue_daily_rolling(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    days: Annotated[int, Query(ge=1, le=730)] = 90,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+) -> list[RevenueDailyRolling]:
+    """Daily revenue with 7/30/90-day MAs, volatility, and trend ratios."""
+    set_cache_headers(response, 300)
+    return service.get_revenue_daily_rolling(days=days, limit=limit)
+
+
+@router.get("/revenue/rolling/by-site", response_model=list[RevenueSiteRolling])
+@limiter.limit("60/minute")
+def get_revenue_site_rolling(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    site_key: int | None = Query(None),
+    days: Annotated[int, Query(ge=1, le=365)] = 30,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+) -> list[RevenueSiteRolling]:
+    """Per-site daily rolling MAs with cross-site comparison."""
+    set_cache_headers(response, 300)
+    return service.get_revenue_site_rolling(site_key=site_key, days=days, limit=limit)
+
+
+@router.get("/seasonality/monthly", response_model=list[SeasonalityMonthly])
+@limiter.limit("60/minute")
+def get_seasonality_monthly(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> list[SeasonalityMonthly]:
+    """Monthly seasonal indices (12 rows) for forecasting and pattern analysis."""
+    set_cache_headers(response, 600)
+    return service.get_seasonality_monthly()
+
+
+@router.get("/seasonality/daily", response_model=list[SeasonalityDaily])
+@limiter.limit("60/minute")
+def get_seasonality_daily(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> list[SeasonalityDaily]:
+    """Day-of-week seasonal indices (7 rows) for scheduling and pattern analysis."""
+    set_cache_headers(response, 600)
+    return service.get_seasonality_daily()
+
+
+@router.get("/products/lifecycle", response_model=list[ProductLifecycle])
+@limiter.limit("60/minute")
+def get_product_lifecycle(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    phase: Annotated[str | None, Query(pattern="^(Growth|Mature|Decline|Dormant)$")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[ProductLifecycle]:
+    """Product lifecycle classification with optional phase filter."""
+    set_cache_headers(response, 300)
+    return service.get_product_lifecycle(phase=phase, limit=limit)
+
+
+@router.get("/products/lifecycle/distribution", response_model=LifecycleDistribution)
+@limiter.limit("60/minute")
+def get_lifecycle_distribution(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+) -> LifecycleDistribution:
+    """Distribution of products across lifecycle phases."""
+    set_cache_headers(response, 300)
+    return service.get_lifecycle_distribution()

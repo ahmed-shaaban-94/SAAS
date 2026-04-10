@@ -12,6 +12,7 @@ const PUBLIC_PATHS = [
   "/terms",
   "/privacy",
   "/embed",      // Public embed route — token-based auth handled at route level
+  "/demo",       // Live demo — simulated data, no sign-in required
 ];
 
 /** Check if the request path starts with any public prefix. */

@@ -24,5 +24,5 @@ BEGIN
 END;
 $$;
 
-INSERT INTO public.schema_migrations (filename) VALUES ('030_bronze_sales_unique_index.sql')
+INSERT INTO public.schema_migrations (filename) VALUES ('030a_bronze_sales_unique_index.sql')
     ON CONFLICT (filename) DO NOTHING;

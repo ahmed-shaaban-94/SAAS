@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { LoadingCard } from "@/components/loading-card";
+import { LoadingCard, SkeletonCard, AnimatedCard, CardPresence } from "@/components/loading-card";
 
 describe("LoadingCard", () => {
   it("renders with default 3 shimmer lines", () => {
@@ -25,5 +25,30 @@ describe("LoadingCard", () => {
   it("has animation class", () => {
     const { container } = render(<LoadingCard />);
     expect(container.firstChild).toHaveClass("animate-fade-in");
+  });
+});
+
+describe("SkeletonCard", () => {
+  it("is an alias for LoadingCard", () => {
+    expect(SkeletonCard).toBe(LoadingCard);
+  });
+});
+
+describe("AnimatedCard", () => {
+  it("renders children without layoutId", () => {
+    render(<AnimatedCard><span>Content</span></AnimatedCard>);
+    expect(screen.getByText("Content")).toBeInTheDocument();
+  });
+
+  it("applies className", () => {
+    const { container } = render(<AnimatedCard className="test-class"><span>OK</span></AnimatedCard>);
+    expect(container.firstChild).toHaveClass("test-class");
+  });
+});
+
+describe("CardPresence", () => {
+  it("is exported and renders children", () => {
+    render(<CardPresence><div>child</div></CardPresence>);
+    expect(screen.getByText("child")).toBeInTheDocument();
   });
 });

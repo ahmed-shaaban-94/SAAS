@@ -11,6 +11,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 
 from datapulse.api.auth import get_current_user
+from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import get_forecasting_service
 from datapulse.api.limiter import limiter
 from datapulse.forecasting.models import (
@@ -27,11 +28,6 @@ router = APIRouter(
 )
 
 
-def _set_cache(response: Response, max_age: int) -> None:
-    """Set Cache-Control header (always private for RLS)."""
-    response.headers["Cache-Control"] = f"max-age={max_age}, private"
-
-
 ForecastServiceDep = Annotated[ForecastingService, Depends(get_forecasting_service)]
 
 
@@ -44,7 +40,7 @@ def get_revenue_forecast(
     granularity: Annotated[str, Query(pattern="^(daily|monthly)$")] = "daily",
 ) -> ForecastResult:
     """Daily or monthly revenue forecast."""
-    _set_cache(response, 600)
+    set_cache_headers(response, 600)
     result = service.get_revenue_forecast(granularity)
     if result is None:
         raise HTTPException(
@@ -63,7 +59,7 @@ def get_product_forecast(
     product_key: Annotated[int, Path(ge=1, description="Product surrogate key")],
 ) -> ForecastResult:
     """Product demand forecast (next 3 months)."""
-    _set_cache(response, 600)
+    set_cache_headers(response, 600)
     result = service.get_product_forecast(product_key)
     if result is None:
         raise HTTPException(
@@ -81,7 +77,7 @@ def get_forecast_summary(
     service: ForecastServiceDep,
 ) -> ForecastSummary:
     """Forecast overview — accuracy, key predictions, top movers."""
-    _set_cache(response, 600)
+    set_cache_headers(response, 600)
     return service.get_forecast_summary()
 
 
@@ -95,5 +91,5 @@ def get_customer_segments(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[CustomerSegment]:
     """Customer RFM segments from the feature store."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_customer_segments(segment=segment, limit=limit)

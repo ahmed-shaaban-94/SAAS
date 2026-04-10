@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
+from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.reseller.models import (
@@ -62,10 +63,6 @@ def _check_reseller_access(
         raise HTTPException(status_code=403, detail="Access denied to this reseller")
 
 
-def _set_cache(response: Response, max_age: int) -> None:
-    response.headers["Cache-Control"] = f"max-age={max_age}, private"
-
-
 @router.get("/", response_model=list[ResellerResponse])
 @limiter.limit("60/minute")
 def list_resellers(
@@ -74,7 +71,7 @@ def list_resellers(
     service: ServiceDep,
 ) -> list[ResellerResponse]:
     """List all resellers."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.list_resellers()
 
 
@@ -100,7 +97,7 @@ def get_dashboard(
 ) -> ResellerDashboard:
     """Get reseller dashboard overview."""
     _check_reseller_access(reseller_id, user, service)
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     try:
         return service.get_dashboard(reseller_id)
     except ValueError as exc:
@@ -118,7 +115,7 @@ def get_tenants(
 ) -> list[ResellerTenantResponse]:
     """Get tenants under a reseller."""
     _check_reseller_access(reseller_id, user, service)
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_tenants(reseller_id)
 
 
@@ -133,7 +130,7 @@ def get_commissions(
 ) -> list[CommissionResponse]:
     """Get commission history for a reseller."""
     _check_reseller_access(reseller_id, user, service)
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_commissions(reseller_id)
 
 
@@ -148,5 +145,5 @@ def get_payouts(
 ) -> list[PayoutResponse]:
     """Get payout history for a reseller."""
     _check_reseller_access(reseller_id, user, service)
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_payouts(reseller_id)

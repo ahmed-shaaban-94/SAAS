@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
+from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.branding.models import (
@@ -51,10 +52,6 @@ def get_branding_service(
 ServiceDep = Annotated[BrandingService, Depends(get_branding_service)]
 
 
-def _set_cache(response: Response, max_age: int) -> None:
-    response.headers["Cache-Control"] = f"max-age={max_age}, private"
-
-
 # ------------------------------------------------------------------
 # Authenticated endpoints
 # ------------------------------------------------------------------
@@ -70,7 +67,7 @@ def get_branding(
 ) -> BrandingResponse:
     """Get the current tenant branding configuration."""
     tenant_id = int(user.get("tenant_id", "1"))
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.get_branding(tenant_id)
 
 

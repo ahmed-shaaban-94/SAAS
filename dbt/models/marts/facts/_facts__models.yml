@@ -73,6 +73,10 @@ models:
           - relationships:
               to: ref('dim_billing')
               field: billing_key
+      - name: loaded_at
+        description: "Timestamp when the source row was loaded into bronze (used as incremental watermark)"
+        tests:
+          - not_null
       - name: invoice_id
         description: "Degenerate dimension — invoice reference number"
         meta:

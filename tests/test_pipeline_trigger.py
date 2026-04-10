@@ -46,10 +46,15 @@ def _setup_app_overrides(app, mock_service):
         "roles": ["admin"],
         "raw_claims": {},
     }
+    mock_billing_svc = MagicMock()
+    mock_billing_svc.check_plan_limits.return_value = None
+    mock_billing_svc.check_feature_access.return_value = True
+
     clean_settings = Settings(_env_file=None, api_key="test-api-key", database_url="")
     app.dependency_overrides[get_settings] = lambda: clean_settings
     app.dependency_overrides[get_pipeline_service] = lambda: mock_service
     app.dependency_overrides[deps.get_tenant_session] = lambda: MagicMock()
+    app.dependency_overrides[deps.get_billing_service] = lambda: mock_billing_svc
     app.dependency_overrides[get_current_user] = lambda: _dev_user
     app.dependency_overrides[require_pipeline_token] = lambda: None
 

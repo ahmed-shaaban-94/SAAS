@@ -62,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
     minRole: "viewer",
     items: [
       { label: "Overview", href: "/dashboard", icon: "LayoutDashboard", minRole: "viewer" },
+      { label: "Executive Briefing", href: "/briefing", icon: "Briefcase", minRole: "viewer" },
       { label: "My Dashboard", href: "/my-dashboard", icon: "LayoutGrid", minRole: "viewer" },
       { label: "Custom Report", href: "/custom-report", icon: "BarChartBig", minRole: "viewer" },
       { label: "Reports", href: "/reports", icon: "FileBarChart", minRole: "viewer" },

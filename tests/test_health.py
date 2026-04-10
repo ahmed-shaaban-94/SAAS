@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+import redis
+import sqlalchemy.exc
+
 from datapulse.api.routes.health import (
     _check_data_freshness,
     _check_db,
@@ -27,7 +30,9 @@ class TestCheckDb:
 
     @patch("datapulse.api.routes.health.get_engine")
     def test_error(self, mock_engine):
-        mock_engine.return_value.connect.side_effect = Exception("refused")
+        mock_engine.return_value.connect.side_effect = sqlalchemy.exc.OperationalError(
+            "SELECT 1", {}, Exception("refused")
+        )
         result = _check_db()
         assert result["status"] == "error"
         assert "refused" in result["error"]
@@ -50,7 +55,7 @@ class TestCheckRedis:
 
     @patch("datapulse.cache.get_redis_client")
     def test_error(self, mock_get):
-        mock_get.side_effect = Exception("connection refused")
+        mock_get.side_effect = redis.ConnectionError("connection refused")
         result = _check_redis()
         assert result["status"] == "error"
 
@@ -72,7 +77,7 @@ class TestCheckQueryExecutor:
 
     @patch("datapulse.tasks.async_executor._get_job_client")
     def test_error(self, mock_get):
-        mock_get.side_effect = Exception("connection refused")
+        mock_get.side_effect = redis.ConnectionError("connection refused")
         result = _check_query_executor()
         assert result["status"] == "error"
 
@@ -100,7 +105,9 @@ class TestCheckSchemaVersion:
 
     @patch("datapulse.api.routes.health.get_engine")
     def test_error(self, mock_engine):
-        mock_engine.return_value.connect.side_effect = Exception("timeout")
+        mock_engine.return_value.connect.side_effect = sqlalchemy.exc.OperationalError(
+            "SELECT version_num FROM alembic_version LIMIT 1", {}, Exception("timeout")
+        )
         result = _check_schema_version()
         assert result["status"] == "error"
         assert "timeout" in result["error"]
@@ -142,7 +149,9 @@ class TestCheckDbtFreshness:
 
     @patch("datapulse.api.routes.health.get_engine")
     def test_error(self, mock_engine):
-        mock_engine.return_value.connect.side_effect = Exception("connection refused")
+        mock_engine.return_value.connect.side_effect = sqlalchemy.exc.OperationalError(
+            "SELECT MAX(updated_at) FROM gold.metrics_summary", {}, Exception("connection refused")
+        )
         result = _check_dbt_freshness()
         assert result["status"] == "error"
         assert "connection refused" in result["error"]
@@ -184,7 +193,9 @@ class TestCheckDataFreshness:
 
     @patch("datapulse.api.routes.health.get_engine")
     def test_error(self, mock_engine):
-        mock_engine.return_value.connect.side_effect = Exception("db unavailable")
+        mock_engine.return_value.connect.side_effect = sqlalchemy.exc.OperationalError(
+            "SELECT MAX(loaded_at) FROM bronze.sales", {}, Exception("db unavailable")
+        )
         result = _check_data_freshness()
         assert result["status"] == "error"
         assert "db unavailable" in result["error"]

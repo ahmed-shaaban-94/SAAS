@@ -51,6 +51,29 @@ src/datapulse/          # Python backend
 ├── analytics/          # Gold layer: models, repository, service (10 API endpoints)
 ├── pipeline/           # Pipeline tracking + execution + quality gates (11 API endpoints)
 ├── api/                # FastAPI: app.py, deps.py, routes/ (health, analytics, pipeline)
+├── graph/              # Code intelligence: indexer.py, store.py, analyzers/, mcp_server.py
+├── ai_light/           # Lightweight AI insights (OpenAI/Anthropic client)
+├── anomalies/          # Anomaly detection + calendar
+├── annotations/        # Chart annotations
+├── audit/              # Audit log service
+├── billing/            # Stripe subscription + plans
+├── branding/           # Tenant branding (logo, colors)
+├── embed/              # Embeddable chart tokens
+├── explore/            # Self-service data exploration
+├── forecasting/        # Time-series forecasting
+├── gamification/       # Points/badges system
+├── lineage/            # Data lineage tracking
+├── notifications_center/ # In-app notification feed
+├── onboarding/         # New tenant onboarding flow
+├── rbac/               # Role-based access control
+├── reports/            # Scheduled report generation
+├── reseller/           # Reseller/white-label support
+├── scenarios/          # What-if scenario modeling
+├── targets/            # KPI target tracking
+├── tasks/              # Background task queue
+├── upload/             # File upload + UUID path traversal prevention
+├── views/              # Saved dashboard views
+├── watcher/            # File system watcher for auto-ingestion
 └── logging.py          # structlog
 
 dbt/models/             # dbt transformation
@@ -58,11 +81,11 @@ dbt/models/             # dbt transformation
 ├── staging/            # Silver: stg_sales (dedup, clean, 30 cols)
 └── marts/              # Gold: 6 dims, 1 fact, 8 aggs, metrics_summary
 
-migrations/             # 000-007: schemas, RLS, tenants, n8n, pipeline_runs, quality_checks
+migrations/             # 000-015+: schemas, RLS, tenants, n8n, pipeline_runs, quality_checks
 n8n/workflows/          # 6 workflows: health, pipeline, success/failure/digest/error
-frontend/               # Next.js 14: 6 pages, 9 SWR hooks, Recharts, Tailwind, Playwright E2E
+frontend/               # Next.js 14: 21+ pages, 9+ SWR hooks, Recharts, Tailwind, Playwright E2E
 android/                # Kotlin + Jetpack Compose: data/domain/presentation/di
-tests/                  # pytest: reader, type_detector, config, validator, loader, coverage
+tests/                  # pytest: 124 test files, coverage enforced at 95%+
 ```
 
 ## Docker Services
@@ -136,9 +159,9 @@ docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/da
 - ErrorBoundary wraps layout to catch React component crashes
 
 ### Testing
-- pytest + pytest-cov: 80 test files, ~1,179 test functions
+- pytest + pytest-cov: 124 test files, ~1,300+ test functions
 - Current coverage: 95%+ on `src/datapulse/` (enforced in CI via `--cov-fail-under=95`)
-- Playwright E2E tests: 11 spec files (`frontend/e2e/`)
+- Playwright E2E tests: 12 spec files (`frontend/e2e/`)
 - Vitest + MSW + Testing Library available for frontend unit tests
 - Run tests: `make test` (Python), `docker compose exec frontend npx playwright test` (E2E)
 
@@ -148,6 +171,20 @@ docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/da
 - **Detail Page Trends**: Monthly revenue trend charts on product/customer/staff detail pages via `monthly_trend` API field
 - **Print Report**: `/dashboard/report` page with print-optimized layout, `@media print` styles in globals.css
 - **Mobile**: Touch swipe-to-close on sidebar drawer (60px threshold)
+
+## Deployment
+
+- When deploying to the droplet, always check for `docker-compose.override.yml` that may force dev mode. Remove or rename it before production builds.
+- Always use `docker compose build --no-cache` when deploying code changes, and verify containers are running the latest image after deploy.
+- Each conversation/feature should use a separate git branch. Create a descriptive branch name before starting work.
+
+## Code Quality
+
+- After making code changes, always run CI lint checks locally before pushing. Use `ruff check src/ tests/` (Python) and `npx tsc --noEmit` (TypeScript) to catch failures early.
+
+## Data Pipeline
+
+- When fixing dbt models, verify that all referenced columns actually exist in the source data before applying transformations. Check both staging and production schemas.
 
 ## Future Phases
 
@@ -185,6 +222,20 @@ Custom agents in `.claude/agents/` for common workflows:
 | `add-page` | `/add-page <name>` | Next.js page + loading + hook + component + nav |
 | `add-chart` | `/add-chart <type> <name>` | Recharts component + theme + ChartCard |
 | `coverage-check` | `/coverage-check [module]` | Run tests → analyze gaps → suggest/write tests |
+
+## Code Intelligence Graph
+
+`src/datapulse/graph/` — SQLite-backed symbol/edge graph of the full codebase.
+
+```bash
+# Re-index (run from project root)
+PYTHONPATH=src python -m datapulse.graph
+
+# Also available as an MCP server for Claude Code
+PYTHONPATH=src python src/datapulse/graph/mcp_server.py
+```
+
+Indexes: Python symbols (functions, classes, methods), TypeScript components/hooks, dbt models. Edges: `calls`, `imports`, `depends_on`, `tests`. DB stored at `~/.datapulse/graph.db`.
 
 ## Architecture Documentation
 

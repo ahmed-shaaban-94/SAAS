@@ -33,7 +33,7 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.0,<3",
     "statsmodels>=0.14,<1",
     "numpy>=1.24,<3",
-    "stripe>=8.0,<12",
+    "stripe>=8.0,<16",
     "openpyxl>=3.0,<4",
     "reportlab>=4.0,<5",
     "python-multipart>=0.0.7,<1",
@@ -42,9 +42,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0,<9",
+    "pytest>=8.0,<10",
     "pytest-cov>=5.0,<6",
-    "pytest-asyncio>=0.23,<1",
+    "pytest-asyncio>=0.23,<2",
     "ruff>=0.4,<1",
 ]
 graph = [

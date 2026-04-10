@@ -54,6 +54,12 @@ def get_engine() -> Engine:
                     max_overflow=settings.db_pool_max_overflow,
                     pool_timeout=settings.db_pool_timeout,
                     pool_recycle=settings.db_pool_recycle,
+                    # Use PostgreSQL's multi-row INSERT … VALUES for bulk
+                    # inserts (SQLAlchemy 2.0+ feature).  Sends up to 1 000
+                    # rows per statement instead of one statement per row,
+                    # reducing round-trips during bronze ingestion.
+                    use_insertmanyvalues=True,
+                    insertmanyvalues_page_size=1000,
                 )
     return _engine
 

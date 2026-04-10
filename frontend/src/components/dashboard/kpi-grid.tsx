@@ -182,6 +182,7 @@ export const KPIGrid = memo(function KPIGrid() {
           <KPICard
             key={card.label}
             {...card}
+            aria-label={`${card.label}: ${card.value}`}
             className={`${card.className ?? ""} stagger-${i + 1} animate-fade-in opacity-0`.trim()}
           />
         ))}

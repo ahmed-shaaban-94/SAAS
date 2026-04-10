@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
+from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.gamification.models import (
@@ -51,10 +52,6 @@ def get_gamification_service(
 ServiceDep = Annotated[GamificationService, Depends(get_gamification_service)]
 
 
-def _set_cache(response: Response, max_age: int) -> None:
-    response.headers["Cache-Control"] = f"max-age={max_age}, private"
-
-
 # ------------------------------------------------------------------
 # Profile
 # ------------------------------------------------------------------
@@ -70,7 +67,7 @@ def get_profile(
     service: ServiceDep,
 ) -> GamificationProfile:
     """Get full gamification profile for a staff member."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     return service.get_profile(staff_key)
 
 
@@ -87,7 +84,7 @@ def list_badges(
     service: ServiceDep,
 ) -> list[BadgeResponse]:
     """List all available badges."""
-    _set_cache(response, 300)
+    set_cache_headers(response, 300)
     return service.list_badges()
 
 
@@ -101,7 +98,7 @@ def get_staff_badges(
     service: ServiceDep,
 ) -> list[StaffBadgeResponse]:
     """Get badges earned by a staff member."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     return service.get_staff_badges(staff_key)
 
 
@@ -120,7 +117,7 @@ def get_streaks(
     service: ServiceDep,
 ) -> list[StreakResponse]:
     """Get current streaks for a staff member."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     return service.get_streaks(staff_key)
 
 
@@ -140,7 +137,7 @@ def get_xp_history(
     service: ServiceDep,
 ) -> list[XPEvent]:
     """Get XP history for a staff member."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     return service.get_xp_history(staff_key, limit)
 
 
@@ -159,7 +156,7 @@ def get_leaderboard(
     service: ServiceDep,
 ) -> list[LeaderboardEntry]:
     """Get XP leaderboard."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.get_leaderboard(limit)
 
 
@@ -178,7 +175,7 @@ def list_competitions(
     service: ServiceDep,
 ) -> list[CompetitionResponse]:
     """List competitions, optionally filtered by status."""
-    _set_cache(response, 120)
+    set_cache_headers(response, 120)
     return service.list_competitions(status)
 
 
@@ -204,7 +201,7 @@ def get_competition_detail(
     service: ServiceDep,
 ) -> CompetitionDetail:
     """Get competition details with leaderboard."""
-    _set_cache(response, 60)
+    set_cache_headers(response, 60)
     try:
         return service.get_competition_detail(competition_id)
     except ValueError as exc:
@@ -239,5 +236,5 @@ def get_feed(
     service: ServiceDep,
 ) -> list[FeedItem]:
     """Get recent activity feed."""
-    _set_cache(response, 30)
+    set_cache_headers(response, 30)
     return service.get_feed(limit)

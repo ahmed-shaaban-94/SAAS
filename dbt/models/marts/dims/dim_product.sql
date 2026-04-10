@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        unique_key=['tenant_id', 'product_key'],
+        incremental_strategy='merge',
         schema='marts',
         post_hook=[
             "ALTER TABLE {{ this }} ENABLE ROW LEVEL SECURITY",
@@ -40,6 +42,9 @@ WITH ranked AS (
         ) AS rn
     FROM {{ ref('stg_sales') }}
     WHERE drug_code IS NOT NULL
+    {% if is_incremental() %}
+      AND loaded_at >= (SELECT MAX(loaded_at) - INTERVAL '7 days' FROM {{ ref('stg_sales') }})
+    {% endif %}
 )
 
 SELECT
@@ -61,6 +66,7 @@ FROM ranked r
 LEFT JOIN {{ ref('seed_division_origin') }} o ON r.drug_division = o.division
 WHERE r.rn = 1
 
+{% if not is_incremental() %}
 UNION ALL
 
 SELECT
@@ -79,3 +85,4 @@ SELECT
     'Unknown'           AS buyer,
     'Other'             AS origin
 FROM (SELECT DISTINCT tenant_id FROM {{ ref('stg_sales') }}) t
+{% endif %}

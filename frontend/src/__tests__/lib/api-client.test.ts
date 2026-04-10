@@ -1,5 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { swrKey } from "@/lib/api-client";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fetchAPI, swrKey } from "@/lib/api-client";
+
+vi.mock("next-auth/react", () => ({
+  getSession: vi.fn().mockResolvedValue(null),
+}));
 
 describe("swrKey", () => {
   it("returns path alone when no params", () => {
@@ -37,5 +41,32 @@ describe("swrKey", () => {
       category: undefined,
     });
     expect(result).toBe("/test");
+  });
+});
+
+describe("fetchAPI decimal parsing", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("parses scientific-notation numeric strings from API responses", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tiny: "1e-5",
+        large: "2.5E+3",
+      }),
+    } as Response);
+
+    const result = await fetchAPI<{ tiny: number; large: number }>("/metrics");
+
+    expect(result).toEqual({
+      tiny: 0.00001,
+      large: 2500,
+    });
   });
 });

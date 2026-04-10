@@ -58,7 +58,7 @@ jobs:
         env:
           DATABASE_URL: "sqlite:///:memory:"
           SENTRY_ENVIRONMENT: test
-        run: pytest -m unit --cov --cov-report=term-missing --cov-fail-under=0 -x -q
+        run: pytest -m unit --cov --cov-report=term-missing --cov-fail-under=45 -x -q
 
   test-integration:
     name: Integration Tests
@@ -108,10 +108,10 @@ jobs:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
           REDIS_URL: redis://localhost:6379/0
           SENTRY_ENVIRONMENT: test
-        run: pytest -m integration --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=0
+        run: pytest -m integration --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=50
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage.xml
@@ -191,7 +191,7 @@ jobs:
           AUTH0_CLIENT_SECRET: "ci-client-secret"
       - name: Upload E2E report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: frontend/playwright-report/
@@ -214,8 +214,8 @@ jobs:
             target: production
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
@@ -247,7 +247,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: 'pip'
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: dbt/dbt_packages
           key: dbt-packages-${{ hashFiles('dbt/packages.yml') }}
@@ -265,3 +265,41 @@ jobs:
         env:
           DBT_HOST: localhost
           POSTGRES_PASSWORD: datapulse
+
+  # ── Merge gate ──────────────────────────────────────────────────────────
+  # Single required status check for branch protection.
+  # Add "CI Gate" as a required check in GitHub Settings > Branch protection.
+  # This ensures NO PR merges unless every CI job passes.
+  ci-gate:
+    name: CI Gate
+    if: always()
+    needs: [lint, typecheck, test-unit, test-integration, frontend, e2e, docker-build, dbt-validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "Job results:"
+          echo "  lint:             ${{ needs.lint.result }}"
+          echo "  typecheck:        ${{ needs.typecheck.result }}"
+          echo "  test-unit:        ${{ needs.test-unit.result }}"
+          echo "  test-integration: ${{ needs.test-integration.result }}"
+          echo "  frontend:         ${{ needs.frontend.result }}"
+          echo "  e2e:              ${{ needs.e2e.result }}"
+          echo "  docker-build:     ${{ needs.docker-build.result }}"
+          echo "  dbt-validate:     ${{ needs.dbt-validate.result }}"
+
+          # Fail if ANY upstream job did not succeed
+          if [[ "${{ needs.lint.result }}" != "success" ]] || \
+             [[ "${{ needs.typecheck.result }}" != "success" ]] || \
+             [[ "${{ needs.test-unit.result }}" != "success" ]] || \
+             [[ "${{ needs.test-integration.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend.result }}" != "success" ]] || \
+             [[ "${{ needs.e2e.result }}" != "success" ]] || \
+             [[ "${{ needs.docker-build.result }}" != "success" ]] || \
+             [[ "${{ needs.dbt-validate.result }}" != "success" ]]; then
+            echo ""
+            echo "::error::CI Gate FAILED — one or more jobs did not pass. PR must not be merged."
+            exit 1
+          fi
+          echo ""
+          echo "All CI jobs passed. Safe to merge."

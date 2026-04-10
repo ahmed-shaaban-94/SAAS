@@ -47,6 +47,12 @@ from datapulse.api.routes import (
     views,
 )
 from datapulse.config import get_settings
+from datapulse.core.exceptions import (
+    DataPulseError,
+    QuotaExceededError,
+    TenantError,
+    ValidationError,
+)
 from datapulse.logging import setup_logging
 
 logger = structlog.get_logger()
@@ -84,6 +90,24 @@ def create_app() -> FastAPI:
     )
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+    # Business exception handlers — ordered from most specific to least specific
+    @app.exception_handler(ValidationError)
+    async def validation_error_handler(request: Request, exc: ValidationError) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": exc.message})
+
+    @app.exception_handler(QuotaExceededError)
+    async def quota_exceeded_handler(request: Request, exc: QuotaExceededError) -> JSONResponse:
+        return JSONResponse(status_code=429, content={"detail": exc.message})
+
+    @app.exception_handler(TenantError)
+    async def tenant_error_handler(request: Request, exc: TenantError) -> JSONResponse:
+        return JSONResponse(status_code=403, content={"detail": exc.message})
+
+    @app.exception_handler(DataPulseError)
+    async def datapulse_error_handler(request: Request, exc: DataPulseError) -> JSONResponse:
+        logger.warning("datapulse_error", error=exc.message, detail=exc.detail)
+        return JSONResponse(status_code=400, content={"detail": exc.message})
 
     # GZip compression for API responses (minimum 500 bytes)
     app.add_middleware(GZipMiddleware, minimum_size=500)

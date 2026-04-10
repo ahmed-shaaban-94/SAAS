@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 
+import sqlalchemy.exc
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -316,7 +317,7 @@ def render_report(
                         chart_type=section.chart_type,
                     )
                 )
-            except Exception as exc:
+            except (sqlalchemy.exc.SQLAlchemyError, ValueError, KeyError) as exc:
                 log.error(
                     "report_section_failed",
                     title=section.title,

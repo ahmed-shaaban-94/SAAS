@@ -559,3 +559,111 @@ class StaffQuota(BaseModel):
     revenue_achievement_pct: JsonDecimal | None = None
     transactions_achievement_pct: JsonDecimal | None = None
     revenue_variance: JsonDecimal | None = None
+
+
+# ------------------------------------------------------------------
+# Feature Store: Revenue Rolling, Seasonality, Product Lifecycle
+# ------------------------------------------------------------------
+
+
+class RevenueDailyRolling(BaseModel):
+    """Daily revenue with rolling averages, volatility, and trend ratios."""
+
+    model_config = ConfigDict(frozen=True)
+
+    date_key: int
+    full_date: date
+    day_of_week: int
+    is_weekend: bool
+    daily_gross_amount: JsonDecimal
+    daily_transactions: int
+    daily_unique_customers: int
+    ma_7d_revenue: JsonDecimal
+    ma_30d_revenue: JsonDecimal
+    ma_90d_revenue: JsonDecimal
+    volatility_30d: JsonDecimal | None = None
+    trend_ratio_7d_30d: JsonDecimal | None = None
+    trend_ratio_30d_90d: JsonDecimal | None = None
+    deviation_from_ma30: JsonDecimal | None = None
+    same_day_last_week: JsonDecimal | None = None
+    same_day_last_year: JsonDecimal | None = None
+
+
+class RevenueSiteRolling(BaseModel):
+    """Per-site daily rolling averages with cross-site comparison."""
+
+    model_config = ConfigDict(frozen=True)
+
+    date_key: int
+    site_key: int
+    full_date: date
+    daily_gross_amount: JsonDecimal
+    daily_transactions: int
+    site_ma_7d: JsonDecimal
+    site_ma_30d: JsonDecimal
+    site_sum_30d: JsonDecimal
+    site_vs_avg_ratio: JsonDecimal | None = None
+    site_revenue_share: JsonDecimal | None = None
+
+
+class SeasonalityMonthly(BaseModel):
+    """Monthly seasonal index (12 rows per tenant)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    month: int
+    month_name: str
+    avg_monthly_revenue: JsonDecimal
+    avg_monthly_txn: JsonDecimal
+    stddev_monthly_revenue: JsonDecimal | None = None
+    years_of_data: int
+    month_revenue_index: JsonDecimal
+    month_txn_index: JsonDecimal
+
+
+class SeasonalityDaily(BaseModel):
+    """Day-of-week seasonal index (7 rows per tenant)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    day_of_week: int
+    day_name: str
+    is_weekend: bool
+    avg_revenue_by_dow: JsonDecimal
+    avg_txn_by_dow: JsonDecimal
+    avg_customers_by_dow: JsonDecimal
+    stddev_revenue_by_dow: JsonDecimal | None = None
+    sample_count: int
+    dow_revenue_index: JsonDecimal
+    dow_txn_index: JsonDecimal
+
+
+class ProductLifecycle(BaseModel):
+    """Product lifecycle classification: Growth, Mature, Decline, Dormant."""
+
+    model_config = ConfigDict(frozen=True)
+
+    product_key: int
+    drug_code: str
+    drug_name: str
+    drug_brand: str
+    drug_category: str
+    avg_recent_growth: JsonDecimal | None = None
+    quarters_active: int
+    total_lifetime_revenue: JsonDecimal
+    total_lifetime_quantity: JsonDecimal
+    first_sale_quarter: str
+    last_sale_quarter: str
+    lifecycle_phase: str  # "Growth" | "Mature" | "Decline" | "Dormant"
+
+
+class LifecycleDistribution(BaseModel):
+    """Count of products in each lifecycle phase."""
+
+    model_config = ConfigDict(frozen=True)
+
+    growth: int = 0
+    mature: int = 0
+    decline: int = 0
+    dormant: int = 0
+    total: int = 0

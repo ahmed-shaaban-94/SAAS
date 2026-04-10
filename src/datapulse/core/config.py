@@ -1,10 +1,11 @@
 """Application settings loaded from environment variables."""
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
 import structlog
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings
 
 logger = structlog.get_logger()
@@ -33,8 +34,8 @@ class Settings(BaseSettings):
     database_url: str
 
     # Database connection pool
-    db_pool_size: int = 5
-    db_pool_max_overflow: int = 10
+    db_pool_size: int = 10
+    db_pool_max_overflow: int = 20
     db_pool_timeout: int = 10
     db_pool_recycle: int = 1800
 
@@ -69,6 +70,7 @@ class Settings(BaseSettings):
 
     # API security
     api_key: str = ""
+    db_reader_password: str = ""
     api_key_roles: list[str] = ["api-reader"]
     default_tenant_id: str = "1"
 
@@ -109,6 +111,15 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
 
+    # Infrastructure tuning (extracted from hardcoded values)
+    redis_socket_timeout: int = 2
+    redis_retry_interval: int = 15
+    jwks_cache_ttl: int = 3600
+    query_job_ttl: int = 3600
+    query_execution_timeout: int = 300
+    sse_poll_interval: int = 2
+    sse_max_duration: int = 600
+
     # Forecasting
     forecast: ForecastConfig = ForecastConfig()
 
@@ -123,6 +134,17 @@ class Settings(BaseSettings):
     stripe_price_pro_monthly: str = ""  # price_xxx from Stripe Dashboard
     billing_base_url: str = "https://smartdatapulse.tech"
 
+    @model_validator(mode="after")
+    def _require_auth_in_production(self) -> "Settings":
+        """Fail fast at startup if auth is unconfigured in non-dev environments."""
+        env = self.sentry_environment
+        if env not in ("development", "test") and not self.api_key and not self.auth0_domain:
+            raise ValueError(
+                f"Auth must be configured in production/staging (environment={env!r}). "
+                "Set API_KEY or AUTH0_DOMAIN in the environment."
+            )
+        return self
+
     @property
     def stripe_price_to_plan_map(self) -> dict[str, str]:
         """Map Stripe Price IDs to internal plan names."""
@@ -134,6 +156,33 @@ class Settings(BaseSettings):
     @property
     def max_file_size_bytes(self) -> int:
         return self.max_file_size_mb * 1024 * 1024
+
+    @model_validator(mode="after")
+    def validate_required_secrets(self) -> "Settings":
+        """Fail fast in non-dev environments when critical secrets are missing."""
+        if self.sentry_environment in ("development", "test"):
+            return self
+
+        missing: list[str] = []
+        if not self.api_key:
+            missing.append("API_KEY")
+        if not self.auth0_domain:
+            missing.append("AUTH0_DOMAIN")
+        if not self.db_reader_password:
+            missing.append("DB_READER_PASSWORD")
+        if (
+            not self.pipeline_webhook_secret
+            and os.getenv("PIPELINE_AUTH_DISABLED", "").lower() != "true"
+        ):
+            missing.append("PIPELINE_WEBHOOK_SECRET")
+
+        if missing:
+            missing_list = ", ".join(missing)
+            raise ValueError(
+                f"Missing required secrets for {self.sentry_environment}: {missing_list}"
+            )
+
+        return self
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

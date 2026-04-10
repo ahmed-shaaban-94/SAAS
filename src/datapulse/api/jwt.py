@@ -16,6 +16,8 @@ from fastapi import HTTPException
 
 from datapulse.config import Settings, get_settings
 
+_JWKS_RETRY_DELAYS: tuple[float, ...] = (1.0, 2.0, 4.0)  # seconds between attempts
+
 logger = structlog.get_logger()
 
 # Module-level JWKS cache
@@ -25,7 +27,12 @@ _JWKS_CACHE_TTL: int = 3600  # 1 hour (keys rarely rotate; miss triggers forced 
 
 
 def _fetch_jwks(settings: Settings) -> dict[str, Any]:
-    """Fetch JWKS from Auth0, with in-memory TTL cache."""
+    """Fetch JWKS from Auth0, with in-memory TTL cache and retry backoff.
+
+    Attempts up to 3 times (delays: 1s, 2s, 4s) on network/timeout errors.
+    HTTP 4xx responses are not retried — they indicate a configuration error.
+    Returns stale cache as a last resort before raising 503.
+    """
     global _jwks_cache, _jwks_cache_time
 
     now = time.monotonic()
@@ -33,23 +40,38 @@ def _fetch_jwks(settings: Settings) -> dict[str, Any]:
         return _jwks_cache
 
     jwks_url = settings.auth0_jwks_url
-    try:
-        resp = httpx.get(jwks_url, timeout=10.0)
-        resp.raise_for_status()
-        _jwks_cache = resp.json()
-        _jwks_cache_time = now
-        logger.info("jwks_fetched", url=jwks_url)
-        return _jwks_cache
-    except (httpx.HTTPError, httpx.TimeoutException, OSError) as exc:
-        logger.error("jwks_fetch_failed", url=jwks_url, error=str(exc))
-        # Return stale cache if available (better than hard failure)
-        if _jwks_cache:
-            logger.warning("jwks_using_stale_cache")
+    last_exc: Exception | None = None
+
+    for attempt, delay in enumerate((*_JWKS_RETRY_DELAYS, None), start=1):  # type: ignore[arg-type]
+        try:
+            resp = httpx.get(jwks_url, timeout=10.0)
+            resp.raise_for_status()
+            _jwks_cache = resp.json()
+            _jwks_cache_time = time.monotonic()
+            logger.info("jwks_fetched", url=jwks_url, attempt=attempt)
             return _jwks_cache
-        raise HTTPException(
-            status_code=503,
-            detail="Authentication service unavailable",
-        ) from exc
+        except httpx.HTTPStatusError as exc:
+            # 4xx errors are not transient — don't retry
+            logger.error("jwks_fetch_http_error", url=jwks_url, status=exc.response.status_code)
+            last_exc = exc
+            break
+        except (httpx.TransportError, httpx.TimeoutException, OSError) as exc:
+            logger.warning(
+                "jwks_fetch_network_error", url=jwks_url, attempt=attempt, error=str(exc)
+            )
+            last_exc = exc
+            if delay is not None:
+                time.sleep(delay)
+
+    logger.error("jwks_fetch_failed", url=jwks_url, error=str(last_exc))
+    # Return stale cache if available (better than hard failure)
+    if _jwks_cache:
+        logger.warning("jwks_using_stale_cache")
+        return _jwks_cache
+    raise HTTPException(
+        status_code=503,
+        detail="Authentication service unavailable",
+    ) from last_exc
 
 
 def _get_signing_key(token: str, settings: Settings) -> jwt.PyJWK:

@@ -63,10 +63,11 @@ function RankingCard({
           <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>
-      <ul className="divide-y divide-border/50">
+      <ul className="divide-y divide-border/50" role="list">
         {top5.map((item, index) => (
           <li
             key={item.key}
+            role="listitem"
             className="relative px-5 py-3.5 transition-colors hover:bg-accent/5"
           >
             <div className="flex items-center justify-between relative z-10">

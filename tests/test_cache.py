@@ -45,7 +45,9 @@ class TestGetRedisClient:
     @patch("datapulse.cache.get_settings")
     def test_returns_none_on_connection_error(self, mock_settings):
         mock_settings.return_value.redis_url = "redis://localhost:6379/0"
-        with patch("redis.from_url", side_effect=Exception("Connection refused")):
+        mock_settings.return_value.redis_retry_interval = 15
+        mock_settings.return_value.redis_socket_timeout = 2
+        with patch("redis.from_url", side_effect=OSError("Connection refused")):
             result = get_redis_client()
             assert result is None
 
@@ -54,7 +56,9 @@ class TestGetRedisClient:
         import time
 
         mock_settings.return_value.redis_url = "redis://localhost:6379/0"
-        with patch("redis.from_url", side_effect=Exception("fail")):
+        mock_settings.return_value.redis_retry_interval = 15
+        mock_settings.return_value.redis_socket_timeout = 2
+        with patch("redis.from_url", side_effect=OSError("fail")):
             get_redis_client()  # First attempt fails
 
         # Second attempt within retry interval should return None without trying
@@ -88,7 +92,7 @@ class TestCacheGet:
 
     def test_returns_none_on_error(self):
         mock_client = MagicMock()
-        mock_client.get.side_effect = Exception("Redis error")
+        mock_client.get.side_effect = OSError("Redis error")
         with patch("datapulse.cache.get_redis_client", return_value=mock_client):
             assert cache_get("key") is None
 
@@ -119,7 +123,7 @@ class TestCacheSet:
 
     def test_silently_fails_on_error(self):
         mock_client = MagicMock()
-        mock_client.setex.side_effect = Exception("Redis error")
+        mock_client.setex.side_effect = OSError("Redis error")
         with patch("datapulse.cache.get_redis_client", return_value=mock_client):
             cache_set("key", "value", ttl=60)  # Should not raise
 
@@ -145,6 +149,6 @@ class TestCacheInvalidatePattern:
 
     def test_returns_zero_on_error(self):
         mock_client = MagicMock()
-        mock_client.scan_iter.side_effect = Exception("Redis error")
+        mock_client.scan_iter.side_effect = OSError("Redis error")
         with patch("datapulse.cache.get_redis_client", return_value=mock_client):
             assert cache_invalidate_pattern("*") == 0

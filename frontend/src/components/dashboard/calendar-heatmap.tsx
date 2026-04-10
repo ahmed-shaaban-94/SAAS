@@ -6,6 +6,8 @@ import { useHeatmap } from "@/hooks/use-heatmap";
 import { formatCurrency } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
+import { cn } from "@/lib/utils";
+import { useFilters } from "@/contexts/filter-context";
 
 function getColor(value: number, min: number, max: number, isDark: boolean): string {
   if (max === min) return isDark ? "var(--divider)" : "var(--divider)";
@@ -22,6 +24,8 @@ const DAYS = ["Mon", "", "Wed", "", "Fri", "", ""];
 export const CalendarHeatmap = memo(function CalendarHeatmap() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const { updateFilter } = useFilters();
   const { data, error, isLoading, mutate } = useHeatmap(year);
 
   // Auto-fallback: if current year has no data, try previous year
@@ -96,7 +100,20 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">Revenue Heatmap</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-text-primary">Revenue Heatmap</h3>
+          {selectedDate && (
+            <span
+              className="cursor-pointer text-[10px] font-medium text-accent hover:opacity-70"
+              onClick={() => {
+                setSelectedDate(null);
+                updateFilter({ start_date: undefined, end_date: undefined });
+              }}
+            >
+              {selectedDate} &times;
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setYear((y) => y - 1)}
@@ -152,7 +169,17 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
               {week.map((cell, ci) => (
                 <div
                   key={ci}
-                  className="h-[11px] w-[11px] cursor-pointer rounded-[2px] transition-all duration-150 hover:ring-1 hover:ring-accent"
+                  role="button"
+                  tabIndex={cell.date && cell.value >= 0 ? 0 : -1}
+                  aria-label={cell.date ? `Filter to ${cell.date}` : undefined}
+                  aria-pressed={selectedDate === cell.date && !!cell.date}
+                  className={cn(
+                    "h-[11px] w-[11px] cursor-pointer rounded-[2px] transition-all duration-150",
+                    "hover:ring-1 hover:ring-accent",
+                    selectedDate === cell.date && cell.date
+                      ? "ring-2 ring-accent ring-offset-1 ring-offset-card scale-125"
+                      : "",
+                  )}
                   style={{
                     backgroundColor:
                       cell.value < 0
@@ -163,6 +190,29 @@ export const CalendarHeatmap = memo(function CalendarHeatmap() {
                             effectiveData?.max_value ?? 1,
                             isDark,
                           ),
+                  }}
+                  onClick={() => {
+                    if (!cell.date || cell.value < 0) return;
+                    if (selectedDate === cell.date) {
+                      setSelectedDate(null);
+                      updateFilter({ start_date: undefined, end_date: undefined });
+                    } else {
+                      setSelectedDate(cell.date);
+                      updateFilter({ start_date: cell.date, end_date: cell.date });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      if (!cell.date || cell.value < 0) return;
+                      if (selectedDate === cell.date) {
+                        setSelectedDate(null);
+                        updateFilter({ start_date: undefined, end_date: undefined });
+                      } else {
+                        setSelectedDate(cell.date);
+                        updateFilter({ start_date: cell.date, end_date: cell.date });
+                      }
+                    }
                   }}
                   onMouseEnter={(e) => {
                     if (cell.date) {

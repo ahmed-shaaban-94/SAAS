@@ -30,7 +30,7 @@ export const KEYBOARD_SHORTCUTS: ShortcutAction[] = [
 export function useKeyboardShortcuts(onHelpOpen?: () => void) {
   const router = useRouter();
   const bufferRef = useRef<string>("");
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
