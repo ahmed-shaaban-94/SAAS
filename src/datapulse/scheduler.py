@@ -133,8 +133,7 @@ async def run_pipeline(
             # Count distinct data sources for this tenant
             source_count_row = session.execute(
                 sa_text(
-                    "SELECT COUNT(DISTINCT source_file) FROM bronze.sales "
-                    "WHERE tenant_id = :tid"
+                    "SELECT COUNT(DISTINCT source_file) FROM bronze.sales WHERE tenant_id = :tid"
                 ),
                 {"tid": tid},
             ).scalar()

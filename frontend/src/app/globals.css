@@ -159,6 +159,46 @@ td, th,
 .stagger-6 { animation-delay: 0.30s; }
 .stagger-7 { animation-delay: 0.35s; }
 
+/* ═══════════════════════════════════════════════
+   Stagger container — viewport-triggered reveal
+   Used by <LazySection stagger> wrapper.
+   Children with .stagger-N fade/slide in with
+   staggered delays once parent gains .stagger-visible.
+   ═══════════════════════════════════════════════ */
+.stagger-container .stagger-1,
+.stagger-container .stagger-2,
+.stagger-container .stagger-3,
+.stagger-container .stagger-4,
+.stagger-container .stagger-5,
+.stagger-container .stagger-6,
+.stagger-container .stagger-7 {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.stagger-container.stagger-visible .stagger-1 { transition-delay: 0.05s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-2 { transition-delay: 0.10s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-3 { transition-delay: 0.15s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-4 { transition-delay: 0.20s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-5 { transition-delay: 0.25s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-6 { transition-delay: 0.30s; opacity: 1; transform: none; }
+.stagger-container.stagger-visible .stagger-7 { transition-delay: 0.35s; opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-container .stagger-1,
+  .stagger-container .stagger-2,
+  .stagger-container .stagger-3,
+  .stagger-container .stagger-4,
+  .stagger-container .stagger-5,
+  .stagger-container .stagger-6,
+  .stagger-container .stagger-7 {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Smooth scroll for anchor links */
 html {
   scroll-behavior: smooth;

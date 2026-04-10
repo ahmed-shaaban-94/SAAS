@@ -120,9 +120,13 @@ class BillingService:
             plan=plan_name,
         )
 
-    _FEATURE_FLAGS: frozenset[str] = frozenset({
-        "ai_insights", "pipeline_automation", "quality_gates",
-    })
+    _FEATURE_FLAGS: frozenset[str] = frozenset(
+        {
+            "ai_insights",
+            "pipeline_automation",
+            "quality_gates",
+        }
+    )
 
     def check_feature_access(self, tenant_id: int, feature: str) -> bool:
         """Check if a tenant's plan includes a specific feature.
@@ -286,7 +290,7 @@ class BillingService:
             status=sub["status"],
             current_period_start=_ts_to_dt(sub["current_period_start"]),
             current_period_end=_ts_to_dt(sub["current_period_end"]),
-            cancel_at_period_end=sub.get("cancel_at_period_end", False),
+            cancel_at_period_end=bool(sub.cancel_at_period_end),
         )
         self._repo.update_tenant_plan(tenant_id, plan)
 
@@ -313,7 +317,7 @@ class BillingService:
             status=sub["status"],
             current_period_start=_ts_to_dt(sub["current_period_start"]),
             current_period_end=_ts_to_dt(sub["current_period_end"]),
-            cancel_at_period_end=sub.get("cancel_at_period_end", False),
+            cancel_at_period_end=bool(sub.get("cancel_at_period_end", False)),
         )
         self._repo.update_tenant_plan(tenant_id, plan)
 
