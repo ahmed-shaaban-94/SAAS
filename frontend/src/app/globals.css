@@ -1,6 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+@custom-variant dark (.dark &);
+
+@theme {
+  /* ── Custom color tokens (reference CSS vars for dynamic dark/light theming) ── */
+  --color-page: var(--bg-page);
+  --color-card: var(--bg-card);
+  --color-border: var(--border-color);
+  --color-divider: var(--divider);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent-color);
+  --color-chart-blue: var(--chart-blue);
+  --color-chart-amber: var(--chart-amber);
+  --color-growth-green: var(--growth-green);
+  --color-growth-red: var(--growth-red);
+
+  /* ── Font family ── */
+  --font-sans: 'Inter Variable', Inter, 'Segoe UI', system-ui, sans-serif;
+
+  /* ── Custom animations ── */
+  --animate-fade-in: fadeIn 0.4s ease-out forwards;
+  --animate-slide-up: slideUp 0.5s ease-out forwards;
+  --animate-slide-in-left: slideInLeft 0.2s ease-out forwards;
+}
 
 /* ═══════════════════════════════════════════════
    Light theme tokens (default)
