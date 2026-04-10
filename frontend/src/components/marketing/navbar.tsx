@@ -60,6 +60,12 @@ export function Navbar() {
             </a>
           ))}
           <Link
+            href="/demo"
+            className="rounded-lg border border-accent/40 px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+          >
+            Live Demo
+          </Link>
+          <Link
             href="/dashboard"
             className="rounded-lg bg-accent px-5 py-2 text-sm font-semibold text-page transition-colors hover:bg-accent/90"
           >
@@ -92,6 +98,13 @@ export function Navbar() {
                 {link.label}
               </a>
             ))}
+            <Link
+              href="/demo"
+              onClick={() => setIsMobileOpen(false)}
+              className="mt-2 block rounded-lg border border-accent/40 px-4 py-3 text-center text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+            >
+              Live Demo
+            </Link>
             <Link
               href="/dashboard"
               onClick={() => setIsMobileOpen(false)}
