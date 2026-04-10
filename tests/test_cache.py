@@ -8,7 +8,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import datapulse.cache as cache_mod
-from datapulse.cache import cache_get, cache_invalidate_pattern, cache_set, get_redis_client
+from datapulse.cache import (
+    cache_get,
+    cache_get_many,
+    cache_invalidate_pattern,
+    cache_set,
+    get_redis_client,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -126,6 +132,55 @@ class TestCacheSet:
         mock_client.setex.side_effect = OSError("Redis error")
         with patch("datapulse.cache.get_redis_client", return_value=mock_client):
             cache_set("key", "value", ttl=60)  # Should not raise
+
+
+class TestCacheGetMany:
+    def test_returns_empty_dict_for_empty_keys(self):
+        result = cache_get_many([])
+        assert result == {}
+
+    def test_returns_empty_dict_when_no_client(self):
+        with patch("datapulse.cache.get_redis_client", return_value=None):
+            result = cache_get_many(["k1", "k2"])
+        assert result == {}
+
+    def test_returns_deserialized_hits(self):
+        mock_client = MagicMock()
+        pipe = MagicMock()
+        mock_client.pipeline.return_value = pipe
+        pipe.execute.return_value = [json.dumps({"a": 1}), None, json.dumps(42)]
+        with patch("datapulse.cache.get_redis_client", return_value=mock_client):
+            result = cache_get_many(["k1", "k2", "k3"])
+        assert result == {"k1": {"a": 1}, "k3": 42}
+        assert "k2" not in result
+
+    def test_omits_keys_with_invalid_json(self):
+        mock_client = MagicMock()
+        pipe = MagicMock()
+        mock_client.pipeline.return_value = pipe
+        pipe.execute.return_value = ["not-json", json.dumps("ok")]
+        with patch("datapulse.cache.get_redis_client", return_value=mock_client):
+            result = cache_get_many(["bad", "good"])
+        assert "bad" not in result
+        assert result["good"] == "ok"
+
+    def test_uses_pipeline_without_transaction(self):
+        mock_client = MagicMock()
+        pipe = MagicMock()
+        mock_client.pipeline.return_value = pipe
+        pipe.execute.return_value = [None, None]
+        with patch("datapulse.cache.get_redis_client", return_value=mock_client):
+            cache_get_many(["k1", "k2"])
+        mock_client.pipeline.assert_called_once_with(transaction=False)
+
+    def test_returns_empty_dict_on_redis_error(self):
+        mock_client = MagicMock()
+        pipe = MagicMock()
+        mock_client.pipeline.return_value = pipe
+        pipe.execute.side_effect = OSError("Redis error")
+        with patch("datapulse.cache.get_redis_client", return_value=mock_client):
+            result = cache_get_many(["k1", "k2"])
+        assert result == {}
 
 
 class TestCacheInvalidatePattern:

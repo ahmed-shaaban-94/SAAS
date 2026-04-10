@@ -228,12 +228,23 @@ class AnalyticsService:
             "dashboard",
             filters.model_dump(exclude_none=True),
         )
-        cached_val = cache_get(key)
-        if cached_val is not None:
+        # Pre-fetch the dashboard key and the filter_options key in a single
+        # Redis PIPELINE round-trip so a cache hit costs only one RTT.
+        filter_opts_key = _cache_key("filter_options")
+        preloaded = cache_get_many([key, filter_opts_key])
+
+        if key in preloaded:
             log.debug("cache_hit", key=key)
-            return DashboardData(**cached_val)
+            return DashboardData(**preloaded[key])
 
         log.info("dashboard_data", filters=filters.model_dump())
+
+        # Use the pre-loaded filter_options if it was a pipeline hit so we
+        # avoid a second Redis round-trip inside get_filter_options().
+        if filter_opts_key in preloaded:
+            filter_options = FilterOptions(**preloaded[filter_opts_key])
+        else:
+            filter_options = self.get_filter_options()
 
         # KPI: aggregate over the entire range
         kpi = self._repo.get_kpi_summary_range(filters)
@@ -245,7 +256,7 @@ class AnalyticsService:
             top_products=self._repo.get_top_products(filters),
             top_customers=self._repo.get_top_customers(filters),
             top_staff=self._repo.get_top_staff(filters),
-            filter_options=self.get_filter_options(),
+            filter_options=filter_options,
         )
         cache_set(key, result.model_dump(mode="json"), ttl=600)
         return result
