@@ -52,7 +52,7 @@
     "jsdom": "^29.0.1",
     "msw": "^2.12.14",
     "postcss": "^8.5.3",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.2.2",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "5.9.3",
     "vitest": "^4.1.2",
