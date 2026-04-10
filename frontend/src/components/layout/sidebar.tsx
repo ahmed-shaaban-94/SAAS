@@ -10,6 +10,7 @@ import {
   BarChartBig,
   Bell,
   Brain,
+  Briefcase,
   Building2,
   ChevronDown,
   ChevronLeft,
@@ -54,6 +55,7 @@ interface SidebarProps {
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Briefcase,
   LayoutDashboard,
   LayoutGrid,
   BarChart3,
