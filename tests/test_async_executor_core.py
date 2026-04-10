@@ -69,12 +69,17 @@ def test_get_job_client_returns_none_when_redis_empty():
 
 def test_get_job_client_returns_none_on_exception():
     """Returns None when Redis connection fails."""
+    import redis as _real_redis
+
     with (
         patch("datapulse.tasks.async_executor.get_settings") as mock_settings,
         patch("datapulse.tasks.async_executor.redis") as mock_redis,
     ):
         mock_settings.return_value = MagicMock(redis_url="redis://localhost:6379/0")
-        mock_redis.from_url.side_effect = ConnectionError("refused")
+        # Preserve real exception classes so `except` clauses work
+        mock_redis.ConnectionError = _real_redis.ConnectionError
+        mock_redis.RedisError = _real_redis.RedisError
+        mock_redis.from_url.side_effect = _real_redis.ConnectionError("refused")
 
         from datapulse.tasks.async_executor import _get_job_client
 

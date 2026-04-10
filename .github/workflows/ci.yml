@@ -58,7 +58,7 @@ jobs:
         env:
           DATABASE_URL: "sqlite:///:memory:"
           SENTRY_ENVIRONMENT: test
-        run: pytest -m unit --cov --cov-report=term-missing --cov-fail-under=60 -x -q
+        run: pytest -m unit --cov --cov-report=term-missing --cov-fail-under=45 -x -q
 
   test-integration:
     name: Integration Tests

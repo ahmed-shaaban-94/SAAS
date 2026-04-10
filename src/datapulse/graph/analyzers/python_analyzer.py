@@ -145,7 +145,7 @@ def analyze_file(file_path: str, project_root: str) -> None:
 
         # Class-level base classes: class Foo(BaseModel, SomeBase)
         elif isinstance(node, ast.ClassDef):
-            class_id = symbol_ids.get(node.name)
+            class_id: int | None = symbol_ids.get(node.name)
             if class_id is None:
                 continue
             for base in node.bases:
