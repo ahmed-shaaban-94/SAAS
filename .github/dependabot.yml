@@ -6,10 +6,7 @@ updates:
       interval: "weekly"
     labels:
       - "dependencies"
-    open-pull-requests-limit: 5
-    ignore:
-      - dependency-name: "stripe"
-        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -17,21 +14,7 @@ updates:
       interval: "weekly"
     labels:
       - "dependencies"
-    open-pull-requests-limit: 5
-    ignore:
-      # Major version bumps for core framework — require dedicated migration
-      - dependency-name: "next"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@next/*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "tailwindcss"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@sentry/*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "docker"
     directory: "/"
@@ -39,6 +22,7 @@ updates:
       interval: "monthly"
     labels:
       - "dependencies"
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -46,3 +30,4 @@ updates:
       interval: "weekly"
     labels:
       - "dependencies"
+    open-pull-requests-limit: 0
