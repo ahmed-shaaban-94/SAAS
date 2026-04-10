@@ -52,7 +52,6 @@ def get_branding_service(
 ServiceDep = Annotated[BrandingService, Depends(get_branding_service)]
 
 
-
 # ------------------------------------------------------------------
 # Authenticated endpoints
 # ------------------------------------------------------------------

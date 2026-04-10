@@ -73,6 +73,7 @@ def _record_miss(key: str) -> None:
         prefix = key.split(":")[0] if ":" in key else key
         _cache_misses.labels(key_prefix=prefix).inc()
 
+
 # Context variable holding the current tenant_id.  Set by ``get_tenant_session``
 # in ``datapulse.api.deps`` so that cache keys are automatically scoped per
 # tenant without requiring explicit passing through every service method.
@@ -195,7 +196,7 @@ def cache_get_many(keys: list[str]) -> dict[str, Any]:
         raw_values: list[str | None] = pipe.execute()
 
         result: dict[str, Any] = {}
-        for key, raw in zip(keys, raw_values):
+        for key, raw in zip(keys, raw_values, strict=False):
             if raw is None:
                 logger.debug("cache_miss", key=key)
                 _record_miss(key)

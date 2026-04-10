@@ -28,7 +28,6 @@ router = APIRouter(
 )
 
 
-
 ForecastServiceDep = Annotated[ForecastingService, Depends(get_forecasting_service)]
 
 

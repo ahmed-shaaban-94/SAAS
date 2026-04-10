@@ -52,7 +52,6 @@ def get_gamification_service(
 ServiceDep = Annotated[GamificationService, Depends(get_gamification_service)]
 
 
-
 # ------------------------------------------------------------------
 # Profile
 # ------------------------------------------------------------------

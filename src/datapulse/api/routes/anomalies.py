@@ -30,7 +30,6 @@ def _get_anomaly_service(session: SessionDep) -> AnomalyService:
 _ServiceDep = Annotated[AnomalyService, Depends(_get_anomaly_service)]
 
 
-
 @router.get("/active", response_model=list[AnomalyAlertResponse])
 @limiter.limit("60/minute")
 def get_active_alerts(

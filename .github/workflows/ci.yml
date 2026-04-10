@@ -265,3 +265,41 @@ jobs:
         env:
           DBT_HOST: localhost
           POSTGRES_PASSWORD: datapulse
+
+  # ── Merge gate ──────────────────────────────────────────────────────────
+  # Single required status check for branch protection.
+  # Add "CI Gate" as a required check in GitHub Settings > Branch protection.
+  # This ensures NO PR merges unless every CI job passes.
+  ci-gate:
+    name: CI Gate
+    if: always()
+    needs: [lint, typecheck, test-unit, test-integration, frontend, e2e, docker-build, dbt-validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "Job results:"
+          echo "  lint:             ${{ needs.lint.result }}"
+          echo "  typecheck:        ${{ needs.typecheck.result }}"
+          echo "  test-unit:        ${{ needs.test-unit.result }}"
+          echo "  test-integration: ${{ needs.test-integration.result }}"
+          echo "  frontend:         ${{ needs.frontend.result }}"
+          echo "  e2e:              ${{ needs.e2e.result }}"
+          echo "  docker-build:     ${{ needs.docker-build.result }}"
+          echo "  dbt-validate:     ${{ needs.dbt-validate.result }}"
+
+          # Fail if ANY upstream job did not succeed
+          if [[ "${{ needs.lint.result }}" != "success" ]] || \
+             [[ "${{ needs.typecheck.result }}" != "success" ]] || \
+             [[ "${{ needs.test-unit.result }}" != "success" ]] || \
+             [[ "${{ needs.test-integration.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend.result }}" != "success" ]] || \
+             [[ "${{ needs.e2e.result }}" != "success" ]] || \
+             [[ "${{ needs.docker-build.result }}" != "success" ]] || \
+             [[ "${{ needs.dbt-validate.result }}" != "success" ]]; then
+            echo ""
+            echo "::error::CI Gate FAILED — one or more jobs did not pass. PR must not be merged."
+            exit 1
+          fi
+          echo ""
+          echo "All CI jobs passed. Safe to merge."

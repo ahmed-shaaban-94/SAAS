@@ -63,7 +63,6 @@ def _check_reseller_access(
         raise HTTPException(status_code=403, detail="Access denied to this reseller")
 
 
-
 @router.get("/", response_model=list[ResellerResponse])
 @limiter.limit("60/minute")
 def list_resellers(

@@ -48,7 +48,13 @@ from datapulse.analytics.models import (
     WaterfallAnalysis,
 )
 from datapulse.analytics.repository import AnalyticsRepository
-from datapulse.cache import cache_get, cache_get_many, cache_set, current_tenant_id, get_cache_version
+from datapulse.cache import (
+    cache_get,
+    cache_get_many,
+    cache_set,
+    current_tenant_id,
+    get_cache_version,
+)
 from datapulse.cache_decorator import cached
 from datapulse.logging import get_logger
 
