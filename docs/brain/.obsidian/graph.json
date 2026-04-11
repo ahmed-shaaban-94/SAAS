@@ -1,0 +1,35 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:sessions",
+      "color": { "a": 1, "rgb": 2872319 }
+    },
+    {
+      "query": "path:layers",
+      "color": { "a": 1, "rgb": 16744448 }
+    },
+    {
+      "query": "path:modules",
+      "color": { "a": 1, "rgb": 5025616 }
+    },
+    {
+      "query": "path:roles",
+      "color": { "a": 1, "rgb": 11141290 }
+    }
+  ],
+  "collapse-display": false,
+  "lineSizeMultiplier": 1,
+  "nodeSizeMultiplier": 1,
+  "collapse-forces": true,
+  "centerStrength": 0.5,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250
+}
