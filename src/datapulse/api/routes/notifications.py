@@ -6,7 +6,6 @@ import asyncio
 import json
 from typing import Annotated
 
-import httpx
 from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -101,7 +100,7 @@ async def notification_stream(
                     session.commit()
                 finally:
                     session.close()
-            except (httpx.HTTPError, OSError):
+            except Exception:
                 yield "event: error\ndata: {}\n\n"
             await asyncio.sleep(5)
 

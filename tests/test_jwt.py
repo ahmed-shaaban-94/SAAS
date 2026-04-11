@@ -56,7 +56,7 @@ class TestFetchJWKS:
     def test_fetch_jwks_failure_no_cache(self, mock_get, mock_settings):
         import httpx
 
-        mock_get.side_effect = httpx.HTTPError("Connection refused")
+        mock_get.side_effect = httpx.TransportError("Connection refused")
 
         with pytest.raises(HTTPException) as exc:
             _fetch_jwks(mock_settings)
@@ -77,7 +77,7 @@ class TestFetchJWKS:
         import datapulse.api.jwt as jwt_mod
 
         jwt_mod._jwks_cache_time = 0.0
-        mock_get.side_effect = httpx.HTTPError("timeout")
+        mock_get.side_effect = httpx.TransportError("timeout")
 
         result = _fetch_jwks(mock_settings)
         assert result["keys"][0]["kid"] == "stale"
