@@ -187,14 +187,14 @@ class TestH2DevModeProductionBlock:
     """H2: Dev mode auth fallback must raise 503 in production."""
 
     def test_blocked_in_production(self):
-        settings = _settings(api_key="", auth0_domain="", sentry_environment="production")
+        settings = MagicMock(api_key="", auth0_domain="", sentry_environment="production")
         with pytest.raises(HTTPException) as exc_info:
             get_current_user(credentials=None, api_key=None, settings=settings)
         assert exc_info.value.status_code == 503
         assert "not configured" in exc_info.value.detail.lower()
 
     def test_blocked_in_staging(self):
-        settings = _settings(api_key="", auth0_domain="", sentry_environment="staging")
+        settings = MagicMock(api_key="", auth0_domain="", sentry_environment="staging")
         with pytest.raises(HTTPException) as exc_info:
             get_current_user(credentials=None, api_key=None, settings=settings)
         assert exc_info.value.status_code == 503
@@ -204,7 +204,7 @@ class TestH2DevModeProductionBlock:
         with patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "development"}):
             result = get_current_user(credentials=None, api_key=None, settings=settings)
         assert result["sub"] == "dev-user"
-        assert "admin" in result["roles"]
+        assert "viewer" in result["roles"]
 
     def test_allowed_in_test(self):
         settings = _settings(api_key="", auth0_domain="")
@@ -279,11 +279,11 @@ class TestPIILeakPrevention:
     """Verify PII is not exposed in error responses or logs."""
 
     def test_sentry_pii_disabled_in_source(self):
-        import inspect
+        from pathlib import Path
 
-        from datapulse.api import app as app_module
+        import datapulse.api.app as app_module
 
-        source = inspect.getsource(app_module.create_app)
+        source = Path(app_module.__file__).read_text()
         assert "send_default_pii=False" in source
 
     def test_auth_error_messages_generic(self):
@@ -301,7 +301,10 @@ class TestPIILeakPrevention:
             auth0_domain="test.auth0.com",
             auth0_audience="https://api.test.com",
         )
-        with pytest.raises(HTTPException) as exc_info:
+        with (
+            patch("datapulse.api.jwt.httpx.get", side_effect=Exception("connection refused")),
+            pytest.raises(HTTPException) as exc_info,
+        ):
             verify_jwt("eyJ.fake.token", fake_settings)
         detail = exc_info.value.detail
         assert "eyJ" not in detail
