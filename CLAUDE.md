@@ -6,6 +6,11 @@ A data analytics platform for sales data: import raw Excel/CSV files, clean and 
 
 **Pipeline**: Import (Bronze) -> Clean (Silver) -> Analyze (Gold) -> Dashboard
 
+## Session Context
+
+At the start of every conversation, read `docs/brain/_INDEX.md` for recent session context
+(last 5 sessions: what changed, which layers/modules were touched).
+
 ## Architecture
 
 ### Medallion Data Architecture
