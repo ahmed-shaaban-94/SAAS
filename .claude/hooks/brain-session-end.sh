@@ -1,7 +1,10 @@
 #!/bin/bash
 # brain-session-end.sh — Captures session context into the Second Brain vault.
 # Trigger: Stop hook (fires when Claude session ends)
-# Output: docs/brain/sessions/YYYY-MM-DD-HH-MM.md + regenerates docs/brain/_INDEX.md
+# Output:
+#   - docs/brain/sessions/YYYY-MM-DD-HH-MM.md  (local only, gitignored)
+#   - docs/brain/session-log.csv               (shared, tracked in git, append-only)
+#   - docs/brain/_INDEX.md                     (local only, regenerated from CSV)
 
 set -euo pipefail
 
@@ -23,6 +26,7 @@ cd "$PROJECT_DIR"
 
 BRAIN_DIR="docs/brain"
 SESSION_DIR="$BRAIN_DIR/sessions"
+LOG_FILE="$BRAIN_DIR/session-log.csv"
 
 # Ensure directories exist
 mkdir -p "$SESSION_DIR"
@@ -31,6 +35,7 @@ mkdir -p "$SESSION_DIR"
 TIMESTAMP=$(date '+%Y-%m-%dT%H:%M')
 FILENAME=$(date '+%Y-%m-%d-%H-%M')
 BRANCH=$(git branch --show-current 2>/dev/null || echo "detached")
+USER=$(git config user.name 2>/dev/null | tr ',' ' ' || echo "unknown")
 
 # Files changed: uncommitted (working tree + staged) against HEAD
 DIFF_FILES=$(git diff --name-only HEAD 2>/dev/null || true)
@@ -51,21 +56,18 @@ fi
 # Deduplicate and remove empty lines
 ALL_FILES=$(echo "$ALL_FILES" | sort -u | grep -v '^$' || true)
 
-# If nothing changed and no recent commits, skip session note
+# If nothing changed and no recent commits, skip
 if [ -z "$ALL_FILES" ] && [ -z "$RECENT_COMMITS" ]; then
-  SKIP_NOTE=true
-else
-  SKIP_NOTE=false
+  exit 0
 fi
 
-# ── Detect layers from file paths ────────────────────────────────────
+# ── Detect layers and modules from file paths ─────────────────────────
 declare -A SEEN_LAYERS
 declare -A SEEN_MODULES
 
 while IFS= read -r file; do
   [ -z "$file" ] && continue
 
-  # Layer detection
   case "$file" in
     migrations/*|src/datapulse/bronze/*|src/datapulse/import_pipeline/*)
       SEEN_LAYERS[bronze]=1 ;;
@@ -91,21 +93,38 @@ while IFS= read -r file; do
       SEEN_LAYERS[test]=1 ;;
   esac
 
-  # Module detection: src/datapulse/<module>/
   if [[ "$file" =~ ^src/datapulse/([^/]+)/ ]]; then
     mod="${BASH_REMATCH[1]}"
     [[ "$mod" != __* ]] && SEEN_MODULES[$mod]=1
   fi
-  # dbt as a module
-  [[ "$file" =~ ^dbt/ ]] && SEEN_MODULES[dbt]=1
-  # frontend as a module
-  [[ "$file" =~ ^frontend/ ]] && SEEN_MODULES[frontend]=1
-  # migrations as a module
+  [[ "$file" =~ ^dbt/ ]]        && SEEN_MODULES[dbt]=1
+  [[ "$file" =~ ^frontend/ ]]   && SEEN_MODULES[frontend]=1
   [[ "$file" =~ ^migrations/ ]] && SEEN_MODULES[migrations]=1
 done <<< "$ALL_FILES"
 
-# ── Build output sections ─────────────────────────────────────────────
-# Layer descriptions for wikilinks
+# Build semicolon-delimited strings for CSV
+LAYERS_CSV=$(echo "${!SEEN_LAYERS[@]}" | tr ' ' '\n' | sort | paste -sd';' || true)
+MODULES_CSV=$(echo "${!SEEN_MODULES[@]}" | tr ' ' '\n' | sort | paste -sd';' || true)
+
+# ── Write local session note (personal detail, gitignored) ────────────
+SESSION_FILE="$SESSION_DIR/${FILENAME}.md"
+
+FILE_COUNT=$(echo "$ALL_FILES" | wc -l | tr -d ' ')
+if [ "$FILE_COUNT" -gt 50 ]; then
+  FILES_SECTION=$(echo "$ALL_FILES" | head -50 | sed 's/^/- /')
+  FILES_SECTION="${FILES_SECTION}
+- ... and $((FILE_COUNT - 50)) more"
+else
+  FILES_SECTION=$(echo "$ALL_FILES" | sed 's/^/- /')
+fi
+
+if [ -n "$RECENT_COMMITS" ]; then
+  COMMITS_SECTION=$(echo "$RECENT_COMMITS" | sed 's/^/- /')
+else
+  COMMITS_SECTION="_No commits in this session._"
+fi
+
+# Build layer/module wikilink sections
 LAYER_DESCS=()
 for layer in $(echo "${!SEEN_LAYERS[@]}" | tr ' ' '\n' | sort); do
   case "$layer" in
@@ -118,57 +137,21 @@ for layer in $(echo "${!SEEN_LAYERS[@]}" | tr ' ' '\n' | sort); do
   esac
 done
 
-# YAML arrays
-LAYERS_YAML=$(echo "${!SEEN_LAYERS[@]}" | tr ' ' '\n' | sort | paste -sd',' || true)
-MODULES_YAML=$(echo "${!SEEN_MODULES[@]}" | tr ' ' '\n' | sort | paste -sd',' || true)
-
-# Module wikilinks
 MODULE_LINKS=()
 for mod in $(echo "${!SEEN_MODULES[@]}" | tr ' ' '\n' | sort); do
   MODULE_LINKS+=("- [[${mod}]]")
 done
 
-# ── Write session note ────────────────────────────────────────────────
-if [ "$SKIP_NOTE" = false ]; then
-  SESSION_FILE="$SESSION_DIR/${FILENAME}.md"
+LAYERS_SECTION=$( [ ${#LAYER_DESCS[@]} -gt 0 ] && printf '%s\n' "${LAYER_DESCS[@]}" || echo "_No recognized layers._" )
+MODULES_SECTION=$( [ ${#MODULE_LINKS[@]} -gt 0 ] && printf '%s\n' "${MODULE_LINKS[@]}" || echo "_No recognized modules._" )
 
-  # Build files section (truncate at 50)
-  FILE_COUNT=$(echo "$ALL_FILES" | wc -l | tr -d ' ')
-  if [ "$FILE_COUNT" -gt 50 ]; then
-    FILES_SECTION=$(echo "$ALL_FILES" | head -50 | sed 's/^/- /')
-    FILES_SECTION="${FILES_SECTION}
-- ... and $((FILE_COUNT - 50)) more"
-  else
-    FILES_SECTION=$(echo "$ALL_FILES" | sed 's/^/- /')
-  fi
-
-  # Build commits section
-  if [ -n "$RECENT_COMMITS" ]; then
-    COMMITS_SECTION=$(echo "$RECENT_COMMITS" | sed 's/^/- /')
-  else
-    COMMITS_SECTION="_No commits in this session._"
-  fi
-
-  # Build layers section
-  if [ ${#LAYER_DESCS[@]} -gt 0 ]; then
-    LAYERS_SECTION=$(printf '%s\n' "${LAYER_DESCS[@]}")
-  else
-    LAYERS_SECTION="_No recognized layers._"
-  fi
-
-  # Build modules section
-  if [ ${#MODULE_LINKS[@]} -gt 0 ]; then
-    MODULES_SECTION=$(printf '%s\n' "${MODULE_LINKS[@]}")
-  else
-    MODULES_SECTION="_No recognized modules._"
-  fi
-
-  cat > "$SESSION_FILE" << ENDNOTE
+cat > "$SESSION_FILE" << ENDNOTE
 ---
 date: ${TIMESTAMP}
 branch: ${BRANCH}
-layers: [${LAYERS_YAML}]
-modules: [${MODULES_YAML}]
+user: ${USER}
+layers: [${LAYERS_CSV/;/,}]
+modules: [${MODULES_CSV/;/,}]
 ---
 # Session ${TIMESTAMP}
 
@@ -185,74 +168,62 @@ ${LAYERS_SECTION}
 ${MODULES_SECTION}
 ENDNOTE
 
+# ── Append to shared CSV log (tracked in git) ─────────────────────────
+# Create with headers if it doesn't exist
+if [ ! -f "$LOG_FILE" ]; then
+  echo "timestamp,branch,user,layers,modules" > "$LOG_FILE"
 fi
 
-# ── Regenerate _INDEX.md ──────────────────────────────────────────────
+# Append one line — append-only, no conflicts on merge
+echo "${TIMESTAMP},${BRANCH},${USER},[${LAYERS_CSV}],[${MODULES_CSV}]" >> "$LOG_FILE"
+
+# ── Regenerate local _INDEX.md from shared CSV log ────────────────────
 INDEX_FILE="$BRAIN_DIR/_INDEX.md"
+UPDATED=$(date '+%Y-%m-%dT%H:%M')
 
-# Get last 5 session files (sorted by name = sorted by date)
-SESSION_FILES=$(ls -1 "$SESSION_DIR"/*.md 2>/dev/null | sort -r | head -5 || true)
+# Read last 5 data rows from CSV (skip header)
+LAST5=$(tail -n +2 "$LOG_FILE" 2>/dev/null | tail -5 | tac || true)
 
-if [ -z "$SESSION_FILES" ]; then
-  cat > "$INDEX_FILE" << 'ENDINDEX'
----
-generated: true
-last_updated: null
----
-# DataPulse Second Brain — Context Index
-
-> Auto-generated by `.claude/hooks/brain-session-end.sh`.
-> Claude reads this at the start of every session for recent context.
-
-## Recent Sessions
-
-_No sessions recorded yet._
-ENDINDEX
+if [ -z "$LAST5" ]; then
+  SESSION_ENTRIES="_No sessions recorded yet._"
 else
-  UPDATED=$(date '+%Y-%m-%dT%H:%M')
   SESSION_ENTRIES=""
-
-  while IFS= read -r sf; do
-    [ -z "$sf" ] && continue
-    # Extract frontmatter via grep (no yq dependency)
-    S_DATE=$(grep '^date:' "$sf" 2>/dev/null | head -1 | sed 's/^date: *//' || echo "unknown")
-    S_BRANCH=$(grep '^branch:' "$sf" 2>/dev/null | head -1 | sed 's/^branch: *//' || echo "unknown")
-    S_LAYERS=$(grep '^layers:' "$sf" 2>/dev/null | head -1 | sed 's/^layers: *//' || echo "[]")
-    S_MODULES=$(grep '^modules:' "$sf" 2>/dev/null | head -1 | sed 's/^modules: *//' || echo "[]")
-    BASENAME=$(basename "$sf" .md)
-
+  while IFS=',' read -r ts branch user layers modules; do
     SESSION_ENTRIES="${SESSION_ENTRIES}
-### [[sessions/${BASENAME}|${S_DATE}]]
-- **Branch**: \`${S_BRANCH}\`
-- **Layers**: ${S_LAYERS}
-- **Modules**: ${S_MODULES}
+### ${ts}
+- **Branch**: \`${branch}\`
+- **User**: ${user}
+- **Layers**: ${layers}
+- **Modules**: ${modules}
 "
-  done <<< "$SESSION_FILES"
+  done <<< "$LAST5"
+fi
 
-  cat > "$INDEX_FILE" << ENDINDEX
+cat > "$INDEX_FILE" << ENDINDEX
 ---
 generated: true
 last_updated: ${UPDATED}
 ---
 # DataPulse Second Brain — Context Index
 
-> Auto-generated by \`.claude/hooks/brain-session-end.sh\`.
-> Claude reads this at the start of every session for recent context.
+> Auto-generated from \`docs/brain/session-log.csv\` (shared team log).
+> Shows last 5 sessions across all team members and branches.
 
 ## Recent Sessions (last 5)
 ${SESSION_ENTRIES}
 ## Vault Structure
 
-- \`sessions/\` -- Auto-generated session notes
-- \`layers/\` -- Medallion layer notes (Phase 2)
-- \`modules/\` -- Per-module knowledge from code graph (Phase 2)
-- \`decisions/\` -- Lightweight decision records (Phase 2)
-- \`roles/\` -- Role-scoped briefings (Phase 2)
-- \`incidents/\` -- Post-incident analyses (Phase 2)
+- \`session-log.csv\` -- Shared team log (tracked in git, append-only)
+- \`sessions/\`       -- Local session detail notes (gitignored, personal)
+- \`_INDEX.md\`       -- Local index regenerated from CSV (gitignored)
+- \`layers/\`         -- Medallion layer notes (Phase 2)
+- \`modules/\`        -- Per-module knowledge (Phase 2)
+- \`decisions/\`      -- Session-level decision records
+- \`roles/\`          -- Role-scoped briefings (Phase 2)
+- \`incidents/\`      -- Post-incident analyses
 ENDINDEX
-fi
 
-# ── Done ──────────────────────────────────────────────────────────────
-# Sessions and _INDEX.md are gitignored (local-only context).
-# decisions/ and incidents/ are tracked and committed manually.
+# ── Stage the shared log for next commit ──────────────────────────────
+git add "$LOG_FILE" 2>/dev/null || true
+
 exit 0
