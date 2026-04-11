@@ -31,7 +31,7 @@ def read_csv(
             infer_schema_length=1000,
             try_parse_dates=True,
         )
-    except (pl.exceptions.ComputeError, UnicodeDecodeError) as e:
+    except Exception as e:
         # Retry with latin-1 if utf-8 fails
         if encoding == "utf-8":
             log.warning("utf8_failed_retrying_latin1", path=str(path), error=str(e))

@@ -29,7 +29,7 @@ def decode_cursor(cursor: str) -> dict[str, Any]:
     try:
         payload = base64.urlsafe_b64decode(cursor.encode()).decode()
         return json.loads(payload)
-    except (ValueError, json.JSONDecodeError) as exc:
+    except Exception as exc:
         raise ValueError(f"Invalid cursor: {exc}") from exc
 
 

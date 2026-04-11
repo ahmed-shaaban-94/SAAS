@@ -110,7 +110,7 @@ class TestCheckSchemaVersion:
         )
         result = _check_schema_version()
         assert result["status"] == "error"
-        assert "timeout" in result["error"] or result["error"] == "internal_error"
+        assert result["error"] == "internal_error"
 
 
 class TestCheckDbtFreshness:
@@ -154,7 +154,7 @@ class TestCheckDbtFreshness:
         )
         result = _check_dbt_freshness()
         assert result["status"] == "error"
-        assert "connection refused" in result["error"] or result["error"] == "internal_error"
+        assert result["error"] == "internal_error"
 
 
 class TestCheckDataFreshness:
@@ -198,4 +198,4 @@ class TestCheckDataFreshness:
         )
         result = _check_data_freshness()
         assert result["status"] == "error"
-        assert "db unavailable" in result["error"] or result["error"] == "internal_error"
+        assert result["error"] == "internal_error"

@@ -13,7 +13,6 @@ from pathlib import Path
 
 import polars as pl
 import pyarrow.parquet as pq
-import sqlalchemy.exc
 from sqlalchemy import Engine, create_engine, text
 
 from datapulse.bronze.column_map import COLUMN_MAP
@@ -107,7 +106,7 @@ def read_and_concat(files: list[Path]) -> pl.DataFrame:
         try:
             df = read_single_file(file_path)
             frames.append(df)
-        except (OSError, ValueError, RuntimeError) as exc:
+        except Exception as exc:
             log.error("file_read_failed", file=file_path.name, error=str(exc))
             errors.append((file_path.name, str(exc)))
 
@@ -220,7 +219,7 @@ def run_migrations(engine: Engine) -> None:
         try:
             with engine.begin() as conn:
                 conn.execute(text(bootstrap.read_text(encoding="utf-8")))
-        except (sqlalchemy.exc.SQLAlchemyError, OSError):
+        except Exception:
             log.exception("migration_failed", file=bootstrap.name)
             raise
 
@@ -248,7 +247,7 @@ def run_migrations(engine: Engine) -> None:
                     text("INSERT INTO public.schema_migrations (filename) VALUES (:fn)"),
                     {"fn": mig.name},
                 )
-        except (sqlalchemy.exc.SQLAlchemyError, OSError):
+        except Exception:
             log.exception("migration_failed", file=mig.name)
             raise
 

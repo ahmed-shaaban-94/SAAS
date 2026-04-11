@@ -55,7 +55,7 @@ def _fetch_jwks(settings: Settings) -> dict[str, Any]:
             logger.error("jwks_fetch_http_error", url=jwks_url, status=exc.response.status_code)
             last_exc = exc
             break
-        except (httpx.TransportError, httpx.TimeoutException, OSError) as exc:
+        except Exception as exc:
             logger.warning(
                 "jwks_fetch_network_error", url=jwks_url, attempt=attempt, error=str(exc)
             )

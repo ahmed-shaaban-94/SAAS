@@ -66,7 +66,7 @@ class OpenRouterClient:
                 )
                 resp.raise_for_status()
                 break
-            except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+            except Exception as exc:
                 if attempt == max_retries - 1:
                     raise
                 wait = 2**attempt
@@ -85,7 +85,7 @@ class OpenRouterClient:
 
         try:
             content = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
+        except Exception as exc:
             log.error("openrouter_bad_response", error=str(exc), data=str(data)[:500])
             raise RuntimeError("Unexpected response structure from OpenRouter") from exc
 
