@@ -10,7 +10,6 @@ from __future__ import annotations
 import time
 from typing import Annotated, Any
 
-import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session

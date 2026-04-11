@@ -9,8 +9,6 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-import redis
-import sqlalchemy.exc
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse

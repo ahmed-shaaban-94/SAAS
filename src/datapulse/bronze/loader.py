@@ -307,7 +307,7 @@ def run(
         engine = _create_engine(db_url)
         try:
             run_migrations(engine)
-        except (OSError, ValueError, sqlalchemy.exc.SQLAlchemyError):
+        except Exception:
             engine.dispose()
             raise
 
