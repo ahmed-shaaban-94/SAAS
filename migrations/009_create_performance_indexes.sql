@@ -5,8 +5,8 @@
 -- Impact: 60-70% reduction in dashboard query latency
 -- Safe: CREATE INDEX IF NOT EXISTS is idempotent (no-op if already exists)
 -- Rollback: DROP INDEX IF EXISTS <index_name>;
-
-BEGIN;
+-- Note: no BEGIN/COMMIT — each index is independent so failures on
+-- missing dbt-managed tables (public_marts) don't cascade to other indexes.
 
 -- ============================================================
 -- Dimension table indexes (JOIN acceleration)
@@ -87,5 +87,3 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_runs_tenant_started
 
 CREATE INDEX IF NOT EXISTS idx_quality_checks_run_stage
     ON public.quality_checks (pipeline_run_id, stage);
-
-COMMIT;

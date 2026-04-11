@@ -11,8 +11,8 @@
 -- analytics filter:  WHERE tenant_id = :tid AND year*100+month BETWEEN :s AND :e
 --
 -- Rollback: DROP INDEX IF EXISTS <name>;
-
-BEGIN;
+-- Note: no BEGIN/COMMIT — indexes are independent; failures on
+-- missing dbt-managed tables don't cascade.
 
 -- agg_sales_by_product: top-product rankings + ABC analysis
 CREATE INDEX IF NOT EXISTS idx_agg_product_tenant_ym
@@ -37,5 +37,3 @@ CREATE INDEX IF NOT EXISTS idx_agg_daily_tenant_date
 -- metrics_summary: KPI snapshot lookups (tenant + exact date or range)
 CREATE INDEX IF NOT EXISTS idx_metrics_summary_tenant_date
     ON public_marts.metrics_summary (tenant_id, full_date);
-
-COMMIT;

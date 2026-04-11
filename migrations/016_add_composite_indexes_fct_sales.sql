@@ -1,7 +1,7 @@
 -- 016: Add composite indexes on fct_sales for common query patterns
 -- Idempotent: uses IF NOT EXISTS
-
-BEGIN;
+-- Note: no BEGIN/COMMIT — indexes are independent; failures on
+-- missing dbt-managed tables don't cascade.
 
 -- Accelerate product-filtered queries with tenant isolation
 CREATE INDEX IF NOT EXISTS idx_fct_sales_tenant_product
@@ -18,5 +18,3 @@ CREATE INDEX IF NOT EXISTS idx_fct_sales_tenant_staff
 -- Accelerate date-range queries with tenant isolation
 CREATE INDEX IF NOT EXISTS idx_fct_sales_tenant_date
     ON public_marts.fct_sales (tenant_id, date_key);
-
-COMMIT;

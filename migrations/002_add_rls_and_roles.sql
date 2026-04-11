@@ -4,7 +4,7 @@
 --
 -- Run order: after 001_create_bronze_schema.sql
 -- Idempotent: safe to run multiple times (uses IF NOT EXISTS / DO $$ guards)
--- Requires: PostgreSQL 16+ (CREATE POLICY IF NOT EXISTS is PG 15+)
+-- Requires: PostgreSQL 16+
 --
 -- Roles created:
 --   datapulse        — owner role (full access), created by Docker Compose
@@ -94,18 +94,24 @@ ALTER TABLE bronze.sales ENABLE ROW LEVEL SECURITY;
 -- Owner policy: the datapulse application role retains full access.
 -- USING (true) means every row passes the visibility check.
 -- WITH CHECK (true) means every row passes the write check.
-CREATE POLICY IF NOT EXISTS owner_all_access ON bronze.sales
-    FOR ALL
-    TO datapulse
-    USING (true)
-    WITH CHECK (true);
+DO $$ BEGIN
+    CREATE POLICY owner_all_access ON bronze.sales
+        FOR ALL
+        TO datapulse
+        USING (true)
+        WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Reader policy: datapulse_reader may SELECT all rows.
 -- No WITH CHECK clause needed because FOR SELECT never modifies data.
-CREATE POLICY IF NOT EXISTS reader_select_access ON bronze.sales
-    FOR SELECT
-    TO datapulse_reader
-    USING (true);
+DO $$ BEGIN
+    CREATE POLICY reader_select_access ON bronze.sales
+        FOR SELECT
+        TO datapulse_reader
+        USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ============================================================
 -- 5. Update table comment to document RLS state
