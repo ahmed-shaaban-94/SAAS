@@ -4,12 +4,15 @@
 
 ### 1. Session Start — ALWAYS
 ```
-Read docs/brain/_INDEX.md -> get last 5 sessions context
+Read docs/brain/_INDEX.md -> get last 5 sessions context (all team members)
 ```
-- What layers were touched recently
+- What layers were touched recently across the whole team
 - What modules are in active change
-- What branch/work is in progress
+- Who was working on what branch
 - Do this BEFORE any exploration or code changes
+
+> `_INDEX.md` is regenerated locally from `session-log.csv` — it reflects
+> everyone's sessions, not just yours.
 
 ### 2. Before Touching a Module That Appears in Recent Sessions
 ```
@@ -51,14 +54,16 @@ They are complementary: **Graph MCP = WHAT the code is. Brain = WHY decisions we
 ## Session End — Automatic (no action needed)
 
 The Stop hook `.claude/hooks/brain-session-end.sh` fires automatically:
-- Writes `docs/brain/sessions/YYYY-MM-DD-HH-MM.md`
-- Regenerates `docs/brain/_INDEX.md`
+- Appends one row to `docs/brain/session-log.csv` (shared, tracked in git, auto-staged)
+- Writes `docs/brain/sessions/YYYY-MM-DD-HH-MM.md` (local detail, gitignored)
+- Regenerates `docs/brain/_INDEX.md` from the CSV (local, gitignored)
 
-These files are **gitignored** (local-only context, never committed).
-This prevents merge conflicts when multiple branches generate session notes.
+**Why CSV for the shared log:**
+- Append-only = git never conflicts on merge
+- Every team member's sessions appear in every other member's `_INDEX.md`
+- Full session detail stays local (no noise in git, no token bloat)
 
-Only `decisions/` and `incidents/` are tracked in git — commit those manually.
-
+Only `session-log.csv`, `decisions/`, and `incidents/` are committed.
 You do NOT need to manually write session notes. The hook handles it.
 
 ## Vault Structure Reference
