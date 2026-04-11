@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   # ---------- Traefik REMOVED — Nginx on host handles reverse proxy ----------
   # Saves 128MB RAM and removes double-proxy latency.
@@ -62,6 +68,7 @@ services:
     networks:
       - backend
       - frontend-net
+    logging: *default-logging
     stop_grace_period: 35s  # 30s uvicorn drain + 5s buffer before SIGKILL
 
   postgres:
@@ -88,6 +95,7 @@ services:
         limits:
           memory: 2G
           cpus: "1.5"
+    logging: *default-logging
     networks:
       - backend
 
@@ -131,6 +139,7 @@ services:
         limits:
           memory: 512M
           cpus: "0.5"
+    logging: *default-logging
     networks:
       - frontend-net
 
@@ -155,6 +164,7 @@ services:
         limits:
           memory: 256M
           cpus: "0.25"
+    logging: *default-logging
     networks:
       - backend
 
@@ -173,5 +183,7 @@ volumes:
 networks:
   backend:
     driver: bridge
+    name: datapulse-backend
   frontend-net:
     driver: bridge
+    name: datapulse-frontend

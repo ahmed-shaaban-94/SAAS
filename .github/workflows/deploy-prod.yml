@@ -132,7 +132,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.prod.yml,nginx/,migrations/,postgres/"
+          source: "docker-compose.yml,docker-compose.prod.yml,docker-compose.monitoring.yml,nginx/,migrations/,postgres/,monitoring/"
           target: ${{ secrets.PROD_DEPLOY_PATH }}
 
       - name: Deploy via SSH
@@ -168,6 +168,7 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               pull
 
             # Deploy in two phases:
@@ -177,10 +178,12 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               up -d --remove-orphans postgres redis
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               up -d --remove-orphans --force-recreate api frontend nginx
 
             # Health check — API liveness via nginx internal port.
@@ -233,6 +236,7 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               ps
 
             # Rollback if failed
@@ -245,18 +249,21 @@ jobs:
               docker compose \
                 -f docker-compose.yml \
                 -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
                 logs --tail=80 api 2>&1 || true
 
               echo "=== Frontend Logs (last 40 lines) ==="
               docker compose \
                 -f docker-compose.yml \
                 -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
                 logs --tail=40 frontend 2>&1 || true
 
               echo "=== Postgres Logs (last 20 lines) ==="
               docker compose \
                 -f docker-compose.yml \
                 -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
                 logs --tail=20 postgres 2>&1 || true
 
               # Rollback
@@ -265,10 +272,12 @@ jobs:
                 docker compose \
                   -f docker-compose.yml \
                   -f docker-compose.prod.yml \
+                  -f docker-compose.monitoring.yml \
                   down --remove-orphans
                 docker compose \
                   -f docker-compose.yml \
                   -f docker-compose.prod.yml \
+                  -f docker-compose.monitoring.yml \
                   up -d
 
                 # Verify rollback
@@ -280,3 +289,35 @@ jobs:
             fi
 
             echo "=== Production deploy SUCCESSFUL ==="
+
+  # ── Step 4: Notify deploy result via Slack ────────────────────────────
+  notify:
+    name: Notify Deploy Result
+    needs: [deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "SLACK_DEPLOY_WEBHOOK_URL not set — skipping notification"
+            exit 0
+          fi
+
+          STATUS="${{ needs.deploy.result }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ "$STATUS" = "success" ]; then
+            EMOJI=":white_check_mark:"
+            TEXT="*Production deploy succeeded*\nTag: \`${{ needs.build-push.outputs.image_tag }}\`\n<$RUN_URL|View run>"
+          else
+            EMOJI=":x:"
+            TEXT="<!channel> *PRODUCTION DEPLOY FAILED*\nStatus: $STATUS\n<$RUN_URL|View run>"
+          fi
+
+          curl -sf -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"$EMOJI $TEXT\", \"username\": \"DataPulse Deploy\", \"icon_emoji\": \"$EMOJI\"}" \
+            || echo "Slack notification failed (non-blocking)"

@@ -1,0 +1,121 @@
+# Monitoring stack — Prometheus + Grafana + uptime watchdog
+#
+# Usage (production only — layered on top of base + prod):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     -f docker-compose.monitoring.yml up -d
+#
+# Memory budget: 256M + 128M + 16M = 400M total
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: datapulse-prometheus
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--storage.tsdb.retention.size=500MB"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - datapulse-backend
+
+  grafana:
+    image: grafana/grafana-oss:11.1.0
+    container_name: datapulse-grafana
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-datapulse}
+      GF_SERVER_ROOT_URL: http://localhost:3001
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    depends_on:
+      - prometheus
+    networks:
+      - datapulse-backend
+
+  # Lightweight uptime watchdog — checks /health/live every 30s,
+  # alerts to Slack after 4 consecutive failures (2 min), sends
+  # recovery message when API comes back.
+  uptime-watchdog:
+    image: alpine:3.20
+    container_name: datapulse-uptime
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        apk add --no-cache curl > /dev/null 2>&1
+        FAIL_COUNT=0
+        while true; do
+          HTTP_CODE=$$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://api:8000/health/live 2>/dev/null || echo "000")
+          if [ "$$HTTP_CODE" != "200" ]; then
+            FAIL_COUNT=$$((FAIL_COUNT + 1))
+            echo "$$(date -Iseconds) FAIL ($$FAIL_COUNT): /health/live returned $$HTTP_CODE"
+            if [ "$$FAIL_COUNT" -ge 4 ] && [ -n "$$SLACK_WEBHOOK" ]; then
+              curl -s -X POST "$$SLACK_WEBHOOK" \
+                -H 'Content-Type: application/json' \
+                -d "{\"text\": \":rotating_light: <!channel> *DataPulse API DOWN* -- /health/live returned $$HTTP_CODE for $$((FAIL_COUNT * 30))s\", \"username\": \"Uptime Monitor\", \"icon_emoji\": \":rotating_light:\"}" || true
+              FAIL_COUNT=0
+            fi
+          else
+            if [ "$$FAIL_COUNT" -ge 4 ]; then
+              curl -s -X POST "$$SLACK_WEBHOOK" \
+                -H 'Content-Type: application/json' \
+                -d "{\"text\": \":white_check_mark: DataPulse API recovered -- /health/live is 200 again\", \"username\": \"Uptime Monitor\", \"icon_emoji\": \":white_check_mark:\"}" || true
+            fi
+            FAIL_COUNT=0
+          fi
+          sleep 30
+        done
+    environment:
+      SLACK_WEBHOOK: ${SLACK_WEBHOOK_URL:-}
+    deploy:
+      resources:
+        limits:
+          memory: 16M
+          cpus: "0.05"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+    networks:
+      - datapulse-backend
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  datapulse-backend:
+    external: true
+    name: datapulse-backend

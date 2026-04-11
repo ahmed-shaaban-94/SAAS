@@ -104,7 +104,7 @@ jobs:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.prod.yml,nginx/,migrations/,postgres/"
+          source: "docker-compose.yml,docker-compose.prod.yml,docker-compose.monitoring.yml,nginx/,migrations/,postgres/,monitoring/"
           target: ${{ secrets.STAGING_DEPLOY_PATH }}
 
       - name: Deploy via SSH
@@ -133,6 +133,7 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               ps --format json > /tmp/staging-pre-deploy.json 2>/dev/null || true
 
             PREV_API_IMAGE=$(docker inspect --format='{{.Image}}' datapulse-api 2>/dev/null || echo "none")
@@ -145,6 +146,7 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               pull
 
             # Deploy in two phases:
@@ -157,17 +159,19 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               up -d --remove-orphans postgres redis || echo "::warning::infra up exited non-zero"
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               up -d --remove-orphans --force-recreate api frontend nginx || echo "::warning::app up exited non-zero — checking health..."
 
             # Immediate diagnostics — surface the real error before waiting
             echo "=== Container status after up ==="
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps || true
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml ps || true
             echo "=== API logs (startup) ==="
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=80 api 2>&1 || true
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml logs --tail=80 api 2>&1 || true
 
             # Health check — API liveness via nginx internal port.
             # Uses /health/live (always 200 if process is alive) not /health
@@ -204,6 +208,7 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               exec -T api timeout 300 sh -c "\
                 cd /app/dbt && \
                 dbt deps --profiles-dir . && \
@@ -251,6 +256,7 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               ps
 
             # Rollback if core checks failed (API health + Frontend + readiness)
@@ -304,6 +310,7 @@ jobs:
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
               ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 
             echo ""
@@ -313,6 +320,41 @@ jobs:
               docker compose \
                 -f docker-compose.yml \
                 -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
                 logs --tail=15 "$svc" 2>&1 || true
               echo ""
             done
+
+  # ── Step 3: Notify deploy result via Slack ────────────────────────────
+  notify:
+    name: Notify Deploy Result
+    needs: [deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "SLACK_DEPLOY_WEBHOOK_URL not set — skipping notification"
+            exit 0
+          fi
+
+          STATUS="${{ needs.deploy.result }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA="${SHA:0:7}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ "$STATUS" = "success" ]; then
+            EMOJI=":white_check_mark:"
+            TEXT="*Staging deploy succeeded*\nCommit: \`$SHORT_SHA\`\n<$RUN_URL|View run>"
+          else
+            EMOJI=":x:"
+            TEXT="<!channel> *STAGING DEPLOY FAILED*\nCommit: \`$SHORT_SHA\`\nStatus: $STATUS\n<$RUN_URL|View run>"
+          fi
+
+          curl -sf -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"$EMOJI $TEXT\", \"username\": \"DataPulse Deploy\", \"icon_emoji\": \"$EMOJI\"}" \
+            || echo "Slack notification failed (non-blocking)"
