@@ -60,6 +60,11 @@ def get_engine() -> Engine:
                     # reducing round-trips during bronze ingestion.
                     use_insertmanyvalues=True,
                     insertmanyvalues_page_size=1000,
+                    # TCP-level connect timeout prevents indefinite hangs
+                    # during startup (e.g. scheduler leader election) if
+                    # PostgreSQL is temporarily unreachable after container
+                    # recreation.
+                    connect_args={"connect_timeout": 10},
                 )
     return _engine
 

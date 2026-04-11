@@ -1,6 +1,6 @@
 ---
 generated: true
-last_updated: 2026-04-11T17:03
+last_updated: 2026-04-11T19:35
 ---
 # DataPulse Second Brain — Context Index
 
@@ -8,6 +8,11 @@ last_updated: 2026-04-11T17:03
 > Claude reads this at the start of every session for recent context.
 
 ## Recent Sessions (last 5)
+
+### [[sessions/2026-04-11-19-34|2026-04-11T19:34]]
+- **Branch**: `claude/exciting-antonelli`
+- **Layers**: [api,bronze,frontend,test]
+- **Modules**: [ai_light,api,core,explore,frontend,migrations,pipeline]
 
 ### [[sessions/2026-04-11-17-03|2026-04-11T17:03]]
 - **Branch**: `claude/charming-wilbur`
@@ -25,11 +30,6 @@ last_updated: 2026-04-11T17:03
 - **Modules**: [ai_light,api,bronze,core,frontend,migrations,pipeline]
 
 ### [[sessions/2026-04-11-16-56|2026-04-11T16:56]]
-- **Branch**: `claude/charming-wilbur`
-- **Layers**: [api,bronze,frontend,test]
-- **Modules**: [ai_light,api,bronze,core,frontend,migrations,pipeline]
-
-### [[sessions/2026-04-11-16-51|2026-04-11T16:51]]
 - **Branch**: `claude/charming-wilbur`
 - **Layers**: [api,bronze,frontend,test]
 - **Modules**: [ai_light,api,bronze,core,frontend,migrations,pipeline]
