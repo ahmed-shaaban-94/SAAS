@@ -1,0 +1,7 @@
+# Obsidian user-specific files (change per machine)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Obsidian plugins (install locally)
+.obsidian/plugins/
+.obsidian/core-plugins-migration.json

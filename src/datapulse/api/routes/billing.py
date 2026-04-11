@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
+import stripe
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import text
@@ -120,9 +121,17 @@ async def stripe_webhook(
         )
         session.commit()
         return {"status": result.status, "event_type": result.event_type}
-    except (ValueError, OSError) as e:
+    except stripe.error.SignatureVerificationError as e:
         session.rollback()
-        logger.error("webhook_error", error=str(e))
-        raise HTTPException(status_code=400, detail="Webhook processing failed") from e
+        logger.warning("webhook_signature_invalid", error=str(e))
+        raise HTTPException(status_code=400, detail="Invalid signature") from e
+    except ValueError as e:
+        session.rollback()
+        logger.warning("webhook_bad_payload", error=str(e))
+        raise HTTPException(status_code=400, detail="Invalid payload") from e
+    except Exception as e:
+        session.rollback()
+        logger.error("webhook_operational_error", error=str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Webhook processing failed") from e
     finally:
         session.close()

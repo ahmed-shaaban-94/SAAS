@@ -100,7 +100,7 @@ def parse_filters(query_params: dict[str, str]) -> list[FilterCondition]:
         try:
             op = FilterOp(op_name)
             filters.append(FilterCondition(field=field_name, op=op, value=value))
-        except (ValueError, Exception) as exc:
+        except Exception as exc:
             log.warning("filter_parse_error", key=key, value=value, error=str(exc))
 
     return filters

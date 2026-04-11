@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import httpx
-from httpx import HTTPError
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver
 
@@ -55,7 +53,7 @@ class FileWatcherService:
                 status=data.get("status"),
                 files=files,
             )
-        except (HTTPError, json.JSONDecodeError, OSError) as exc:
+        except Exception as exc:
             log.error(
                 "pipeline_trigger_failed",
                 error=str(exc),

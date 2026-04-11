@@ -33,10 +33,12 @@ class Settings(BaseSettings):
     # Database — no default; MUST be set via env / .env
     database_url: str
 
-    # Database connection pool
-    db_pool_size: int = 10
-    db_pool_max_overflow: int = 20
-    db_pool_timeout: int = 10
+    # Database connection pool — sized for multi-worker deployment.
+    # With 4 prod workers: 4 x (5 + 10) = 60 max connections, fitting
+    # within PostgreSQL max_connections=100 with headroom for admin/migrations.
+    db_pool_size: int = 5
+    db_pool_max_overflow: int = 10
+    db_pool_timeout: int = 15
     db_pool_recycle: int = 1800
 
     # Paths
@@ -164,10 +166,8 @@ class Settings(BaseSettings):
             return self
 
         missing: list[str] = []
-        if not self.api_key:
-            missing.append("API_KEY")
-        if not self.auth0_domain:
-            missing.append("AUTH0_DOMAIN")
+        if not self.api_key and not self.auth0_domain:
+            missing.append("API_KEY or AUTH0_DOMAIN")
         if not self.db_reader_password:
             missing.append("DB_READER_PASSWORD")
         if (

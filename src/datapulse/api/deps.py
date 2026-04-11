@@ -104,7 +104,7 @@ def get_tenant_session(
     Extracts tenant_id from the JWT claims and sets it via SET LOCAL
     so that PostgreSQL RLS policies filter data automatically.
     """
-    tenant_id = user.get("tenant_id", "1")
+    tenant_id = user.get("tenant_id") or "1"
     current_tenant_id.set(str(tenant_id))
     structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
     session = get_session_factory()()

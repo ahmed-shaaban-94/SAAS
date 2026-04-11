@@ -1,9 +1,12 @@
 "use client";
 
-import { useQualityScorecard, RunScore } from "@/hooks/use-quality-scorecard";
+import { useState } from "react";
+import { useQualityScorecard } from "@/hooks/use-quality-scorecard";
+import { RunDetailPanel } from "./run-detail-panel";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
-import { ShieldCheck, ShieldAlert, ShieldX, AlertTriangle } from "lucide-react";
+import { ShieldCheck, ShieldX, AlertTriangle, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function PassRateRing({ rate }: { rate: number }) {
   const radius = 40;
@@ -43,6 +46,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export function QualityOverview() {
   const { data, isLoading, error } = useQualityScorecard();
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   if (isLoading && data.runs.length === 0) return <LoadingCard className="h-96" />;
   if (error) return <ErrorRetry title="Failed to load quality scorecard" />;
@@ -87,11 +91,21 @@ export function QualityOverview() {
               <th className="px-4 py-3 font-medium">Pass Rate</th>
               <th className="px-4 py-3 font-medium">Failed</th>
               <th className="px-4 py-3 font-medium">Warned</th>
+              <th className="px-4 py-3 font-medium w-8"></th>
             </tr>
           </thead>
           <tbody>
             {data.runs.map((run) => (
-              <tr key={run.run_id} className="border-b border-border/50 hover:bg-muted/50">
+              <tr
+                key={run.run_id}
+                onClick={() => setSelectedRunId(selectedRunId === run.run_id ? null : run.run_id)}
+                className={cn(
+                  "border-b border-border/50 cursor-pointer transition-colors",
+                  selectedRunId === run.run_id
+                    ? "bg-accent/5"
+                    : "hover:bg-muted/50",
+                )}
+              >
                 <td className="px-4 py-2 text-xs text-text-secondary whitespace-nowrap">
                   {new Date(run.started_at).toLocaleString()}
                 </td>
@@ -109,11 +123,19 @@ export function QualityOverview() {
                 <td className="px-4 py-2 text-xs text-yellow-500 font-medium">
                   {run.warned > 0 ? run.warned : "-"}
                 </td>
+                <td className="px-4 py-2">
+                  <ChevronRight
+                    className={cn(
+                      "h-4 w-4 text-text-tertiary transition-transform",
+                      selectedRunId === run.run_id && "rotate-90 text-accent",
+                    )}
+                  />
+                </td>
               </tr>
             ))}
             {data.runs.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-text-tertiary">
+                <td colSpan={8} className="px-4 py-8 text-center text-text-tertiary">
                   No quality check data available
                 </td>
               </tr>
@@ -121,6 +143,14 @@ export function QualityOverview() {
           </tbody>
         </table>
       </div>
+
+      {/* Run detail panel — expands below table */}
+      {selectedRunId && (
+        <RunDetailPanel
+          runId={selectedRunId}
+          onClose={() => setSelectedRunId(null)}
+        />
+      )}
     </div>
   );
 }

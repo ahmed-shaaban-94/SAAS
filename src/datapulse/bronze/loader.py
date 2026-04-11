@@ -13,7 +13,6 @@ from pathlib import Path
 
 import polars as pl
 import pyarrow.parquet as pq
-import sqlalchemy.exc
 from sqlalchemy import Engine, create_engine, text
 
 from datapulse.bronze.column_map import COLUMN_MAP
@@ -27,6 +26,7 @@ log = get_logger(__name__)
 ALLOWED_COLUMNS: frozenset[str] = frozenset(COLUMN_MAP.values()) | {
     "source_file",
     "source_quarter",
+    "tenant_id",
 }
 
 
@@ -107,7 +107,7 @@ def read_and_concat(files: list[Path]) -> pl.DataFrame:
         try:
             df = read_single_file(file_path)
             frames.append(df)
-        except (OSError, ValueError, RuntimeError) as exc:
+        except Exception as exc:
             log.error("file_read_failed", file=file_path.name, error=str(exc))
             errors.append((file_path.name, str(exc)))
 
@@ -151,17 +151,22 @@ def save_parquet(df: pl.DataFrame, output_path: Path) -> Path:
     return output_path
 
 
-def load_to_postgres(df: pl.DataFrame, engine: Engine, batch_size: int) -> int:
+def load_to_postgres(df: pl.DataFrame, engine: Engine, batch_size: int, tenant_id: int = 1) -> int:
     """Load DataFrame into bronze.sales table using batched inserts via PyArrow.
 
     Args:
         df: DataFrame with columns already renamed to DB names.
         engine: Shared SQLAlchemy engine (created and disposed by caller).
         batch_size: Number of rows per insert batch.
+        tenant_id: Tenant to assign the data to (default 1 for backward compat).
 
     Returns:
         Total number of rows inserted.
     """
+    # Add tenant_id column if not already present
+    if "tenant_id" not in df.columns:
+        df = df.with_columns(pl.lit(tenant_id).alias("tenant_id"))
+
     # Exclude auto-generated columns
     db_columns = [col for col in df.columns if col not in ("id", "loaded_at")]
     df_to_load = df.select(db_columns)
@@ -220,7 +225,7 @@ def run_migrations(engine: Engine) -> None:
         try:
             with engine.begin() as conn:
                 conn.execute(text(bootstrap.read_text(encoding="utf-8")))
-        except (sqlalchemy.exc.SQLAlchemyError, OSError):
+        except Exception:
             log.exception("migration_failed", file=bootstrap.name)
             raise
 
@@ -248,7 +253,7 @@ def run_migrations(engine: Engine) -> None:
                     text("INSERT INTO public.schema_migrations (filename) VALUES (:fn)"),
                     {"fn": mig.name},
                 )
-        except (sqlalchemy.exc.SQLAlchemyError, OSError):
+        except Exception:
             log.exception("migration_failed", file=mig.name)
             raise
 
@@ -273,6 +278,7 @@ def run(
     batch_size: int | None = None,
     skip_db: bool = False,
     files_per_chunk: int = 4,
+    tenant_id: int = 1,
 ) -> pl.DataFrame:
     """Full bronze pipeline: Excel -> concat -> Parquet -> PostgreSQL.
 
@@ -307,7 +313,7 @@ def run(
         engine = _create_engine(db_url)
         try:
             run_migrations(engine)
-        except (OSError, ValueError, sqlalchemy.exc.SQLAlchemyError):
+        except Exception:
             engine.dispose()
             raise
 
@@ -329,7 +335,7 @@ def run(
             all_frames.append(chunk_df)
 
             if engine is not None:
-                total_loaded += load_to_postgres(chunk_df, engine, bs)
+                total_loaded += load_to_postgres(chunk_df, engine, bs, tenant_id)
 
         # 3. Combine all chunks for Parquet and return value
         df = pl.concat(all_frames, how="diagonal_relaxed") if len(all_frames) > 1 else all_frames[0]

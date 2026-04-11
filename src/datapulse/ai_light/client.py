@@ -49,11 +49,9 @@ class OpenRouterClient:
 
         log.info("openrouter_request", model=self._model)
 
-        # Retry with exponential backoff for transient failures
-        # NOTE: time.sleep() blocks the current threadpool worker. In a
-        # high-concurrency deployment this should be replaced with an async
-        # client (httpx.AsyncClient) and asyncio.sleep(). Acceptable for now
-        # given low expected request volume to the AI-Light endpoints.
+        # Retry with constant backoff for transient failures.
+        # time.sleep() blocks a threadpool worker; kept at 1s constant to
+        # limit stall duration. Timeout reduced from 60s to 30s.
         max_retries = 3
         resp = None
         for attempt in range(max_retries):
@@ -62,14 +60,14 @@ class OpenRouterClient:
                     OPENROUTER_API_URL,
                     json=payload,
                     headers=headers,
-                    timeout=60,
+                    timeout=30,
                 )
                 resp.raise_for_status()
                 break
-            except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+            except Exception as exc:
                 if attempt == max_retries - 1:
                     raise
-                wait = 2**attempt
+                wait = 1  # constant 1s — avoid exponential stalling of threadpool
                 log.warning(
                     "openrouter_retry",
                     attempt=attempt + 1,
@@ -85,7 +83,7 @@ class OpenRouterClient:
 
         try:
             content = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
+        except Exception as exc:
             log.error("openrouter_bad_response", error=str(exc), data=str(data)[:500])
             raise RuntimeError("Unexpected response structure from OpenRouter") from exc
 

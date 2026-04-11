@@ -393,12 +393,13 @@ class TestExecuteQualityCheck:
         assert response.status_code == 422
 
     def test_service_called_with_correct_args(self, quality_api_client):
-        """Verifies run_checks_for_stage receives run_id, stage, tenant_id."""
+        """Verifies run_checks_for_stage receives tenant_id from JWT, not body."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
         report = _make_quality_report(run_id=run_id, stage="bronze")
         mock_svc.run_checks_for_stage.return_value = report
 
+        # body.tenant_id=7 is ignored — tenant derived from JWT (mock user="1")
         client.post(
             self._URL,
             json={"run_id": str(run_id), "stage": "bronze", "tenant_id": 7},
@@ -407,7 +408,7 @@ class TestExecuteQualityCheck:
         mock_svc.run_checks_for_stage.assert_called_once_with(
             run_id=run_id,
             stage="bronze",
-            tenant_id=7,
+            tenant_id=1,
         )
 
     def test_default_tenant_id_is_1(self, quality_api_client):

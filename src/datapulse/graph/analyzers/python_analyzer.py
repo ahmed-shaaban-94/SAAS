@@ -48,7 +48,7 @@ def analyze_file(file_path: str, project_root: str) -> None:
     try:
         content = Path(file_path).read_text(encoding="utf-8")
         tree = ast.parse(content, filename=file_path)
-    except (SyntaxError, UnicodeDecodeError):
+    except Exception:
         return
 
     rel_path = str(Path(file_path).relative_to(project_root))
@@ -228,7 +228,7 @@ def _analyze_test_file(file_path: str, project_root: str) -> None:
     try:
         content = Path(file_path).read_text(encoding="utf-8")
         tree = ast.parse(content, filename=file_path)
-    except (SyntaxError, UnicodeDecodeError):
+    except Exception:
         return
 
     rel_path = str(Path(file_path).relative_to(project_root))

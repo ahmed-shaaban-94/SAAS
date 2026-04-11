@@ -61,6 +61,7 @@ class TestGetEngine:
             pool_recycle=900,
             use_insertmanyvalues=True,
             insertmanyvalues_page_size=1000,
+            connect_args={"connect_timeout": 10},
         )
 
 

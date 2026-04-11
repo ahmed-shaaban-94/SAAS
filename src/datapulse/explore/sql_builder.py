@@ -92,9 +92,20 @@ def _validate_dimensions(
     resolved: list[tuple[str, str]] = []
     for req in requested:
         if "." in req:
-            # Explicit model.column reference
+            # Explicit model.column reference — validate both parts
             parts = req.split(".", 1)
-            resolved.append((parts[0], parts[1]))
+            model_name, col_name = parts[0], parts[1]
+            if not _SAFE_IDENT.match(model_name):
+                raise ValueError(f"Unsafe model name in dimension: {model_name!r}")
+            if not _SAFE_IDENT.match(col_name):
+                raise ValueError(f"Unsafe column name in dimension: {col_name!r}")
+            known_models = {model.name} | set(joined_models.keys())
+            if model_name not in known_models:
+                raise ValueError(
+                    f"Unknown model '{model_name}' in dimension '{req}'. "
+                    f"Available: {sorted(known_models)}"
+                )
+            resolved.append((model_name, col_name))
         elif req in available:
             resolved.append((available[req], req))
         else:

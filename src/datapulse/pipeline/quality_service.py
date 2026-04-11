@@ -10,7 +10,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-import sqlalchemy.exc
 from sqlalchemy.orm import Session
 
 from datapulse.config import Settings
@@ -82,7 +81,7 @@ class QualityService:
                     result = fn(self._session, run_id, stage=stage)
                 else:
                     result = fn(self._session, run_id)
-            except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
+            except Exception as exc:
                 log.error(
                     "quality_check_exception",
                     run_id=str(run_id),

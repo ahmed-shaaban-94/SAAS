@@ -9,8 +9,6 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-import redis
-import sqlalchemy.exc
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -36,7 +34,7 @@ def _check_db() -> dict:
             conn.execute(text("SELECT 1"))
         latency = round((time.monotonic() - t0) * 1000)
         return {"status": "ok", "latency_ms": latency}
-    except (sqlalchemy.exc.SQLAlchemyError, OSError):
+    except Exception:
         logger.exception("Database health check failed")
         return {"status": "error", "error": "internal_error"}
 
@@ -53,7 +51,7 @@ def _check_redis() -> dict:
         client.ping()
         latency = round((time.monotonic() - t0) * 1000)
         return {"status": "ok", "latency_ms": latency}
-    except (redis.RedisError, OSError):
+    except Exception:
         logger.exception("Redis health check failed")
         return {"status": "error", "error": "internal_error"}
 
@@ -70,7 +68,7 @@ def _check_query_executor() -> dict:
         client.ping()
         latency = round((time.monotonic() - t0) * 1000)
         return {"status": "ok", "latency_ms": latency}
-    except (redis.RedisError, OSError):
+    except Exception:
         logger.exception("Query executor health check failed")
         return {"status": "error", "error": "internal_error"}
 
@@ -111,7 +109,7 @@ def _check_pool() -> dict:
             "overflow": overflow,
             "saturation_pct": round(saturation * 100, 1),
         }
-    except (sqlalchemy.exc.SQLAlchemyError, AttributeError, OSError):
+    except Exception:
         logger.exception("Connection pool health check failed")
         return {"status": "error", "error": "internal_error"}
 
@@ -125,7 +123,7 @@ def _check_schema_version() -> dict:
             return {"status": "unknown", "version": None}
         version = row[0]
         return {"status": "ok", "version": version}
-    except (sqlalchemy.exc.SQLAlchemyError, OSError):
+    except Exception:
         logger.exception("Schema version health check failed")
         return {"status": "error", "error": "internal_error"}
 
@@ -153,7 +151,7 @@ def _check_dbt_freshness() -> dict:
             "last_updated_at": last_updated.isoformat(),
             "age_hours": round(age_hours, 1),
         }
-    except (sqlalchemy.exc.SQLAlchemyError, OSError):
+    except Exception:
         logger.exception("dbt freshness health check failed")
         return {"status": "error", "error": "internal_error"}
 
@@ -181,7 +179,7 @@ def _check_data_freshness() -> dict:
             "last_loaded_at": last_loaded.isoformat(),
             "age_hours": round(age_hours, 1),
         }
-    except (sqlalchemy.exc.SQLAlchemyError, OSError):
+    except Exception:
         logger.exception("Data freshness health check failed")
         return {"status": "error", "error": "internal_error"}
 
@@ -235,6 +233,9 @@ def health_check(
     # Only expose component details to callers with a verified identity
     content: dict = {"status": overall}
     if user is not None:
+        from datapulse.scheduler import get_scheduler_status
+
+        checks["scheduler"] = get_scheduler_status()
         content["checks"] = checks
 
     return JSONResponse(status_code=status_code, content=content)

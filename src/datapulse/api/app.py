@@ -59,13 +59,22 @@ logger = structlog.get_logger()
 
 
 def create_app() -> FastAPI:
+    import asyncio
     from contextlib import asynccontextmanager
 
     from datapulse.scheduler import start_scheduler, stop_scheduler
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        start_scheduler()
+        # Run scheduler startup in a thread with a timeout so a hanging
+        # DB connection (e.g. after container recreation) never blocks
+        # the app from serving health checks and traffic.
+        try:
+            await asyncio.wait_for(asyncio.to_thread(start_scheduler), timeout=15)
+        except TimeoutError:
+            logger.error("scheduler_start_timeout", detail="start_scheduler took >15s — skipped")
+        except Exception:
+            logger.error("scheduler_start_failed", exc_info=True)
         yield
         stop_scheduler()
 

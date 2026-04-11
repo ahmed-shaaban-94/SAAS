@@ -202,6 +202,40 @@ class PipelineRepository:
             limit=limit,
         )
 
+    def update_heartbeat(self, run_id: UUID) -> None:
+        """Touch heartbeat_at for a running pipeline to signal liveness."""
+        self._session.execute(
+            text(
+                "UPDATE public.pipeline_runs "
+                "SET heartbeat_at = now() "
+                "WHERE id = :run_id AND status = 'running'"
+            ),
+            {"run_id": str(run_id)},
+        )
+        self._session.commit()
+
+    def mark_stale_runs_failed(self, stale_minutes: int = 10) -> list[str]:
+        """Mark pipeline runs as failed if heartbeat is older than *stale_minutes*.
+
+        Returns list of run IDs that were marked stale.
+        """
+        rows = self._session.execute(
+            text(
+                "UPDATE public.pipeline_runs "
+                "SET status = 'failed', "
+                "    error_message = 'Stale: heartbeat timeout', "
+                "    finished_at = now() "
+                "WHERE status = 'running' "
+                "  AND heartbeat_at IS NOT NULL "
+                "  AND heartbeat_at < now() - make_interval(mins => :mins) "
+                "RETURNING id::text"
+            ),
+            {"mins": stale_minutes},
+        ).fetchall()
+        if rows:
+            self._session.commit()
+        return [r[0] for r in rows]
+
     def get_latest_run(
         self,
         run_type: str | None = None,

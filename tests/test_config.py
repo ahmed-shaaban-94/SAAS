@@ -48,11 +48,11 @@ class TestSettings:
 
     def test_default_db_pool_size(self):
         s = _settings()
-        assert s.db_pool_size == 10
+        assert s.db_pool_size == 5
 
     def test_default_db_pool_max_overflow(self):
         s = _settings()
-        assert s.db_pool_max_overflow == 20
+        assert s.db_pool_max_overflow == 10
 
     def test_max_file_size_bytes_property(self):
         s = _settings()

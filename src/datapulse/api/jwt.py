@@ -16,7 +16,7 @@ from fastapi import HTTPException
 
 from datapulse.config import Settings, get_settings
 
-_JWKS_RETRY_DELAYS: tuple[float, ...] = (1.0, 2.0, 4.0)  # seconds between attempts
+_JWKS_RETRY_DELAYS: tuple[float, ...] = (0.5, 1.0, 2.0)  # seconds between attempts
 
 logger = structlog.get_logger()
 
@@ -44,7 +44,7 @@ def _fetch_jwks(settings: Settings) -> dict[str, Any]:
 
     for attempt, delay in enumerate((*_JWKS_RETRY_DELAYS, None), start=1):  # type: ignore[arg-type]
         try:
-            resp = httpx.get(jwks_url, timeout=10.0)
+            resp = httpx.get(jwks_url, timeout=5.0)
             resp.raise_for_status()
             _jwks_cache = resp.json()
             _jwks_cache_time = time.monotonic()
@@ -55,7 +55,7 @@ def _fetch_jwks(settings: Settings) -> dict[str, Any]:
             logger.error("jwks_fetch_http_error", url=jwks_url, status=exc.response.status_code)
             last_exc = exc
             break
-        except (httpx.TransportError, httpx.TimeoutException, OSError) as exc:
+        except Exception as exc:
             logger.warning(
                 "jwks_fetch_network_error", url=jwks_url, attempt=attempt, error=str(exc)
             )

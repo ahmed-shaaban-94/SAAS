@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Responsive, useContainerWidth } from "react-grid-layout";
 import {
   Save,
@@ -20,6 +20,7 @@ import {
   type WidgetDef,
 } from "@/components/dashboard-builder/widget-catalog";
 import { useToast } from "@/components/ui/toast";
+import { DashboardContent } from "../dashboard/dashboard-content";
 
 import "react-grid-layout/css/styles.css";
 
@@ -119,11 +120,12 @@ export default function MyDashboardPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // Initialize layout from saved data
-  if (!isLoading && !initialized) {
-    setLayout(savedLayout.length > 0 ? savedLayout : getDefaultLayout());
-    setInitialized(true);
-  }
+  useEffect(() => {
+    if (!isLoading && !initialized) {
+      setLayout(savedLayout.length > 0 ? savedLayout : getDefaultLayout());
+      setInitialized(true);
+    }
+  }, [isLoading, initialized, savedLayout]);
 
   const activeWidgets = new Set(layout.map((item) => item.i));
 
@@ -242,63 +244,65 @@ export default function MyDashboardPage() {
         </div>
       </div>
 
-      {layout.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-24">
-          <p className="mb-2 text-sm text-text-secondary">Your dashboard is empty</p>
-          <button
-            onClick={() => setPickerOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-page hover:bg-accent/90"
-          >
-            <Plus className="h-4 w-4" />
-            Add your first widget
-          </button>
-        </div>
-      ) : (
-        <Responsive
-          innerRef={containerRef as React.RefObject<HTMLDivElement>}
-          width={width || 1024}
-          className="layout"
-          layouts={{ lg: layout }}
-          breakpoints={{ lg: 1024, md: 768, sm: 480, xs: 0 }}
-          cols={{ lg: 4, md: 3, sm: 2, xs: 1 }}
-          rowHeight={100}
-          dragConfig={{ enabled: !locked, handle: ".drag-handle" }}
-          resizeConfig={{ enabled: !locked }}
-          onLayoutChange={(newLayout) => handleLayoutChange([...newLayout] as LayoutItem[])}
-          margin={[12, 12] as [number, number]}
-        >
-          {layout.map((item) => (
-            <div
-              key={item.i}
-              className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+      <DashboardContent>
+        {layout.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-24">
+            <p className="mb-2 text-sm text-text-secondary">Your dashboard is empty</p>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-page hover:bg-accent/90"
             >
-              {/* Widget header with drag handle */}
-              <div className="flex items-center gap-1 border-b border-border/50 bg-card px-3 py-1.5">
-                {!locked && (
-                  <div className="drag-handle cursor-grab text-text-secondary/50 hover:text-text-secondary">
-                    <GripVertical className="h-4 w-4" />
-                  </div>
-                )}
-                <span className="flex-1 text-xs font-medium text-text-secondary">
-                  {WIDGET_CATALOG.find((w) => w.key === item.i)?.label ?? item.i}
-                </span>
-                {!locked && (
-                  <button
-                    onClick={() => removeWidget(item.i)}
-                    className="rounded p-0.5 text-text-secondary/50 opacity-0 transition-opacity hover:bg-growth-red/10 hover:text-growth-red group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+              <Plus className="h-4 w-4" />
+              Add your first widget
+            </button>
+          </div>
+        ) : (
+          <Responsive
+            innerRef={containerRef as React.RefObject<HTMLDivElement>}
+            width={width || 1024}
+            className="layout"
+            layouts={{ lg: layout }}
+            breakpoints={{ lg: 1024, md: 768, sm: 480, xs: 0 }}
+            cols={{ lg: 4, md: 3, sm: 2, xs: 1 }}
+            rowHeight={100}
+            dragConfig={{ enabled: !locked, handle: ".drag-handle" }}
+            resizeConfig={{ enabled: !locked }}
+            onLayoutChange={(newLayout) => handleLayoutChange([...newLayout] as LayoutItem[])}
+            margin={[12, 12] as [number, number]}
+          >
+            {layout.map((item) => (
+              <div
+                key={item.i}
+                className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+              >
+                {/* Widget header with drag handle */}
+                <div className="flex items-center gap-1 border-b border-border/50 bg-card px-3 py-1.5">
+                  {!locked && (
+                    <div className="drag-handle cursor-grab text-text-secondary/50 hover:text-text-secondary">
+                      <GripVertical className="h-4 w-4" />
+                    </div>
+                  )}
+                  <span className="flex-1 text-xs font-medium text-text-secondary">
+                    {WIDGET_CATALOG.find((w) => w.key === item.i)?.label ?? item.i}
+                  </span>
+                  {!locked && (
+                    <button
+                      onClick={() => removeWidget(item.i)}
+                      className="rounded p-0.5 text-text-secondary/50 opacity-0 transition-opacity hover:bg-growth-red/10 hover:text-growth-red group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {/* Widget content */}
+                <div className="h-[calc(100%-32px)] overflow-auto p-2">
+                  <WidgetRenderer widgetKey={item.i} />
+                </div>
               </div>
-              {/* Widget content */}
-              <div className="h-[calc(100%-32px)] overflow-auto p-2">
-                <WidgetRenderer widgetKey={item.i} />
-              </div>
-            </div>
-          ))}
-        </Responsive>
-      )}
+            ))}
+          </Responsive>
+        )}
+      </DashboardContent>
 
       {/* Widget Picker */}
       <WidgetPickerPanel

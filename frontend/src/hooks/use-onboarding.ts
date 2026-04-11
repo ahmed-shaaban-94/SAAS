@@ -13,18 +13,18 @@ interface OnboardingStatus {
 
 export function useOnboarding() {
   const { data, error, isLoading, mutate } = useSWR<OnboardingStatus>(
-    swrKey("/onboarding/status"),
-    () => fetchAPI<OnboardingStatus>("/onboarding/status"),
+    swrKey("/api/v1/onboarding/status"),
+    () => fetchAPI<OnboardingStatus>("/api/v1/onboarding/status"),
   );
 
   const completeStep = async (step: string) => {
-    const result = await postAPI<OnboardingStatus>("/onboarding/complete-step", { step });
+    const result = await postAPI<OnboardingStatus>("/api/v1/onboarding/complete-step", { step });
     mutate(result, false);
     return result;
   };
 
   const skip = async () => {
-    const result = await postAPI<OnboardingStatus>("/onboarding/skip");
+    const result = await postAPI<OnboardingStatus>("/api/v1/onboarding/skip");
     mutate(result, false);
     return result;
   };

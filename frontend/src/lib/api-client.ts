@@ -18,7 +18,9 @@ function parseDecimals(obj: unknown): unknown {
     // Check if string looks like a decimal number
     if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(obj)) {
       const n = Number(obj);
-      if (Number.isSafeInteger(Math.trunc(n))) return n;
+      if (Number.isFinite(n) && (obj.includes(".") || /[eE]/.test(obj) || Number.isSafeInteger(n))) {
+        return n;
+      }
       return obj;
     }
     return obj;

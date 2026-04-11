@@ -69,4 +69,33 @@ describe("fetchAPI decimal parsing", () => {
       large: 2500,
     });
   });
+
+  it("parses decimal strings while preserving unsafe integer strings", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        growth_pct: "15.25",
+        nested: {
+          pct_of_total: "35.2",
+          huge_id: "9007199254740993",
+        },
+        points: [{ value: "1234.56" }],
+      }),
+    } as Response);
+
+    const result = await fetchAPI<{
+      growth_pct: number;
+      nested: { pct_of_total: number; huge_id: string };
+      points: Array<{ value: number }>;
+    }>("/metrics");
+
+    expect(result).toEqual({
+      growth_pct: 15.25,
+      nested: {
+        pct_of_total: 35.2,
+        huge_id: "9007199254740993",
+      },
+      points: [{ value: 1234.56 }],
+    });
+  });
 });

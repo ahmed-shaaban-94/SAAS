@@ -592,7 +592,7 @@ class TestRun:
                 skip_db=False,
             )
             mock_migrate.assert_called_once_with(fake_engine)
-            mock_load.assert_called_once_with(df, fake_engine, 1000)
+            mock_load.assert_called_once_with(df, fake_engine, 1000, 1)
 
     def test_engine_disposed_after_successful_run(self, tmp_path):
         df = _sample_pipeline_df()
@@ -693,7 +693,7 @@ class TestRun:
         ):
             run(source_dir=tmp_path, skip_db=False)
             # batch_size must come from fake_settings.bronze_batch_size
-            mock_load.assert_called_once_with(df, fake_engine, 25_000)
+            mock_load.assert_called_once_with(df, fake_engine, 25_000, 1)
 
     def test_parquet_is_always_saved(self, tmp_path):
         df = _sample_pipeline_df()

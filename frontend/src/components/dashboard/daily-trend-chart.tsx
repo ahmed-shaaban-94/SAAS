@@ -393,7 +393,7 @@ export const DailyTrendChart = memo(function DailyTrendChart() {
     variant,
     compare,
     hasPrev: !!prevData,
-    height: 280,
+    height: 380,
     peakIdx,
     valleyIdx,
     chartTheme: CHART_THEME,

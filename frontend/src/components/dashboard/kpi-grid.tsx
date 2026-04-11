@@ -5,18 +5,14 @@ import { KPICard } from "./kpi-card";
 import { LoadingCard } from "@/components/loading-card";
 import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { useFilters } from "@/contexts/filter-context";
-import { useTargetSummary } from "@/hooks/use-targets";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
-import { format, parseISO, startOfMonth, endOfMonth, isSameDay } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   CalendarDays,
   TrendingUp,
-  Target,
   Zap,
   ShoppingCart,
   Receipt,
-  Package,
-  Divide,
 } from "lucide-react";
 
 const TOOLTIPS = {
@@ -42,20 +38,6 @@ function formatPeriodLabel(startDate?: string, endDate?: string): string | null 
   }
 }
 
-/** Check if the selected filter range matches the current month exactly */
-function isCurrentMonthSelected(startDate?: string, endDate?: string): boolean {
-  if (!startDate || !endDate) return false;
-  try {
-    const start = parseISO(startDate);
-    const end = parseISO(endDate);
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
-    return isSameDay(start, monthStart) && (isSameDay(end, monthEnd) || isSameDay(end, now));
-  } catch {
-    return false;
-  }
-}
 
 function getGrowthStatus(growthPct: number | null): string | undefined {
   if (growthPct === null || growthPct === undefined) return undefined;
@@ -67,53 +49,24 @@ function getGrowthStatus(growthPct: number | null): string | undefined {
 export const KPIGrid = memo(function KPIGrid() {
   const { data: dashboardData, isLoading } = useDashboardData();
   const { filters } = useFilters();
-  const { data: targetData } = useTargetSummary();
   const data = dashboardData?.kpi;
   const periodLabel = formatPeriodLabel(filters?.start_date, filters?.end_date);
-  const currentMonthSelected = isCurrentMonthSelected(filters?.start_date, filters?.end_date);
-
-  // Find current month target achievement
-  const currentMonthTarget = useMemo(() => {
-    if (!targetData?.monthly_targets?.length) return null;
-    const now = new Date();
-    const monthStr = format(now, "yyyy-MM");
-    return targetData.monthly_targets.find((t) => t.period?.startsWith(monthStr)) ?? null;
-  }, [targetData]);
-
-  // Units metrics — daily_quantity is already net (returns are negative in DB)
-  // daily_transactions is already net (total_transactions - total_returns) from backend
-  const totalUnits = data?.daily_quantity ?? 0;
-  const unitsPerTxn = data && data.daily_transactions > 0 ? totalUnits / data.daily_transactions : 0;
 
   const cards = useMemo(() => {
     if (!data) return [];
     return [
       {
-        label: "Selected Period Revenue",
+        label: "Period Revenue",
         value: formatCurrency(data.today_gross),
         numericValue: data.today_gross,
         isCurrency: true,
         icon: Zap,
         tooltip: TOOLTIPS.periodRevenue,
         sparkline: data.sparkline,
+        hero: true,
         comparisonLine: data.mom_growth_pct !== null
           ? `${formatPercent(data.mom_growth_pct)} vs previous period`
           : undefined,
-      },
-      {
-        label: "Total Units",
-        value: formatNumber(Math.round(totalUnits)),
-        numericValue: totalUnits,
-        icon: Package,
-        tooltip: TOOLTIPS.totalUnits,
-      },
-      {
-        label: "Units per Transaction",
-        value: unitsPerTxn.toFixed(2),
-        numericValue: unitsPerTxn,
-        isDecimal: true,
-        icon: Divide,
-        tooltip: TOOLTIPS.unitsPerTxn,
       },
       {
         label: "Growth",
@@ -124,12 +77,10 @@ export const KPIGrid = memo(function KPIGrid() {
         trendLabel: "vs previous period",
         icon: TrendingUp,
         tooltip: TOOLTIPS.momGrowth,
-        hero: true,
         comparisonLine: getGrowthStatus(data.mom_growth_pct),
-        className: "col-span-2 md:col-span-1 order-first md:order-none",
       },
       {
-        label: "Completed Transactions",
+        label: "Transactions",
         value: formatNumber(data.daily_transactions),
         numericValue: data.daily_transactions,
         subtitle: data.daily_returns > 0
@@ -139,7 +90,7 @@ export const KPIGrid = memo(function KPIGrid() {
         tooltip: TOOLTIPS.completedTxn,
       },
       {
-        label: "Average Order Value",
+        label: "Avg Order Value",
         value: formatCurrency(data.avg_basket_size),
         numericValue: data.avg_basket_size,
         isCurrency: true,
@@ -147,12 +98,12 @@ export const KPIGrid = memo(function KPIGrid() {
         tooltip: TOOLTIPS.avgOrderValue,
       },
     ];
-  }, [data, totalUnits, unitsPerTxn]);
+  }, [data]);
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <LoadingCard key={i} lines={3} className={`stagger-${i + 1}`} />
         ))}
       </div>
@@ -177,13 +128,13 @@ export const KPIGrid = memo(function KPIGrid() {
           Showing: {periodLabel}
         </p>
       )}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {cards.map((card, i) => (
           <KPICard
             key={card.label}
             {...card}
             aria-label={`${card.label}: ${card.value}`}
-            className={`${card.className ?? ""} stagger-${i + 1} animate-fade-in opacity-0`.trim()}
+            className={`stagger-${i + 1} animate-fade-in opacity-0`}
           />
         ))}
       </div>

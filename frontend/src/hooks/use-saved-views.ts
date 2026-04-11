@@ -1,9 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { fetchAPI, postAPI, swrKey } from "@/lib/api-client";
-import { API_BASE_URL } from "@/lib/constants";
-import { getSession } from "next-auth/react";
+import { fetchAPI, postAPI, deleteAPI, swrKey } from "@/lib/api-client";
 
 export interface SavedView {
   id: number;
@@ -16,8 +14,8 @@ export interface SavedView {
 
 export function useSavedViews() {
   const { data, error, isLoading, mutate } = useSWR<SavedView[]>(
-    swrKey("/views"),
-    () => fetchAPI<SavedView[]>("/views"),
+    swrKey("/api/v1/views"),
+    () => fetchAPI<SavedView[]>("/api/v1/views"),
   );
 
   const createView = async (
@@ -25,7 +23,7 @@ export function useSavedViews() {
     pagePath: string,
     filters: Record<string, string | number>,
   ) => {
-    const result = await postAPI<SavedView>("/views", {
+    const result = await postAPI<SavedView>("/api/v1/views", {
       name,
       page_path: pagePath,
       filters,
@@ -35,17 +33,7 @@ export function useSavedViews() {
   };
 
   const deleteView = async (id: number) => {
-    const session = await getSession();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (session?.accessToken) {
-      headers["Authorization"] = `Bearer ${session.accessToken}`;
-    }
-    await fetch(`${API_BASE_URL}/api/v1/views/${id}`, {
-      method: "DELETE",
-      headers,
-    });
+    await deleteAPI(`/api/v1/views/${id}`);
     mutate();
   };
 

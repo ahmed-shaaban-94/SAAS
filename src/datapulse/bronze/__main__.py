@@ -7,7 +7,7 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         pass
-    except (OSError, RuntimeError, ValueError) as e:
+    except Exception as e:
         import sys
 
         print(f"Pipeline failed: {e}", file=sys.stderr)

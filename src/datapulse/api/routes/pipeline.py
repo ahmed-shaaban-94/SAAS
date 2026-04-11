@@ -13,7 +13,6 @@ from functools import partial
 from typing import Annotated
 from uuid import UUID
 
-import sqlalchemy.exc
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
@@ -153,7 +152,7 @@ async def stream_run_progress(
 
                 try:
                     current = await loop.run_in_executor(None, service.get_run, run_id)
-                except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
+                except Exception as exc:
                     log.error("sse_poll_error", run_id=str(run_id), error=str(exc))
                     yield _sse_event("error", {"message": "Internal error polling run status"})
                     return
@@ -442,10 +441,12 @@ async def execute_dbt_marts(
 async def execute_forecasting(
     executor: ExecutorDep,
     body: ExecuteRequest,
+    user: Annotated[dict, Depends(get_current_user)],
 ) -> ExecutionResult:
     """Run the forecasting stage in a background thread."""
+    tenant_id = str(user.get("tenant_id", "1"))
     return await asyncio.to_thread(
-        partial(executor.run_forecasting, run_id=body.run_id, tenant_id=str(body.tenant_id)),
+        partial(executor.run_forecasting, run_id=body.run_id, tenant_id=tenant_id),
     )
 
 
@@ -475,6 +476,7 @@ def get_quality_checks(
 def execute_quality_check(
     quality_service: QualityServiceDep,
     body: QualityCheckRequest,
+    user: Annotated[dict, Depends(get_current_user)],
 ) -> QualityReport:
     """Run quality checks for a specific pipeline stage.
 
@@ -484,10 +486,11 @@ def execute_quality_check(
     Stage validation is handled by QualityCheckRequest's Pydantic field_validator;
     invalid values are rejected with 422 before this handler runs.
     """
+    tenant_id = int(user.get("tenant_id", "1"))
     return quality_service.run_checks_for_stage(
         run_id=body.run_id,
         stage=body.stage,
-        tenant_id=body.tenant_id,
+        tenant_id=tenant_id,
     )
 
 
