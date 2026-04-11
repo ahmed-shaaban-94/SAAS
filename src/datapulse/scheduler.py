@@ -30,7 +30,6 @@ from datapulse.metrics import (
     pipeline_duration_seconds,
     pipeline_runs_total,
     pipeline_stale_detected,
-    scheduler_is_leader,
     scheduler_jobs_executed,
 )
 
