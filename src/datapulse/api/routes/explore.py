@@ -128,7 +128,7 @@ def execute_explore_query(
             sql=sql if show_sql else "",
             truncated=truncated,
         )
-    except (sqlalchemy.exc.SQLAlchemyError, ValueError, OSError) as exc:
+    except Exception as exc:
         log.error("explore_query_failed", error=str(exc), model=body.model)
         raise HTTPException(
             status_code=500,
