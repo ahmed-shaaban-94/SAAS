@@ -204,4 +204,23 @@ location /api/ {
 - [ ] Integration `--cov-fail-under` < actual integration coverage (~48%)
 
 ---
+## 2026-04-11 DataPulse — Always Verify Before Push
+
+**المشكلة**: كل push للـ CI كان بيفشل بسبب مشاكل كان ممكن نكتشفها locally: mock assertions مش متحدثة، ruff format مش متنفذ، migration بتشاور على column مش موجود.
+
+**الحل**: قبل أي `git push`، شغل الـ 3 checks دول:
+```bash
+ruff format --check src/ tests/    # formatting
+ruff check src/ tests/              # lint
+pytest -m unit -x -q --timeout=30   # unit tests (fast, stops at first failure)
+```
+
+**Why**: كل CI failure = 5 دقايق انتظار + round-trip لـ fix + force-push. الـ 3 commands دول بياخدوا 30 ثانية locally وبيوفروا 80% من الـ CI round-trips.
+
+**Prevention**: 
+- بعد تغيير function signature → `grep -rn "assert_called.*function_name" tests/` عشان تلاقي كل الـ mock assertions
+- بعد إضافة migration → verify كل table references بـ `grep "column_name" migrations/CREATE_TABLE_file.sql`
+- بعد أي edit → `ruff format` مش بس `ruff check`
+
+---
 <!-- أضف دروس جديدة فوق هذا السطر -->
