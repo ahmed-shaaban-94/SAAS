@@ -3,6 +3,7 @@
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
+import { DataOpsCommandBar } from "@/components/data-ops/command-bar";
 import { QualityOverview } from "@/components/quality/quality-overview";
 
 export default function QualityPage() {
@@ -11,8 +12,9 @@ export default function QualityPage() {
       <Breadcrumbs />
       <Header
         title="Data Quality"
-        description="Monitor pipeline quality scores and check results"
+        description="Monitor pipeline quality scores and drill into check results"
       />
+      <DataOpsCommandBar />
       <QualityOverview />
     </PageTransition>
   );

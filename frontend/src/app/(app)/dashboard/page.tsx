@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Printer, TrendingUp, Trophy, PieChart, Zap, Target, Calendar, BarChart3 } from "lucide-react";
+import { Printer, TrendingUp, Zap, Target, Calendar, BarChart3 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
@@ -14,26 +14,11 @@ import dynamic from "next/dynamic";
 import { DayHeroConnected } from "@/components/dashboard/day-hero-connected";
 import { KPIGrid } from "@/components/dashboard/kpi-grid";
 import { NarrativeSummaryCard } from "@/components/dashboard/narrative-summary-card";
-import { InsightChips } from "@/components/dashboard/insight-chips";
 import { DailyTrendChart } from "@/components/dashboard/daily-trend-chart";
-import { MonthlyTrendChart } from "@/components/dashboard/monthly-trend-chart";
-import { TrendKPICards } from "@/components/dashboard/trend-kpi-cards";
 import { LastUpdated } from "@/components/dashboard/last-updated";
 import { LazySection } from "@/components/dashboard/lazy-section";
 
 // Below-fold: lazy load with loading skeleton
-const BillingBreakdownChart = dynamic(
-  () => import("@/components/dashboard/billing-breakdown-chart").then(m => ({ default: m.BillingBreakdownChart })),
-  { loading: () => <LoadingCard lines={3} />, ssr: false },
-);
-const CustomerTypeChart = dynamic(
-  () => import("@/components/dashboard/customer-type-chart").then(m => ({ default: m.CustomerTypeChart })),
-  { loading: () => <LoadingCard lines={3} />, ssr: false },
-);
-const QuickRankings = dynamic(
-  () => import("@/components/dashboard/quick-rankings").then(m => ({ default: m.QuickRankings })),
-  { loading: () => <LoadingCard lines={3} /> },
-);
 const TopMoversCard = dynamic(
   () => import("@/components/dashboard/top-movers-card").then(m => ({ default: m.TopMoversCard })),
   { loading: () => <LoadingCard lines={3} /> },
@@ -104,90 +89,54 @@ export default function DashboardPage() {
 
         {/* Client boundary: single API call provides data to KPI + trends + rankings */}
         <DashboardContent>
-          {/* Day Hero — today's snapshot sentence */}
-          <DayHeroConnected />
+          {/* ── Row 1: Hero Snapshot + AI Summary ── */}
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <DayHeroConnected />
+            </div>
+            <NarrativeSummaryCard />
+          </div>
 
-          {/* KPI Section */}
+          {/* ── Row 2: Primary KPIs (4 cards) ── */}
           <KPIGrid />
 
-          {/* Business Narrative & Insight Chips */}
-          <div className="mt-6 space-y-3">
-            <NarrativeSummaryCard />
-            <InsightChips />
-          </div>
-
-          {/* Trends Section */}
-          <div className="mt-10">
-            <SectionHeader icon={TrendingUp} title="Trends" />
-            <div className="mt-4 space-y-4">
-              <TrendKPICards />
-              <div className="grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-2">
+          {/* ── Row 3: Trends + Intelligence Rail ── */}
+          <div className="mt-8">
+            <SectionHeader icon={TrendingUp} title="Trends & Intelligence" />
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-2">
                 <DailyTrendChart />
-                <MonthlyTrendChart />
               </div>
-            </div>
-          </div>
-
-          {/* Sales Distribution Section */}
-          <LazySection minHeight="340px">
-            <div className="mt-10">
-              <SectionHeader icon={PieChart} title="Sales Distribution" />
-              <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-2">
-                <BillingBreakdownChart />
-                <CustomerTypeChart />
-              </div>
-            </div>
-          </LazySection>
-
-          {/* Rankings Section */}
-          <LazySection minHeight="320px">
-            <div className="mt-10">
-              <SectionHeader icon={Trophy} title="Top Performers" />
-              <div className="mt-4">
-                <QuickRankings />
-              </div>
-            </div>
-          </LazySection>
-
-          {/* Top Movers Section */}
-          <LazySection minHeight="400px">
-            <div className="mt-10">
-              <SectionHeader icon={Zap} title="Top Movers" />
-              <div className="mt-4">
+              <div className="space-y-4">
                 <TopMoversCard />
-              </div>
-            </div>
-          </LazySection>
-
-          {/* Revenue Drivers Section */}
-          <LazySection minHeight="300px">
-            <div className="mt-10" id="why-changed">
-              <SectionHeader icon={BarChart3} title="Revenue Drivers" />
-              <div className="mt-4">
                 <WhyChangedPanel />
               </div>
             </div>
+          </div>
+
+          {/* ── Row 4: Goals & Forecast ── */}
+          <LazySection minHeight="280px">
+            <div className="mt-8">
+              <SectionHeader icon={Target} title="Goals & Forecast" />
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <TargetProgress />
+                <ForecastCard />
+              </div>
+            </div>
           </LazySection>
 
-          {/* Strategic Insights Section — always visible (no lazy) */}
-          <div className="mt-10">
-            <SectionHeader icon={Target} title="Goals & Forecast" />
-            <div className="mt-4 grid gap-3 md:gap-4 lg:gap-6 lg:grid-cols-2">
-              <TargetProgress />
-              <ForecastCard />
-            </div>
-          </div>
-
-          {/* Geographic & Temporal Section — always visible (no lazy) */}
-          <div className="mt-10">
-            <SectionHeader icon={Calendar} title="Revenue Patterns" />
-            <div className="mt-4 grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-6">
-              <div className="md:col-span-2">
-                <CalendarHeatmap />
+          {/* ── Row 5: Revenue Patterns ── */}
+          <LazySection minHeight="300px">
+            <div className="mt-8">
+              <SectionHeader icon={Calendar} title="Revenue Patterns" />
+              <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="md:col-span-2">
+                  <CalendarHeatmap />
+                </div>
+                <EgyptMap />
               </div>
-              <EgyptMap />
             </div>
-          </div>
+          </LazySection>
         </DashboardContent>
       </div>
       </CompareProvider>

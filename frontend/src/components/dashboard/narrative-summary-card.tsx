@@ -78,10 +78,10 @@ export const NarrativeSummaryCard = memo(function NarrativeSummaryCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border-l-4 border-l-accent p-4 sm:p-5",
+        "relative overflow-hidden rounded-xl border-l-4 border-l-accent p-4 sm:p-6",
         isPrint
           ? "border border-border bg-white print:bg-white"
-          : "border border-border bg-card/80 backdrop-blur-sm",
+          : "border border-amber-500/30 bg-card/80 backdrop-blur-sm shadow-amber-500/5 dark:border-amber-400/25",
         className,
       )}
     >

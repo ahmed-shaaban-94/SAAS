@@ -58,7 +58,7 @@ export const TopMoversCard = memo(function TopMoversCard() {
   if (error) return <ErrorRetry description="Failed to load top movers" />;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-xl border border-blue-500/30 bg-card p-5 dark:border-blue-400/25">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
           Top Movers

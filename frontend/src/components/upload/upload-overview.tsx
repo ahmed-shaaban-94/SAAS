@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Upload, File, Check, X, Eye, Loader2 } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Upload, File, Check, X, Eye, Loader2, Play } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constants";
 import { getSession } from "next-auth/react";
 import { LoadingCard } from "@/components/loading-card";
+import { PipelineProgress } from "./pipeline-progress";
+import { RecentImports } from "./recent-imports";
+import { usePipelineRun } from "@/hooks/use-pipeline-run";
 
 interface UploadedFile {
   file_id: string;
@@ -37,6 +40,10 @@ export function UploadOverview() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { progress, isRunning, error: pipelineError, trigger, cleanup } = usePipelineRun();
+
+  // Clean up SSE on unmount
+  useEffect(() => cleanup, [cleanup]);
 
   const getAuthHeaders = async () => {
     const session = await getSession();
@@ -111,6 +118,10 @@ export function UploadOverview() {
     [handleUpload],
   );
 
+  const handleRunPipeline = async () => {
+    await trigger();
+  };
+
   return (
     <div className="space-y-6 mt-6">
       {/* Dropzone */}
@@ -137,7 +148,7 @@ export function UploadOverview() {
 
       {/* File list */}
       {files.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <h3 className="text-sm font-semibold text-text-primary">Uploaded Files</h3>
           {files.map((f) => (
             <div key={f.file_id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
@@ -155,27 +166,49 @@ export function UploadOverview() {
             </div>
           ))}
 
-          {!confirmed && (
-            <button
-              onClick={handleConfirm}
-              disabled={confirming}
-              className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
-            >
-              {confirming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4" />
-              )}
-              {confirming ? "Importing..." : "Confirm Import"}
-            </button>
-          )}
+          {/* Action buttons */}
+          <div className="flex gap-3">
+            {!confirmed && (
+              <button
+                onClick={handleConfirm}
+                disabled={confirming}
+                className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
+              >
+                {confirming ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                {confirming ? "Importing..." : "Confirm Import"}
+              </button>
+            )}
 
-          {confirmed && (
+            {confirmed && !isRunning && !progress?.status?.includes("success") && (
+              <button
+                onClick={handleRunPipeline}
+                className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90"
+              >
+                <Play className="h-4 w-4" />
+                Run Pipeline
+              </button>
+            )}
+          </div>
+
+          {confirmed && !progress && (
             <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3 text-sm text-green-500">
-              Files confirmed and moved to import directory. Run the pipeline to process them.
+              Files confirmed and ready for processing. Click &ldquo;Run Pipeline&rdquo; to start.
             </div>
           )}
         </div>
+      )}
+
+      {/* Pipeline progress */}
+      {progress && (
+        <PipelineProgress
+          progress={progress}
+          isRunning={isRunning}
+          error={pipelineError}
+        />
       )}
 
       {/* Preview table */}
@@ -225,6 +258,9 @@ export function UploadOverview() {
           </div>
         </div>
       )}
+
+      {/* Recent pipeline runs */}
+      <RecentImports />
     </div>
   );
 }
