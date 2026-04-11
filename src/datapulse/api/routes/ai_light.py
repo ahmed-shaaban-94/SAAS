@@ -12,7 +12,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative

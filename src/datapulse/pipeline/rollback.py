@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-import sqlalchemy.exc
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -33,7 +32,7 @@ def rollback_bronze(session: Session, run_id: UUID) -> int:
         session.commit()
         log.info("rollback_bronze_done", run_id=str(run_id), rows_deleted=deleted)
         return deleted
-    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
+    except Exception as exc:
         session.rollback()
         log.error("rollback_bronze_failed", run_id=str(run_id), error=str(exc))
         return 0
@@ -54,7 +53,7 @@ def rollback_forecasting(session: Session, run_id: UUID) -> int:
         session.commit()
         log.info("rollback_forecasting_done", run_id=str(run_id), rows_deleted=deleted)
         return deleted
-    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
+    except Exception as exc:
         session.rollback()
         log.error("rollback_forecasting_failed", run_id=str(run_id), error=str(exc))
         return 0
