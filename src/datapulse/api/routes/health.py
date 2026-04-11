@@ -233,6 +233,9 @@ def health_check(
     # Only expose component details to callers with a verified identity
     content: dict = {"status": overall}
     if user is not None:
+        from datapulse.scheduler import get_scheduler_status
+
+        checks["scheduler"] = get_scheduler_status()
         content["checks"] = checks
 
     return JSONResponse(status_code=status_code, content=content)

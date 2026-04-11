@@ -21,14 +21,30 @@ from uuid import UUID
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+from sqlalchemy import text as sa_text
+from sqlalchemy.orm import Session
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from datapulse.config import get_settings
 from datapulse.logging import get_logger
+from datapulse.metrics import (
+    pipeline_duration_seconds,
+    pipeline_runs_total,
+    pipeline_stale_detected,
+    scheduler_is_leader,
+    scheduler_jobs_executed,
+)
 
 log = get_logger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="UTC")
+
+# Advisory lock ID for scheduler leader election (distinct from pipeline lock 42)
+_SCHEDULER_LOCK_ID = 4200
+
+# Held open for process lifetime so PG advisory lock persists.
+# Auto-released by PostgreSQL if the worker process crashes.
+_lock_session: Session | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -65,8 +81,6 @@ async def run_pipeline(
         resume_from: Stage name to resume from (skips all prior stages).
             Valid values: "bronze", "dbt-staging", "dbt-marts", "forecasting".
     """
-    from sqlalchemy import text as sa_text
-
     from datapulse.cache import cache_invalidate_pattern
     from datapulse.core.db import get_session_factory
     from datapulse.notifications import notify_pipeline_failure, notify_pipeline_success
@@ -116,6 +130,17 @@ async def run_pipeline(
             report = q_svc.run_checks_for_stage(run_id=run_id, stage=stage, tenant_id=tenant_id)
             session.commit()
             return report.gate_passed
+        finally:
+            session.close()
+
+    def _heartbeat() -> None:
+        """Update heartbeat_at to signal the pipeline is still alive."""
+        session = _get_session()
+        try:
+            repo = PipelineRepository(session)
+            repo.update_heartbeat(run_id)
+        except Exception:
+            log.warning("pipeline_heartbeat_failed", run_id=run_id_str, exc_info=True)
         finally:
             session.close()
 
@@ -230,6 +255,7 @@ async def run_pipeline(
         return
 
     _update_status("running")
+    await asyncio.to_thread(_heartbeat)  # initial heartbeat
     total_rows = 0
     resume_idx = _stage_index(resume_from) if resume_from else -1
 
@@ -244,6 +270,9 @@ async def run_pipeline(
                     reason=f"resume_from={resume_from}",
                 )
                 continue
+
+            # Heartbeat between stages so stale-detection knows we're alive
+            await asyncio.to_thread(_heartbeat)
 
             if execute_fn:
                 # Execute stage in thread
@@ -285,6 +314,8 @@ async def run_pipeline(
         await asyncio.to_thread(_update_usage, tenant_id, total_rows)
 
         notify_pipeline_success(run_id_str, elapsed, total_rows)
+        pipeline_runs_total.labels(status="success").inc()
+        pipeline_duration_seconds.observe(elapsed)
         log.info("pipeline_complete", run_id=run_id_str, duration=elapsed, rows=total_rows)
 
     except Exception as exc:
@@ -292,6 +323,8 @@ async def run_pipeline(
         error_msg = str(exc)[:200]
         _update_status("failed", error_message=error_msg)
         notify_pipeline_failure(run_id_str, "unknown", error_msg)
+        pipeline_runs_total.labels(status="failed").inc()
+        pipeline_duration_seconds.observe(elapsed)
         log.error("pipeline_crashed", run_id=run_id_str, error=error_msg, duration=elapsed)
     finally:
         # Release advisory lock
@@ -312,6 +345,7 @@ async def run_pipeline(
 
 async def _health_check() -> None:
     """Check API health every 5 minutes (replaces n8n 2.1.1)."""
+    scheduler_jobs_executed.labels(job="health_check").inc()
     from datapulse.api.routes.health import _check_db, _check_redis
 
     db = _check_db()
@@ -330,11 +364,31 @@ async def _health_check() -> None:
     else:
         log.debug("health_check_ok", db_latency=db.get("latency_ms"))
 
+    # Detect and clean up stale pipeline runs (heartbeat > 10 min old)
+    try:
+        from datapulse.core.db import get_session_factory
+        from datapulse.notifications import notify_pipeline_failure
+        from datapulse.pipeline.repository import PipelineRepository
+
+        session = get_session_factory()()
+        try:
+            session.execute(sa_text("SET LOCAL app.tenant_id = '1'"))
+            repo = PipelineRepository(session)
+            stale_ids = repo.mark_stale_runs_failed(stale_minutes=10)
+            if stale_ids:
+                for sid in stale_ids:
+                    notify_pipeline_failure(sid, "stale", "Stale: heartbeat timeout")
+                    pipeline_stale_detected.inc()
+                log.warning("pipeline_stale_detected", stale_run_ids=stale_ids)
+        finally:
+            session.close()
+    except Exception:
+        log.warning("stale_run_detection_failed", exc_info=True)
+
 
 async def _quality_digest() -> None:
     """Send daily quality digest at 18:00 UTC (replaces n8n 2.6.3)."""
-    from sqlalchemy import text as sa_text
-
+    scheduler_jobs_executed.labels(job="quality_digest").inc()
     from datapulse.core.db import get_session_factory
     from datapulse.notifications import notify_quality_digest
     from datapulse.pipeline.quality_repository import QualityRepository
@@ -370,6 +424,7 @@ async def _quality_digest() -> None:
 
 async def _ai_digest() -> None:
     """Send daily AI insights digest at 09:00 UTC (replaces n8n 2.8.1)."""
+    scheduler_jobs_executed.labels(job="ai_digest").inc()
     import httpx
 
     from datapulse.notifications import notify_ai_digest
@@ -412,9 +467,46 @@ async def _ai_digest() -> None:
 
 
 def start_scheduler() -> None:
-    """Start the background scheduler with all jobs."""
+    """Start the background scheduler with all jobs.
+
+    Uses a PostgreSQL advisory lock (ID 4200) for leader election so that
+    only one uvicorn worker starts the scheduler when running with
+    ``--workers N``.  The lock is session-scoped: if this process dies,
+    PostgreSQL releases it automatically, and another worker can become
+    leader on the next restart cycle.
+    """
+    global _lock_session
+
     if scheduler.running:
         return
+
+    # --- Leader election via PG advisory lock ---
+    import os
+
+    from datapulse.core.db import get_session_factory
+
+    pid = os.getpid()
+
+    try:
+        session = get_session_factory()()
+        is_leader = session.execute(
+            sa_text("SELECT pg_try_advisory_lock(:lock_id)"),
+            {"lock_id": _SCHEDULER_LOCK_ID},
+        ).scalar()
+    except Exception:
+        log.error("scheduler_lock_failed", worker_pid=pid, exc_info=True)
+        return
+
+    if not is_leader:
+        session.close()
+        scheduler_is_leader.set(0)
+        log.info("scheduler_skipped_not_leader", worker_pid=pid)
+        return
+
+    # Keep session alive — advisory lock persists for session lifetime
+    _lock_session = session
+    scheduler_is_leader.set(1)
+    log.info("scheduler_lock_acquired", worker_pid=pid)
 
     scheduler.add_job(
         _health_check, IntervalTrigger(minutes=5), id="health_check", replace_existing=True
@@ -428,12 +520,44 @@ def start_scheduler() -> None:
 
     scheduler.start()
     log.info(
-        "scheduler_started", jobs=["health_check(5m)", "quality_digest(18:00)", "ai_digest(09:00)"]
+        "scheduler_started",
+        worker_pid=pid,
+        jobs=["health_check(5m)", "quality_digest(18:00)", "ai_digest(09:00)"],
     )
 
 
+def get_scheduler_status() -> dict:
+    """Return scheduler status for the health endpoint."""
+    return {
+        "is_leader": _lock_session is not None,
+        "running": scheduler.running,
+        "jobs": [{"id": job.id, "next_run": str(job.next_run_time)} for job in scheduler.get_jobs()]
+        if scheduler.running
+        else [],
+    }
+
+
 def stop_scheduler() -> None:
-    """Shut down the scheduler gracefully."""
+    """Shut down the scheduler and release the advisory lock."""
+    global _lock_session
+
     if scheduler.running:
         scheduler.shutdown(wait=False)
         log.info("scheduler_stopped")
+
+    if _lock_session is not None:
+        try:
+            _lock_session.execute(
+                sa_text("SELECT pg_advisory_unlock(:lock_id)"),
+                {"lock_id": _SCHEDULER_LOCK_ID},
+            )
+            _lock_session.commit()
+        except Exception:
+            log.warning("scheduler_lock_release_failed", exc_info=True)
+        finally:
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                _lock_session.close()
+            _lock_session = None
+        log.info("scheduler_lock_released")

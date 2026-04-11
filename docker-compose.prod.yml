@@ -55,7 +55,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 3G
     networks:
       - backend
       - frontend-net

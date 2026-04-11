@@ -105,7 +105,14 @@ async def test_health_check_all_ok():
             return_value={"status": "ok", "latency_ms": 2},
         ),
         patch("datapulse.notifications.notify_health_failure") as mock_notify,
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
     ):
+        # Stale run detection — no stale runs
+        mock_session = MagicMock()
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        mock_repo_cls.return_value.mark_stale_runs_failed.return_value = []
+
         from datapulse.scheduler import _health_check
 
         await _health_check()
@@ -122,11 +129,44 @@ async def test_health_check_db_failure_notifies():
         ),
         patch("datapulse.api.routes.health._check_redis", return_value={"status": "ok"}),
         patch("datapulse.notifications.notify_health_failure") as mock_notify,
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
     ):
+        mock_session = MagicMock()
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        mock_repo_cls.return_value.mark_stale_runs_failed.return_value = []
+
         from datapulse.scheduler import _health_check
 
         await _health_check()
         mock_notify.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_health_check_detects_stale_pipeline():
+    """Stale pipeline runs are marked failed and notified."""
+    with (
+        patch(
+            "datapulse.api.routes.health._check_db", return_value={"status": "ok", "latency_ms": 5}
+        ),
+        patch(
+            "datapulse.api.routes.health._check_redis",
+            return_value={"status": "ok", "latency_ms": 2},
+        ),
+        patch("datapulse.notifications.notify_health_failure"),
+        patch("datapulse.notifications.notify_pipeline_failure") as mock_pipe_fail,
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
+    ):
+        mock_session = MagicMock()
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        stale_id = str(uuid4())
+        mock_repo_cls.return_value.mark_stale_runs_failed.return_value = [stale_id]
+
+        from datapulse.scheduler import _health_check
+
+        await _health_check()
+        mock_pipe_fail.assert_called_once_with(stale_id, "stale", "Stale: heartbeat timeout")
 
 
 # ---------------------------------------------------------------------------
@@ -153,21 +193,52 @@ async def test_quality_digest_no_runs():
 
 
 # ---------------------------------------------------------------------------
-# start_scheduler / stop_scheduler
+# start_scheduler / stop_scheduler — leader election
 # ---------------------------------------------------------------------------
 
 
-def test_start_scheduler_registers_jobs():
-    """start_scheduler adds 3 jobs to the APScheduler instance."""
-    with patch("datapulse.scheduler.scheduler") as mock_sched:
+def test_start_scheduler_acquires_lock_and_starts():
+    """start_scheduler starts APScheduler when advisory lock is acquired."""
+    with (
+        patch("datapulse.scheduler.scheduler") as mock_sched,
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+    ):
         mock_sched.running = False
+        mock_session = MagicMock()
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        # Advisory lock succeeds
+        mock_session.execute.return_value.scalar.return_value = True
 
-        from datapulse.scheduler import start_scheduler
+        import datapulse.scheduler as sched_mod
 
-        start_scheduler()
+        sched_mod._lock_session = None
+        sched_mod.start_scheduler()
 
         assert mock_sched.add_job.call_count == 3
         mock_sched.start.assert_called_once()
+        assert sched_mod._lock_session is mock_session
+
+
+def test_start_scheduler_skips_when_lock_held():
+    """start_scheduler skips silently when another worker holds the lock."""
+    with (
+        patch("datapulse.scheduler.scheduler") as mock_sched,
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+    ):
+        mock_sched.running = False
+        mock_session = MagicMock()
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        # Advisory lock denied — another worker has it
+        mock_session.execute.return_value.scalar.return_value = False
+
+        import datapulse.scheduler as sched_mod
+
+        sched_mod._lock_session = None
+        sched_mod.start_scheduler()
+
+        mock_sched.start.assert_not_called()
+        mock_session.close.assert_called_once()
+        assert sched_mod._lock_session is None
 
 
 def test_start_scheduler_noop_when_running():
@@ -183,13 +254,77 @@ def test_start_scheduler_noop_when_running():
         mock_sched.start.assert_not_called()
 
 
-def test_stop_scheduler():
-    """stop_scheduler shuts down a running scheduler."""
+def test_stop_scheduler_releases_lock():
+    """stop_scheduler shuts down and releases the advisory lock."""
+    mock_lock_session = MagicMock()
+
     with patch("datapulse.scheduler.scheduler") as mock_sched:
         mock_sched.running = True
 
-        from datapulse.scheduler import stop_scheduler
+        import datapulse.scheduler as sched_mod
 
-        stop_scheduler()
+        sched_mod._lock_session = mock_lock_session
+        sched_mod.stop_scheduler()
 
         mock_sched.shutdown.assert_called_once_with(wait=False)
+        # Lock should be released and session closed
+        assert mock_lock_session.execute.called
+        assert mock_lock_session.commit.called
+        assert mock_lock_session.close.called
+        assert sched_mod._lock_session is None
+
+
+def test_stop_scheduler_no_lock():
+    """stop_scheduler works without a lock session (non-leader worker)."""
+    with patch("datapulse.scheduler.scheduler") as mock_sched:
+        mock_sched.running = True
+
+        import datapulse.scheduler as sched_mod
+
+        sched_mod._lock_session = None
+        sched_mod.stop_scheduler()
+
+        mock_sched.shutdown.assert_called_once_with(wait=False)
+        # No lock to release — should not raise
+        assert sched_mod._lock_session is None
+
+
+# ---------------------------------------------------------------------------
+# get_scheduler_status
+# ---------------------------------------------------------------------------
+
+
+def test_get_scheduler_status_leader():
+    """Returns leader=True with job list when scheduler is running."""
+    mock_job = MagicMock()
+    mock_job.id = "health_check"
+    mock_job.next_run_time = "2026-04-11T12:00:00"
+
+    with patch("datapulse.scheduler.scheduler") as mock_sched:
+        mock_sched.running = True
+        mock_sched.get_jobs.return_value = [mock_job]
+
+        import datapulse.scheduler as sched_mod
+
+        sched_mod._lock_session = MagicMock()  # has lock = is leader
+        status = sched_mod.get_scheduler_status()
+
+        assert status["is_leader"] is True
+        assert status["running"] is True
+        assert len(status["jobs"]) == 1
+        assert status["jobs"][0]["id"] == "health_check"
+
+
+def test_get_scheduler_status_not_leader():
+    """Returns leader=False and no jobs when not the leader."""
+    with patch("datapulse.scheduler.scheduler") as mock_sched:
+        mock_sched.running = False
+
+        import datapulse.scheduler as sched_mod
+
+        sched_mod._lock_session = None
+        status = sched_mod.get_scheduler_status()
+
+        assert status["is_leader"] is False
+        assert status["running"] is False
+        assert status["jobs"] == []

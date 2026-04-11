@@ -159,3 +159,30 @@ class TestGetLatestRun:
         result = pipeline_repo.get_latest_run(run_type="bronze")
         assert result is not None
         assert result.run_type == "bronze"
+
+
+class TestUpdateHeartbeat:
+    def test_updates_heartbeat(self, pipeline_repo, mock_session):
+        run_id = uuid4()
+        pipeline_repo.update_heartbeat(run_id)
+        mock_session.execute.assert_called_once()
+        mock_session.commit.assert_called_once()
+        # Verify the SQL targets the right run
+        call_args = mock_session.execute.call_args
+        assert str(run_id) in str(call_args)
+
+
+class TestMarkStaleRunsFailed:
+    def test_no_stale_runs(self, pipeline_repo, mock_session):
+        mock_session.execute.return_value.fetchall.return_value = []
+        result = pipeline_repo.mark_stale_runs_failed(stale_minutes=10)
+        assert result == []
+        # Should not commit when no rows affected
+        mock_session.commit.assert_not_called()
+
+    def test_marks_stale_runs(self, pipeline_repo, mock_session):
+        stale_id = str(uuid4())
+        mock_session.execute.return_value.fetchall.return_value = [(stale_id,)]
+        result = pipeline_repo.mark_stale_runs_failed(stale_minutes=10)
+        assert result == [stale_id]
+        mock_session.commit.assert_called_once()
