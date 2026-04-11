@@ -38,6 +38,21 @@ def _disable_rate_limiting():
 
 
 @pytest.fixture(autouse=True, scope="session")
+def _disable_scheduler():
+    """Prevent APScheduler from starting during tests.
+
+    The AsyncIOScheduler can deadlock with TestClient's event loop,
+    causing tests to hang indefinitely in CI.
+    """
+    with patch("datapulse.scheduler.scheduler") as mock_sched:
+        mock_sched.running = False
+        mock_sched.start = MagicMock()
+        mock_sched.shutdown = MagicMock()
+        mock_sched.add_job = MagicMock()
+        yield
+
+
+@pytest.fixture(autouse=True, scope="session")
 def _disable_redis_cache():
     """Disable Redis caching so service tests hit the real (mocked) functions.
 
