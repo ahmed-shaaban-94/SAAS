@@ -22,7 +22,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import text as sa_text
-from sqlalchemy.orm import Session
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from datapulse.config import get_settings
@@ -38,13 +37,6 @@ from datapulse.metrics import (
 log = get_logger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="UTC")
-
-# Advisory lock ID for scheduler leader election (distinct from pipeline lock 42)
-_SCHEDULER_LOCK_ID = 4200
-
-# Held open for process lifetime so PG advisory lock persists.
-# Auto-released by PostgreSQL if the worker process crashes.
-_lock_session: Session | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -469,44 +461,16 @@ async def _ai_digest() -> None:
 def start_scheduler() -> None:
     """Start the background scheduler with all jobs.
 
-    Uses a PostgreSQL advisory lock (ID 4200) for leader election so that
-    only one uvicorn worker starts the scheduler when running with
-    ``--workers N``.  The lock is session-scoped: if this process dies,
-    PostgreSQL releases it automatically, and another worker can become
-    leader on the next restart cycle.
+    Called once per uvicorn worker.  With ``--workers N`` every worker runs
+    its own scheduler instance — jobs are idempotent so duplication is
+    harmless.  Leader election (advisory-lock based) was removed because
+    the DB session it opened during lifespan startup deadlocked the
+    forked workers in production (all stuck at "Waiting for application
+    startup").  Re-add leader election as a post-startup background task
+    if single-execution is needed.
     """
-    global _lock_session
-
     if scheduler.running:
         return
-
-    # --- Leader election via PG advisory lock ---
-    import os
-
-    from datapulse.core.db import get_session_factory
-
-    pid = os.getpid()
-
-    try:
-        session = get_session_factory()()
-        is_leader = session.execute(
-            sa_text("SELECT pg_try_advisory_lock(:lock_id)"),
-            {"lock_id": _SCHEDULER_LOCK_ID},
-        ).scalar()
-    except Exception:
-        log.error("scheduler_lock_failed", worker_pid=pid, exc_info=True)
-        return
-
-    if not is_leader:
-        session.close()
-        scheduler_is_leader.set(0)
-        log.info("scheduler_skipped_not_leader", worker_pid=pid)
-        return
-
-    # Keep session alive — advisory lock persists for session lifetime
-    _lock_session = session
-    scheduler_is_leader.set(1)
-    log.info("scheduler_lock_acquired", worker_pid=pid)
 
     scheduler.add_job(
         _health_check, IntervalTrigger(minutes=5), id="health_check", replace_existing=True
@@ -521,7 +485,6 @@ def start_scheduler() -> None:
     scheduler.start()
     log.info(
         "scheduler_started",
-        worker_pid=pid,
         jobs=["health_check(5m)", "quality_digest(18:00)", "ai_digest(09:00)"],
     )
 
@@ -529,7 +492,6 @@ def start_scheduler() -> None:
 def get_scheduler_status() -> dict:
     """Return scheduler status for the health endpoint."""
     return {
-        "is_leader": _lock_session is not None,
         "running": scheduler.running,
         "jobs": [{"id": job.id, "next_run": str(job.next_run_time)} for job in scheduler.get_jobs()]
         if scheduler.running
@@ -538,26 +500,7 @@ def get_scheduler_status() -> dict:
 
 
 def stop_scheduler() -> None:
-    """Shut down the scheduler and release the advisory lock."""
-    global _lock_session
-
+    """Shut down the scheduler gracefully."""
     if scheduler.running:
         scheduler.shutdown(wait=False)
         log.info("scheduler_stopped")
-
-    if _lock_session is not None:
-        try:
-            _lock_session.execute(
-                sa_text("SELECT pg_advisory_unlock(:lock_id)"),
-                {"lock_id": _SCHEDULER_LOCK_ID},
-            )
-            _lock_session.commit()
-        except Exception:
-            log.warning("scheduler_lock_release_failed", exc_info=True)
-        finally:
-            import contextlib
-
-            with contextlib.suppress(Exception):
-                _lock_session.close()
-            _lock_session = None
-        log.info("scheduler_lock_released")
