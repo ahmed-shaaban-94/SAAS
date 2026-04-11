@@ -252,9 +252,7 @@ ${SESSION_ENTRIES}
 ENDINDEX
 fi
 
-# ── Auto-stage brain files ────────────────────────────────────────────
-# Stage session notes and index so they commit with the next regular
-# git commit — no extra commits, no noise, no forgetting.
-git add "$BRAIN_DIR/sessions/"*.md "$BRAIN_DIR/_INDEX.md" 2>/dev/null || true
-
+# ── Done ──────────────────────────────────────────────────────────────
+# Sessions and _INDEX.md are gitignored (local-only context).
+# decisions/ and incidents/ are tracked and committed manually.
 exit 0
