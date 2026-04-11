@@ -76,3 +76,9 @@ coverage.xml
 
 # Local MCP server config (machine-specific paths)
 .mcp.json
+
+# Second Brain — sessions and index are auto-generated per-machine
+# Only decisions/ and incidents/ (human-written) should be tracked
+docs/brain/sessions/*
+!docs/brain/sessions/.gitkeep
+docs/brain/_INDEX.md

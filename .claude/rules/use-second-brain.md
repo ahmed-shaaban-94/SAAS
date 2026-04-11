@@ -53,7 +53,11 @@ They are complementary: **Graph MCP = WHAT the code is. Brain = WHY decisions we
 The Stop hook `.claude/hooks/brain-session-end.sh` fires automatically:
 - Writes `docs/brain/sessions/YYYY-MM-DD-HH-MM.md`
 - Regenerates `docs/brain/_INDEX.md`
-- Auto-stages both files for the next `git commit`
+
+These files are **gitignored** (local-only context, never committed).
+This prevents merge conflicts when multiple branches generate session notes.
+
+Only `decisions/` and `incidents/` are tracked in git — commit those manually.
 
 You do NOT need to manually write session notes. The hook handles it.
 
