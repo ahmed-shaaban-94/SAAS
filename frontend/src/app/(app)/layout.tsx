@@ -16,15 +16,24 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useAIAnomalies } from "@/hooks/use-ai-anomalies";
 import { useAlertLog } from "@/hooks/use-alerts";
 
-/** Redirect to sign-in when the access token can no longer be refreshed. */
+/** Block children until the session is resolved; redirect on refresh failure. */
 function SessionGuard({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
       signIn("auth0");
     }
   }, [session]);
+
+  // Prevent hooks from firing before auth is ready (avoids 401 race)
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-page">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }
