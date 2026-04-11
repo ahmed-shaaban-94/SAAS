@@ -48,7 +48,7 @@ class DataFileHandler(FileSystemEventHandler):
         try:
             resolved = Path(path).resolve()
             return resolved.is_relative_to(self._watch_root)
-        except (OSError, ValueError):
+        except Exception:
             return False
 
     def on_created(self, event: FileSystemEvent) -> None:
@@ -89,7 +89,7 @@ class DataFileHandler(FileSystemEventHandler):
         log.info("trigger_firing", file_count=len(files), files=files)
         try:
             self._trigger_callback(files)
-        except (OSError, RuntimeError) as exc:
+        except Exception as exc:
             log.error("trigger_failed", error=str(exc))
 
     def stop(self) -> None:

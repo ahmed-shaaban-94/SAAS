@@ -12,8 +12,6 @@ import time
 from pathlib import Path
 from uuid import UUID
 
-import sqlalchemy.exc
-
 from datapulse.bronze import loader as bronze_loader
 from datapulse.config import Settings
 from datapulse.core.db import get_session_factory
@@ -83,7 +81,7 @@ class PipelineExecutor:
                 rows_loaded=rows,
                 duration_seconds=elapsed,
             )
-        except (OSError, RuntimeError, sqlalchemy.exc.SQLAlchemyError, ValueError) as exc:
+        except Exception as exc:
             elapsed = round(time.perf_counter() - t0, 2)
             log.error("executor_bronze_failed", run_id=str(run_id), error=str(exc))
             return ExecutionResult(
@@ -163,7 +161,7 @@ class PipelineExecutor:
                 success=True,
                 duration_seconds=elapsed,
             )
-        except (OSError, subprocess.SubprocessError, FileNotFoundError) as exc:
+        except Exception as exc:
             elapsed = round(time.perf_counter() - t0, 2)
             log.error("executor_dbt_error", run_id=str(run_id), error=str(exc))
             return ExecutionResult(
@@ -211,7 +209,7 @@ class PipelineExecutor:
                 rows_loaded=rows,
                 duration_seconds=elapsed,
             )
-        except (sqlalchemy.exc.SQLAlchemyError, OSError, RuntimeError, ValueError) as exc:
+        except Exception as exc:
             session.rollback()
             elapsed = round(time.perf_counter() - t0, 2)
             log.error("executor_forecasting_failed", run_id=str(run_id), error=str(exc))

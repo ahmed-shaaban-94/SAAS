@@ -18,7 +18,6 @@ import time
 import uuid
 
 import redis
-import sqlalchemy.exc
 from sqlalchemy import text
 
 from datapulse.config import get_settings
@@ -50,7 +49,7 @@ def _get_job_client():
         url = f"{parts[0]}/2" if len(parts) == 2 and parts[1].isdigit() else f"{base.rstrip('/')}/2"
 
         return redis.from_url(url, decode_responses=True, socket_timeout=2)
-    except (redis.ConnectionError, redis.RedisError, OSError) as exc:
+    except Exception as exc:
         log.error("job_redis_connect_error", error=str(exc))
         return None
 
@@ -119,7 +118,7 @@ def _run_query_sync(
                 "duration_ms": duration_ms,
             },
         )
-    except (sqlalchemy.exc.SQLAlchemyError, OSError) as exc:
+    except Exception as exc:
         session.rollback()
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
         error_msg = str(exc)
@@ -137,7 +136,7 @@ def _run_query_sync(
                     "duration_ms": duration_ms,
                 },
             )
-        except (redis.RedisError, OSError) as redis_exc:
+        except Exception as redis_exc:
             log.error(
                 "job_redis_write_error",
                 job_id=job_id,
@@ -221,6 +220,6 @@ def get_job_result(job_id: str) -> dict | None:
                     return failed_data
 
         return data
-    except (redis.RedisError, json.JSONDecodeError, OSError) as exc:
+    except Exception as exc:
         log.error("job_get_error", job_id=job_id, error=str(exc))
         return None
