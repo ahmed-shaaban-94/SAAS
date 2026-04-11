@@ -35,7 +35,7 @@ class TestCheckDb:
         )
         result = _check_db()
         assert result["status"] == "error"
-        assert "refused" in result["error"]
+        assert result["error"] == "internal_error"
 
 
 class TestCheckRedis:
