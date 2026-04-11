@@ -26,10 +26,10 @@ END $$;
 UPDATE public.reseller_payouts rp
 SET tenant_id = sub.tenant_id
 FROM (
-    SELECT rc.reseller_id, rc.tenant_id
+    SELECT rc.reseller_id, MIN(rc.tenant_id) AS tenant_id
     FROM public.reseller_commissions rc
-    GROUP BY rc.reseller_id, rc.tenant_id
-    HAVING COUNT(DISTINCT rc.tenant_id) OVER (PARTITION BY rc.reseller_id) = 1
+    GROUP BY rc.reseller_id
+    HAVING COUNT(DISTINCT rc.tenant_id) = 1
 ) sub
 WHERE sub.reseller_id = rp.reseller_id
   AND rp.tenant_id IS NULL;

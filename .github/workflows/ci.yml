@@ -53,14 +53,17 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          pip install -e ".[dev]"
+          pip install pytest-timeout
       - name: Run unit tests
         timeout-minutes: 10
         env:
           DATABASE_URL: "sqlite:///:memory:"
           REDIS_URL: ""
           SENTRY_ENVIRONMENT: test
-        run: pytest -m unit --cov=datapulse --cov-report=term-missing --cov-fail-under=45 -x -q
+          PYTHONFAULTHANDLER: "1"
+        run: pytest -m unit --timeout=120 --cov=datapulse --cov-report=term-missing --cov-fail-under=45 -x -q
 
   test-integration:
     name: Integration Tests
@@ -95,17 +98,21 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          pip install -e ".[dev]"
+          pip install pytest-timeout
       - name: Run migrations
         env:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
           PGPASSWORD: datapulse
         run: |
+          set -euo pipefail
           for f in migrations/*.sql; do
             echo "Applying $f..."
             psql -h localhost -U datapulse -d datapulse \
+              -v ON_ERROR_STOP=1 \
               -c "SET app.db_reader_password = 'ci_reader_pass';" \
-              -f "$f" 2>&1 || true
+              -f "$f"
           done
       - name: Run integration tests
         timeout-minutes: 10
@@ -113,7 +120,8 @@ jobs:
           DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
           REDIS_URL: redis://localhost:6379/0
           SENTRY_ENVIRONMENT: test
-        run: pytest -m integration --cov=datapulse --cov-report=term-missing --cov-report=xml --cov-fail-under=95
+          PYTHONFAULTHANDLER: "1"
+        run: pytest -m integration --timeout=120 --cov=datapulse --cov-report=term-missing --cov-report=xml --cov-fail-under=95
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7

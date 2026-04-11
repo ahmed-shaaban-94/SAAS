@@ -41,14 +41,16 @@ def _disable_rate_limiting():
 def _disable_scheduler():
     """Prevent APScheduler from starting during tests.
 
-    The AsyncIOScheduler can deadlock with TestClient's event loop,
-    causing tests to hang indefinitely in CI.
+    The AsyncIOScheduler started via create_app() lifespan causes
+    TestClient to deadlock. Patching start_scheduler/stop_scheduler
+    functions directly prevents the lifespan from ever interacting
+    with the real scheduler. The import inside create_app() resolves
+    at call time, so patching the source module is sufficient.
     """
-    with patch("datapulse.scheduler.scheduler") as mock_sched:
-        mock_sched.running = False
-        mock_sched.start = MagicMock()
-        mock_sched.shutdown = MagicMock()
-        mock_sched.add_job = MagicMock()
+    with (
+        patch("datapulse.scheduler.start_scheduler"),
+        patch("datapulse.scheduler.stop_scheduler"),
+    ):
         yield
 
 
