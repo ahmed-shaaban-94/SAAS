@@ -34,7 +34,7 @@ export const DayHero = memo(function DayHero({ revenue, transactions, momGrowth 
           <span className={`ml-2 inline-flex items-center gap-1 ${trendColor}`}>
             <TrendIcon className="h-4 w-4" />
             <span className="text-sm font-medium">
-              {Math.abs(momGrowth).toFixed(1)}% vs last month
+              {Math.abs(momGrowth).toFixed(1)}% vs prev period
             </span>
           </span>
         )}

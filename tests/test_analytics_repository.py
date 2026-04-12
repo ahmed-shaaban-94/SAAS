@@ -102,8 +102,27 @@ def test_build_trend_multiple():
     assert trend.average == Decimal("150.00")
     assert trend.minimum == Decimal("100")
     assert trend.maximum == Decimal("200")
-    # growth = (150 - 100) / 100 * 100 = 50.00
-    assert trend.growth_pct == Decimal("50.00")
+    # build_trend no longer calculates growth_pct — that is injected by
+    # TrendRepository._inject_period_growth with proper period-over-period comparison
+    assert trend.growth_pct is None
+
+
+def test_safe_growth_negative():
+    """Negative growth when current < previous."""
+    result = safe_growth(Decimal("80"), Decimal("100"))
+    assert result == Decimal("-20.00")
+
+
+def test_safe_growth_equal():
+    """Zero growth when current == previous."""
+    result = safe_growth(Decimal("100"), Decimal("100"))
+    assert result == Decimal("0.00")
+
+
+def test_safe_growth_large_growth():
+    """Large growth percentage is calculated correctly."""
+    result = safe_growth(Decimal("1000"), Decimal("10"))
+    assert result == Decimal("9900.00")
 
 
 # ------------------------------------------------------------------
@@ -292,13 +311,15 @@ def test_get_daily_trend(analytics_repo, mock_session):
         ("2025-01-01", 500),
         ("2025-01-02", 700),
     ]
+    # Without date_range filters, _inject_period_growth returns None
     result = analytics_repo.get_daily_trend(AnalyticsFilter())
     assert len(result.points) == 2
     assert result.total == Decimal("1200")
     assert result.points[0].period == "2025-01-01"
     assert result.points[1].value == Decimal("700")
-    # growth = (700 - 500) / 500 * 100 = 40.00
-    assert result.growth_pct == Decimal("40.00")
+    # growth_pct is now period-over-period (requires date_range filter)
+    # Without filters, no previous period can be queried → None
+    assert result.growth_pct is None
 
 
 # ------------------------------------------------------------------

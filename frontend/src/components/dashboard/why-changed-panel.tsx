@@ -23,5 +23,5 @@ export const WhyChangedPanel = memo(function WhyChangedPanel() {
     );
   }
 
-  return <WaterfallChart data={data} />;
+  return <WaterfallChart data={data} periodLabel={filters?.start_date && filters?.end_date ? `${filters.start_date} to ${filters.end_date}` : undefined} />;
 });
