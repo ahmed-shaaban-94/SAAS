@@ -7,7 +7,7 @@ import { XPLeaderboard } from "./xp-leaderboard";
 import { ActivityFeed } from "./activity-feed";
 import { CompetitionCard } from "./competition-card";
 import { BadgeGrid } from "./badge-grid";
-import { useCompetitions, useBadges, useStaffBadges } from "@/hooks/use-gamification";
+import { useCompetitions, useBadges, useStaffBadges, useXPLeaderboard } from "@/hooks/use-gamification";
 import { LoadingCard } from "@/components/loading-card";
 
 type Tab = "leaderboard" | "badges" | "competitions" | "feed";
@@ -56,7 +56,9 @@ export function GamificationDashboard() {
 
 function BadgesTab() {
   const { data: allBadges, isLoading: loadingBadges } = useBadges();
-  const { data: earnedBadges } = useStaffBadges(0);
+  const { data: leaderboard } = useXPLeaderboard(50);
+  const [selectedStaffKey, setSelectedStaffKey] = useState<number>(0);
+  const { data: earnedBadges } = useStaffBadges(selectedStaffKey);
 
   if (loadingBadges) return <LoadingCard lines={6} />;
   if (!allBadges?.length) {
@@ -67,12 +69,35 @@ function BadgesTab() {
     );
   }
 
+  const selectedName = leaderboard?.find((s) => s.staff_key === selectedStaffKey)?.staff_name;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">All Available Badges</h3>
-        <span className="text-xs text-text-secondary">{allBadges.length} total</span>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-text-primary">All Available Badges</h3>
+        <div className="flex items-center gap-2">
+          {/* Staff selector for viewing earned badges */}
+          <select
+            value={selectedStaffKey}
+            onChange={(e) => setSelectedStaffKey(Number(e.target.value))}
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value={0}>All badges (no staff)</option>
+            {leaderboard?.map((s) => (
+              <option key={s.staff_key} value={s.staff_key}>
+                {s.staff_name}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-text-secondary">{allBadges.length} total</span>
+        </div>
       </div>
+      {selectedStaffKey > 0 && selectedName && (
+        <p className="text-xs text-text-secondary">
+          Showing earned badges for <span className="font-medium text-text-primary">{selectedName}</span>
+          {earnedBadges ? ` — ${earnedBadges.length} earned` : ""}
+        </p>
+      )}
       <BadgeGrid allBadges={allBadges} earnedBadges={earnedBadges || []} />
     </div>
   );

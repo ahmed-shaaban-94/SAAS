@@ -54,7 +54,7 @@ function WidgetPickerPanel({
   })).filter((g) => g.widgets.length > 0);
 
   return (
-    <div className="fixed right-0 top-0 z-50 flex h-screen w-80 flex-col border-l border-border bg-card shadow-xl">
+    <div className="fixed right-0 top-0 z-50 flex h-screen w-full flex-col border-l border-border bg-card shadow-xl sm:w-80">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 className="text-sm font-semibold text-text-primary">Add Widget</h3>
         <button onClick={onClose} className="p-1 text-text-secondary hover:text-text-primary">
@@ -321,10 +321,10 @@ export default function MyDashboardPage() {
 function getDefaultLayout(): LayoutItem[] {
   return [
     { i: "kpi-grid", x: 0, y: 0, w: 4, h: 2, minW: 2, minH: 2 },
-    { i: "daily-trend", x: 0, y: 2, w: 2, h: 3, minW: 2, minH: 2 },
-    { i: "monthly-trend", x: 2, y: 2, w: 2, h: 3, minW: 2, minH: 2 },
-    { i: "top-products", x: 0, y: 5, w: 2, h: 4, minW: 2, minH: 3 },
-    { i: "top-customers", x: 2, y: 5, w: 2, h: 4, minW: 2, minH: 3 },
-    { i: "narrative", x: 0, y: 9, w: 4, h: 2, minW: 2, minH: 2 },
+    { i: "daily-trend", x: 0, y: 2, w: 2, h: 4, minW: 2, minH: 2 },
+    { i: "monthly-trend", x: 2, y: 2, w: 2, h: 4, minW: 2, minH: 2 },
+    { i: "top-products", x: 0, y: 6, w: 2, h: 4, minW: 2, minH: 3 },
+    { i: "top-customers", x: 2, y: 6, w: 2, h: 4, minW: 2, minH: 3 },
+    { i: "narrative", x: 0, y: 10, w: 4, h: 2, minW: 2, minH: 2 },
   ];
 }

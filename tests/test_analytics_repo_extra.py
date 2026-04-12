@@ -29,6 +29,7 @@ class TestGetMonthlyTrend:
             ("2025-01", Decimal("50000")),
             ("2025-02", Decimal("60000")),
         ]
+        mock_result.fetchone.return_value = None  # previous-period query returns no data
         session.execute.return_value = mock_result
 
         filters = AnalyticsFilter(
@@ -42,6 +43,7 @@ class TestGetMonthlyTrend:
         r, session = repo
         mock_result = MagicMock()
         mock_result.fetchall.return_value = []
+        mock_result.fetchone.return_value = None
         session.execute.return_value = mock_result
 
         filters = AnalyticsFilter(

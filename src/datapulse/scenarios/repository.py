@@ -32,7 +32,7 @@ class ScenarioRepository:
             FROM public_marts.fct_sales f
             JOIN public_marts.dim_date d ON f.date_key = d.date_key
             WHERE d.month_start_date >= (
-                SELECT MAX(month_start_date) - INTERVAL ':months months'
+                SELECT MAX(month_start_date) - (INTERVAL '1 month' * :months)
                 FROM public_marts.dim_date
             )
             GROUP BY d.month_start_date, TO_CHAR(d.month_start_date, 'YYYY-MM')

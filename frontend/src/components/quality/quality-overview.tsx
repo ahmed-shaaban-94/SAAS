@@ -51,6 +51,18 @@ export function QualityOverview() {
   if (isLoading && data.runs.length === 0) return <LoadingCard className="h-96" />;
   if (error) return <ErrorRetry title="Failed to load quality scorecard" />;
 
+  if (!isLoading && data.total_runs === 0) {
+    return (
+      <div className="mt-6 rounded-xl border border-border bg-card p-12 text-center">
+        <ShieldCheck className="mx-auto h-10 w-10 text-text-tertiary mb-3" />
+        <h3 className="text-sm font-medium text-text-primary mb-1">No quality checks yet</h3>
+        <p className="text-xs text-text-secondary">
+          Quality checks will appear here after pipeline runs execute quality gates.
+        </p>
+      </div>
+    );
+  }
+
   const totalFailed = data.runs.reduce((s, r) => s + r.failed, 0);
   const totalWarned = data.runs.reduce((s, r) => s + r.warned, 0);
 

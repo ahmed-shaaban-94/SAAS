@@ -39,6 +39,7 @@ export function UploadOverview() {
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { progress, isRunning, error: pipelineError, trigger, cleanup } = usePipelineRun();
 
@@ -57,6 +58,7 @@ export function UploadOverview() {
     if (!fileList || fileList.length === 0) return;
     setUploading(true);
     setConfirmed(false);
+    setErrorMsg(null);
     try {
       const formData = new FormData();
       for (let i = 0; i < fileList.length; i++) {
@@ -72,7 +74,7 @@ export function UploadOverview() {
       const data = await res.json();
       setFiles(data);
     } catch (e) {
-      console.error("Upload failed", e);
+      setErrorMsg("Upload failed. Please check your files and try again.");
     } finally {
       setUploading(false);
     }
@@ -86,7 +88,7 @@ export function UploadOverview() {
       if (!res.ok) throw new Error(await res.text());
       setPreview(await res.json());
     } catch (e) {
-      console.error("Preview failed", e);
+      setErrorMsg("Failed to load preview. Please try again.");
     } finally {
       setPreviewLoading(false);
     }
@@ -104,7 +106,7 @@ export function UploadOverview() {
       });
       setConfirmed(true);
     } catch (e) {
-      console.error("Confirm failed", e);
+      setErrorMsg("Import confirmation failed. Please try again.");
     } finally {
       setConfirming(false);
     }
@@ -142,6 +144,14 @@ export function UploadOverview() {
           onChange={(e) => handleUpload(e.target.files)}
         />
       </div>
+
+      {errorMsg && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+          <X className="h-4 w-4 shrink-0" />
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="ml-auto text-xs hover:underline">Dismiss</button>
+        </div>
+      )}
 
       {uploading && <LoadingCard className="h-20" />}
 

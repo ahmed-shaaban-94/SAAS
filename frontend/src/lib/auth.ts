@@ -110,7 +110,9 @@ export const authOptions: AuthOptions = {
       console.warn("[NEXTAUTH_WARN]", code);
     },
     debug(code, metadata) {
-      console.log("[NEXTAUTH_DEBUG]", code, JSON.stringify(metadata, null, 2));
+      if (process.env.NODE_ENV === "development") {
+        console.log("[NEXTAUTH_DEBUG]", code, JSON.stringify(metadata, null, 2));
+      }
     },
   },
 

@@ -60,7 +60,7 @@ class ScenarioService:
             if adj.change_type == ChangeType.percentage:
                 factor = _ONE + Decimal(str(adj.change_value)) / _HUNDRED
             else:
-                factor = _ONE + Decimal(str(adj.change_value)) / _HUNDRED
+                factor = _ONE + Decimal(str(adj.change_value))
 
             if adj.parameter == AdjustmentParam.price:
                 price_mult *= factor

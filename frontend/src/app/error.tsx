@@ -11,14 +11,18 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Unhandled error:", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Unhandled error:", error);
+    }
   }, [error]);
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center">
       <AlertTriangle className="h-16 w-16 text-growth-red" />
       <h1 className="mt-6 text-2xl font-bold">Something went wrong</h1>
       <p className="mt-2 text-sm text-text-secondary">
-        {error.message || "An unexpected error occurred"}
+        {process.env.NODE_ENV !== "production"
+          ? error.message || "An unexpected error occurred"
+          : "An unexpected error occurred. Please try again."}
       </p>
       <button
         onClick={reset}
