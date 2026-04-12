@@ -37,7 +37,7 @@ class TestEncodeDecode:
 
     def test_url_safe_encoding(self):
         cursor = encode_cursor({"key": "value/with+special=chars"})
-        assert "+" not in cursor or cursor == cursor  # urlsafe uses - and _
+        assert "+" not in cursor  # urlsafe_b64encode uses - and _ instead of + and /
         decoded = decode_cursor(cursor)
         assert decoded["key"] == "value/with+special=chars"
 

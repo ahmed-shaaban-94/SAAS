@@ -108,14 +108,7 @@ def get_current_user(
             or claims.get("tid")
         )
         if not tenant_id:
-            if settings.sentry_environment in ("development", "test"):
-                tenant_id = settings.default_tenant_id
-                _auth_logger.warning(
-                    "jwt_missing_tenant_id",
-                    sub=claims.get("sub"),
-                    detail="Falling back to default_tenant_id; add tenant_id claim to Auth0 Action",
-                )
-            else:
+            if not settings.default_tenant_id:
                 _auth_logger.warning(
                     "jwt_missing_tenant_id_rejected",
                     sub=claims.get("sub"),
@@ -124,6 +117,12 @@ def get_current_user(
                     status_code=401,
                     detail="JWT missing tenant context",
                 )
+            tenant_id = settings.default_tenant_id
+            _auth_logger.warning(
+                "jwt_missing_tenant_id",
+                sub=claims.get("sub"),
+                detail="Falling back to default_tenant_id; add tenant_id claim to Auth0 Action",
+            )
         tenant_id_str = str(tenant_id)
         if tenant_id_str and not _TENANT_ID_RE.match(tenant_id_str):
             _auth_logger.warning("invalid_tenant_id", raw=tenant_id)

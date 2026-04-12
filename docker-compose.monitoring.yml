@@ -4,9 +4,37 @@
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 #     -f docker-compose.monitoring.yml up -d
 #
-# Memory budget: 256M + 128M + 16M + 32M = 432M total
+# Memory budget: 256M Prometheus + 128M Grafana + 64M Alertmanager + 16M watchdog + 32M autoheal = 496M total
 
 services:
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: datapulse-alertmanager
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--web.external-url=http://localhost:9093"
+      - "--config.expand-env=true"
+    environment:
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.10"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+    networks:
+      - datapulse-backend
+
   prometheus:
     image: prom/prometheus:v2.52.0
     container_name: datapulse-prometheus
@@ -45,8 +73,13 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-datapulse}
       GF_SERVER_ROOT_URL: http://localhost:3001
       GF_USERS_ALLOW_SIGN_UP: "false"
+      # Provisioned datasources/dashboards are read-only in the UI by default;
+      # allowUiUpdates: true in dashboards.yml lets you tweak without file changes.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/datapulse-api.json
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     deploy:
       resources:
         limits:
@@ -75,8 +108,11 @@ services:
       - |
         apk add --no-cache curl > /dev/null 2>&1
         FAIL_COUNT=0
+        AUTH_FAIL=0
         while true; do
           HTTP_CODE=$$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://api:8000/health/live 2>/dev/null || echo "000")
+          AUTH_CODE=$$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://api:8000/health/auth-check 2>/dev/null || echo "000")
+
           if [ "$$HTTP_CODE" != "200" ]; then
             FAIL_COUNT=$$((FAIL_COUNT + 1))
             echo "$$(date -Iseconds) FAIL ($$FAIL_COUNT): /health/live returned $$HTTP_CODE"
@@ -93,6 +129,24 @@ services:
                 -d "{\"text\": \":white_check_mark: DataPulse API recovered -- /health/live is 200 again\", \"username\": \"Uptime Monitor\", \"icon_emoji\": \":white_check_mark:\"}" || true
             fi
             FAIL_COUNT=0
+          fi
+
+          if [ "$$AUTH_CODE" != "200" ]; then
+            AUTH_FAIL=$$((AUTH_FAIL + 1))
+            echo "$$(date -Iseconds) AUTH_FAIL ($$AUTH_FAIL): /health/auth-check returned $$AUTH_CODE"
+            if [ "$$AUTH_FAIL" -ge 4 ] && [ -n "$$SLACK_WEBHOOK" ]; then
+              curl -s -X POST "$$SLACK_WEBHOOK" \
+                -H 'Content-Type: application/json' \
+                -d "{\"text\": \":warning: <!channel> *DataPulse AUTH BROKEN* -- /health/auth-check returned $$AUTH_CODE. All user requests will fail with 401.\", \"username\": \"Uptime Monitor\", \"icon_emoji\": \":warning:\"}" || true
+              AUTH_FAIL=0
+            fi
+          else
+            if [ "$$AUTH_FAIL" -ge 4 ]; then
+              curl -s -X POST "$$SLACK_WEBHOOK" \
+                -H 'Content-Type: application/json' \
+                -d "{\"text\": \":white_check_mark: DataPulse auth pipeline recovered\", \"username\": \"Uptime Monitor\", \"icon_emoji\": \":white_check_mark:\"}" || true
+            fi
+            AUTH_FAIL=0
           fi
           sleep 30
         done

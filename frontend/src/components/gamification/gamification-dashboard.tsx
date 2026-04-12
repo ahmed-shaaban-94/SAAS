@@ -57,7 +57,7 @@ export function GamificationDashboard() {
 
 function BadgesTab() {
   const { data: allBadges, isLoading: loadingBadges } = useBadges();
-  const { data: earnedBadges, isLoading: loadingEarned } = useStaffBadges(0);
+  const { data: earnedBadges } = useStaffBadges(0);
 
   if (loadingBadges) return <LoadingCard lines={6} />;
   if (!allBadges?.length) {

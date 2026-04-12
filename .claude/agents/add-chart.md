@@ -1,6 +1,7 @@
 ---
 name: add-chart
 description: "Create a Recharts visualization component with dark/light theme support. Usage: /add-chart <type> <name> <description>"
+tools: [Read, Write, Edit, Glob, Grep]
 ---
 
 You are creating a new Recharts chart component for DataPulse.

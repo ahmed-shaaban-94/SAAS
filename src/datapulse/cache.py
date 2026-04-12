@@ -131,9 +131,6 @@ def get_redis_client():
     return _redis_client
 
 
-_CACHE_MISS = object()
-
-
 def cache_get(key: str) -> Any | None:
     """Get a value from cache. Returns None on miss or error."""
     client = get_redis_client()

@@ -2,7 +2,6 @@
 
 import { memo, useState, useCallback, useMemo } from "react";
 import {
-  BarChart,
   Bar,
   XAxis,
   YAxis,

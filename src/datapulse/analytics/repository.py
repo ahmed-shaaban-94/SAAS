@@ -28,4 +28,4 @@ class AnalyticsRepository(KpiRepository, TrendRepository, RankingRepository, Ret
     """
 
     def __init__(self, session: Session) -> None:
-        self._session = session
+        super().__init__(session)

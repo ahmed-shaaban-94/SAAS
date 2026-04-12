@@ -4,7 +4,7 @@ import { memo, useMemo } from "react";
 import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { KPICard } from "./kpi-card";
 import { LoadingCard } from "@/components/loading-card";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import {
   TrendingUp,
   TrendingDown,

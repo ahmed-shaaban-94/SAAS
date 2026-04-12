@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import redis
 import sqlalchemy.exc
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from datapulse.api.routes.health import (
     _check_data_freshness,
@@ -19,7 +21,7 @@ from datapulse.api.routes.health import (
 
 
 class TestCheckDb:
-    @patch("datapulse.api.routes.health.get_engine")
+    @patch("datapulse.checks.get_engine")
     def test_ok(self, mock_engine):
         mock_conn = MagicMock()
         mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
@@ -28,7 +30,7 @@ class TestCheckDb:
         assert result["status"] == "ok"
         assert "latency_ms" in result
 
-    @patch("datapulse.api.routes.health.get_engine")
+    @patch("datapulse.checks.get_engine")
     def test_error(self, mock_engine):
         mock_engine.return_value.connect.side_effect = sqlalchemy.exc.OperationalError(
             "SELECT 1", {}, Exception("refused")
@@ -199,3 +201,53 @@ class TestCheckDataFreshness:
         result = _check_data_freshness()
         assert result["status"] == "error"
         assert result["error"] == "internal_error"
+
+
+class TestAuthCheck:
+    """Tests for GET /health/auth-check endpoint."""
+
+    @patch("datapulse.api.routes.health.get_engine")
+    @patch("datapulse.config.get_settings")
+    def test_ok(self, mock_settings, mock_engine):
+        from datapulse.api.routes.health import router
+
+        mock_settings.return_value.default_tenant_id = "1"
+        mock_conn = MagicMock()
+        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+        resp = client.get("/health/auth-check")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+        assert resp.json()["default_tenant_id"] == "1"
+
+    @patch("datapulse.config.get_settings")
+    def test_no_default_tenant_id(self, mock_settings):
+        from datapulse.api.routes.health import router
+
+        mock_settings.return_value.default_tenant_id = ""
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+        resp = client.get("/health/auth-check")
+        assert resp.status_code == 503
+        assert resp.json()["error"] == "no_default_tenant_id"
+
+    @patch("datapulse.api.routes.health.get_engine")
+    @patch("datapulse.config.get_settings")
+    def test_db_error(self, mock_settings, mock_engine):
+        from datapulse.api.routes.health import router
+
+        mock_settings.return_value.default_tenant_id = "1"
+        mock_engine.return_value.connect.side_effect = Exception("db down")
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+        resp = client.get("/health/auth-check")
+        assert resp.status_code == 503
+        assert resp.json()["error"] == "tenant_session_failed"

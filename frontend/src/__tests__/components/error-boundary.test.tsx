@@ -39,7 +39,7 @@ describe("ErrorBoundary", () => {
 
   it("shows Try again button that resets error state", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(
+    render(
       <ErrorBoundary>
         <ProblemChild shouldThrow={true} />
       </ErrorBoundary>,

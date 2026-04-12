@@ -1,6 +1,7 @@
 ---
 name: add-dbt-model
 description: "Create a new dbt aggregation or dimension model with schema, tests, and RLS. Usage: /add-dbt-model <type> <name> <description>"
+tools: [Read, Write, Edit, Bash, Glob, Grep]
 ---
 
 You are building a new dbt model for DataPulse. Follow these steps exactly:

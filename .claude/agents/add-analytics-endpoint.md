@@ -1,6 +1,7 @@
 ---
 name: add-analytics-endpoint
 description: "Scaffold a complete analytics endpoint: Pydantic model → repository method → service (cached) → API route → test. Usage: /add-analytics-endpoint <name> <description>"
+tools: [Read, Write, Edit, Bash, Glob, Grep]
 ---
 
 You are adding a new analytics endpoint to DataPulse. This creates 5 files/changes in order.

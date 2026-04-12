@@ -44,7 +44,6 @@ class OnboardingService:
             steps_completed.append(step)
 
         # Determine next step: first incomplete step, or last step if all done
-        current_step = step
         for s in ONBOARDING_STEPS:
             if s not in steps_completed:
                 current_step = s

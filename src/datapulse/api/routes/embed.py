@@ -129,6 +129,8 @@ def embed_query(
         sql, params = build_sql(body, catalog)
 
         start = time.perf_counter()
+        # sql_builder validates identifiers via _SAFE_IDENT whitelist
+        # and binds all user values as :param parameters (not interpolated).
         result = session.execute(text(sql), params)
         columns = list(result.keys())
         rows: list[list] = []

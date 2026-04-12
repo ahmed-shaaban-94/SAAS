@@ -92,6 +92,8 @@ def execute_explore_query(
     # Execute the query
     start = time.perf_counter()
     try:
+        # sql_builder validates identifiers via _SAFE_IDENT whitelist
+        # and binds all user values as :param parameters (not interpolated).
         result = session.execute(text(sql), params)
         columns = list(result.keys())
         rows: list[list] = []

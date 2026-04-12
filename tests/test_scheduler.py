@@ -98,11 +98,9 @@ async def test_run_pipeline_stage_failure_stops_pipeline():
 async def test_health_check_all_ok():
     """No notification when DB and Redis are healthy."""
     with (
+        patch("datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}),
         patch(
-            "datapulse.api.routes.health._check_db", return_value={"status": "ok", "latency_ms": 5}
-        ),
-        patch(
-            "datapulse.api.routes.health._check_redis",
+            "datapulse.checks.check_redis",
             return_value={"status": "ok", "latency_ms": 2},
         ),
         patch("datapulse.notifications.notify_health_failure") as mock_notify,
@@ -125,10 +123,10 @@ async def test_health_check_db_failure_notifies():
     """Notification sent when DB is down."""
     with (
         patch(
-            "datapulse.api.routes.health._check_db",
+            "datapulse.checks.check_db",
             return_value={"status": "error", "error": "timeout"},
         ),
-        patch("datapulse.api.routes.health._check_redis", return_value={"status": "ok"}),
+        patch("datapulse.checks.check_redis", return_value={"status": "ok"}),
         patch("datapulse.notifications.notify_health_failure") as mock_notify,
         patch("datapulse.core.db.get_session_factory") as mock_sf,
         patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
@@ -147,11 +145,9 @@ async def test_health_check_db_failure_notifies():
 async def test_health_check_detects_stale_pipeline():
     """Stale pipeline runs are marked failed and notified."""
     with (
+        patch("datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}),
         patch(
-            "datapulse.api.routes.health._check_db", return_value={"status": "ok", "latency_ms": 5}
-        ),
-        patch(
-            "datapulse.api.routes.health._check_redis",
+            "datapulse.checks.check_redis",
             return_value={"status": "ok", "latency_ms": 2},
         ),
         patch("datapulse.notifications.notify_health_failure"),

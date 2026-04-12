@@ -1,6 +1,6 @@
 "use client";
 import useSWR from "swr";
-import { fetchAPI, postAPI } from "@/lib/api-client";
+import { fetchAPI } from "@/lib/api-client";
 
 // ── Types ───────────────────────────────────────────────────────────
 

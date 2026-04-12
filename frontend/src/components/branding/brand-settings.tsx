@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useBranding, type BrandingConfig } from "@/hooks/use-branding";
-import { postAPI } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/constants";
 import { LoadingCard } from "@/components/loading-card";
 import { useToast } from "@/components/ui/toast";

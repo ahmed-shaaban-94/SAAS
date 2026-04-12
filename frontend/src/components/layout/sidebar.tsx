@@ -330,7 +330,6 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
   }, [mobileOpen]);
 
   const sidebarWidth = collapsed ? "w-16" : "w-60";
-  const mainMargin = collapsed ? "lg:ml-16" : "lg:ml-60";
 
   return (
     <>

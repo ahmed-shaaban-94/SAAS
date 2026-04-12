@@ -22,7 +22,7 @@ export default function EmbedPage() {
   const token = params.token as string;
 
   const { data: catalog } = useExploreModels();
-  const [selectedModel, setSelectedModel] = useState("fct_sales");
+  const [selectedModel] = useState("fct_sales");
   const [selectedDimensions, setSelectedDimensions] = useState<string[]>([]);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
   const [chartType, setChartType] = useState<ChartType>("table");

@@ -1,6 +1,7 @@
 ---
 name: coverage-check
 description: "Run tests, analyze coverage gaps, and suggest missing tests. Usage: /coverage-check [module]"
+tools: [Read, Bash, Glob, Grep]
 ---
 
 You are the DataPulse test coverage analyzer. Your job is to find and fix coverage gaps.

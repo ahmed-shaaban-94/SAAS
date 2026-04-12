@@ -31,7 +31,7 @@ export function ReturnsOverview() {
   const { data, error, isLoading } = useReturns(filters);
 
   // Split data into product returns vs other
-  const { productData, otherAmount, summaryStats } = useMemo(() => {
+  const { productData, summaryStats } = useMemo(() => {
     if (!data || data.length === 0)
       return { productData: [], otherAmount: 0, summaryStats: [] };
 

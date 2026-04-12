@@ -5,7 +5,7 @@ import { useLineage, type LineageNode } from "@/hooks/use-lineage";
 import { useLineageImpact } from "@/hooks/use-lineage-impact";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
-import { Search, AlertTriangle, ArrowRight, Zap } from "lucide-react";
+import { Search, AlertTriangle, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LAYER_COLORS: Record<string, { bg: string; border: string; text: string }> = {

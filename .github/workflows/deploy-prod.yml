@@ -96,6 +96,9 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/data-pulse/${{ matrix.service }}:scan
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.35.0
@@ -117,6 +120,9 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/data-pulse/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
 
   deploy:
     name: Deploy to Production

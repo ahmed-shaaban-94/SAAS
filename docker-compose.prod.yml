@@ -57,9 +57,8 @@ services:
       SENTRY_ENVIRONMENT: production
       API_KEY: ${API_KEY:?API_KEY is required for production}
       PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:?PIPELINE_WEBHOOK_SECRET is required for production}
-    command: ["gunicorn", "datapulse.api.app:create_app()", "--config", "/app/gunicorn.conf.py"]
-    environment:
       WEB_CONCURRENCY: "4"
+    command: ["gunicorn", "datapulse.api.app:create_app()", "--config", "/app/gunicorn.conf.py"]
     deploy:
       resources:
         limits:

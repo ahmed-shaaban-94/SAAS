@@ -1,6 +1,7 @@
 ---
 name: add-docker-service
 description: "Add a new Docker service to all compose files with healthcheck, resource limits, and networking. Usage: /add-docker-service <name> <image-or-build> <port>"
+tools: [Read, Edit, Glob, Grep]
 ---
 
 You are adding a new Docker service to DataPulse. This modifies 3 compose files.

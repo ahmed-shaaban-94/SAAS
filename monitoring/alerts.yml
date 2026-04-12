@@ -40,3 +40,16 @@ groups:
         annotations:
           summary: "P95 API latency exceeds 5 seconds"
           description: "95th percentile latency has been above 5s for 5 minutes."
+
+      - alert: AuthFailureSpike
+        expr: >
+          sum(rate(http_requests_total{status="401"}[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+          > 0.5
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: ">50% of requests returning 401 for 3+ minutes"
+          description: "Auth chain may be broken. Check JWT validation, tenant_id config, and /health/auth-check."

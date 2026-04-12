@@ -1,6 +1,7 @@
 ---
 name: add-migration
 description: "Create a new idempotent SQL migration with RLS. Usage: /add-migration <description>"
+tools: [Read, Write, Edit, Bash, Glob, Grep]
 ---
 
 You are creating a new PostgreSQL migration for DataPulse. Follow these steps exactly:

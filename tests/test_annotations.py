@@ -59,11 +59,13 @@ def test_delete_success():
     session = MagicMock()
     session.execute.return_value.rowcount = 1
     repo = AnnotationRepository(session)
-    assert repo.delete(1, "user1") is True
+    result = repo.delete(1, "user1")
+    assert result is True
 
 
 def test_delete_not_found():
     session = MagicMock()
     session.execute.return_value.rowcount = 0
     repo = AnnotationRepository(session)
-    assert repo.delete(999, "user1") is False
+    result = repo.delete(999, "user1")
+    assert result is False

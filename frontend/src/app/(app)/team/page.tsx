@@ -12,9 +12,8 @@ import {
   Plus,
   Edit3,
   Power,
-  ChevronDown,
 } from "lucide-react";
-import { useMembers, useMyAccess, useRoles, useSectors } from "@/hooks/use-members";
+import { useMembers, useMyAccess, useSectors } from "@/hooks/use-members";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { MemberResponse, RoleKey, SectorResponse } from "@/types/members";

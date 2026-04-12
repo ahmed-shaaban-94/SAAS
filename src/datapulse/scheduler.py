@@ -316,8 +316,8 @@ async def run_pipeline(
             try:
                 lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
                 lock_session.commit()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("advisory_lock_release_failed", error=str(exc))
         lock_session.close()
         clear_contextvars()
 
@@ -330,10 +330,10 @@ async def run_pipeline(
 async def _health_check() -> None:
     """Check API health every 5 minutes (replaces n8n 2.1.1)."""
     scheduler_jobs_executed.labels(job="health_check").inc()
-    from datapulse.api.routes.health import _check_db, _check_redis
+    from datapulse.checks import check_db, check_redis
 
-    db = _check_db()
-    redis = _check_redis()
+    db = check_db()
+    redis = check_redis()
 
     if db["status"] != "ok":
         from datapulse.notifications import notify_health_failure

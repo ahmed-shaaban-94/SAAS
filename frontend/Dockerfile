@@ -13,6 +13,12 @@ CMD ["npm", "run", "dev"]
 
 # Build stage
 FROM base AS builder
+# NEXT_PUBLIC_* vars are inlined into the JS bundle at build time — they must be
+# declared as ARG + ENV here so `npm run build` can embed them.
+ARG NEXT_PUBLIC_SENTRY_DSN=""
+ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT="production"
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+ENV NEXT_PUBLIC_SENTRY_ENVIRONMENT=$NEXT_PUBLIC_SENTRY_ENVIRONMENT
 COPY . .
 RUN npm run build
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTargetSummary, useQuarterlySummary } from "@/hooks/use-targets";
 import { useBudgetSummary } from "@/hooks/use-budget";
-import { formatCurrency, formatPercent, formatCompact, formatAbsolutePercent } from "@/lib/formatters";
+import { formatCurrency, formatCompact, formatAbsolutePercent } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { postAPI } from "@/lib/api-client";

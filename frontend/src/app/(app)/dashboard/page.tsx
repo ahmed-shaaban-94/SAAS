@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Printer, TrendingUp, Zap, Target, Calendar, BarChart3 } from "lucide-react";
+import { Printer, TrendingUp, Target, Calendar } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";

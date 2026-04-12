@@ -149,6 +149,7 @@ def test_health_endpoint_degraded(api_client):
     client, mock_repo, mock_detail_repo = api_client
     client.app.dependency_overrides[get_optional_user] = lambda: _AUTHED_USER
     with (
+        patch("datapulse.checks.get_engine") as mock_checks_engine,
         patch("datapulse.api.routes.health.get_engine") as mock_engine,
         patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),
         patch(
@@ -156,6 +157,7 @@ def test_health_endpoint_degraded(api_client):
             return_value={"status": "ok", "latency_ms": 1},
         ),
     ):
+        mock_checks_engine.return_value.connect.side_effect = Exception("connection refused")
         mock_engine.return_value.connect.side_effect = Exception("connection refused")
         resp = client.get("/health")
     assert resp.status_code == 503
@@ -187,7 +189,7 @@ def test_health_readiness_ok(api_client):
 def test_health_readiness_down(api_client):
     """GET /health/ready returns 503 when DB is down."""
     client, _, _ = api_client
-    with patch("datapulse.api.routes.health.get_engine") as mock_engine:
+    with patch("datapulse.checks.get_engine") as mock_engine:
         mock_engine.return_value.connect.side_effect = Exception("down")
         resp = client.get("/health/ready")
     assert resp.status_code == 503

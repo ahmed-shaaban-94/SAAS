@@ -7,7 +7,6 @@ import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { ChevronRight, ChevronDown, Folder, Package } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export function ProductHierarchyView() {
   const { filters } = useFilters();

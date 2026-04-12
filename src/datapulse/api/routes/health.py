@@ -16,44 +16,14 @@ from sqlalchemy import text
 
 from datapulse.api.auth import get_optional_user
 from datapulse.api.deps import get_engine
+from datapulse.checks import check_db, check_redis
 
 router = APIRouter(tags=["health"])
 logger = structlog.get_logger()
 
-
-# ---------------------------------------------------------------------------
-# Component checks
-# ---------------------------------------------------------------------------
-
-
-def _check_db() -> dict:
-    """Ping PostgreSQL and return status + latency."""
-    try:
-        t0 = time.monotonic()
-        with get_engine().connect() as conn:
-            conn.execute(text("SELECT 1"))
-        latency = round((time.monotonic() - t0) * 1000)
-        return {"status": "ok", "latency_ms": latency}
-    except Exception:
-        logger.exception("Database health check failed")
-        return {"status": "error", "error": "internal_error"}
-
-
-def _check_redis() -> dict:
-    """Ping Redis and return status + latency."""
-    try:
-        from datapulse.cache import get_redis_client
-
-        client = get_redis_client()
-        if client is None:
-            return {"status": "disabled"}
-        t0 = time.monotonic()
-        client.ping()
-        latency = round((time.monotonic() - t0) * 1000)
-        return {"status": "ok", "latency_ms": latency}
-    except Exception:
-        logger.exception("Redis health check failed")
-        return {"status": "error", "error": "internal_error"}
+# Backward-compat aliases — remove once no other module uses the underscore names.
+_check_db = check_db
+_check_redis = check_redis
 
 
 def _check_query_executor() -> dict:
@@ -256,3 +226,40 @@ def readiness() -> JSONResponse:
         status_code=200 if ready else 503,
         content={"ready": ready, "database": db},
     )
+
+
+@router.get("/health/auth-check")
+def auth_check() -> JSONResponse:
+    """Auth pipeline probe — validates that tenant context can be established.
+
+    Checks that ``default_tenant_id`` is configured and that the DB accepts
+    ``SET LOCAL app.tenant_id``.  If this fails, all JWT-authenticated requests
+    will be rejected with 401 even though the API container looks healthy.
+    """
+    from datapulse.config import get_settings
+
+    settings = get_settings()
+    if not settings.default_tenant_id:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "error": "no_default_tenant_id"},
+        )
+    try:
+        with get_engine().connect() as conn:
+            conn.execute(
+                text("SET LOCAL app.tenant_id = :tid"),
+                {"tid": str(settings.default_tenant_id)},
+            )
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "ok",
+                "default_tenant_id": str(settings.default_tenant_id),
+            },
+        )
+    except Exception:
+        logger.exception("Auth pipeline health check failed")
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "error": "tenant_session_failed"},
+        )

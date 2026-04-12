@@ -1,6 +1,7 @@
 ---
 name: add-page
 description: "Scaffold a new Next.js dashboard page with SWR hook, component, loading state, and sidebar nav. Usage: /add-page <name> <description>"
+tools: [Read, Write, Edit, Glob, Grep]
 ---
 
 You are adding a new page to the DataPulse Next.js dashboard. This creates 5+ files.

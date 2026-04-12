@@ -38,7 +38,7 @@ describe("RankingTable", () => {
   });
 
   it("renders rank badges (Trophy for #1)", () => {
-    const { container } = render(<RankingTable items={mockItems} entityLabel="Product" />);
+    render(<RankingTable items={mockItems} entityLabel="Product" />);
     // Rank 4 shows as text number
     expect(screen.getByText("4")).toBeInTheDocument();
   });

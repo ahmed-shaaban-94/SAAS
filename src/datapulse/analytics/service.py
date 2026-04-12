@@ -215,8 +215,6 @@ class AnalyticsService:
         end = max_date or date.today()
 
         if filters is None:
-            if target_date is None:
-                target_date = end
             filters = AnalyticsFilter(
                 date_range=DateRange(
                     start_date=end - timedelta(days=30),
