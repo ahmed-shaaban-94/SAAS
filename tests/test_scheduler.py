@@ -290,6 +290,7 @@ def test_get_scheduler_status_not_running():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_run_pipeline_lock_not_acquired_closes_session():
     """lock_session is always closed even when advisory lock is not acquired."""
@@ -321,6 +322,7 @@ async def test_run_pipeline_lock_not_acquired_closes_session():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_start_scheduler_skipped_when_disabled():
     """start_scheduler does nothing when SCHEDULER_ENABLED=false."""
     with (
@@ -337,6 +339,7 @@ def test_start_scheduler_skipped_when_disabled():
         mock_sched.start.assert_not_called()
 
 
+@pytest.mark.unit
 def test_start_scheduler_enabled_by_default():
     """start_scheduler runs when SCHEDULER_ENABLED is not set (defaults to true)."""
     env = os.environ.copy()
