@@ -24,8 +24,13 @@ export const swrConfig: SWRConfiguration = {
   onErrorRetry(error, _key, _config, revalidate, { retryCount }) {
     // Never retry on 404 or 401 — these are permanent failures
     if (error?.status === 404 || error?.status === 401) return;
-    // Signal API health monitor for network/server errors
-    if (!error?.status || error.status >= 500) {
+    // Never retry on AbortError — request was intentionally cancelled (15s
+    // client-side timeout in api-client.ts). Retrying would just timeout again
+    // and incorrectly signal the API health monitor.
+    if (error?.name === "AbortError") return;
+    // Signal API health monitor only for genuine network/server errors —
+    // not for client-side aborts or expected 4xx responses.
+    if (error?.status >= 500) {
       _onApiError?.();
     }
     // Stop after max retries
