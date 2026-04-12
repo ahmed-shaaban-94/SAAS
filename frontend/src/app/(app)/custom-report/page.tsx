@@ -18,6 +18,7 @@ import { DateRangePicker } from "@/components/filters/date-range-picker";
 import { getDatePresets, formatDateParam } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { ReportSummary } from "@/components/custom-report/report-summary";
+import { RankingFilter } from "@/components/custom-report/ranking-filter";
 import type { ReportTemplate, ChartType } from "@/components/custom-report/report-config";
 import type { ExploreQueryRequest } from "@/types/api";
 
@@ -38,6 +39,9 @@ export default function CustomReportPage() {
   const [chartType, setChartType] = useState<ChartType>("table");
   const [startDate, setStartDate] = useState<string | undefined>();
   const [endDate, setEndDate] = useState<string | undefined>();
+  const [rankLimit, setRankLimit] = useState(0);
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const datePresets = getDatePresets();
 
@@ -50,6 +54,9 @@ export default function CustomReportPage() {
       setSelectedDimensions([...template.dimensions]);
       setSelectedMetrics([...template.metrics]);
       setChartType(template.chartType);
+      setRankLimit(0);
+      setSortField(null);
+      setSortDirection("desc");
       reset();
     },
     [reset],
@@ -83,12 +90,12 @@ export default function CustomReportPage() {
       dimensions: selectedDimensions,
       metrics: selectedMetrics,
       filters,
-      sorts: [],
-      limit: 500,
+      sorts: sortField ? [{ field: sortField, direction: sortDirection }] : [],
+      limit: rankLimit > 0 ? rankLimit : 500,
     };
 
     await execute(query);
-  }, [selectedModel, selectedDimensions, selectedMetrics, startDate, endDate, execute]);
+  }, [selectedModel, selectedDimensions, selectedMetrics, startDate, endDate, sortField, sortDirection, rankLimit, execute]);
 
   const handleDateChange = useCallback(
     (start: string | undefined, end: string | undefined) => {
@@ -117,6 +124,9 @@ export default function CustomReportPage() {
     setSelectedDimensions([]);
     setSelectedMetrics([]);
     setChartType("table");
+    setRankLimit(0);
+    setSortField(null);
+    setSortDirection("desc");
     setStartDate(undefined);
     setEndDate(undefined);
     reset();
@@ -195,6 +205,18 @@ export default function CustomReportPage() {
             <div className="border-t border-border" />
 
             <ChartTypePicker value={chartType} onChange={setChartType} />
+
+            <div className="border-t border-border" />
+
+            <RankingFilter
+              selectedMetrics={selectedMetrics}
+              rankLimit={rankLimit}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onRankLimitChange={setRankLimit}
+              onSortFieldChange={setSortField}
+              onSortDirectionChange={setSortDirection}
+            />
           </div>
         )}
 
