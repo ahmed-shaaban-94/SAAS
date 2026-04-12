@@ -78,6 +78,15 @@ class GamificationService:
         """Return badges earned by a staff member."""
         return self._repo.get_staff_badges(staff_key)
 
+    def award_badge(
+        self, staff_key: int, badge_key: str, context: dict | None = None
+    ) -> bool:
+        """Manually award a badge. Returns True if newly awarded."""
+        awarded = self._repo.award_badge(staff_key, badge_key, context)
+        if awarded:
+            log.info("badge_manually_awarded", staff_key=staff_key, badge_key=badge_key)
+        return awarded
+
     def evaluate_and_award(self, metrics: StaffMetrics) -> list[str]:
         """Evaluate badge rules and award any newly earned badges.
 

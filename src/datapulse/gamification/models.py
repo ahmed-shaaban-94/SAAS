@@ -107,6 +107,13 @@ class GamificationProfile(BaseModel):
     badge_count: int = 0
 
 
+class BadgeAwardRequest(BaseModel):
+    """Input model for manually awarding a badge to a staff member."""
+
+    badge_key: str
+    context: dict = Field(default_factory=dict)
+
+
 # ------------------------------------------------------------------
 # Competition models
 # ------------------------------------------------------------------

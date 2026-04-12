@@ -16,6 +16,7 @@ from datapulse.api.cache_helpers import set_cache_headers
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.gamification.models import (
+    BadgeAwardRequest,
     BadgeResponse,
     CompetitionCreate,
     CompetitionDetail,
@@ -100,6 +101,28 @@ def get_staff_badges(
     """Get badges earned by a staff member."""
     set_cache_headers(response, 60)
     return service.get_staff_badges(staff_key)
+
+
+@router.post("/badges/{staff_key}/award", response_model=StaffBadgeResponse | None, status_code=201)
+@limiter.limit("5/minute")
+def award_badge(
+    request: Request,
+    data: BadgeAwardRequest,
+    staff_key: int = Path(..., gt=0),
+    *,
+    service: ServiceDep,
+    user: Annotated[dict, Depends(get_current_user)],
+) -> StaffBadgeResponse | None:
+    """Manually award a badge to a staff member (admin)."""
+    awarded = service.award_badge(staff_key, data.badge_key, data.context)
+    if not awarded:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Badge '{data.badge_key}' already earned by staff {staff_key}",
+        )
+    # Return the freshly awarded badge
+    badges = service.get_staff_badges(staff_key)
+    return next((b for b in badges if b.badge_key == data.badge_key), None)
 
 
 # ------------------------------------------------------------------
