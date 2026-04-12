@@ -1,10 +1,17 @@
-"""DataPulse Graph MCP Server — 4 tools for Claude Code integration.
+"""DataPulse Graph + Brain MCP Server — 9 tools for Claude Code integration.
 
-Tools:
+Graph tools:
     dp_impact   — Blast radius: what breaks if I change X?
-    dp_context  — 360° view of any symbol
+    dp_context  — 360-degree view of any symbol
     dp_query    — Search the code graph
     dp_detect_changes — Map git diff to affected symbols
+
+Brain tools:
+    brain_search — Hybrid FTS + semantic search across sessions/decisions/incidents
+    brain_recent — Get the most recent sessions
+    brain_session — Full detail of a single session
+    brain_log_decision — Record a decision
+    brain_log_incident — Record an incident
 
 Usage:
     python -m datapulse.graph.mcp_server
@@ -240,6 +247,192 @@ def _ensure_indexed() -> None:
     s = store.stats()
     if s["total_symbols"] == 0:
         index(_PROJECT_ROOT)
+
+
+## ── Brain MCP Tools ─────────────────────────────────────────────────
+
+
+def _brain_error(msg: str) -> str:
+    """Return a standard brain error JSON."""
+    return json.dumps({
+        "error": msg,
+        "hint": "Ensure DATABASE_URL is set and PostgreSQL is running",
+    })
+
+
+def _serialize(obj: Any) -> Any:
+    """Make objects JSON-serializable (datetimes, Decimals, etc.)."""
+    import datetime
+    from decimal import Decimal
+
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, dict):
+        return {k: _serialize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_serialize(i) for i in obj]
+    return obj
+
+
+@_tool()
+def brain_search(
+    query: str,
+    layers: list[str] | None = None,
+    modules: list[str] | None = None,
+    limit: int = 20,
+) -> str:
+    """Search across all brain sessions, decisions, and incidents.
+
+    Hybrid search: combines full-text (keyword) + semantic (meaning) when
+    OPENROUTER_API_KEY is configured. Falls back to FTS-only otherwise.
+
+    Args:
+        query: Search terms (natural language, e.g. "bronze loader refactor").
+        layers: Filter to sessions touching these layers (e.g. ["bronze", "gold"]).
+        modules: Filter to sessions touching these modules (e.g. ["analytics"]).
+        limit: Max results to return (default 20).
+    """
+    try:
+        from datapulse.brain import db as brain_db
+        from datapulse.brain.embeddings import get_embedding
+
+        query_embedding = get_embedding(query)
+        results = brain_db.search_hybrid(
+            query,
+            query_embedding,
+            layers=layers,
+            modules=modules,
+            limit=limit,
+        )
+        return json.dumps({"count": len(results), "results": _serialize(results)}, indent=2)
+    except Exception as exc:
+        return _brain_error(str(exc))
+
+
+@_tool()
+def brain_recent(count: int = 5) -> str:
+    """Get the most recent brain sessions.
+
+    Returns the last N sessions with full detail including files changed,
+    layers, modules, and commit messages.
+
+    Args:
+        count: Number of recent sessions to return (default 5, max 20).
+    """
+    try:
+        from datapulse.brain import db as brain_db
+
+        count = min(max(count, 1), 20)
+        sessions = brain_db.get_recent_sessions(count=count)
+        return json.dumps({"sessions": _serialize(sessions)}, indent=2)
+    except Exception as exc:
+        return _brain_error(str(exc))
+
+
+@_tool()
+def brain_session(session_id: int) -> str:
+    """Get full detail of a single brain session by ID.
+
+    Returns the session with its linked decisions and incidents.
+
+    Args:
+        session_id: The session ID (from brain_recent or brain_search results).
+    """
+    try:
+        from datapulse.brain import db as brain_db
+
+        session = brain_db.get_session_by_id(session_id)
+        if session is None:
+            return json.dumps({"error": f"Session {session_id} not found"})
+        return json.dumps({"session": _serialize(session)}, indent=2)
+    except Exception as exc:
+        return _brain_error(str(exc))
+
+
+@_tool()
+def brain_log_decision(
+    title: str,
+    body_md: str = "",
+    tags: list[str] | None = None,
+    session_id: int | None = None,
+) -> str:
+    """Log a lightweight decision record to the brain.
+
+    Use for design choices, library selections, trade-off analyses,
+    or any decision worth remembering across sessions.
+
+    Args:
+        title: Short decision summary (e.g. "Chose psycopg2 over asyncpg").
+        body_md: Detailed reasoning in markdown.
+        tags: Categorization tags (e.g. ["architecture", "database"]).
+        session_id: Optional session to link this decision to.
+    """
+    try:
+        from datapulse.brain import db as brain_db
+        from datapulse.brain.embeddings import get_embedding
+
+        row_id = brain_db.insert_decision(
+            title=title,
+            body_md=body_md,
+            tags=tags,
+            session_id=session_id,
+        )
+
+        # Generate embedding for the decision
+        vec = get_embedding(f"{title}\n{body_md}")
+        if vec is not None:
+            brain_db.update_embedding("decisions", row_id, vec)
+
+        return json.dumps({"id": row_id, "title": title, "status": "created"})
+    except Exception as exc:
+        return _brain_error(str(exc))
+
+
+@_tool()
+def brain_log_incident(
+    title: str,
+    body_md: str = "",
+    severity: str = "low",
+    tags: list[str] | None = None,
+    session_id: int | None = None,
+) -> str:
+    """Log an incident or post-incident note to the brain.
+
+    Use for CI breaks, production issues, data quality problems,
+    or security findings discovered during development.
+
+    Args:
+        title: Short incident summary.
+        body_md: Root cause analysis, resolution steps, lessons learned.
+        severity: One of "low", "medium", "high", "critical".
+        tags: Categorization tags.
+        session_id: Optional session to link this incident to.
+    """
+    try:
+        from datapulse.brain import db as brain_db
+        from datapulse.brain.embeddings import get_embedding
+
+        row_id = brain_db.insert_incident(
+            title=title,
+            body_md=body_md,
+            severity=severity,
+            tags=tags,
+            session_id=session_id,
+        )
+
+        # Generate embedding for the incident
+        vec = get_embedding(f"{title}\n{body_md}")
+        if vec is not None:
+            brain_db.update_embedding("incidents", row_id, vec)
+
+        return json.dumps({"id": row_id, "title": title, "severity": severity, "status": "created"})
+    except Exception as exc:
+        return _brain_error(str(exc))
+
+
+# ── Server entry point ───────────────────────────────────────────────
 
 
 def main() -> None:

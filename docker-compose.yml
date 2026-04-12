@@ -70,7 +70,7 @@ services:
     stop_grace_period: 35s  # 30s uvicorn drain + 5s buffer before SIGKILL
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: datapulse-db
     restart: unless-stopped
     ports:

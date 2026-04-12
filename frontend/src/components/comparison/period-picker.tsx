@@ -155,7 +155,7 @@ export function PeriodPicker({
       onChange({
         start_date: fmt(start),
         end_date: fmt(end),
-        label: "Custom",
+        label: `${format(start, "MMM d")} – ${format(end, "MMM d")}`,
       });
     }
   }, [customStart, customEnd]); // eslint-disable-line react-hooks/exhaustive-deps

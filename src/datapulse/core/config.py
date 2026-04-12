@@ -113,6 +113,9 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
 
+    # Brain (session memory) — embedding model for semantic search
+    brain_embed_model: str = "openai/text-embedding-3-small"
+
     # Infrastructure tuning (extracted from hardcoded values)
     redis_socket_timeout: int = 2
     redis_retry_interval: int = 15

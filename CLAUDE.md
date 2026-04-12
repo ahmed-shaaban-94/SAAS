@@ -97,7 +97,7 @@ tests/                  # pytest: 124 test files, coverage enforced at 95%+
 
 | Service | Container | Port | Purpose |
 |---------|-----------|------|---------|
-| `postgres` | datapulse-db | 5432 | PostgreSQL 16 |
+| `postgres` | datapulse-db | 5432 | PostgreSQL 16 + pgvector |
 | `api` | datapulse-api | 8000 | FastAPI analytics API |
 | `frontend` | datapulse-frontend | 3000 | Next.js dashboard |
 | `redis` | datapulse-redis | (internal) | Redis cache |
@@ -116,6 +116,7 @@ docker compose up -d --build
 | `bronze` | Raw data, as-is from source | Python bronze loader |
 | `public_staging` / `silver` | Cleaned, transformed | dbt staging models |
 | `public_marts` / `gold` | Aggregated, business-ready | dbt marts models (6 dims + 1 fact + 8 aggs) |
+| `brain` | Session tracking, decisions, incidents | Stop hook + MCP tools |
 
 ### Key Data Volumes
 
@@ -241,6 +242,25 @@ PYTHONPATH=src python src/datapulse/graph/mcp_server.py
 ```
 
 Indexes: Python symbols (functions, classes, methods), TypeScript components/hooks, dbt models. Edges: `calls`, `imports`, `depends_on`, `tests`. DB stored at `~/.datapulse/graph.db`.
+
+## Brain (Session Memory)
+
+`src/datapulse/brain/` — PostgreSQL-backed session tracking with FTS + pgvector semantic search.
+
+**Storage**: `brain` schema in PostgreSQL (sessions, decisions, incidents tables).
+
+**MCP Tools** (registered in the same `datapulse-graph` MCP server):
+| Tool | Purpose |
+|------|---------|
+| `brain_search(query)` | Hybrid FTS + semantic search across all brain data |
+| `brain_recent(count)` | Last N sessions with full detail |
+| `brain_session(id)` | Single session with linked decisions/incidents |
+| `brain_log_decision(title, body_md)` | Record a decision |
+| `brain_log_incident(title, body_md, severity)` | Record an incident |
+
+**Hook**: Stop hook (`.claude/hooks/brain-session-end.sh`) auto-captures session data into PostgreSQL. Falls back to markdown files if DB is unavailable.
+
+**Embedding**: Uses OpenRouter API (`OPENROUTER_API_KEY` + `BRAIN_EMBED_MODEL`) for 1536-dim vectors. Semantic search is optional — FTS always works without API key.
 
 ## Architecture Documentation
 
