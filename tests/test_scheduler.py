@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -282,3 +283,77 @@ def test_get_scheduler_status_not_running():
 
         assert status["running"] is False
         assert status["jobs"] == []
+
+
+# ---------------------------------------------------------------------------
+# Session leak prevention (Layer 1 crash prevention)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_run_pipeline_lock_not_acquired_closes_session():
+    """lock_session is always closed even when advisory lock is not acquired."""
+    run_id = uuid4()
+
+    with (
+        patch("datapulse.scheduler.get_settings") as mock_settings,
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.pipeline.repository.PipelineRepository"),
+        patch("datapulse.notifications.notify_pipeline_failure"),
+        patch("datapulse.cache.cache_invalidate_pattern"),
+    ):
+        mock_settings.return_value = MagicMock()
+        mock_session = MagicMock()
+        mock_sf.return_value = MagicMock(return_value=mock_session)
+        # Advisory lock returns False — another pipeline is running
+        mock_session.execute.return_value.scalar.return_value = False
+
+        from datapulse.scheduler import run_pipeline
+
+        await run_pipeline(run_id=run_id, source_dir="/data")
+
+        # Session MUST be closed even on early return
+        mock_session.close.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# Scheduler SCHEDULER_ENABLED gate
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_start_scheduler_skipped_when_disabled():
+    """start_scheduler does nothing when SCHEDULER_ENABLED=false."""
+    with (
+        patch.dict(os.environ, {"SCHEDULER_ENABLED": "false"}),
+        patch("datapulse.scheduler.scheduler") as mock_sched,
+    ):
+        mock_sched.running = False
+
+        from datapulse.scheduler import start_scheduler
+
+        start_scheduler()
+
+        mock_sched.add_job.assert_not_called()
+        mock_sched.start.assert_not_called()
+
+
+@pytest.mark.unit
+def test_start_scheduler_enabled_by_default():
+    """start_scheduler runs when SCHEDULER_ENABLED is not set (defaults to true)."""
+    env = os.environ.copy()
+    env.pop("SCHEDULER_ENABLED", None)
+
+    with (
+        patch.dict(os.environ, env, clear=True),
+        patch("datapulse.scheduler.scheduler") as mock_sched,
+    ):
+        mock_sched.running = False
+
+        from datapulse.scheduler import start_scheduler
+
+        start_scheduler()
+
+        assert mock_sched.add_job.call_count == 3
+        mock_sched.start.assert_called_once()

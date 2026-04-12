@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir --require-hashes -r requirements.lock \
 ENV APP_ROOT=/app
 
 # Include migration scripts — entrypoint runs them before uvicorn
+COPY gunicorn.conf.py /app/gunicorn.conf.py
 COPY scripts/prestart.sh /app/scripts/prestart.sh
 COPY scripts/entrypoint.sh /app/scripts/entrypoint.sh
 RUN sed -i 's/\r$//' /app/scripts/prestart.sh /app/scripts/entrypoint.sh \
@@ -38,4 +39,4 @@ USER appuser
 EXPOSE 8000
 
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
-CMD ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
+CMD ["gunicorn", "datapulse.api.app:create_app()", "--config", "/app/gunicorn.conf.py"]

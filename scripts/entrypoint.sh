@@ -28,6 +28,6 @@ if ! /app/scripts/prestart.sh; then
     exit 1
 fi
 
-echo "[entrypoint] Starting uvicorn..."
+echo "[entrypoint] Starting server..."
 # exec replaces the shell process so SIGTERM reaches uvicorn directly
 exec "$@"

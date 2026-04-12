@@ -49,16 +49,14 @@ services:
       BILLING_BASE_URL: ${BILLING_BASE_URL:-https://smartdatapulse.tech}
     ports:
       - "127.0.0.1:8000:8000"
-    command: ["uvicorn", "datapulse.api.app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory", "--workers", "2", "--timeout-graceful-shutdown", "30"]
+    command: ["gunicorn", "datapulse.api.app:create_app()", "--config", "/app/gunicorn.conf.py"]
     healthcheck:
-      # Use /health/live (liveness) not /health/ready (readiness).
-      # Readiness depends on DB+Redis, which may take time on cold start.
-      # Docker only needs to know the process is alive; the deploy script
-      # smoke-tests /health/ready separately after all services are up.
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')\""]
-      interval: 10s
+      # /health/ready checks DB connectivity. start_period gives migrations time.
+      # 6 failures x 15s = 90s of DB unreachable before marking unhealthy.
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')\""]
+      interval: 15s
       timeout: 5s
-      retries: 12
+      retries: 6
       start_period: 60s
     deploy:
       resources:

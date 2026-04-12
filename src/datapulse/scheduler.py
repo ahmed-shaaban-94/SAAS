@@ -217,8 +217,11 @@ async def run_pipeline(
 
     log.info("pipeline_start", run_id=run_id_str)
 
-    # Acquire advisory lock to prevent concurrent pipeline runs
+    # Acquire advisory lock to prevent concurrent pipeline runs.
+    # Single try/finally ensures lock_session is ALWAYS closed — even on
+    # early returns (lock-not-acquired, plan-limit-exceeded, stage failure).
     lock_session = get_session_factory()()
+    lock_acquired = False
     try:
         lock_result = lock_session.execute(sa_text("SELECT pg_try_advisory_lock(42)")).scalar()
         if not lock_result:
@@ -226,31 +229,21 @@ async def run_pipeline(
             _update_status("failed", error_message="Another pipeline is already running")
             notify_pipeline_failure(run_id_str, "lock", "Another pipeline is already running")
             return
-    except Exception:
-        lock_session.close()
-        raise
+        lock_acquired = True
 
-    # Re-validate plan limits under lock (TOCTOU defense)
-    limit_error = await asyncio.to_thread(_check_plan_limits_under_lock, tenant_id)
-    if limit_error:
-        _update_status("failed", error_message=f"Plan limit exceeded: {limit_error}")
-        notify_pipeline_failure(run_id_str, "plan_check", limit_error)
-        log.warning("pipeline_plan_limit_exceeded", run_id=run_id_str, tenant_id=tenant_id)
-        # Release lock early
-        try:
-            lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
-            lock_session.commit()
-        finally:
-            lock_session.close()
-        clear_contextvars()
-        return
+        # Re-validate plan limits under lock (TOCTOU defense)
+        limit_error = await asyncio.to_thread(_check_plan_limits_under_lock, tenant_id)
+        if limit_error:
+            _update_status("failed", error_message=f"Plan limit exceeded: {limit_error}")
+            notify_pipeline_failure(run_id_str, "plan_check", limit_error)
+            log.warning("pipeline_plan_limit_exceeded", run_id=run_id_str, tenant_id=tenant_id)
+            return
 
-    _update_status("running")
-    await asyncio.to_thread(_heartbeat)  # initial heartbeat
-    total_rows = 0
-    resume_idx = _stage_index(resume_from) if resume_from else -1
+        _update_status("running")
+        await asyncio.to_thread(_heartbeat)  # initial heartbeat
+        total_rows = 0
+        resume_idx = _stage_index(resume_from) if resume_from else -1
 
-    try:
         for status_name, stage, execute_fn in stages:
             # Skip stages before resume_from when resuming a partial run
             if resume_from and _stage_index(stage) < resume_idx:
@@ -318,14 +311,14 @@ async def run_pipeline(
         pipeline_duration_seconds.observe(elapsed)
         log.error("pipeline_crashed", run_id=run_id_str, error=error_msg, duration=elapsed)
     finally:
-        # Release advisory lock
-        try:
-            lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
-            lock_session.commit()
-        except Exception:
-            pass
-        finally:
-            lock_session.close()
+        # Release advisory lock if acquired, then ALWAYS close session
+        if lock_acquired:
+            try:
+                lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
+                lock_session.commit()
+            except Exception:
+                pass
+        lock_session.close()
         clear_contextvars()
 
 
@@ -460,14 +453,17 @@ async def _ai_digest() -> None:
 def start_scheduler() -> None:
     """Start the background scheduler with all jobs.
 
-    Called once per uvicorn worker.  With ``--workers N`` every worker runs
-    its own scheduler instance — jobs are idempotent so duplication is
-    harmless.  Leader election (advisory-lock based) was removed because
-    the DB session it opened during lifespan startup deadlocked the
-    forked workers in production (all stuck at "Waiting for application
-    startup").  Re-add leader election as a post-startup background task
-    if single-execution is needed.
+    Gated by ``SCHEDULER_ENABLED`` env var (default ``"true"``).
+    With Gunicorn, the ``post_fork`` hook in ``gunicorn.conf.py`` sets
+    this to ``"true"`` in exactly one worker (via file lock), so only
+    one scheduler instance runs across all workers.
     """
+    import os
+
+    if os.environ.get("SCHEDULER_ENABLED", "true").lower() != "true":
+        log.info("scheduler_skipped", reason="SCHEDULER_ENABLED != true")
+        return
+
     if scheduler.running:
         return
 

@@ -391,6 +391,10 @@ class TestMCPTools:
     def test_dp_impact_not_found(self):
         from datapulse.graph.mcp_server import dp_impact
 
+        # Populate the DB so _ensure_indexed() won't trigger full project indexing.
+        # Without this, the empty temp DB causes a 140s+ index scan that exceeds
+        # the 120s CI timeout.
+        self._setup_graph()
         result = json.loads(dp_impact("nonexistent_symbol"))
         assert "error" in result
 
@@ -419,6 +423,8 @@ class TestMCPTools:
     def test_dp_query_no_results(self):
         from datapulse.graph.mcp_server import dp_query
 
+        # Populate the DB so _ensure_indexed() won't trigger full project indexing.
+        self._setup_graph()
         result = json.loads(dp_query("zzzzz_nonexistent"))
         assert result["results"] == []
 

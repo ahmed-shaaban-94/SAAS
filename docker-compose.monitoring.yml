@@ -1,10 +1,10 @@
-# Monitoring stack — Prometheus + Grafana + uptime watchdog
+# Monitoring stack — Prometheus + Grafana + uptime watchdog + autoheal
 #
 # Usage (production only — layered on top of base + prod):
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 #     -f docker-compose.monitoring.yml up -d
 #
-# Memory budget: 256M + 128M + 16M = 400M total
+# Memory budget: 256M + 128M + 16M + 32M = 432M total
 
 services:
   prometheus:
@@ -102,6 +102,32 @@ services:
       resources:
         limits:
           memory: 16M
+          cpus: "0.05"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+    networks:
+      - datapulse-backend
+
+  # Autoheal — restarts containers Docker marks as unhealthy.
+  # Requires API healthcheck to point to /health/ready (checks DB).
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    container_name: datapulse-autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+      AUTOHEAL_INTERVAL: 30
+      AUTOHEAL_START_PERIOD: 120
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: 30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      resources:
+        limits:
+          memory: 32M
           cpus: "0.05"
     logging:
       driver: json-file

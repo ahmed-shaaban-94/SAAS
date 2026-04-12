@@ -21,6 +21,7 @@ dependencies = [
     "dbt-postgres>=1.8,<2",
     "fastapi>=0.111,<1",
     "uvicorn[standard]>=0.29,<1",
+    "gunicorn>=22.0,<24",
     "httpx>=0.27,<1",
     "watchdog>=4.0,<5",
     "slowapi>=0.1.9,<1",
