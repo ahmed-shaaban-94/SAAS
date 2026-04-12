@@ -23,8 +23,8 @@
           "datasource": "Prometheus"
         },
         {
-          "expr": "sum(rate(http_requests_total{job=\"datapulse-api\", status=\"401\"}[5m]))",
-          "legendFormat": "401 (auth fails)/s",
+          "expr": "sum(rate(http_requests_total{job=\"datapulse-api\", status=~\"4..\"}[5m]))",
+          "legendFormat": "4xx/s",
           "datasource": "Prometheus"
         }
       ],
@@ -82,13 +82,13 @@
     },
     {
       "id": 4,
-      "title": "Auth Failure Rate (%)",
+      "title": "4xx Rate (%)",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
       "targets": [
         {
-          "expr": "100 * sum(rate(http_requests_total{job=\"datapulse-api\", status=\"401\"}[5m])) / sum(rate(http_requests_total{job=\"datapulse-api\"}[5m]))",
-          "legendFormat": "401 %",
+          "expr": "100 * sum(rate(http_requests_total{job=\"datapulse-api\", status=~\"4..\"}[5m])) / sum(rate(http_requests_total{job=\"datapulse-api\"}[5m]))",
+          "legendFormat": "4xx %",
           "datasource": "Prometheus"
         }
       ],
@@ -100,7 +100,7 @@
             "steps": [
               { "color": "green", "value": null },
               { "color": "yellow", "value": 10 },
-              { "color": "red", "value": 50 }
+              { "color": "red", "value": 30 }
             ]
           }
         }
