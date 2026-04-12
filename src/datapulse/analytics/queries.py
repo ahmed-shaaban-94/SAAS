@@ -142,9 +142,10 @@ def build_trend(rows: list) -> TrendResult:
     minimum = min(values)
     maximum = max(values)
 
+    # growth_pct is NOT calculated here — build_trend lacks previous-period
+    # context.  The TrendRepository injects proper period-over-period growth
+    # after querying the previous period total separately.
     growth_pct: Decimal | None = None
-    if len(values) >= 2:
-        growth_pct = safe_growth(values[-1], values[0])
 
     # Statistical annotation on trend series
     stats: StatisticalAnnotation | None = None

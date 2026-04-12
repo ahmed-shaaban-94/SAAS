@@ -43,14 +43,14 @@ export const TrendKPICards = memo(function TrendKPICards() {
         value: daily?.growth_pct != null ? `${daily.growth_pct > 0 ? "+" : ""}${daily.growth_pct.toFixed(1)}%` : "N/A",
         trend: daily?.growth_pct ?? null,
         icon: daily?.growth_pct != null && daily.growth_pct >= 0 ? TrendingUp : TrendingDown,
-        tooltip: "Daily trend growth vs previous period",
+        tooltip: "Selected period total vs equivalent previous period",
       },
       {
         label: "Monthly Growth",
         value: monthly?.growth_pct != null ? `${monthly.growth_pct > 0 ? "+" : ""}${monthly.growth_pct.toFixed(1)}%` : "N/A",
         trend: monthly?.growth_pct ?? null,
         icon: monthly?.growth_pct != null && monthly.growth_pct >= 0 ? TrendingUp : TrendingDown,
-        tooltip: "Monthly trend growth vs previous period",
+        tooltip: "Selected period total vs equivalent previous period",
       },
       {
         label: "Peak Day",

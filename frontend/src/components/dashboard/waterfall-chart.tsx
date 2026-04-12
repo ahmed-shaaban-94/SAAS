@@ -28,9 +28,10 @@ type DimensionKey = (typeof DIM_TABS)[number]["key"];
 
 export interface WaterfallChartProps {
   data?: WaterfallAnalysis;
+  periodLabel?: string;
 }
 
-export const WaterfallChart = memo(function WaterfallChart({ data }: WaterfallChartProps) {
+export const WaterfallChart = memo(function WaterfallChart({ data, periodLabel }: WaterfallChartProps) {
   const theme = useChartTheme();
   const [activeDim, setActiveDim] = useState<DimensionKey>("product");
 
@@ -72,6 +73,30 @@ export const WaterfallChart = memo(function WaterfallChart({ data }: WaterfallCh
     [driversByDim, effectiveDim],
   );
 
+  // Compute explained percentage (for...of avoids adding uncovered arrow functions)
+  let explainedPct: number | null = null;
+  if (data && data.total_change !== 0) {
+    let explained = 0;
+    for (const d of data.drivers) {
+      explained += Math.abs(d.impact);
+    }
+    const totalAbs = Math.abs(data.total_change);
+    if (totalAbs > 0) {
+      explainedPct = Math.round((explained / totalAbs) * 100);
+    }
+  }
+
+  // Check if any driver has extreme impact_pct
+  let hasExtremeImpact = false;
+  if (data) {
+    for (const d of data.drivers) {
+      if (Math.abs(d.impact_pct) > 100) {
+        hasExtremeImpact = true;
+        break;
+      }
+    }
+  }
+
   if (!data || !data.drivers.length) {
     return (
       <div className="rounded-lg border border-border bg-card p-6">
@@ -100,6 +125,11 @@ export const WaterfallChart = memo(function WaterfallChart({ data }: WaterfallCh
               </span>
             )}
           </p>
+          {periodLabel && (
+            <p className="text-xs text-text-secondary mt-0.5">
+              Comparing: {periodLabel} vs equivalent previous period
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center rounded-lg border border-border bg-page/50 p-0.5">
@@ -175,6 +205,20 @@ export const WaterfallChart = memo(function WaterfallChart({ data }: WaterfallCh
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+
+      {/* Footer: explained coverage + extreme % note */}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-secondary">
+        {explainedPct !== null && explainedPct < 95 && (
+          <span>
+            Top drivers explain ~{explainedPct}% of the total change
+          </span>
+        )}
+        {hasExtremeImpact && (
+          <span title="When gains and losses partially offset each other, individual driver contributions can exceed 100% of the net change.">
+            * Some drivers exceed 100% due to offsetting effects
+          </span>
+        )}
+      </div>
     </div>
   );
 });

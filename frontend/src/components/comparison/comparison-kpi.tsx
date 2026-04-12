@@ -14,9 +14,10 @@ interface ComparisonKPIProps {
 export function ComparisonKPI({ label, currentValue, previousValue, isCurrency }: ComparisonKPIProps) {
   const delta = previousValue !== 0
     ? ((currentValue - previousValue) / previousValue) * 100
-    : 0;
-  const isPositive = delta > 0;
-  const isNegative = delta < 0;
+    : null;
+  const isPositive = delta !== null && delta > 0;
+  const isNegative = delta !== null && delta < 0;
+  const isNew = previousValue === 0 && currentValue > 0;
   const fmt = isCurrency ? formatCurrency : formatNumber;
   const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus;
 
@@ -42,7 +43,7 @@ export function ComparisonKPI({ label, currentValue, previousValue, isCurrency }
             isPositive ? "text-growth-green" : isNegative ? "text-growth-red" : "text-text-secondary",
           )}
         >
-          {isPositive ? "+" : ""}{delta.toFixed(1)}%
+          {isNew ? "New" : delta !== null ? `${isPositive ? "+" : ""}${delta.toFixed(1)}%` : "N/A"}
         </span>
       </div>
     </div>
