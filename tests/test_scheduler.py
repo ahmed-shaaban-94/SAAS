@@ -98,9 +98,7 @@ async def test_run_pipeline_stage_failure_stops_pipeline():
 async def test_health_check_all_ok():
     """No notification when DB and Redis are healthy."""
     with (
-        patch(
-            "datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}
-        ),
+        patch("datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}),
         patch(
             "datapulse.checks.check_redis",
             return_value={"status": "ok", "latency_ms": 2},
@@ -147,9 +145,7 @@ async def test_health_check_db_failure_notifies():
 async def test_health_check_detects_stale_pipeline():
     """Stale pipeline runs are marked failed and notified."""
     with (
-        patch(
-            "datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}
-        ),
+        patch("datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}),
         patch(
             "datapulse.checks.check_redis",
             return_value={"status": "ok", "latency_ms": 2},
