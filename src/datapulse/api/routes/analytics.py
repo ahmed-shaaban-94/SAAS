@@ -243,6 +243,22 @@ def get_top_staff(
     return service.get_staff_leaderboard(_to_filter(params))
 
 
+@router.get("/staff/quota", response_model=list[StaffQuota])
+@limiter.limit("60/minute")
+def get_staff_quota(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list:
+    """Staff quota attainment — actual vs target per staff member."""
+    set_cache_headers(response, 300)
+    rows = service._repo.get_staff_quota(year=year, month=month, limit=limit)
+    return [StaffQuota(**r) for r in rows]
+
+
 @router.get("/sites", response_model=RankingResult)
 @limiter.limit("100/minute")
 def get_sites(
@@ -540,22 +556,6 @@ def get_at_risk_customers(
     """At-risk and critical customers, lowest score first."""
     set_cache_headers(response, 300)
     return service.get_at_risk_customers(limit=limit)
-
-
-@router.get("/staff/quota", response_model=list[StaffQuota])
-@limiter.limit("60/minute")
-def get_staff_quota(
-    request: Request,
-    response: Response,
-    service: ServiceDep,
-    year: int | None = Query(None),
-    month: int | None = Query(None),
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> list:
-    """Staff quota attainment — actual vs target per staff member."""
-    set_cache_headers(response, 300)
-    rows = service._repo.get_staff_quota(year=year, month=month, limit=limit)
-    return [StaffQuota(**r) for r in rows]
 
 
 @router.get("/products/{product_key}/affinity", response_model=list[AffinityPair])

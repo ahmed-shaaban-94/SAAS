@@ -38,10 +38,12 @@ class AuditRepository:
             conditions.append("user_id = :user_id")
             params["user_id"] = user_id
         if start_date:
-            conditions.append("created_at >= :start_date::timestamptz")
+            conditions.append("created_at >= CAST(:start_date AS timestamptz)")
             params["start_date"] = start_date
         if end_date:
-            conditions.append("created_at < (:end_date::date + 1)::timestamptz")
+            conditions.append(
+                "created_at < CAST(CAST(:end_date AS date) + INTERVAL '1 day' AS timestamptz)"
+            )
             params["end_date"] = end_date
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
