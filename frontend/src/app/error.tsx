@@ -11,7 +11,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV !== "production") {
       console.error("Unhandled error:", error);
     }
   }, [error]);
@@ -20,7 +20,7 @@ export default function Error({
       <AlertTriangle className="h-16 w-16 text-growth-red" />
       <h1 className="mt-6 text-2xl font-bold">Something went wrong</h1>
       <p className="mt-2 text-sm text-text-secondary">
-        {process.env.NODE_ENV === "development"
+        {process.env.NODE_ENV !== "production"
           ? error.message || "An unexpected error occurred"
           : "An unexpected error occurred. Please try again."}
       </p>

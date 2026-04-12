@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV !== "production") {
       console.error("ErrorBoundary caught:", error, errorInfo);
     }
     Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h2>
           <p className="mt-2 text-sm text-text-secondary">
-            {process.env.NODE_ENV === "development"
+            {process.env.NODE_ENV !== "production"
               ? this.state.error?.message || "An unexpected error occurred"
               : "An unexpected error occurred. Please try again."}
           </p>
