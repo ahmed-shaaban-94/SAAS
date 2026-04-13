@@ -471,9 +471,7 @@ def brain_log_knowledge(
         if vec is not None:
             brain_db.update_embedding("knowledge", row_id, vec)
 
-        return json.dumps(
-            {"id": row_id, "category": category, "title": title, "status": "created"}
-        )
+        return json.dumps({"id": row_id, "category": category, "title": title, "status": "created"})
     except Exception as exc:
         return _brain_error(str(exc))
 
