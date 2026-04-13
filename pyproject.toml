@@ -90,9 +90,6 @@ python_version = "3.11"
 warn_return_any = false
 warn_unused_ignores = false
 strict_optional = true
-# Exclude the LangGraph graph/ subpackage — mypy crashes (Integer exceeds 64-bit range)
-# on Annotated TypedDict with custom reducers until mypy>=1.14 is released.
-exclude = ["src/datapulse/ai_light/graph/"]
 
 # Third-party packages without stubs — suppress missing-stubs errors per module
 [[tool.mypy.overrides]]
