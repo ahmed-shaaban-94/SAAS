@@ -5,6 +5,7 @@ Phase 1b: Connection CRUD + test + preview added.
 Phase 1c: Profile / mapping CRUD + standalone mapping validation.
 Phase 1d: Draft → validate → preview → publish → rollback workflow.
 Phase 1e: Sync trigger (creates pipeline_runs + sync_jobs rows).
+Phase 2: Google Sheets connector registered; schedule CRUD added.
 """
 
 from __future__ import annotations
@@ -33,6 +34,8 @@ from datapulse.control_center.models import (
     SourceConnectionList,
     SyncJob,
     SyncJobList,
+    SyncSchedule,
+    SyncScheduleList,
     ValidationReport,
 )
 from datapulse.control_center.repository import (
@@ -42,6 +45,7 @@ from datapulse.control_center.repository import (
     PipelineReleaseRepository,
     SourceConnectionRepository,
     SyncJobRepository,
+    SyncScheduleRepository,
 )
 from datapulse.logging import get_logger
 
@@ -55,9 +59,17 @@ log = get_logger(__name__)
 def _get_connector(source_type: str):  # type: ignore[return]
     """Return the connector instance for a given source_type, or None."""
     if source_type == "file_upload":
-        from datapulse.control_center.connectors.file_upload import FileUploadConnector
+        from datapulse.control_center.connectors.file_upload import (
+            FileUploadConnector,  # noqa: PLC0415
+        )
 
         return FileUploadConnector()
+    if source_type == "google_sheets":
+        from datapulse.control_center.connectors.google_sheets import (
+            GoogleSheetsConnector,  # noqa: PLC0415
+        )
+
+        return GoogleSheetsConnector()
     return None
 
 
@@ -74,6 +86,7 @@ class ControlCenterService:
         releases: PipelineReleaseRepository,
         sync_jobs: SyncJobRepository,
         drafts: PipelineDraftRepository,
+        schedules: SyncScheduleRepository,
     ) -> None:
         self._session = session
         self._connections = connections
@@ -82,6 +95,7 @@ class ControlCenterService:
         self._releases = releases
         self._sync_jobs = sync_jobs
         self._drafts = drafts
+        self._schedules = schedules
 
     # ── Canonical domains ────────────────────────────────────
 
@@ -211,6 +225,17 @@ class ControlCenterService:
                 max_rows=max_rows,
                 sample_rows=sample_rows,
             )
+
+        # Delegate all other source types to their registered connector
+        connector = _get_connector(conn.source_type)
+        if connector is not None:
+            return connector.preview(
+                tenant_id=tenant_id,
+                config=conn.config,
+                max_rows=max_rows,
+                sample_rows=sample_rows,
+            )
+
         raise ValueError(f"preview_not_supported_for:{conn.source_type}")
 
     # ── Pipeline profiles ────────────────────────────────────
@@ -723,3 +748,63 @@ class ControlCenterService:
             items=[SyncJob(**r) for r in rows],
             total=total,
         )
+
+    # ── Sync schedules (Phase 2) ──────────────────────────────
+
+    def create_schedule(
+        self,
+        *,
+        connection_id: int,
+        tenant_id: int,
+        cron_expr: str,
+        is_active: bool = True,
+        created_by: str | None = None,
+    ) -> SyncSchedule:
+        """Create a cron schedule for a source connection.
+
+        Raises ``ValueError`` when the connection is not found.
+        """
+        conn = self.get_connection(connection_id)
+        if conn is None:
+            raise ValueError("connection_not_found")
+
+        row = self._schedules.create(
+            tenant_id=tenant_id,
+            connection_id=connection_id,
+            cron_expr=cron_expr,
+            is_active=is_active,
+            created_by=created_by,
+        )
+        log.info(
+            "control_center.schedule.created",
+            tenant_id=tenant_id,
+            connection_id=connection_id,
+            cron_expr=cron_expr,
+        )
+        return SyncSchedule(**row)
+
+    def list_schedules(
+        self,
+        *,
+        connection_id: int,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> SyncScheduleList:
+        """List cron schedules for a source connection."""
+        rows, total = self._schedules.list_for_connection(
+            connection_id, page=page, page_size=page_size
+        )
+        return SyncScheduleList(
+            items=[SyncSchedule(**r) for r in rows],
+            total=total,
+        )
+
+    def delete_schedule(self, schedule_id: int) -> bool:
+        """Hard-delete a sync schedule.
+
+        Returns True if the schedule was found and deleted.
+        """
+        deleted = self._schedules.delete(schedule_id)
+        if deleted:
+            log.info("control_center.schedule.deleted", schedule_id=schedule_id)
+        return deleted

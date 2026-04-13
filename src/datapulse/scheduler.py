@@ -450,6 +450,147 @@ async def _ai_digest() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _make_sync_job_fn(connection_id: int, tenant_id: int, schedule_id: int):  # type: ignore[return]
+    """Return an async coroutine that triggers a scheduled sync and stamps last_run_at."""
+
+    async def _run() -> None:
+        from datapulse.control_center.repository import (  # noqa: PLC0415
+            MappingTemplateRepository,
+            PipelineDraftRepository,
+            PipelineProfileRepository,
+            PipelineReleaseRepository,
+            SourceConnectionRepository,
+            SyncJobRepository,
+            SyncScheduleRepository,
+        )
+        from datapulse.control_center.service import ControlCenterService  # noqa: PLC0415
+        from datapulse.core.db import get_session_factory  # noqa: PLC0415
+
+        session = get_session_factory()()
+        try:
+            session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            svc = ControlCenterService(
+                session,
+                connections=SourceConnectionRepository(session),
+                profiles=PipelineProfileRepository(session),
+                mappings=MappingTemplateRepository(session),
+                releases=PipelineReleaseRepository(session),
+                sync_jobs=SyncJobRepository(session),
+                drafts=PipelineDraftRepository(session),
+                schedules=SyncScheduleRepository(session),
+            )
+            svc.trigger_sync(
+                connection_id,
+                tenant_id=tenant_id,
+                run_mode="scheduled",
+                created_by="scheduler",
+            )
+            # Stamp last_run_at on the schedule row
+            SyncScheduleRepository(session).update_last_run(schedule_id)
+            session.commit()
+            log.info(
+                "scheduled_sync_triggered",
+                connection_id=connection_id,
+                tenant_id=tenant_id,
+                schedule_id=schedule_id,
+            )
+        except Exception:
+            session.rollback()
+            log.error(
+                "scheduled_sync_failed",
+                connection_id=connection_id,
+                tenant_id=tenant_id,
+                schedule_id=schedule_id,
+                exc_info=True,
+            )
+        finally:
+            session.close()
+
+    return _run
+
+
+def _register_sync_schedules() -> int:
+    """Load active sync schedules from DB and register each as an APScheduler job.
+
+    Returns the number of schedules registered.
+    Skips gracefully when the DB is unavailable or the table doesn't exist yet.
+    """
+    try:
+        from datapulse.control_center.repository import SyncScheduleRepository  # noqa: PLC0415
+        from datapulse.core.db import get_session_factory  # noqa: PLC0415
+    except ImportError:
+        log.warning("sync_schedule_registration_skipped", reason="control_center not installed")
+        return 0
+
+    try:
+        session = get_session_factory()()
+    except Exception:  # noqa: BLE001
+        log.warning("sync_schedule_db_unavailable", exc_info=True)
+        return 0
+
+    try:
+        repo = SyncScheduleRepository(session)
+        schedules = repo.list_all_active()
+    except Exception:  # noqa: BLE001
+        log.warning("sync_schedule_load_failed", exc_info=True)
+        return 0
+    finally:
+        session.close()
+
+    registered = 0
+    for sched in schedules:
+        cron_expr: str = sched["cron_expr"]
+        conn_id: int = sched["connection_id"]
+        tenant_id: int = sched["tenant_id"]
+        sched_id: int = sched["id"]
+
+        # Parse 5-field cron: minute hour day month day_of_week
+        parts = cron_expr.strip().split()
+        if len(parts) != 5:  # noqa: PLR2004
+            log.warning(
+                "sync_schedule_invalid_cron",
+                schedule_id=sched_id,
+                cron_expr=cron_expr,
+            )
+            continue
+
+        minute, hour, day, month, day_of_week = parts
+        try:
+            trigger = CronTrigger(
+                minute=minute,
+                hour=hour,
+                day=day,
+                month=month,
+                day_of_week=day_of_week,
+                timezone="UTC",
+            )
+        except Exception:  # noqa: BLE001
+            log.warning(
+                "sync_schedule_invalid_trigger",
+                schedule_id=sched_id,
+                cron_expr=cron_expr,
+                exc_info=True,
+            )
+            continue
+
+        job_id = f"sync_schedule_{sched_id}"
+        scheduler.add_job(
+            _make_sync_job_fn(conn_id, tenant_id, sched_id),
+            trigger,
+            id=job_id,
+            replace_existing=True,
+        )
+        registered += 1
+        log.info(
+            "sync_schedule_registered",
+            schedule_id=sched_id,
+            connection_id=conn_id,
+            cron_expr=cron_expr,
+        )
+
+    return registered
+
+
 def start_scheduler() -> None:
     """Start the background scheduler with all jobs.
 
@@ -477,10 +618,14 @@ def start_scheduler() -> None:
         _ai_digest, CronTrigger(hour=9, minute=0), id="ai_digest", replace_existing=True
     )
 
+    # Load tenant sync schedules from DB
+    n_schedules = _register_sync_schedules()
+
     scheduler.start()
     log.info(
         "scheduler_started",
         jobs=["health_check(5m)", "quality_digest(18:00)", "ai_digest(09:00)"],
+        sync_schedules_loaded=n_schedules,
     )
 
 

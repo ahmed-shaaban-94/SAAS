@@ -367,6 +367,16 @@ class PublishDraftRequest(BaseModel):
     release_notes: str = ""
 
 
+# ── Request model (Phase 2 — schedule CRUD) ──────────────────
+
+
+class CreateScheduleRequest(BaseModel):
+    """Payload for POST /connections/{id}/schedule."""
+
+    cron_expr: str = Field(..., min_length=1, max_length=100)
+    is_active: bool = True
+
+
 # ── Request model (Phase 1e — sync trigger) ──────────────────
 
 
@@ -384,4 +394,29 @@ class TriggerSyncRequest(BaseModel):
 class PipelineDraftList(BaseModel):
     model_config = ConfigDict(frozen=True)
     items: list[PipelineDraft]
+    total: int
+
+
+# ── Sync Schedules (Phase 2) ─────────────────────────────────
+
+
+class SyncSchedule(BaseModel):
+    """Cron-based schedule that auto-triggers sync_jobs for a source connection."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    tenant_id: int
+    connection_id: int
+    cron_expr: str
+    is_active: bool
+    last_run_at: datetime | None = None
+    created_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SyncScheduleList(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    items: list[SyncSchedule]
     total: int

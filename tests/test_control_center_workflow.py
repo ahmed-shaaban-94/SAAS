@@ -25,6 +25,7 @@ from datapulse.control_center.repository import (
     PipelineReleaseRepository,
     SourceConnectionRepository,
     SyncJobRepository,
+    SyncScheduleRepository,
 )
 from datapulse.control_center.service import ControlCenterService
 
@@ -143,6 +144,7 @@ def repos():
         "releases": create_autospec(PipelineReleaseRepository, instance=True),
         "sync_jobs": create_autospec(SyncJobRepository, instance=True),
         "drafts": create_autospec(PipelineDraftRepository, instance=True),
+        "schedules": create_autospec(SyncScheduleRepository, instance=True),
     }
 
 
