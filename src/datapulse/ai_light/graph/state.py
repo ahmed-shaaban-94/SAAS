@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import TypedDict
 
@@ -12,6 +12,19 @@ def _append_reducer(existing: list | None, new: list | None) -> list:
     base = existing if existing is not None else []
     addition = new if new is not None else []
     return base + addition
+
+
+# mypy sees a plain list type; LangGraph runtime sees Annotated[list, reducer].
+# The Annotated form is required by LangGraph to append step traces across nodes
+# rather than replacing them. We hide the Annotated form from mypy to avoid a
+# known crash (TypeError: Integer exceeds 64-bit range) in mypy<1.14 when
+# serialising type metadata that contains a callable reference.
+if TYPE_CHECKING:
+    _StepTraceField = list[dict[str, Any]]
+else:
+    from typing import Annotated
+
+    _StepTraceField = Annotated[list[dict[str, Any]], _append_reducer]
 
 
 class AILightState(TypedDict, total=False):
@@ -57,7 +70,7 @@ class AILightState(TypedDict, total=False):
     token_usage: dict[str, int] | None  # {input, output, total}
     cost_cents: float
     model_used: str | None
-    step_trace: Annotated[list[dict[str, Any]], _append_reducer]
+    step_trace: _StepTraceField
     errors: list[str] | None
 
     # --- Control ---
