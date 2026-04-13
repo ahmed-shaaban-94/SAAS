@@ -1,68 +1,57 @@
-"""Versioned prompts for AI-Light LangGraph nodes.
+"""V2 prompt templates for LangGraph AI-Light nodes.
 
-All LLM prompts are centralised here so they can be versioned, A/B tested,
-and tuned without touching node logic.
-
-``PROMPT_VERSION`` is embedded in the Redis cache key so a prompt upgrade
-automatically invalidates stale cached responses.
-
-Prompt inventory
-----------------
-``SYSTEM_SUMMARY``    — System prompt for the summary insight type.
-``SYSTEM_ANOMALIES``  — System prompt for the anomalies insight type.
-``SYSTEM_CHANGES``    — System prompt for the changes insight type.
-``SYSTEM_DEEP_DIVE``  — System prompt for the deep_dive ReAct agent.
-``USER_SUMMARY``      — User-turn template for summary (accepts ``{data}``).
-``USER_ANOMALIES``    — User-turn template for anomalies (accepts ``{data}``).
-``USER_CHANGES``      — User-turn template for changes (accepts ``{data}``).
-``RETRY_SUFFIX``      — Appended to the user turn on validation-retry attempts.
-
-Implementation note (Phase A-1): all prompt strings are empty placeholders.
-Phase A will port the existing prompts from ``src/datapulse/ai_light/prompts.py``
-and extend them for the graph validation contract.
+Extends the V1 prompts in ai_light/prompts.py with structured JSON output
+requirements and prompt versioning for A/B capability.
 """
 
 from __future__ import annotations
 
-# Bump this constant whenever any prompt string changes.
-# It is included in the Redis cache key to auto-invalidate stale responses.
-PROMPT_VERSION: str = "v2.0-placeholder"
+import re as _re
 
-# ---------------------------------------------------------------------------
-# System prompts
-# ---------------------------------------------------------------------------
+PROMPT_VERSION = "v2.0"
 
-SYSTEM_SUMMARY: str = ""
-"""System prompt for the summary insight type. Defined in Phase A."""
-
-SYSTEM_ANOMALIES: str = ""
-"""System prompt for the anomalies insight type. Defined in Phase B."""
-
-SYSTEM_CHANGES: str = ""
-"""System prompt for the changes insight type. Defined in Phase B."""
-
-SYSTEM_DEEP_DIVE: str = ""
-"""System prompt for the deep_dive ReAct agent. Defined in Phase C."""
-
-# ---------------------------------------------------------------------------
-# User-turn templates
-# ---------------------------------------------------------------------------
-
-USER_SUMMARY: str = ""
-"""User-turn template for summary. Accepts ``{data}`` placeholder. Defined in Phase A."""
-
-USER_ANOMALIES: str = ""
-"""User-turn template for anomalies. Accepts ``{data}`` placeholder. Defined in Phase B."""
-
-USER_CHANGES: str = ""
-"""User-turn template for changes. Accepts ``{data}`` placeholder. Defined in Phase B."""
-
-# ---------------------------------------------------------------------------
-# Retry suffix
-# ---------------------------------------------------------------------------
-
-RETRY_SUFFIX: str = (
-    "\n\nYour previous response did not match the required JSON schema. "
-    "Please return ONLY valid JSON conforming to the schema, with no prose."
+# Reuse sanitize from parent module — kept here to avoid circular imports.
+_CONTROL_CHARS_RE = _re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_INJECTION_DELIMITERS_RE = _re.compile(r"[<>\[\]{}|\\`]")
+_INJECTION_PREFIXES_RE = _re.compile(
+    r"(?i)(ignore\s+(previous|above)|system\s*:|<\s*/?\s*system|you\s+are\s+now)"
 )
-"""Appended to the user turn on validation-retry attempts."""
+
+
+def _sanitize_for_prompt(text: str, max_len: int = 100) -> str:
+    """Strip control chars, prompt injection markers, and truncate user-controlled text."""
+    cleaned = _CONTROL_CHARS_RE.sub(" ", text)
+    cleaned = _INJECTION_DELIMITERS_RE.sub("", cleaned)
+    cleaned = _INJECTION_PREFIXES_RE.sub("", cleaned)
+    return cleaned.strip()[:max_len]
+
+
+SYSTEM_PROMPT_V2 = (
+    "You are a business analytics assistant for DataPulse, a pharma/sales analytics platform. "
+    "Analyze sales data and provide concise, actionable insights in English. "
+    "Keep responses data-driven. Currency is EGP (Egyptian Pounds). "
+    "When asked for JSON, return ONLY the JSON object — no markdown, no extra text."
+)
+
+SUMMARY_PROMPT = """\
+Analyze the following sales data and return a JSON object with exactly two keys:
+- "narrative": a concise executive summary paragraph (3-5 sentences, no markdown headers)
+- "highlights": an array of 3-5 short bullet-point strings
+
+**KPI Snapshot (prompt_version={prompt_version}):**
+- Today's Gross Sales: {today_gross} EGP
+- Month-to-Date: {mtd_gross} EGP
+- Year-to-Date: {ytd_gross} EGP
+- MoM Growth: {mom_growth}%
+- YoY Growth: {yoy_growth}%
+- Daily Transactions: {daily_transactions}
+- Daily Customers: {daily_customers}
+
+**Top 5 Products by Revenue:**
+{top_products}
+
+**Top 5 Customers by Revenue:**
+{top_customers}
+
+Return ONLY the JSON object. Example:
+{{"narrative": "...", "highlights": ["...", "..."]}}"""

@@ -1,50 +1,66 @@
-"""LangGraph state schema for AI-Light.
-
-Defines ``AILightState`` — the single TypedDict that flows through every node in
-the graph.  Fields are grouped by lifecycle stage:
-
-* **Identity** — tenant / user / run identifiers (set once at graph entry).
-* **Request**  — insight type, date range, params hash, feature flag.
-* **Fetched data** — raw DB / service results (populated by ``fetch_data`` node).
-* **Analysis** — statistical summaries and raw LLM output.
-* **Outputs**  — final response fields returned to the API caller.
-* **Cost / observability** — token counts, cost estimate, step trace.
-* **Control**  — retry counters, circuit-breaker failures, cache hit flag.
-
-``step_trace`` uses a custom *append* reducer so each node can push a record
-without overwriting the full list.  All other keys use LangGraph's default
-``last-write-wins`` reducer.
-
-Implementation note (Phase A-1): this file is a scaffold — ``AILightState`` is
-declared but the graph is not yet wired.  The LangGraph import is deferred so
-the ``[ai]`` extras are not required at import time.
-"""
+"""AILightState — LangGraph state schema for the AI-Light graph."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Annotated, Any
 
-if TYPE_CHECKING:
-    # LangGraph is an optional dependency — only imported for type-checking.
-    pass
+from typing_extensions import TypedDict
 
 
-# ---------------------------------------------------------------------------
-# Step-trace append reducer
-# ---------------------------------------------------------------------------
+def _append_reducer(existing: list | None, new: list | None) -> list:
+    """Append new items to existing list; never replace the whole list."""
+    base = existing if existing is not None else []
+    addition = new if new is not None else []
+    return base + addition
 
 
-def _append_reducer(left: list[Any], right: Any) -> list[Any]:
-    """Append *right* (a single record or list) to *left*."""
-    if isinstance(right, list):
-        return left + right
-    return left + [right]
+class AILightState(TypedDict, total=False):
+    """Shared state flowing through the AI-Light LangGraph."""
 
+    # --- Identity ---
+    tenant_id: str
+    user_claims: dict[str, Any]
+    run_id: str  # UUID string
 
-# ---------------------------------------------------------------------------
-# AILightState
-# ---------------------------------------------------------------------------
+    # --- Request ---
+    insight_type: str  # summary | anomalies | changes | deep_dive
+    target_date: str | None
+    start_date: str | None
+    end_date: str | None
+    params_hash: str
+    use_langgraph: bool
 
-# NOTE: Full TypedDict definition lands in Phase A (summary path implementation).
-# Declared here as a plain dict alias so imports work before langgraph is installed.
-AILightState = dict  # type: ignore[assignment]
+    # --- Fetched data ---
+    kpi_data: dict[str, Any] | None
+    daily_trend: dict[str, Any] | None
+    monthly_trend: dict[str, Any] | None
+    top_products: dict[str, Any] | None
+    top_customers: dict[str, Any] | None
+    anomaly_alerts: list[dict[str, Any]] | None
+    forecast_summary: dict[str, Any] | None
+    target_vs_actual: dict[str, Any] | None
+    churn_predictions: dict[str, Any] | None
+
+    # --- Analysis ---
+    statistical_analysis: dict[str, Any] | None
+    llm_raw_output: str | None
+    llm_parsed_output: dict[str, Any] | None
+
+    # --- Outputs ---
+    narrative: str | None
+    highlights: list[str] | None
+    anomalies_list: list[dict[str, Any]] | None
+    deltas: list[dict[str, Any]] | None
+    degraded: bool
+
+    # --- Cost / observability ---
+    token_usage: dict[str, int] | None  # {input, output, total}
+    cost_cents: float
+    model_used: str | None
+    step_trace: Annotated[list[dict[str, Any]], _append_reducer]
+    errors: list[str] | None
+
+    # --- Control ---
+    validation_retries: int
+    circuit_breaker_failures: int
+    cache_hit: bool

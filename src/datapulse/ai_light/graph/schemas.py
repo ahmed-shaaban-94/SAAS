@@ -1,52 +1,27 @@
-"""Pydantic output schemas for AI-Light LangGraph validation node.
-
-The ``validate`` node checks ``llm_parsed_output`` against the schema for the
-active ``insight_type``.  A validation failure increments ``validation_retries``
-and routes back to ``analyze`` (max 2 retries) before falling back to the
-stats-only narrative.
-
-Schemas
--------
-``SummaryOutput``   — validated output for the ``summary`` insight type.
-``AnomalyOutput``   — validated output for the ``anomalies`` insight type.
-``ChangesOutput``   — validated output for the ``changes`` insight type.
-``DeepDiveOutput``  — validated output for the ``deep_dive`` composite endpoint.
-
-Implementation note (Phase A-1): field definitions are placeholders.
-Phase A will define the full field set matching the existing ``AISummary``,
-``AnomalyReport``, and ``ChangeNarrative`` response shapes so the contract
-tests can verify backward compatibility.
-"""
+"""Pydantic validation schemas for LangGraph AI-Light node outputs."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class SummaryOutput(BaseModel):
-    """Validated LLM output for the summary insight type.
+    """Validated output schema for the summary insight type."""
 
-    Fields TBD in Phase A — must match the existing ``AISummary`` response shape.
-    """
+    narrative: str = Field(min_length=10, description="Executive narrative paragraph")
+    highlights: list[str] = Field(min_length=1, description="Bullet-point highlights")
 
+    @field_validator("highlights")
+    @classmethod
+    def _non_empty_items(cls, v: list[str]) -> list[str]:
+        cleaned = [item.strip() for item in v if item.strip()]
+        if not cleaned:
+            raise ValueError("highlights list must contain at least one non-empty string")
+        return cleaned
 
-class AnomalyOutput(BaseModel):
-    """Validated LLM output for the anomalies insight type.
-
-    Fields TBD in Phase B — must match the existing ``AnomalyReport`` response shape.
-    """
-
-
-class ChangesOutput(BaseModel):
-    """Validated LLM output for the changes insight type.
-
-    Fields TBD in Phase B — must match the existing ``ChangeNarrative`` response shape.
-    """
-
-
-class DeepDiveOutput(BaseModel):
-    """Validated LLM output for the deep_dive composite endpoint.
-
-    Fields TBD in Phase C — composite of narrative, highlights, anomalies,
-    forecast deltas, and degraded flag.
-    """
+    @field_validator("narrative")
+    @classmethod
+    def _no_placeholder(cls, v: str) -> str:
+        if v.strip().lower() in {"n/a", "none", "null", ""}:
+            raise ValueError("narrative must not be a placeholder")
+        return v.strip()

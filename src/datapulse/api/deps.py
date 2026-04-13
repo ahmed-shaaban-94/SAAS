@@ -190,8 +190,16 @@ def get_forecasting_service(
 def get_ai_light_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ) -> AILightService:
-    """Factory for AI-Light service with analytics repo + OpenRouter client."""
+    """Factory for AI-Light service.
+
+    Returns AILightGraphService when AI_LIGHT_USE_LANGGRAPH=true,
+    otherwise falls back to the legacy AILightService.
+    """
     settings = get_settings()
+    if settings.ai_light_use_langgraph:
+        from datapulse.ai_light.graph_service import AILightGraphService  # lazy import
+
+        return AILightGraphService(settings=settings, session=session)  # type: ignore[return-value]
     return AILightService(settings=settings, session=session)
 
 
