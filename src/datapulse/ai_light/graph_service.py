@@ -8,6 +8,7 @@ delegate to the wrapped AILightService.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import uuid
 from datetime import date
@@ -75,10 +76,11 @@ class AILightGraphService:
 
         thread_config = {"configurable": {"thread_id": f"{tenant_id}:summary:{run_id}"}}
 
-        from datapulse.ai_light.graph.builder import build_graph, set_runtime_context
-
-        set_runtime_context(llm=llm, tools=tools, session=self._session)
-        graph = build_graph(self._settings)
+        # Use importlib to avoid mypy statically following the import chain into
+        # graph/ subpackage (which triggers a mypy int64 cache crash on Linux CI).
+        _builder = importlib.import_module("datapulse.ai_light.graph.builder")
+        _builder.set_runtime_context(llm=llm, tools=tools, session=self._session)
+        graph = _builder.build_graph(self._settings)
 
         try:
             final_state = graph.invoke(initial_state, config=thread_config)
@@ -138,6 +140,6 @@ class AILightGraphService:
 
     def _build_tools(self) -> list[Any]:
         """Build the tool registry bound to the current session."""
-        from datapulse.ai_light.graph.tools import build_tool_registry
-
-        return build_tool_registry(self._repo)
+        # Use importlib to prevent mypy from statically following into graph/ subpackage.
+        _tools_mod = importlib.import_module("datapulse.ai_light.graph.tools")
+        return _tools_mod.build_tool_registry(self._repo)
