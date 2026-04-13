@@ -1,6 +1,6 @@
 "use client";
 import useSWR, { mutate as globalMutate } from "swr";
-import { fetchAPI } from "@/lib/api-client";
+import { fetchAPI, postAPI } from "@/lib/api-client";
 
 export interface PipelineDraft {
   id: number;
@@ -59,15 +59,11 @@ export function useDraft(id: number | null) {
 }
 
 export async function createDraft(payload: CreateDraftPayload): Promise<PipelineDraft> {
-  return fetchAPI<PipelineDraft>(`${BASE}/drafts`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return postAPI<PipelineDraft>(`${BASE}/drafts`, payload);
 }
 
 export async function validateDraft(id: number): Promise<PipelineDraft> {
-  return fetchAPI<PipelineDraft>(`${BASE}/drafts/${id}/validate`, { method: "POST" });
+  return postAPI<PipelineDraft>(`${BASE}/drafts/${id}/validate`);
 }
 
 export async function previewDraft(
@@ -77,13 +73,9 @@ export async function previewDraft(
   const q = new URLSearchParams();
   if (params?.max_rows) q.set("max_rows", String(params.max_rows));
   if (params?.sample_rows) q.set("sample_rows", String(params.sample_rows));
-  return fetchAPI<PipelineDraft>(`${BASE}/drafts/${id}/preview?${q}`, { method: "POST" });
+  return postAPI<PipelineDraft>(`${BASE}/drafts/${id}/preview?${q}`);
 }
 
 export async function publishDraft(id: number, releaseNotes = ""): Promise<unknown> {
-  return fetchAPI(`${BASE}/drafts/${id}/publish`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ release_notes: releaseNotes }),
-  });
+  return postAPI(`${BASE}/drafts/${id}/publish`, { release_notes: releaseNotes });
 }

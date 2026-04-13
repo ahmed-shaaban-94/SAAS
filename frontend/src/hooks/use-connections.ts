@@ -1,6 +1,6 @@
 "use client";
 import useSWR, { mutate as globalMutate } from "swr";
-import { fetchAPI } from "@/lib/api-client";
+import { fetchAPI, postAPI, patchAPI, deleteAPI } from "@/lib/api-client";
 
 export interface SourceConnection {
   id: number;
@@ -48,6 +48,27 @@ export interface ConnectionPreviewResult {
   warnings: string[];
 }
 
+export interface SyncJob {
+  id: number;
+  tenant_id: number;
+  connection_id: number;
+  pipeline_run_id: string | null;
+  release_id: number | null;
+  profile_id: number | null;
+  run_mode: string;
+  status: string | null;
+  rows_loaded: number | null;
+  duration_seconds: number | null;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+}
+
+export interface SyncJobList {
+  items: SyncJob[];
+  total: number;
+}
+
 const BASE = "/api/v1/control-center";
 
 export function useConnections(params?: { source_type?: string; status?: string; page?: number; page_size?: number }) {
@@ -81,27 +102,19 @@ export function useConnection(id: number | null) {
 }
 
 export async function createConnection(payload: CreateConnectionPayload): Promise<SourceConnection> {
-  return fetchAPI<SourceConnection>(`${BASE}/connections`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return postAPI<SourceConnection>(`${BASE}/connections`, payload);
 }
 
 export async function updateConnection(id: number, payload: UpdateConnectionPayload): Promise<SourceConnection> {
-  return fetchAPI<SourceConnection>(`${BASE}/connections/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return patchAPI<SourceConnection>(`${BASE}/connections/${id}`, payload);
 }
 
 export async function archiveConnection(id: number): Promise<void> {
-  await fetchAPI<void>(`${BASE}/connections/${id}`, { method: "DELETE" });
+  await deleteAPI(`${BASE}/connections/${id}`);
 }
 
 export async function testConnection(id: number): Promise<ConnectionTestResult> {
-  return fetchAPI<ConnectionTestResult>(`${BASE}/connections/${id}/test`, { method: "POST" });
+  return postAPI<ConnectionTestResult>(`${BASE}/connections/${id}/test`);
 }
 
 export async function previewConnection(
@@ -111,16 +124,12 @@ export async function previewConnection(
   const q = new URLSearchParams();
   if (params?.max_rows) q.set("max_rows", String(params.max_rows));
   if (params?.sample_rows) q.set("sample_rows", String(params.sample_rows));
-  return fetchAPI<ConnectionPreviewResult>(`${BASE}/connections/${id}/preview?${q}`, { method: "POST" });
+  return postAPI<ConnectionPreviewResult>(`${BASE}/connections/${id}/preview?${q}`);
 }
 
 export async function triggerSync(
   id: number,
   payload?: { run_mode?: string; release_id?: number | null; profile_id?: number | null },
 ) {
-  return fetchAPI(`${BASE}/connections/${id}/sync`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload ?? { run_mode: "manual" }),
-  });
+  return postAPI(`${BASE}/connections/${id}/sync`, payload ?? { run_mode: "manual" });
 }

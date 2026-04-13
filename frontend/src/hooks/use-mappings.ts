@@ -1,6 +1,6 @@
 "use client";
 import useSWR, { mutate as globalMutate } from "swr";
-import { fetchAPI } from "@/lib/api-client";
+import { fetchAPI, postAPI, patchAPI } from "@/lib/api-client";
 
 export interface MappingColumn {
   source: string;
@@ -82,25 +82,13 @@ export function useMappings(params?: { source_type?: string; template_name?: str
 }
 
 export async function createMapping(payload: CreateMappingPayload): Promise<MappingTemplate> {
-  return fetchAPI<MappingTemplate>(`${BASE}/mappings`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return postAPI<MappingTemplate>(`${BASE}/mappings`, payload);
 }
 
 export async function updateMapping(id: number, payload: UpdateMappingPayload): Promise<MappingTemplate> {
-  return fetchAPI<MappingTemplate>(`${BASE}/mappings/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return patchAPI<MappingTemplate>(`${BASE}/mappings/${id}`, payload);
 }
 
 export async function validateMapping(payload: ValidateMappingPayload): Promise<ValidationReport> {
-  return fetchAPI<ValidationReport>(`${BASE}/mappings/validate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return postAPI<ValidationReport>(`${BASE}/mappings/validate`, payload);
 }

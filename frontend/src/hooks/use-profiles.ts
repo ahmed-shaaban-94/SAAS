@@ -1,6 +1,6 @@
 "use client";
 import useSWR, { mutate as globalMutate } from "swr";
-import { fetchAPI } from "@/lib/api-client";
+import { fetchAPI, postAPI, patchAPI } from "@/lib/api-client";
 
 export interface PipelineProfile {
   id: number;
@@ -56,17 +56,9 @@ export function useProfiles(params?: { target_domain?: string; page?: number; pa
 }
 
 export async function createProfile(payload: CreateProfilePayload): Promise<PipelineProfile> {
-  return fetchAPI<PipelineProfile>(`${BASE}/profiles`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return postAPI<PipelineProfile>(`${BASE}/profiles`, payload);
 }
 
 export async function updateProfile(id: number, payload: UpdateProfilePayload): Promise<PipelineProfile> {
-  return fetchAPI<PipelineProfile>(`${BASE}/profiles/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return patchAPI<PipelineProfile>(`${BASE}/profiles/${id}`, payload);
 }

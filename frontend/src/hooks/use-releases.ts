@@ -1,6 +1,6 @@
 "use client";
 import useSWR, { mutate as globalMutate } from "swr";
-import { fetchAPI } from "@/lib/api-client";
+import { fetchAPI, postAPI } from "@/lib/api-client";
 
 export interface PipelineRelease {
   id: number;
@@ -42,5 +42,5 @@ export function useReleases(params?: { page?: number; page_size?: number }) {
 }
 
 export async function rollbackRelease(id: number): Promise<PipelineRelease> {
-  return fetchAPI<PipelineRelease>(`${BASE}/releases/${id}/rollback`, { method: "POST" });
+  return postAPI<PipelineRelease>(`${BASE}/releases/${id}/rollback`);
 }
