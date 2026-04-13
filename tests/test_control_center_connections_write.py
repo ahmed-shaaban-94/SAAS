@@ -30,6 +30,7 @@ from datapulse.control_center.repository import (
     PipelineReleaseRepository,
     SourceConnectionRepository,
     SyncJobRepository,
+    SyncScheduleRepository,
 )
 from datapulse.control_center.service import ControlCenterService
 
@@ -64,6 +65,7 @@ def mock_repos():
         "releases": create_autospec(PipelineReleaseRepository, instance=True),
         "sync_jobs": create_autospec(SyncJobRepository, instance=True),
         "drafts": create_autospec(PipelineDraftRepository, instance=True),
+        "schedules": create_autospec(SyncScheduleRepository, instance=True),
     }
 
 
@@ -77,6 +79,7 @@ def service(mock_repos) -> ControlCenterService:
         releases=mock_repos["releases"],
         sync_jobs=mock_repos["sync_jobs"],
         drafts=mock_repos["drafts"],
+        schedules=mock_repos["schedules"],
     )
 
 
@@ -187,11 +190,11 @@ class TestTestConnection:
 
     def test_unsupported_source_type_returns_error(self, service, mock_repos):
         row = _connection_row(1)
-        row["source_type"] = "google_sheets"  # no connector yet
+        row["source_type"] = "mysql"  # unsupported connector type
         mock_repos["connections"].get.return_value = row
         result = service.test_connection(1, tenant_id=1)
         assert result.ok is False
-        assert "google_sheets" in (result.error or "")
+        assert "mysql" in (result.error or "")
 
 
 # ── preview_connection ───────────────────────────────────────

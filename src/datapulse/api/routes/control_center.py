@@ -3,6 +3,7 @@
 Phase 1a: READ-only endpoints.
 Phase 1b: Connection CRUD + test + preview (file_upload sources).
 Writes (drafts, publish, rollback, sync) land in Phase 1c–1e.
+Phase 2: Schedule CRUD endpoints (POST/GET/DELETE /connections/{id}/schedule*).
 
 All endpoints are gated by:
   - Auth: Auth0 / API key via get_current_user
@@ -28,6 +29,7 @@ from datapulse.control_center.models import (
     CreateDraftRequest,
     CreateMappingRequest,
     CreateProfileRequest,
+    CreateScheduleRequest,
     MappingTemplate,
     MappingTemplateList,
     PipelineDraft,
@@ -41,6 +43,8 @@ from datapulse.control_center.models import (
     SourceConnectionList,
     SyncJob,
     SyncJobList,
+    SyncSchedule,
+    SyncScheduleList,
     TriggerSyncRequest,
     UpdateConnectionRequest,
     UpdateMappingRequest,
@@ -55,6 +59,7 @@ from datapulse.control_center.repository import (
     PipelineReleaseRepository,
     SourceConnectionRepository,
     SyncJobRepository,
+    SyncScheduleRepository,
 )
 from datapulse.control_center.service import ControlCenterService
 from datapulse.rbac.dependencies import require_permission
@@ -84,6 +89,7 @@ def get_control_center_service(
         releases=PipelineReleaseRepository(session),
         sync_jobs=SyncJobRepository(session),
         drafts=PipelineDraftRepository(session),
+        schedules=SyncScheduleRepository(session),
     )
 
 
@@ -173,7 +179,7 @@ def create_connection(
     ``filename`` (original file name including extension).
     """
     tenant_id = int(user.get("tenant_id", 1))
-    created_by: str = user.get("sub", user.get("user_id", "anonymous"))
+    created_by: str = str(user.get("sub") or user.get("user_id") or "anonymous")
     return service.create_connection(
         tenant_id=tenant_id,
         name=body.name,
@@ -522,7 +528,7 @@ def create_mapping(
 ) -> MappingTemplate:
     """Create a new column-mapping template."""
     tenant_id = int(user.get("tenant_id", 1))
-    created_by: str = user.get("sub", user.get("user_id", "anonymous"))
+    created_by: str = str(user.get("sub") or user.get("user_id") or "anonymous")
     return service.create_mapping(
         tenant_id=tenant_id,
         source_type=body.source_type,
@@ -618,7 +624,7 @@ def create_draft(
 ) -> PipelineDraft:
     """Create a new pipeline draft (entity bundle to be published)."""
     tenant_id = int(user.get("tenant_id", 1))
-    created_by: str = user.get("sub", user.get("user_id", "anonymous"))
+    created_by: str = str(user.get("sub") or user.get("user_id") or "anonymous")
     return service.create_draft(
         tenant_id=tenant_id,
         entity_type=body.entity_type,
@@ -716,7 +722,7 @@ def publish_draft(
     4. Invalidates the tenant's analytics cache.
     """
     tenant_id = int(user.get("tenant_id", 1))
-    published_by: str = user.get("sub", user.get("user_id", "anonymous"))
+    published_by: str = str(user.get("sub") or user.get("user_id") or "anonymous")
     try:
         return service.publish_draft(
             draft_id,
@@ -753,7 +759,7 @@ def rollback_release(
     to the rolled-back release.
     """
     tenant_id = int(user.get("tenant_id", 1))
-    published_by: str = user.get("sub", user.get("user_id", "anonymous"))
+    published_by: str = str(user.get("sub") or user.get("user_id") or "anonymous")
     try:
         return service.rollback_release(release_id, tenant_id=tenant_id, published_by=published_by)
     except ValueError as exc:
@@ -785,7 +791,7 @@ def trigger_sync(
     tracked via ``GET /connections/{id}/sync-history``.
     """
     tenant_id = int(user.get("tenant_id", 1))
-    created_by: str = user.get("sub", user.get("user_id", "anonymous"))
+    created_by: str = str(user.get("sub") or user.get("user_id") or "anonymous")
     try:
         return service.trigger_sync(
             connection_id,
@@ -797,3 +803,85 @@ def trigger_sync(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+# ------------------------------------------------------------------
+# Sync schedules — Phase 2
+# ------------------------------------------------------------------
+
+
+@router.post(
+    "/connections/{connection_id}/schedule",
+    response_model=SyncSchedule,
+    status_code=201,
+    dependencies=[Depends(require_permission("control_center:sync:schedule"))],
+)
+@limiter.limit("10/minute")
+def create_schedule(
+    request: Request,
+    service: ServiceDep,
+    user: UserDep,
+    connection_id: Annotated[int, Path(ge=1)],
+    body: CreateScheduleRequest,
+) -> SyncSchedule:
+    """Create a cron schedule that will auto-trigger syncs for the connection.
+
+    ``cron_expr`` must be a 5-field UNIX cron expression (e.g. ``'0 6 * * *'``).
+    APScheduler picks up new schedules on next startup; to apply immediately
+    you can restart the scheduler or call the internal reload endpoint.
+    """
+    tenant_id = int(user.get("tenant_id", 1))
+    created_by: str = str(user.get("sub") or user.get("user_id") or "anonymous")
+    try:
+        return service.create_schedule(
+            connection_id=connection_id,
+            tenant_id=tenant_id,
+            cron_expr=body.cron_expr,
+            is_active=body.is_active,
+            created_by=created_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/connections/{connection_id}/schedules",
+    response_model=SyncScheduleList,
+    dependencies=[Depends(require_permission("control_center:connections:view"))],
+)
+@limiter.limit("60/minute")
+def list_schedules(
+    request: Request,
+    service: ServiceDep,
+    connection_id: Annotated[int, Path(ge=1)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> SyncScheduleList:
+    """List cron schedules for a source connection."""
+    if service.get_connection(connection_id) is None:
+        raise HTTPException(status_code=404, detail="connection_not_found")
+    return service.list_schedules(connection_id=connection_id, page=page, page_size=page_size)
+
+
+@router.delete(
+    "/connections/{connection_id}/schedule/{schedule_id}",
+    status_code=204,
+    dependencies=[Depends(require_permission("control_center:sync:schedule"))],
+)
+@limiter.limit("10/minute")
+def delete_schedule(
+    request: Request,
+    service: ServiceDep,
+    connection_id: Annotated[int, Path(ge=1)],
+    schedule_id: Annotated[int, Path(ge=1)],
+) -> None:
+    """Delete a cron schedule permanently.
+
+    The schedule is removed immediately; the APScheduler job will be
+    deregistered on next scheduler reload.
+    """
+    if service.get_connection(connection_id) is None:
+        raise HTTPException(status_code=404, detail="connection_not_found")
+    found = service.delete_schedule(schedule_id)
+    if not found:
+        raise HTTPException(status_code=404, detail="schedule_not_found")
