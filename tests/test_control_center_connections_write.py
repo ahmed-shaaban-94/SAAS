@@ -236,7 +236,7 @@ class TestPreviewConnection:
 
     def test_raises_for_unsupported_source_type(self, service, mock_repos):
         row = _connection_row(1)
-        row["source_type"] = "postgres"
+        row["source_type"] = "mssql"  # no connector registered
         mock_repos["connections"].get.return_value = row
         with pytest.raises(ValueError, match="preview_not_supported_for"):
             service.preview_connection(connection_id=1, tenant_id=1)
