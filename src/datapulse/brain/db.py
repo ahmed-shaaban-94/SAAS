@@ -301,10 +301,17 @@ def search_all(
                         plainto_tsquery('english', %s)) AS rank
          FROM brain.incidents
          WHERE search_vector @@ plainto_tsquery('english', %s))
+        UNION ALL
+        (SELECT 'knowledge' AS type, id, title,
+                created_at AS timestamp,
+                ts_rank(search_vector,
+                        plainto_tsquery('english', %s)) AS rank
+         FROM brain.knowledge
+         WHERE search_vector @@ plainto_tsquery('english', %s))
         ORDER BY rank DESC
         LIMIT %s
     """
-    params = (query, query, query, query, query, query, limit)
+    params = (query, query, query, query, query, query, query, query, limit)
 
     with get_connection() as conn, _dict_cursor(conn) as cur:
         cur.execute(sql, params)
@@ -381,13 +388,73 @@ def insert_incident(
 # ── Embedding update ────────────────────────────────────────────
 
 
+# ── Knowledge operations ────────────────────────────────────────
+
+
+def insert_knowledge(
+    *,
+    title: str,
+    body_md: str = "",
+    category: str = "general",
+    tags: list[str] | None = None,
+    tenant_id: int = 1,
+) -> int:
+    """INSERT a knowledge record and return the new id."""
+    sql = """
+        INSERT INTO brain.knowledge
+            (tenant_id, category, title, body_md, tags)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id
+    """
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(sql, (tenant_id, category, title, body_md, tags or []))
+        row_id: int = cur.fetchone()[0]
+        conn.commit()
+    return row_id
+
+
+def search_knowledge(
+    query: str,
+    *,
+    category: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """FTS search across brain.knowledge, optionally filtered by category."""
+    conditions = ["search_vector @@ plainto_tsquery('english', %s)"]
+    params: list[Any] = [query]
+
+    if category:
+        conditions.append("category = %s")
+        params.append(category)
+
+    where = " AND ".join(conditions)
+    params.append(limit)
+
+    sql = f"""
+        SELECT id, category, title, body_md, tags, created_at, updated_at,
+               ts_rank(search_vector, plainto_tsquery('english', %s)) AS rank
+        FROM brain.knowledge
+        WHERE {where}
+        ORDER BY rank DESC
+        LIMIT %s
+    """
+    rank_params = [query, *params]
+
+    with get_connection() as conn, _dict_cursor(conn) as cur:
+        cur.execute(sql, rank_params)
+        return [dict(r) for r in cur.fetchall()]
+
+
+# ── Embedding update ────────────────────────────────────────────
+
+
 def update_embedding(
     table: str,
     row_id: int,
     embedding: list[float],
 ) -> None:
     """Set the embedding column for a given row."""
-    if table not in ("sessions", "decisions", "incidents"):
+    if table not in ("sessions", "decisions", "incidents", "knowledge"):
         raise ValueError(f"Invalid table: {table}")
     sql = f"UPDATE brain.{table} SET embedding = %s::vector WHERE id = %s"
     with get_connection() as conn, conn.cursor() as cur:

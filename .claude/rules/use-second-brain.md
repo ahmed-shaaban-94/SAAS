@@ -24,19 +24,42 @@ Read docs/brain/sessions/<latest>.md -> see exactly what changed
 
 ### 3. After Solving a Non-Trivial Bug or Incident
 ```
-Write docs/brain/incidents/YYYY-MM-DD-<slug>.md
+brain_log_incident(title, body_md, severity)
 ```
-- Root cause + fix + which layer/module
-- Link to global-lessons.md if cross-project applicable
-- Use format: `[[layer]]` + `[[module]]` wikilinks for Obsidian graph
+- Root cause + fix + which layer/module in body_md
+- Also add to `C:\Users\user\.claude\global-lessons.md` if cross-project applicable
+- Severity: `low` | `medium` | `high` | `critical`
 
 ### 4. After Making an Architecture Decision (not ADR-worthy but worth keeping)
 ```
-Write docs/brain/decisions/YYYY-MM-DD-<slug>.md
+brain_log_decision(title, body_md)
 ```
 - Why this approach was chosen over alternatives
-- Link to the layer: `[[api]]`, `[[gold]]`, etc.
+- Link to the layer in body_md: e.g. `api`, `gold`, etc.
 - Full ADRs go in `docs/adr/` — this is for smaller session-level decisions
+
+### 5. When You Learn Something Worth Keeping as Project Reference
+```
+brain_log_knowledge(title, body_md, category, tags)
+```
+Use for **static project info** that teammates or future sessions should be able to search:
+- Architecture overviews, data flow explanations
+- API contract summaries (request/response shapes)
+- dbt model explanations (what a dimension/fact/agg contains)
+- Runbooks (how to re-run the bronze pipeline, apply migrations, etc.)
+- Onboarding guides, glossary entries
+
+**Categories to use consistently:**
+`architecture`, `api`, `dbt`, `runbook`, `onboarding`, `glossary`, `security`, `testing`
+
+**Search it back with:**
+```
+brain_knowledge_search(query="bronze loader parquet")
+brain_knowledge_search(query="tenant RLS", category="security")
+```
+
+> Unlike `decisions` (session-linked, ephemeral context) and `incidents` (bugs/fixes),
+> `knowledge` is **evergreen reference material** — write it once, retrieve it forever.
 
 ## Brain vs Graph MCP — When to Use Which
 
@@ -45,11 +68,13 @@ Write docs/brain/decisions/YYYY-MM-DD-<slug>.md
 | What happened in recent sessions | Brain `_INDEX.md` |
 | Who calls this function right now | Graph MCP `dp_context` |
 | What will break if I change X | Graph MCP `dp_impact` |
-| Why was this decision made | Brain `decisions/` |
+| Why was this decision made | Brain `brain_log_decision` |
 | What layer does this file belong to | Graph MCP `dp_query` |
 | What did we fix last session | Brain `sessions/` |
+| How does this module/API work | Brain `brain_knowledge_search` |
+| What's the runbook for X | Brain `brain_knowledge_search(category="runbook")` |
 
-They are complementary: **Graph MCP = WHAT the code is. Brain = WHY decisions were made.**
+They are complementary: **Graph MCP = WHAT the code is. Brain = WHY decisions were made + HOW things work.**
 
 ## Session End — Automatic (no action needed)
 
