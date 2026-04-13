@@ -242,6 +242,83 @@ def test_get_kpi_summary_nulls_in_optional_fields(analytics_repo, mock_session):
     assert result.sparkline == []
 
 
+# ------------------------------------------------------------------
+# get_kpi_summary_range via _get_kpi_from_fct_sales (dim-filter path)
+# ------------------------------------------------------------------
+
+
+def test_kpi_range_with_dim_filter_populates_mtd_ytd(analytics_repo, mock_session):
+    """Dim-filter range path must populate mtd_gross / ytd_gross from dedicated
+    CTEs — not zero them out. Regression test for the bug where any dashboard
+    card reading mtd_gross while a category/brand/site/staff filter was active
+    silently rendered $0.
+    """
+    row = {
+        "period_net": Decimal("450000"),
+        "total_quantity": Decimal("9200"),
+        "total_transactions": 1800,
+        "total_returns": 40,
+        "total_customers": 620,
+        "avg_basket_size": Decimal("255.56"),
+        "prev_net": Decimal("400000"),
+        # New fields from mtd_agg / ytd_agg CTEs
+        "mtd_gross": Decimal("180000"),
+        "mtd_transactions": 720,
+        "ytd_gross": Decimal("2150000"),
+        "ytd_transactions": 8600,
+        "sparkline_points": None,
+    }
+    mock_session.execute.return_value.mappings.return_value.fetchone.return_value = row
+
+    filters = AnalyticsFilter(
+        date_range=DateRange(start_date=date(2025, 3, 10), end_date=date(2025, 3, 20)),
+        category="Analgesic",  # Triggers the dim-filter path
+    )
+    result = analytics_repo.get_kpi_summary_range(filters)
+
+    # Range-scoped fields — unchanged by this fix
+    assert result.today_gross == Decimal("450000")
+    assert result.daily_transactions == 1760  # 1800 - 40
+
+    # The bug fix: MTD / YTD must NOT be zero when backend returns them
+    assert result.mtd_gross == Decimal("180000")
+    assert result.mtd_transactions == 720
+    assert result.ytd_gross == Decimal("2150000")
+    assert result.ytd_transactions == 8600
+
+
+def test_kpi_range_with_dim_filter_null_mtd_ytd_defaults_to_zero(analytics_repo, mock_session):
+    """If the MTD/YTD CTEs return NULL (e.g. no rows match in that window),
+    repository must default to Decimal(0) / 0 — not crash.
+    """
+    row = {
+        "period_net": Decimal("1000"),
+        "total_quantity": Decimal("50"),
+        "total_transactions": 10,
+        "total_returns": 0,
+        "total_customers": 8,
+        "avg_basket_size": Decimal("125.00"),
+        "prev_net": None,
+        "mtd_gross": None,
+        "mtd_transactions": None,
+        "ytd_gross": None,
+        "ytd_transactions": None,
+        "sparkline_points": None,
+    }
+    mock_session.execute.return_value.mappings.return_value.fetchone.return_value = row
+
+    filters = AnalyticsFilter(
+        date_range=DateRange(start_date=date(2025, 1, 1), end_date=date(2025, 1, 5)),
+        site_key=42,
+    )
+    result = analytics_repo.get_kpi_summary_range(filters)
+
+    assert result.mtd_gross == Decimal("0")
+    assert result.ytd_gross == Decimal("0")
+    assert result.mtd_transactions == 0
+    assert result.ytd_transactions == 0
+
+
 def test_get_filter_options(analytics_repo, mock_session):
     """UNION ALL filter options query returns mixed types correctly."""
     mock_session.execute.return_value.fetchall.return_value = [

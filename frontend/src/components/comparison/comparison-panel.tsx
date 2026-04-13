@@ -89,18 +89,25 @@ export function ComparisonPanel({ onClose }: ComparisonPanelProps) {
         <LoadingCard lines={4} />
       ) : current && previous ? (
         <>
-          {/* KPI Comparison */}
+          {/* KPI Comparison
+           * Uses period-total fields (today_gross / daily_transactions) — NOT mtd_*
+           * fields. The backend range path stores the selected-range total in
+           * today_gross; mtd_* hold "running MTD as of the range's end date",
+           * which is the wrong question when comparing two arbitrary periods
+           * (e.g. "Feb 10-20" vs "Jan 10-20" would show full-month MTD, not
+           * the picked 10-day window).
+           */}
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ComparisonKPI
               label="Revenue"
-              currentValue={current.kpi.mtd_gross}
-              previousValue={previous.kpi.mtd_gross}
+              currentValue={current.kpi.today_gross}
+              previousValue={previous.kpi.today_gross}
               isCurrency
             />
             <ComparisonKPI
               label="Transactions"
-              currentValue={current.kpi.mtd_transactions}
-              previousValue={previous.kpi.mtd_transactions}
+              currentValue={current.kpi.daily_transactions}
+              previousValue={previous.kpi.daily_transactions}
             />
             <ComparisonKPI
               label="Avg Basket"
