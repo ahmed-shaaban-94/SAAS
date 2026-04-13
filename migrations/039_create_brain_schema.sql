@@ -190,38 +190,24 @@ CREATE INDEX IF NOT EXISTS idx_brain_incidents_session
     ON brain.incidents(session_id);
 
 -- ============================================================
--- 8. Row Level Security
+-- 8. Access control
 -- ============================================================
+-- Brain stores per-developer session memory (git diff, decisions, incidents)
+-- captured by the local Stop hook — not multi-tenant business data. RLS is
+-- deliberately NOT enabled here because the hook connects via raw psycopg2
+-- from outside the API container and has no JWT → app.tenant_id context.
+-- The tenant_id column is retained for future use.
 
--- sessions
-ALTER TABLE brain.sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE brain.sessions FORCE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS tenant_isolation_brain_sessions ON brain.sessions;
-CREATE POLICY tenant_isolation_brain_sessions ON brain.sessions
-    FOR ALL
-    USING (tenant_id::text = current_setting('app.tenant_id', true))
-    WITH CHECK (tenant_id::text = current_setting('app.tenant_id', true));
-
--- decisions
-ALTER TABLE brain.decisions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE brain.decisions FORCE ROW LEVEL SECURITY;
-
+-- Drop any previously-applied RLS state so re-running this migration is idempotent.
+DROP POLICY IF EXISTS tenant_isolation_brain_sessions  ON brain.sessions;
 DROP POLICY IF EXISTS tenant_isolation_brain_decisions ON brain.decisions;
-CREATE POLICY tenant_isolation_brain_decisions ON brain.decisions
-    FOR ALL
-    USING (tenant_id::text = current_setting('app.tenant_id', true))
-    WITH CHECK (tenant_id::text = current_setting('app.tenant_id', true));
-
--- incidents
-ALTER TABLE brain.incidents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE brain.incidents FORCE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS tenant_isolation_brain_incidents ON brain.incidents;
-CREATE POLICY tenant_isolation_brain_incidents ON brain.incidents
-    FOR ALL
-    USING (tenant_id::text = current_setting('app.tenant_id', true))
-    WITH CHECK (tenant_id::text = current_setting('app.tenant_id', true));
+ALTER TABLE brain.sessions  NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE brain.sessions  DISABLE ROW LEVEL SECURITY;
+ALTER TABLE brain.decisions NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE brain.decisions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE brain.incidents NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE brain.incidents DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- 9. Comments

@@ -78,23 +78,23 @@ def migrate(project_dir: Path) -> None:
     # Import session markdown files
     session_dir = brain_dir / "sessions"
     if session_dir.exists():
-        for f in sorted(session_dir.glob("*.md")):
-            if f.name == ".gitkeep":
+        for md_path in sorted(session_dir.glob("*.md")):
+            if md_path.name == ".gitkeep":
                 continue
-            data = parse_session_file(f)
+            data = parse_session_file(md_path)
             if data:
                 try:
                     sid = insert_session(**data)
-                    print(f"  [OK] {f.name} -> session {sid}")
+                    print(f"  [OK] {md_path.name} -> session {sid}")
                     imported += 1
                 except Exception as exc:
-                    print(f"  [SKIP] {f.name}: {exc}")
+                    print(f"  [SKIP] {md_path.name}: {exc}")
 
     # Import CSV rows (may duplicate markdown imports — that's OK for a one-time migration)
     csv_path = brain_dir / "session-log.csv"
     if csv_path.exists():
-        with open(csv_path, encoding="utf-8") as f:
-            reader = csv.DictReader(f)
+        with open(csv_path, encoding="utf-8") as csv_file:
+            reader = csv.DictReader(csv_file)
             for row in reader:
                 data = parse_csv_row(row)
                 if data:

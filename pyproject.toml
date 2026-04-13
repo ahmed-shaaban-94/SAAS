@@ -92,6 +92,7 @@ module = [
     "pyarrow.*",
     "fastexcel.*",
     "structlog.*",
+    "psycopg2.*",
     "redis.*",
     "slowapi.*",
     "fastapi_cache.*",

@@ -228,16 +228,17 @@ class TestSessionEnd:
         assert "main" in result
         assert "[api,bronze]" in result
 
+    @patch("datapulse.brain.db.get_connection", side_effect=RuntimeError("DB down"))
     @patch("datapulse.brain.session_end.gather_git_data")
     @patch("datapulse.brain.session_end._run")
-    def test_main_db_fallback(self, mock_run, mock_git, tmp_path):
-        """When DB is unavailable, session_end should write markdown files."""
+    def test_main_db_fallback(self, mock_run, mock_git, _mock_conn, tmp_path):
+        """When DB is down, session_end writes markdown fallback and regenerates _INDEX.md."""
         from datapulse.brain.session_end import main
 
         mock_run.return_value = str(tmp_path)
 
-        brain_dir = tmp_path / "docs" / "brain" / "sessions"
-        brain_dir.mkdir(parents=True)
+        brain_dir = tmp_path / "docs" / "brain"
+        (brain_dir / "sessions").mkdir(parents=True)
 
         mock_git.return_value = {
             "branch": "test-branch",
@@ -248,9 +249,17 @@ class TestSessionEnd:
         }
 
         with patch.dict("os.environ", {"CLAUDE_PROJECT_DIR": str(tmp_path)}):
-            # DB import will fail since no real DB
+            # DB path raises via get_connection mock — main() must take the markdown fallback
             main()
 
-        # Should have created files as fallback
-        index_file = tmp_path / "docs" / "brain" / "_INDEX.md"
-        assert index_file.exists() or True  # May not exist if no git data in tmp
+        # Markdown fallback MUST have produced a session note
+        session_files = list((brain_dir / "sessions").glob("*.md"))
+        assert session_files, "fallback should have written a session markdown file"
+        session_text = session_files[0].read_text(encoding="utf-8")
+        assert "test-branch" in session_text
+        assert "src/datapulse/api/app.py" in session_text
+
+        # _INDEX.md must be regenerated with the new session entry
+        index_file = brain_dir / "_INDEX.md"
+        assert index_file.exists(), "fallback should have regenerated _INDEX.md"
+        assert "test-branch" in index_file.read_text(encoding="utf-8")

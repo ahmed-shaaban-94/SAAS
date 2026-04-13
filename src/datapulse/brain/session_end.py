@@ -90,6 +90,13 @@ def gather_git_data(project_dir: str) -> dict:
     user_name = _run(["git", "config", "user.name"], cwd=project_dir) or ""
 
     diff_files = _run(["git", "diff", "--name-only", "HEAD"], cwd=project_dir)
+    # Structured log for DB storage (tab-separated — tabs are safe in author
+    # names/subjects). Oneline form is retained for the markdown body.
+    structured_fmt = "%H%x09%an%x09%aI%x09%s"
+    recent_commits_structured = _run(
+        ["git", "log", f"--format={structured_fmt}", "--since=4 hours ago", "--max-count=20"],
+        cwd=project_dir,
+    )
     recent_commits_raw = _run(
         ["git", "log", "--oneline", "--since=4 hours ago", "--max-count=20"],
         cwd=project_dir,
@@ -100,12 +107,26 @@ def gather_git_data(project_dir: str) -> dict:
         all_files.update(diff_files.splitlines())
 
     commits: list[dict[str, str]] = []
-    if recent_commits_raw:
-        for line in recent_commits_raw.splitlines():
-            parts = line.split(" ", 1)
-            sha = parts[0]
-            message = parts[1] if len(parts) > 1 else ""
-            commits.append({"sha": sha, "message": message})
+    if recent_commits_structured:
+        for line in recent_commits_structured.splitlines():
+            parts = line.split("\t", 3)
+            if len(parts) < 4:
+                # Fallback: treat as sha + message only
+                sha = parts[0] if parts else ""
+                commits.append({
+                    "sha": sha,
+                    "author": "",
+                    "committed_at": "",
+                    "message": parts[-1] if len(parts) > 1 else "",
+                })
+                continue
+            sha, author, committed_at, message = parts
+            commits.append({
+                "sha": sha,
+                "author": author,
+                "committed_at": committed_at,
+                "message": message,
+            })
             commit_files = _run(
                 ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", sha],
                 cwd=project_dir,
@@ -393,7 +414,9 @@ def main() -> None:
         pass
 
     if not db_ok:
-        # Markdown fallback
+        # Markdown fallback: write session file, regenerate index, append CSV.
+        # CSV is kept for backward compatibility only when DB is unreachable —
+        # once the DB is the source of truth, appending it is pure churn.
         write_session_file(
             session_dir,
             timestamp=timestamp,
@@ -404,16 +427,14 @@ def main() -> None:
             body_md=body_md,
         )
         write_index_from_files(brain_dir)
-
-    # Always append CSV for backward compatibility
-    append_csv(
-        brain_dir,
-        timestamp=timestamp,
-        branch=git_data["branch"],
-        user_name=git_data["user_name"],
-        layers=layers,
-        modules=modules,
-    )
+        append_csv(
+            brain_dir,
+            timestamp=timestamp,
+            branch=git_data["branch"],
+            user_name=git_data["user_name"],
+            layers=layers,
+            modules=modules,
+        )
 
     # Auto-stage brain files
     _run(["git", "add", "docs/brain/sessions/", "docs/brain/_INDEX.md",
