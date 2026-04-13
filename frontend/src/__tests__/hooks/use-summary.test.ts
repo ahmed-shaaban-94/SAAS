@@ -16,6 +16,9 @@ describe("useSummary", () => {
     expect(result.current.data?.today_gross).toBe(125000);
     expect(result.current.data?.mtd_gross).toBe(3500000);
     expect(result.current.data?.ytd_gross).toBe(42000000);
+    expect(result.current.data?.period_gross).toBe(125000);
+    expect(result.current.data?.period_transactions).toBe(1250);
+    expect(result.current.data?.period_customers).toBe(850);
   });
 
   it("passes target_date from filters end_date", async () => {

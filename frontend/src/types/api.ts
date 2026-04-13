@@ -1,8 +1,13 @@
 export interface KPISummary {
   // Gross sales (primary — net deliberately excluded)
+  /** @deprecated Use period_gross. Legacy name kept for AI Light, n8n, and mobile app. */
   today_gross: number;
   mtd_gross: number;
   ytd_gross: number;
+  // Period-aware aliases — preferred for new frontend consumers
+  period_gross: number;
+  period_transactions: number;
+  period_customers: number;
   // Discount (kept for forecasting)
   today_discount: number;
   // Growth (based on gross)
@@ -10,7 +15,9 @@ export interface KPISummary {
   yoy_growth_pct: number | null;
   // Units (quantity — returns are negative, so sum is net units)
   daily_quantity: number;
+  /** @deprecated Use period_transactions. Legacy name kept for AI Light, n8n, and mobile app. */
   daily_transactions: number;
+  /** @deprecated Use period_customers. Legacy name kept for AI Light, n8n, and mobile app. */
   daily_customers: number;
   avg_basket_size: number;
   daily_returns: number;

@@ -225,8 +225,8 @@ export default function BriefingPage() {
           ) : kpi ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <BriefingKPI
-                label="Today's Revenue"
-                value={`EGP ${fmt(kpi.today_gross, 0)}`}
+                label="Period Revenue"
+                value={`EGP ${fmt(kpi.period_gross, 0)}`}
                 subLabel={
                   kpi.mom_growth_pct !== null
                     ? `${fmtPct(kpi.mom_growth_pct)} MoM`
@@ -258,14 +258,14 @@ export default function BriefingPage() {
               />
               <BriefingKPI
                 label="Transactions"
-                value={fmt(kpi.daily_transactions)}
-                subLabel="Today"
+                value={fmt(kpi.period_transactions)}
+                subLabel="Selected period"
                 trend="flat"
               />
               <BriefingKPI
                 label="Customers"
-                value={fmt(kpi.daily_customers)}
-                subLabel="Active today"
+                value={fmt(kpi.period_customers)}
+                subLabel="Selected period"
                 trend="flat"
               />
               <BriefingKPI
