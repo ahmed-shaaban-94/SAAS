@@ -196,7 +196,9 @@ async def test_quality_digest_no_runs():
 
 def test_start_scheduler_adds_jobs_and_starts():
     """start_scheduler registers 3 jobs and starts the scheduler."""
-    with patch("datapulse.scheduler.scheduler") as mock_sched:
+    with patch("datapulse.scheduler.scheduler") as mock_sched, patch(
+        "datapulse.scheduler._register_sync_schedules", return_value=0
+    ):
         mock_sched.running = False
 
         from datapulse.scheduler import start_scheduler
@@ -209,7 +211,9 @@ def test_start_scheduler_adds_jobs_and_starts():
 
 def test_start_scheduler_noop_when_running():
     """start_scheduler does nothing if already running."""
-    with patch("datapulse.scheduler.scheduler") as mock_sched:
+    with patch("datapulse.scheduler.scheduler") as mock_sched, patch(
+        "datapulse.scheduler._register_sync_schedules", return_value=0
+    ):
         mock_sched.running = True
 
         from datapulse.scheduler import start_scheduler
