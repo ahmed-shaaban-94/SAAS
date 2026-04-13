@@ -292,3 +292,96 @@ class ConnectionPreviewResult(BaseModel):
     row_count_estimate: int
     null_ratios: dict[str, float] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+
+
+# ── Request models (Phase 1c — profile / mapping / draft writes) ─
+
+
+class CreateProfileRequest(BaseModel):
+    """Payload for POST /control-center/profiles."""
+
+    profile_key: str = Field(..., min_length=1, max_length=100)
+    display_name: str = Field(..., min_length=1, max_length=200)
+    target_domain: str = Field(..., min_length=1, max_length=100)
+    is_default: bool = False
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class UpdateProfileRequest(BaseModel):
+    """Payload for PATCH /control-center/profiles/{id}.
+
+    All fields are optional — only provided fields are updated.
+    """
+
+    display_name: str | None = Field(None, min_length=1, max_length=200)
+    is_default: bool | None = None
+    config: dict[str, Any] | None = None
+
+
+class CreateMappingRequest(BaseModel):
+    """Payload for POST /control-center/mappings."""
+
+    source_type: SourceType
+    template_name: str = Field(..., min_length=1, max_length=200)
+    columns: list[dict[str, Any]] = Field(default_factory=list)
+    source_schema_hash: str | None = None
+
+
+class UpdateMappingRequest(BaseModel):
+    """Payload for PATCH /control-center/mappings/{id}.
+
+    Bumps the version counter automatically.
+    """
+
+    template_name: str | None = Field(None, min_length=1, max_length=200)
+    columns: list[dict[str, Any]] | None = None
+
+
+class ValidateMappingRequest(BaseModel):
+    """Payload for POST /control-center/mappings/validate.
+
+    Pure validation — no persistence.  Returns a ValidationReport.
+    """
+
+    source_type: SourceType
+    columns: list[dict[str, Any]]
+    target_domain: str
+    profile_config: dict[str, Any] = Field(default_factory=dict)
+    source_preview: dict[str, Any] | None = None
+
+
+# ── Request models (Phase 1d — draft workflow) ────────────────
+
+
+class CreateDraftRequest(BaseModel):
+    """Payload for POST /control-center/drafts."""
+
+    entity_type: DraftEntityType
+    entity_id: int | None = None
+    draft: dict[str, Any] = Field(default_factory=dict)
+
+
+class PublishDraftRequest(BaseModel):
+    """Payload for POST /control-center/drafts/{id}/publish."""
+
+    release_notes: str = ""
+
+
+# ── Request model (Phase 1e — sync trigger) ──────────────────
+
+
+class TriggerSyncRequest(BaseModel):
+    """Payload for POST /control-center/connections/{id}/sync."""
+
+    run_mode: RunMode = "manual"
+    release_id: int | None = None
+    profile_id: int | None = None
+
+
+# ── Paginated list for drafts ─────────────────────────────────
+
+
+class PipelineDraftList(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    items: list[PipelineDraft]
+    total: int

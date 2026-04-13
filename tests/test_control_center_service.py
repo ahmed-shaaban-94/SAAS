@@ -22,6 +22,7 @@ from datapulse.control_center.models import (
 )
 from datapulse.control_center.repository import (
     MappingTemplateRepository,
+    PipelineDraftRepository,
     PipelineProfileRepository,
     PipelineReleaseRepository,
     SourceConnectionRepository,
@@ -43,6 +44,7 @@ def mock_repos():
         "mappings": create_autospec(MappingTemplateRepository, instance=True),
         "releases": create_autospec(PipelineReleaseRepository, instance=True),
         "sync_jobs": create_autospec(SyncJobRepository, instance=True),
+        "drafts": create_autospec(PipelineDraftRepository, instance=True),
     }
 
 
@@ -55,6 +57,7 @@ def service(mock_session, mock_repos) -> ControlCenterService:
         mappings=mock_repos["mappings"],
         releases=mock_repos["releases"],
         sync_jobs=mock_repos["sync_jobs"],
+        drafts=mock_repos["drafts"],
     )
 
 

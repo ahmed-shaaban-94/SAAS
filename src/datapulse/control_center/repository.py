@@ -205,6 +205,82 @@ class PipelineProfileRepository:
         row = self._session.execute(stmt, {"id": profile_id}).mappings().fetchone()
         return dict(row) if row else None
 
+    # ── Write operations (Phase 1c) ──────────────────────────
+
+    def create(
+        self,
+        *,
+        tenant_id: int,
+        profile_key: str,
+        display_name: str,
+        target_domain: str,
+        is_default: bool = False,
+        config_json: dict,
+    ) -> dict:
+        """Insert a new pipeline profile and return the inserted row."""
+        stmt = text("""
+            INSERT INTO public.pipeline_profiles
+                (tenant_id, profile_key, display_name, target_domain,
+                 is_default, config_json)
+            VALUES
+                (:tenant_id, :profile_key, :display_name, :target_domain,
+                 :is_default, :config_json::jsonb)
+            RETURNING id, tenant_id, profile_key, display_name, target_domain,
+                      is_default, config_json, created_at, updated_at
+        """)
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "tenant_id": tenant_id,
+                    "profile_key": profile_key,
+                    "display_name": display_name,
+                    "target_domain": target_domain,
+                    "is_default": is_default,
+                    "config_json": json.dumps(config_json),
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        if row is None:
+            raise RuntimeError("INSERT RETURNING unexpectedly returned no row")
+        log.info("pipeline_profile_created", tenant_id=tenant_id, profile_key=profile_key)
+        return dict(row)
+
+    def update(
+        self,
+        profile_id: int,
+        *,
+        display_name: str | None = None,
+        is_default: bool | None = None,
+        config_json: dict | None = None,
+    ) -> dict | None:
+        """Update specified fields. Returns the updated row or None if not found."""
+        sets: list[str] = []
+        params: dict = {"id": profile_id}
+        if display_name is not None:
+            sets.append("display_name = :display_name")
+            params["display_name"] = display_name
+        if is_default is not None:
+            sets.append("is_default = :is_default")
+            params["is_default"] = is_default
+        if config_json is not None:
+            sets.append("config_json = :config_json::jsonb")
+            params["config_json"] = json.dumps(config_json)
+        if not sets:
+            return self.get(profile_id)
+        sets.append("updated_at = now()")
+        stmt = text(f"""
+            UPDATE public.pipeline_profiles
+            SET {', '.join(sets)}
+            WHERE id = :id
+            RETURNING id, tenant_id, profile_key, display_name, target_domain,
+                      is_default, config_json, created_at, updated_at
+        """)  # noqa: S608
+        row = self._session.execute(stmt, params).mappings().fetchone()
+        return dict(row) if row else None
+
 
 class MappingTemplateRepository:
     """Data access for mapping_templates."""
@@ -256,6 +332,219 @@ class MappingTemplateRepository:
         row = self._session.execute(stmt, {"id": template_id}).mappings().fetchone()
         return dict(row) if row else None
 
+    # ── Write operations (Phase 1c) ──────────────────────────
+
+    def create(
+        self,
+        *,
+        tenant_id: int,
+        source_type: str,
+        template_name: str,
+        mapping_json: dict,
+        source_schema_hash: str | None = None,
+        created_by: str | None = None,
+    ) -> dict:
+        """Insert a new mapping template (version 1) and return the row."""
+        stmt = text("""
+            INSERT INTO public.mapping_templates
+                (tenant_id, source_type, template_name, mapping_json,
+                 source_schema_hash, created_by)
+            VALUES
+                (:tenant_id, :source_type, :template_name, :mapping_json::jsonb,
+                 :source_schema_hash, :created_by)
+            RETURNING id, tenant_id, source_type, template_name, source_schema_hash,
+                      mapping_json, version, created_by, created_at, updated_at
+        """)
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "tenant_id": tenant_id,
+                    "source_type": source_type,
+                    "template_name": template_name,
+                    "mapping_json": json.dumps(mapping_json),
+                    "source_schema_hash": source_schema_hash,
+                    "created_by": created_by,
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        if row is None:
+            raise RuntimeError("INSERT RETURNING unexpectedly returned no row")
+        log.info("mapping_template_created", tenant_id=tenant_id, template_name=template_name)
+        return dict(row)
+
+    def update(
+        self,
+        template_id: int,
+        *,
+        template_name: str | None = None,
+        mapping_json: dict | None = None,
+    ) -> dict | None:
+        """Update specified fields and bump the version. Returns updated row or None."""
+        sets: list[str] = []
+        params: dict = {"id": template_id}
+        if template_name is not None:
+            sets.append("template_name = :template_name")
+            params["template_name"] = template_name
+        if mapping_json is not None:
+            sets.append("mapping_json = :mapping_json::jsonb")
+            params["mapping_json"] = json.dumps(mapping_json)
+        if not sets:
+            return self.get(template_id)
+        sets.extend(["version = version + 1", "updated_at = now()"])
+        stmt = text(f"""
+            UPDATE public.mapping_templates
+            SET {', '.join(sets)}
+            WHERE id = :id
+            RETURNING id, tenant_id, source_type, template_name, source_schema_hash,
+                      mapping_json, version, created_by, created_at, updated_at
+        """)  # noqa: S608
+        row = self._session.execute(stmt, params).mappings().fetchone()
+        return dict(row) if row else None
+
+
+class PipelineDraftRepository:
+    """Data access for pipeline_drafts (state-machine workflow)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def create(
+        self,
+        *,
+        tenant_id: int,
+        entity_type: str,
+        entity_id: int | None = None,
+        draft_json: dict,
+        created_by: str | None = None,
+    ) -> dict:
+        """Insert a new draft in 'draft' status and return the row."""
+        stmt = text("""
+            INSERT INTO public.pipeline_drafts
+                (tenant_id, entity_type, entity_id, draft_json, created_by)
+            VALUES
+                (:tenant_id, :entity_type, :entity_id, :draft_json::jsonb, :created_by)
+            RETURNING id, tenant_id, entity_type, entity_id, draft_json, status,
+                      validation_report_json, preview_result_json, version,
+                      created_by, created_at, updated_at
+        """)
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "tenant_id": tenant_id,
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "draft_json": json.dumps(draft_json),
+                    "created_by": created_by,
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        if row is None:
+            raise RuntimeError("INSERT RETURNING unexpectedly returned no row")
+        log.info("pipeline_draft_created", tenant_id=tenant_id, entity_type=entity_type)
+        return dict(row)
+
+    def get(self, draft_id: int) -> dict | None:
+        stmt = text("""
+            SELECT id, tenant_id, entity_type, entity_id, draft_json, status,
+                   validation_report_json, preview_result_json, version,
+                   created_by, created_at, updated_at
+            FROM public.pipeline_drafts
+            WHERE id = :id
+        """)
+        row = self._session.execute(stmt, {"id": draft_id}).mappings().fetchone()
+        return dict(row) if row else None
+
+    def list(self, *, page: int = 1, page_size: int = 50) -> tuple[list[dict], int]:
+        count_sql = text("SELECT COUNT(*) FROM public.pipeline_drafts")
+        total = self._session.execute(count_sql).scalar() or 0
+        sql = text("""
+            SELECT id, tenant_id, entity_type, entity_id, draft_json, status,
+                   validation_report_json, preview_result_json, version,
+                   created_by, created_at, updated_at
+            FROM public.pipeline_drafts
+            ORDER BY updated_at DESC
+            LIMIT :limit OFFSET :offset
+        """)
+        rows = self._session.execute(
+            sql, {"limit": page_size, "offset": (page - 1) * page_size}
+        ).mappings().all()
+        return [dict(r) for r in rows], total
+
+    def update_status(self, draft_id: int, status: str) -> dict | None:
+        """Advance the draft's status field."""
+        stmt = text("""
+            UPDATE public.pipeline_drafts
+            SET status = :status, updated_at = now()
+            WHERE id = :id
+            RETURNING id, tenant_id, entity_type, entity_id, draft_json, status,
+                      validation_report_json, preview_result_json, version,
+                      created_by, created_at, updated_at
+        """)
+        row = self._session.execute(stmt, {"id": draft_id, "status": status}).mappings().fetchone()
+        return dict(row) if row else None
+
+    def update_validation(
+        self, draft_id: int, *, status: str, validation_report_json: dict
+    ) -> dict | None:
+        """Persist the validation report and update status."""
+        stmt = text("""
+            UPDATE public.pipeline_drafts
+            SET status = :status,
+                validation_report_json = :vr::jsonb,
+                updated_at = now()
+            WHERE id = :id
+            RETURNING id, tenant_id, entity_type, entity_id, draft_json, status,
+                      validation_report_json, preview_result_json, version,
+                      created_by, created_at, updated_at
+        """)
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "id": draft_id,
+                    "status": status,
+                    "vr": json.dumps(validation_report_json),
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        return dict(row) if row else None
+
+    def update_preview(
+        self, draft_id: int, *, status: str, preview_result_json: dict
+    ) -> dict | None:
+        """Persist the preview result and update status."""
+        stmt = text("""
+            UPDATE public.pipeline_drafts
+            SET status = :status,
+                preview_result_json = :pr::jsonb,
+                updated_at = now()
+            WHERE id = :id
+            RETURNING id, tenant_id, entity_type, entity_id, draft_json, status,
+                      validation_report_json, preview_result_json, version,
+                      created_by, created_at, updated_at
+        """)
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "id": draft_id,
+                    "status": status,
+                    "pr": json.dumps(preview_result_json),
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        return dict(row) if row else None
+
 
 class PipelineReleaseRepository:
     """Data access for pipeline_releases (append-only, read-only here)."""
@@ -305,12 +594,122 @@ class PipelineReleaseRepository:
         row = self._session.execute(stmt).mappings().fetchone()
         return dict(row) if row else None
 
+    # ── Write operations (Phase 1d — append-only) ───────────
+
+    def create(
+        self,
+        *,
+        tenant_id: int,
+        draft_id: int | None = None,
+        source_release_id: int | None = None,
+        snapshot_json: dict,
+        release_notes: str = "",
+        is_rollback: bool = False,
+        published_by: str | None = None,
+    ) -> dict:
+        """Insert a new release (always append, never UPDATE).
+
+        The ``release_version`` is derived automatically as ``MAX(release_version) + 1``
+        within the tenant's RLS scope.
+        """
+        stmt = text("""
+            INSERT INTO public.pipeline_releases
+                (tenant_id, release_version, draft_id, source_release_id,
+                 snapshot_json, release_notes, is_rollback, published_by)
+            VALUES (
+                :tenant_id,
+                COALESCE(
+                    (SELECT MAX(release_version) + 1
+                     FROM public.pipeline_releases
+                     WHERE tenant_id = :tenant_id),
+                    1
+                ),
+                :draft_id, :source_release_id,
+                :snapshot_json::jsonb, :release_notes, :is_rollback, :published_by
+            )
+            RETURNING id, tenant_id, release_version, draft_id, source_release_id,
+                      snapshot_json, release_notes, is_rollback, published_by, published_at
+        """)
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "tenant_id": tenant_id,
+                    "draft_id": draft_id,
+                    "source_release_id": source_release_id,
+                    "snapshot_json": json.dumps(snapshot_json),
+                    "release_notes": release_notes,
+                    "is_rollback": is_rollback,
+                    "published_by": published_by,
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        if row is None:
+            raise RuntimeError("INSERT RETURNING unexpectedly returned no row")
+        log.info(
+            "pipeline_release_created",
+            tenant_id=tenant_id,
+            is_rollback=is_rollback,
+        )
+        return dict(row)
+
 
 class SyncJobRepository:
     """Data access for sync_jobs — always JOIN with pipeline_runs for status."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def create(
+        self,
+        *,
+        tenant_id: int,
+        source_connection_id: int,
+        run_mode: str,
+        pipeline_run_id: str | None = None,
+        release_id: int | None = None,
+        profile_id: int | None = None,
+        created_by: str | None = None,
+    ) -> dict:
+        """Insert a new sync_job row and return it."""
+        stmt = text("""
+            INSERT INTO public.sync_jobs
+                (tenant_id, source_connection_id, run_mode,
+                 pipeline_run_id, release_id, profile_id, created_by)
+            VALUES
+                (:tenant_id, :source_connection_id, :run_mode,
+                 :pipeline_run_id::uuid, :release_id, :profile_id, :created_by)
+            RETURNING id, tenant_id, pipeline_run_id::text AS pipeline_run_id,
+                      source_connection_id, release_id, profile_id,
+                      run_mode, created_by, created_at
+        """)
+        row = (
+            self._session.execute(
+                stmt,
+                {
+                    "tenant_id": tenant_id,
+                    "source_connection_id": source_connection_id,
+                    "run_mode": run_mode,
+                    "pipeline_run_id": pipeline_run_id,
+                    "release_id": release_id,
+                    "profile_id": profile_id,
+                    "created_by": created_by,
+                },
+            )
+            .mappings()
+            .fetchone()
+        )
+        if row is None:
+            raise RuntimeError("INSERT RETURNING unexpectedly returned no row")
+        log.info(
+            "sync_job_created",
+            tenant_id=tenant_id,
+            source_connection_id=source_connection_id,
+            run_mode=run_mode,
+        )
+        return dict(row)
 
     def list_for_connection(
         self,
