@@ -162,6 +162,9 @@ def test_get_kpi_summary_no_data(analytics_repo, mock_session):
     assert result.ytd_gross == Decimal("0")
     assert result.daily_transactions == 0
     assert result.daily_customers == 0
+    assert result.period_gross == Decimal("0")
+    assert result.period_transactions == 0
+    assert result.period_customers == 0
     assert result.avg_basket_size == Decimal("0")
     assert result.daily_returns == 0
     assert result.mtd_transactions == 0
@@ -201,6 +204,9 @@ def test_get_kpi_summary_with_data(analytics_repo, mock_session):
     assert result.ytd_gross == Decimal("300000")
     assert result.daily_transactions == 39  # 42 raw - 3 returns
     assert result.daily_customers == 15
+    assert result.period_gross == Decimal("1000")
+    assert result.period_transactions == 39  # mirrors daily_transactions (net)
+    assert result.period_customers == 15
     assert result.daily_returns == 3
     assert result.mtd_transactions == 420
     assert result.ytd_transactions == 5000
@@ -279,6 +285,11 @@ def test_kpi_range_with_dim_filter_populates_mtd_ytd(analytics_repo, mock_sessio
     # Range-scoped fields — unchanged by this fix
     assert result.today_gross == Decimal("450000")
     assert result.daily_transactions == 1760  # 1800 - 40
+
+    # Period aliases — must match today_gross / daily_* for range paths
+    assert result.period_gross == Decimal("450000")
+    assert result.period_transactions == 1760
+    assert result.period_customers == 620
 
     # The bug fix: MTD / YTD must NOT be zero when backend returns them
     assert result.mtd_gross == Decimal("180000")

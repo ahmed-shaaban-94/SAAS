@@ -14,8 +14,8 @@ export function DayHeroConnected() {
 
   return (
     <DayHero
-      revenue={data.kpi.today_gross}
-      transactions={data.kpi.daily_transactions}
+      revenue={data.kpi.period_gross}
+      transactions={data.kpi.period_transactions}
       momGrowth={data.kpi.mom_growth_pct}
     />
   );

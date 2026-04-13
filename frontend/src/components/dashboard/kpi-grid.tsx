@@ -57,8 +57,8 @@ export const KPIGrid = memo(function KPIGrid() {
     return [
       {
         label: "Period Revenue",
-        value: formatCurrency(data.today_gross),
-        numericValue: data.today_gross,
+        value: formatCurrency(data.period_gross),
+        numericValue: data.period_gross,
         isCurrency: true,
         icon: Zap,
         tooltip: TOOLTIPS.periodRevenue,
@@ -81,10 +81,10 @@ export const KPIGrid = memo(function KPIGrid() {
       },
       {
         label: "Transactions",
-        value: formatNumber(data.daily_transactions),
-        numericValue: data.daily_transactions,
+        value: formatNumber(data.period_transactions),
+        numericValue: data.period_transactions,
         subtitle: data.daily_returns > 0
-          ? `${formatNumber(data.daily_transactions + data.daily_returns)} sales - ${formatNumber(data.daily_returns)} returns`
+          ? `${formatNumber(data.period_transactions + data.daily_returns)} sales - ${formatNumber(data.daily_returns)} returns`
           : undefined,
         icon: Receipt,
         tooltip: TOOLTIPS.completedTxn,

@@ -77,11 +77,11 @@ export default function PrintReportPage() {
             Key Performance Indicators
           </h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <KPICell label="Selected Period Revenue" value={formatCurrency(summary.today_gross)} />
+            <KPICell label="Selected Period Revenue" value={formatCurrency(summary.period_gross)} />
             <KPICell label="Month-to-Date Revenue" value={formatCurrency(summary.mtd_gross)} />
             <KPICell label="Year-to-Date Revenue" value={formatCurrency(summary.ytd_gross)} />
-            <KPICell label="Completed Transactions" value={formatNumber(summary.daily_transactions)} />
-            <KPICell label="Daily Customers" value={formatNumber(summary.daily_customers)} />
+            <KPICell label="Completed Transactions" value={formatNumber(summary.period_transactions)} />
+            <KPICell label="Period Customers" value={formatNumber(summary.period_customers)} />
             <KPICell
               label="Growth"
               value={summary.mom_growth_pct !== null ? formatPercent(summary.mom_growth_pct) : "N/A"}

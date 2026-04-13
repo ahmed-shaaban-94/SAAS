@@ -118,6 +118,12 @@ class KPISummary(BaseModel):
     daily_quantity: JsonDecimal = Field(default=Decimal("0"))
     daily_transactions: int
     daily_customers: int
+    # Period-aware aliases — preferred names for new frontend consumers.
+    # Legacy fields (today_gross / daily_transactions / daily_customers) are kept
+    # for AI Light prompts, n8n workflows, and the mobile app.
+    period_gross: JsonDecimal = Field(default=Decimal("0"))
+    period_transactions: int = 0
+    period_customers: int = 0
     avg_basket_size: JsonDecimal = Field(default=Decimal("0"))
     daily_returns: int = 0
     mtd_transactions: int = 0

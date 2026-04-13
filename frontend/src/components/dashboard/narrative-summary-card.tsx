@@ -26,9 +26,9 @@ function getTimeGreeting(): string | null {
 }
 
 function buildFallbackNarrative(kpi: {
-  today_gross: number;
+  period_gross: number;
   mom_growth_pct: number | null;
-  daily_transactions: number;
+  period_transactions: number;
   daily_returns: number;
 }): string {
   const direction = kpi.mom_growth_pct !== null
@@ -40,13 +40,13 @@ function buildFallbackNarrative(kpi: {
   if (direction && kpi.mom_growth_pct !== null) {
     parts.push(`Revenue is ${direction} ${formatPercent(Math.abs(kpi.mom_growth_pct))} compared to the prior period`);
   } else {
-    parts.push(`Revenue stands at ${formatCurrency(kpi.today_gross)} for the selected period`);
+    parts.push(`Revenue stands at ${formatCurrency(kpi.period_gross)} for the selected period`);
   }
 
-  parts.push(`with ${formatNumber(kpi.daily_transactions)} completed transactions`);
+  parts.push(`with ${formatNumber(kpi.period_transactions)} completed transactions`);
 
   if (kpi.daily_returns > 0) {
-    const returnRate = (kpi.daily_returns / (kpi.daily_transactions + kpi.daily_returns)) * 100;
+    const returnRate = (kpi.daily_returns / (kpi.period_transactions + kpi.daily_returns)) * 100;
     if (returnRate > 5) {
       parts.push(`Returns are elevated at ${returnRate.toFixed(1)}% of total activity`);
     } else {
