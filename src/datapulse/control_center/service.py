@@ -51,10 +51,12 @@ log = get_logger(__name__)
 # ── Connector registry ────────────────────────────────────────
 # Lazy-imported to avoid pulling in file I/O dependencies at import time.
 
+
 def _get_connector(source_type: str):  # type: ignore[return]
     """Return the connector instance for a given source_type, or None."""
     if source_type == "file_upload":
         from datapulse.control_center.connectors.file_upload import FileUploadConnector
+
         return FileUploadConnector()
     return None
 
@@ -349,11 +351,12 @@ class ControlCenterService:
         Used by ``POST /mappings/validate`` for live feedback in the UI.
         """
         from datapulse.control_center import canonical as can_helpers  # noqa: PLC0415
-        from datapulse.control_center import validation as val_engine  # noqa: PLC0415
+        import datapulse.control_center.validation as val_engine  # noqa: PLC0415
 
         canonical = can_helpers.get_canonical_domain(self._session, target_domain)
         if canonical is None:
             from datapulse.control_center.models import ValidationIssue  # noqa: PLC0415
+
             return ValidationReport(
                 ok=False,
                 errors=[
@@ -411,7 +414,7 @@ class ControlCenterService:
         Returns the updated draft. Raises ``ValueError`` when not found.
         """
         from datapulse.control_center import canonical as can_helpers  # noqa: PLC0415
-        from datapulse.control_center import validation as val_engine  # noqa: PLC0415
+        import datapulse.control_center.validation as val_engine  # noqa: PLC0415
 
         draft_row = self._drafts.get(draft_id)
         if draft_row is None:
@@ -581,8 +584,9 @@ class ControlCenterService:
 
         # Invalidate analytics cache for this tenant
         try:
-            from datapulse.cache import cache_invalidate_tenant  # type: ignore[import]
-            cache_invalidate_tenant(tenant_id)
+            from datapulse.cache import cache_invalidate_pattern  # noqa: PLC0415
+
+            cache_invalidate_pattern(f"datapulse:analytics:{tenant_id}:*")
         except Exception:  # noqa: BLE001
             log.warning("cache_invalidation_failed_after_publish", tenant_id=tenant_id)
 
@@ -629,8 +633,9 @@ class ControlCenterService:
 
         # Invalidate analytics cache
         try:
-            from datapulse.cache import cache_invalidate_tenant  # type: ignore[import]
-            cache_invalidate_tenant(tenant_id)
+            from datapulse.cache import cache_invalidate_pattern  # noqa: PLC0415
+
+            cache_invalidate_pattern(f"datapulse:analytics:{tenant_id}:*")
         except Exception:  # noqa: BLE001
             log.warning("cache_invalidation_failed_after_rollback", tenant_id=tenant_id)
 

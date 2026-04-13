@@ -307,9 +307,7 @@ def list_profiles(
     page_size: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> PipelineProfileList:
     """List pipeline profiles for the current tenant."""
-    return service.list_profiles(
-        target_domain=target_domain, page=page, page_size=page_size
-    )
+    return service.list_profiles(target_domain=target_domain, page=page, page_size=page_size)
 
 
 @router.get(
@@ -439,9 +437,7 @@ def list_sync_history(
     # Verify connection exists & is tenant-visible (RLS enforces scope)
     if service.get_connection(connection_id) is None:
         raise HTTPException(status_code=404, detail="connection_not_found")
-    return service.list_sync_history(
-        connection_id=connection_id, page=page, page_size=page_size
-    )
+    return service.list_sync_history(connection_id=connection_id, page=page, page_size=page_size)
 
 
 # ------------------------------------------------------------------
@@ -751,9 +747,7 @@ def rollback_release(
     tenant_id = int(user.get("tenant_id", 1))
     published_by: str = user.get("sub", user.get("user_id", "anonymous"))
     try:
-        return service.rollback_release(
-            release_id, tenant_id=tenant_id, published_by=published_by
-        )
+        return service.rollback_release(release_id, tenant_id=tenant_id, published_by=published_by)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

@@ -88,15 +88,11 @@ def preview_file_upload(
         for c in result.columns
     ]
 
-    null_ratios = {
-        c.name: round(c.null_count / max(row_count, 1), 4)
-        for c in result.columns
-    }
+    null_ratios = {c.name: round(c.null_count / max(row_count, 1), 4) for c in result.columns}
 
     raw_rows = sample_df.to_dicts()
     serialized_rows: list[dict[str, Any]] = [
-        {k: _safe_json(v) for k, v in row.items()}
-        for row in raw_rows
+        {k: _safe_json(v) for k, v in row.items()} for row in raw_rows
     ]
 
     log.info(

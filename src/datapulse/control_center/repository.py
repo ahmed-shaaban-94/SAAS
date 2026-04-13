@@ -139,7 +139,7 @@ class SourceConnectionRepository:
         sets.append("updated_at = now()")
         stmt = text(f"""
             UPDATE public.source_connections
-            SET {', '.join(sets)}
+            SET {", ".join(sets)}
             WHERE id = :id
             RETURNING id, tenant_id, name, source_type, status, config_json,
                       credentials_ref, last_sync_at, created_by, created_at, updated_at
@@ -273,7 +273,7 @@ class PipelineProfileRepository:
         sets.append("updated_at = now()")
         stmt = text(f"""
             UPDATE public.pipeline_profiles
-            SET {', '.join(sets)}
+            SET {", ".join(sets)}
             WHERE id = :id
             RETURNING id, tenant_id, profile_key, display_name, target_domain,
                       is_default, config_json, created_at, updated_at
@@ -396,7 +396,7 @@ class MappingTemplateRepository:
         sets.extend(["version = version + 1", "updated_at = now()"])
         stmt = text(f"""
             UPDATE public.mapping_templates
-            SET {', '.join(sets)}
+            SET {", ".join(sets)}
             WHERE id = :id
             RETURNING id, tenant_id, source_type, template_name, source_schema_hash,
                       mapping_json, version, created_by, created_at, updated_at
@@ -471,9 +471,11 @@ class PipelineDraftRepository:
             ORDER BY updated_at DESC
             LIMIT :limit OFFSET :offset
         """)
-        rows = self._session.execute(
-            sql, {"limit": page_size, "offset": (page - 1) * page_size}
-        ).mappings().all()
+        rows = (
+            self._session.execute(sql, {"limit": page_size, "offset": (page - 1) * page_size})
+            .mappings()
+            .all()
+        )
         return [dict(r) for r in rows], total
 
     def update_status(self, draft_id: int, status: str) -> dict | None:
@@ -567,9 +569,11 @@ class PipelineReleaseRepository:
             ORDER BY release_version DESC
             LIMIT :limit OFFSET :offset
         """)
-        rows = self._session.execute(
-            sql, {"limit": page_size, "offset": (page - 1) * page_size}
-        ).mappings().all()
+        rows = (
+            self._session.execute(sql, {"limit": page_size, "offset": (page - 1) * page_size})
+            .mappings()
+            .all()
+        )
         return [dict(r) for r in rows], total
 
     def get(self, release_id: int) -> dict | None:
@@ -737,8 +741,12 @@ class SyncJobRepository:
             ORDER BY sj.created_at DESC
             LIMIT :limit OFFSET :offset
         """)
-        rows = self._session.execute(
-            sql,
-            {"cid": connection_id, "limit": page_size, "offset": (page - 1) * page_size},
-        ).mappings().all()
+        rows = (
+            self._session.execute(
+                sql,
+                {"cid": connection_id, "limit": page_size, "offset": (page - 1) * page_size},
+            )
+            .mappings()
+            .all()
+        )
         return [dict(r) for r in rows], total
