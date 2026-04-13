@@ -53,7 +53,28 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+// ── Feature flags ────────────────────────────────────────
+// Mirrors backend `feature_control_center` setting. Pages themselves
+// land in Phase 1b; keeping the nav group behind a flag avoids dead
+// links when only the backend READ routes exist.
+const FEATURE_CONTROL_CENTER =
+  process.env.NEXT_PUBLIC_FEATURE_CONTROL_CENTER === "true";
+
 // ── Grouped navigation ───────────────────────────────────
+const CONTROL_CENTER_GROUP: NavGroup = {
+  id: "control-center",
+  label: "Control Center",
+  icon: "Settings2",
+  minRole: "admin",
+  items: [
+    { label: "Sources",   href: "/control-center/sources",   icon: "Plug",              minRole: "admin"  },
+    { label: "Profiles",  href: "/control-center/profiles",  icon: "SlidersHorizontal", minRole: "admin"  },
+    { label: "Mappings",  href: "/control-center/mappings",  icon: "GitBranch",         minRole: "editor" },
+    { label: "Releases",  href: "/control-center/releases",  icon: "History",           minRole: "admin"  },
+    { label: "Sync Runs", href: "/control-center/sync-runs", icon: "Activity",          minRole: "admin"  },
+  ],
+};
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: "analytics",
@@ -125,6 +146,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Billing", href: "/billing", icon: "CreditCard", minRole: "owner" },
     ],
   },
+  ...(FEATURE_CONTROL_CENTER ? [CONTROL_CENTER_GROUP] : []),
 ];
 
 /** Flat list derived from groups — backward compatible */

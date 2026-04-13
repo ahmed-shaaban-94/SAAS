@@ -132,6 +132,9 @@ class Settings(BaseSettings):
     slack_webhook_url: str = ""
     notification_email: str = ""
 
+    # Control Center (data control plane) — off by default until Phase 1d lands
+    feature_control_center: bool = False
+
     # Stripe billing
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""

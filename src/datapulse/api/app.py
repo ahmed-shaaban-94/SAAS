@@ -24,6 +24,7 @@ from datapulse.api.routes import (
     audit,
     billing,
     branding,
+    control_center,
     dashboard_layouts,
     embed,
     explore,
@@ -233,6 +234,11 @@ def create_app() -> FastAPI:
     app.include_router(branding.router, prefix="/api/v1")
     app.include_router(branding.public_router, prefix="/api/v1")
     app.include_router(reseller.router, prefix="/api/v1")
+
+    # Control Center — behind feature flag; mounts router only when enabled
+    if settings.feature_control_center:
+        app.include_router(control_center.router, prefix="/api/v1")
+        logger.info("control_center_enabled")
 
     # Prometheus metrics — exposes /metrics endpoint with HTTP request
     # counters and duration histograms.  Nginx should block external access
