@@ -93,9 +93,9 @@ export function ReportSummary({ result }: ReportSummaryProps) {
       {kpis.map((kpi) => (
         <div
           key={kpi.colName}
-          className="rounded-xl border border-border bg-card p-4"
+          className="viz-panel viz-card-hover rounded-[1.5rem] p-4"
         >
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
             {kpi.sublabel}
           </p>
           <p className="mt-1 text-2xl font-bold text-text-primary">

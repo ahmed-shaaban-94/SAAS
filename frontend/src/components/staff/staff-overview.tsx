@@ -13,7 +13,6 @@ import { formatCurrency, formatNumber, formatCompact } from "@/lib/formatters";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { CHART_COLORS } from "@/lib/constants";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
 function StaffDistributionBar({ data }: { data: { name: string; value: number; fill: string }[] }) {
@@ -56,6 +55,7 @@ function StaffDistributionBar({ data }: { data: { name: string; value: number; f
 export function StaffOverview() {
   const { filters } = useFilters();
   const { data, error, isLoading } = useTopStaff(filters);
+  const theme = useChartTheme();
 
   if (isLoading) {
     return (
@@ -103,7 +103,7 @@ export function StaffOverview() {
   const chartData = data.items.slice(0, 8).map((item, i) => ({
     name: item.name.length > 20 ? item.name.slice(0, 20) + "..." : item.name,
     value: item.value,
-    fill: CHART_COLORS[i % CHART_COLORS.length],
+    fill: theme.palette[i % theme.palette.length],
   }));
 
   const exportData = data.items.map((item) => ({
@@ -117,21 +117,21 @@ export function StaffOverview() {
     <div>
       <SummaryStats stats={stats} className="mb-6" />
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
+        <div className="viz-panel viz-card-hover rounded-[1.75rem] p-6">
+          <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
             Top Staff by Revenue
           </h3>
           <RankingChart items={data.items} />
         </div>
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
+        <div className="viz-panel viz-card-hover rounded-[1.75rem] p-6">
+          <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
             Revenue Distribution
           </h3>
           <StaffDistributionBar data={chartData} />
         </div>
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="viz-panel viz-card-hover rounded-[1.75rem] p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text-secondary">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
               Staff Rankings
             </h3>
             <CsvExportButton data={exportData} filename="staff" />

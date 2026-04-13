@@ -27,20 +27,20 @@ export function RankingTableLinked({
       <table className="w-full min-w-[500px] text-left text-sm">
         <thead>
           <tr className="border-b border-border text-text-secondary">
-            <th className="pb-3 pr-4 font-medium">#</th>
-            <th className="pb-3 pr-4 font-medium">{entityLabel}</th>
-            <th className="pb-3 pr-4 text-right font-medium">Revenue</th>
+            <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.2em]">#</th>
+            <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-[0.2em]">{entityLabel}</th>
+            <th className="pb-3 pr-4 text-right text-[11px] font-semibold uppercase tracking-[0.2em]">Revenue</th>
             {hasSparklines && (
-              <th className="pb-3 pr-4 text-center font-medium">Trend</th>
+              <th className="pb-3 pr-4 text-center text-[11px] font-semibold uppercase tracking-[0.2em]">Trend</th>
             )}
-            <th className="pb-3 text-right font-medium">% of Total</th>
+            <th className="pb-3 text-right text-[11px] font-semibold uppercase tracking-[0.2em]">% of Total</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr
               key={item.key}
-              className="border-b border-divider transition-colors hover:bg-divider/50"
+              className="border-b border-divider/70 transition-colors hover:bg-white/5"
             >
               <td className="py-3 pr-4 text-text-secondary">{item.rank}</td>
               <td className="py-3 pr-4 font-medium text-text-primary">
@@ -65,9 +65,9 @@ export function RankingTableLinked({
               )}
               <td className="py-3 text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-divider">
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-divider/80">
                     <div
-                      className="h-full rounded-full bg-accent"
+                      className="h-full rounded-full bg-gradient-to-r from-chart-blue to-accent"
                       style={{ width: `${Math.min(item.pct_of_total, 100)}%` }}
                     />
                   </div>

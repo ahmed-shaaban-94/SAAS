@@ -7,6 +7,7 @@ import { FilterBar } from "@/components/filters/filter-bar";
 import { CustomerOverview } from "@/components/customers/customer-overview";
 import { RFMMatrix } from "@/components/customers/rfm-matrix";
 import { SegmentFunnel } from "@/components/customers/segment-funnel";
+import { AnalyticsSectionHeader } from "@/components/layout/analytics-section-header";
 import { UserCheck } from "lucide-react";
 
 export default function CustomersPage() {
@@ -22,15 +23,7 @@ export default function CustomersPage() {
 
       {/* RFM Segmentation Section */}
       <div className="mt-10">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/10">
-            <UserCheck className="h-3.5 w-3.5 text-accent" />
-          </div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-text-secondary">
-            Customer Segmentation (RFM)
-          </h2>
-          <div className="flex-1 section-divider" />
-        </div>
+        <AnalyticsSectionHeader title="Customer Segmentation (RFM)" icon={UserCheck} />
         <div className="space-y-6">
           <RFMMatrix />
           <SegmentFunnel />

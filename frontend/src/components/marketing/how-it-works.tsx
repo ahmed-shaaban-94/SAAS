@@ -12,10 +12,13 @@ export function HowItWorks() {
     <SectionWrapper id="how-it-works" variant="alternate">
       <div ref={ref} className={`animate-on-scroll ${isVisible ? "is-visible" : ""}`}>
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold sm:text-4xl">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.26em] text-accent/80">
+            Pipeline flow
+          </p>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             How <span className="gradient-text">Data Pulse</span> works
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-text-secondary">
             Your data flows through four stages, each adding more value. From
             raw import to intelligent dashboards.
           </p>

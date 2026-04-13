@@ -6,13 +6,18 @@
   /* ── Custom color tokens (reference CSS vars for dynamic dark/light theming) ── */
   --color-page: var(--bg-page);
   --color-card: var(--bg-card);
+  --color-elevated: var(--bg-elevated);
+  --color-panel-soft: var(--panel-soft);
+  --color-surface-strong: var(--surface-strong);
   --color-border: var(--border-color);
   --color-divider: var(--divider);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-accent: var(--accent-color);
+  --color-accent-strong: var(--accent-strong);
   --color-chart-blue: var(--chart-blue);
   --color-chart-amber: var(--chart-amber);
+  --color-chart-purple: var(--chart-purple);
   --color-growth-green: var(--growth-green);
   --color-growth-red: var(--growth-red);
 
@@ -29,106 +34,120 @@
    Light theme tokens (default)
    ═══════════════════════════════════════════════ */
 :root {
-  --bg-page: #F6F8FA;
+  --bg-page: #f3f7fb;
   --bg-card: #FFFFFF;
-  --border-color: #D0D7DE;
-  --divider: #D8DEE4;
-  --text-primary: #1F2328;
-  --text-secondary: #57606A;
-  --accent-color: #D97706;
-  --chart-blue: #4F46E5;
-  --chart-amber: #D97706;
+  --bg-elevated: #fbfdff;
+  --panel-soft: #f5f9fd;
+  --surface-strong: #eaf2fb;
+  --border-color: #d7e2ec;
+  --divider: #d9e5f0;
+  --text-primary: #102a43;
+  --text-secondary: #627d98;
+  --accent-color: #00c7f2;
+  --accent-strong: #0b7da1;
+  --chart-blue: #1cb9e7;
+  --chart-amber: #ffab3d;
+  --chart-purple: #6f61f6;
   /* Multi-series palette — 8 colors */
-  --chart-1: #4F46E5;
-  --chart-2: #D97706;
-  --chart-3: #8B5CF6;
-  --chart-4: #0891B2;
-  --chart-5: #059669;
-  --chart-6: #6366F1;
-  --chart-7: #EA580C;
-  --chart-8: #2563EB;
-  --growth-green: #059669;
-  --growth-green-rgb: 5, 150, 105;
-  --growth-red: #DC2626;
-  --growth-red-rgb: 220, 38, 38;
+  --chart-1: #1cb9e7;
+  --chart-2: #1cc985;
+  --chart-3: #ffab3d;
+  --chart-4: #6f61f6;
+  --chart-5: #f46d75;
+  --chart-6: #18a4d0;
+  --chart-7: #ffc94a;
+  --chart-8: #31567d;
+  --growth-green: #1cc985;
+  --growth-green-rgb: 28, 201, 133;
+  --growth-red: #f46d75;
+  --growth-red-rgb: 244, 109, 117;
 
   /* shadcn/ui CSS variables — light */
-  --background: 210 20% 98%;
-  --foreground: 215 28% 14%;
+  --background: 207 52% 96%;
+  --foreground: 209 62% 16%;
   --card: 0 0% 100%;
-  --card-foreground: 215 28% 14%;
+  --card-foreground: 209 62% 16%;
   --popover: 0 0% 100%;
-  --popover-foreground: 215 28% 14%;
-  --primary: 38 92% 44%;
+  --popover-foreground: 209 62% 16%;
+  --primary: 191 91% 47%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 15% 90%;
-  --secondary-foreground: 215 28% 14%;
-  --muted: 210 15% 93%;
-  --muted-foreground: 215 10% 40%;
-  --accent: 38 92% 44%;
+  --secondary: 206 45% 91%;
+  --secondary-foreground: 209 62% 16%;
+  --muted: 205 45% 94%;
+  --muted-foreground: 210 24% 45%;
+  --accent: 191 91% 47%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 47%;
   --destructive-foreground: 0 0% 100%;
-  --border: 210 15% 83%;
-  --input: 210 15% 83%;
-  --ring: 38 92% 44%;
-  --radius: 0.5rem;
+  --border: 206 35% 85%;
+  --input: 206 35% 85%;
+  --ring: 191 91% 47%;
+  --radius: 1rem;
 }
 
 /* ═══════════════════════════════════════════════
    Dark theme tokens (midnight-pharma)
    ═══════════════════════════════════════════════ */
 .dark {
-  --bg-page: #0D1117;
-  --bg-card: #161B22;
-  --border-color: #30363D;
-  --divider: #21262D;
-  --text-primary: #E6EDF3;
-  --text-secondary: #A8B3BD;
-  --accent-color: #E5A00D;
-  --chart-blue: #6366F1;
-  --chart-amber: #E5A00D;
+  --bg-page: #081826;
+  --bg-card: #102a43;
+  --bg-elevated: #163452;
+  --panel-soft: #1a3550;
+  --surface-strong: #243b53;
+  --border-color: #33506b;
+  --divider: #46627c;
+  --text-primary: #f7fbff;
+  --text-secondary: #b8c0cc;
+  --accent-color: #00c7f2;
+  --accent-strong: #5cdfff;
+  --chart-blue: #20bce5;
+  --chart-amber: #ffab3d;
+  --chart-purple: #7467f8;
   /* Multi-series palette — dark */
-  --chart-1: #6366F1;
-  --chart-2: #E5A00D;
-  --chart-3: #A78BFA;
-  --chart-4: #22D3EE;
-  --chart-5: #34D399;
-  --chart-6: #818CF8;
-  --chart-7: #FB923C;
-  --chart-8: #60A5FA;
-  --growth-green: #34D399;
-  --growth-green-rgb: 52, 211, 153;
-  --growth-red: #F87171;
-  --growth-red-rgb: 248, 113, 113;
+  --chart-1: #20bce5;
+  --chart-2: #1dd48b;
+  --chart-3: #ffab3d;
+  --chart-4: #7467f8;
+  --chart-5: #ff7b7b;
+  --chart-6: #70e1ff;
+  --chart-7: #ffd166;
+  --chart-8: #627d98;
+  --growth-green: #1dd48b;
+  --growth-green-rgb: 29, 212, 139;
+  --growth-red: #ff7b7b;
+  --growth-red-rgb: 255, 123, 123;
 
   /* shadcn/ui CSS variables — dark */
-  --background: 215 28% 7%;
-  --foreground: 210 25% 91%;
-  --card: 215 22% 11%;
-  --card-foreground: 210 25% 91%;
-  --popover: 215 22% 11%;
-  --popover-foreground: 210 25% 91%;
-  --primary: 43 88% 47%;
-  --primary-foreground: 215 28% 7%;
-  --secondary: 215 14% 16%;
-  --secondary-foreground: 210 25% 91%;
-  --muted: 215 14% 16%;
-  --muted-foreground: 210 10% 70%;
-  --accent: 43 88% 47%;
-  --accent-foreground: 215 28% 7%;
+  --background: 208 67% 9%;
+  --foreground: 200 50% 97%;
+  --card: 209 62% 16%;
+  --card-foreground: 200 50% 97%;
+  --popover: 209 62% 16%;
+  --popover-foreground: 200 50% 97%;
+  --primary: 191 91% 47%;
+  --primary-foreground: 208 67% 9%;
+  --secondary: 211 39% 23%;
+  --secondary-foreground: 200 50% 97%;
+  --muted: 211 39% 23%;
+  --muted-foreground: 210 21% 76%;
+  --accent: 191 91% 47%;
+  --accent-foreground: 208 67% 9%;
   --destructive: 0 72% 47%;
   --destructive-foreground: 210 25% 91%;
-  --border: 215 14% 21%;
-  --input: 215 14% 21%;
-  --ring: 43 88% 47%;
-  --radius: 0.5rem;
+  --border: 210 34% 31%;
+  --input: 210 34% 31%;
+  --ring: 191 91% 47%;
+  --radius: 1rem;
 }
 
 body {
-  background-color: var(--bg-page);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-color) 12%, transparent) 0%, transparent 30%),
+    radial-gradient(circle at 100% 10%, color-mix(in srgb, var(--chart-purple) 8%, transparent) 0%, transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-page) 92%, white 8%) 0%, var(--bg-page) 52%, color-mix(in srgb, var(--bg-page) 88%, black 12%) 100%);
   color: var(--text-primary);
   font-family: "Inter Variable", "Inter", "Segoe UI", system-ui, sans-serif;
+  min-height: 100vh;
 }
 
 /* Tabular numbers for consistent digit widths in KPIs, tables, and charts */
@@ -242,14 +261,18 @@ html {
    ═══════════════════════════════════════════════ */
 .glow-card {
   position: relative;
-  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease, background 0.3s ease;
+  box-shadow:
+    0 18px 50px rgba(16, 42, 67, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .glow-card:hover {
   box-shadow:
-    0 4px 20px rgba(217, 119, 6, 0.08),
-    0 0 40px rgba(217, 119, 6, 0.06);
-  border-color: rgba(217, 119, 6, 0.3);
+    0 22px 65px color-mix(in srgb, var(--accent-color) 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-color) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  border-color: color-mix(in srgb, var(--accent-color) 30%, var(--border-color));
 }
 
 /* ═══════════════════════════════════════════════
@@ -257,8 +280,54 @@ html {
    ═══════════════════════════════════════════════ */
 .section-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
-  opacity: 0.4;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-color) 65%, white), transparent);
+  opacity: 0.55;
+}
+
+.viz-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-color) 88%, white);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 92%, white 8%) 0%, var(--bg-card) 100%);
+  box-shadow:
+    0 18px 60px rgba(16, 42, 67, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.viz-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-color) 15%, transparent), transparent 35%);
+  opacity: 0.9;
+}
+
+.viz-panel-soft {
+  border: 1px solid color-mix(in srgb, var(--border-color) 80%, white);
+  background: color-mix(in srgb, var(--panel-soft) 86%, white 14%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.viz-card-hover {
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.viz-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 24px 70px color-mix(in srgb, var(--accent-color) 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-color) 28%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 28%, var(--border-color));
+}
+
+.viz-grid-surface {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--accent-color) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--accent-color) 10%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
 }
 
 /* ═══════════════════════════════════════════════
@@ -439,16 +508,26 @@ html {
    Recharts custom overrides
    ═══════════════════════════════════════════════ */
 .recharts-default-tooltip {
-  border-radius: 12px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 60px rgba(4, 23, 38, 0.24) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 92%, white 8%) 0%, var(--bg-card) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 18%, var(--border-color)) !important;
   color: var(--text-primary) !important;
+  padding: 0.45rem 0.55rem !important;
+  backdrop-filter: blur(12px);
 }
 
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
-  stroke-opacity: 0.5;
+  stroke-opacity: 0.3;
+}
+
+.recharts-cartesian-axis-tick-value,
+.recharts-polar-angle-axis-tick-value,
+.recharts-polar-radius-axis-tick-value {
+  fill: var(--text-secondary);
+  font-size: 11px;
 }
 
 /* ═══════════════════════════════════════════════
@@ -546,19 +625,19 @@ html {
 }
 
 :root .ambient-bg::before {
-  background: radial-gradient(ellipse, rgba(0, 137, 123, 0.04) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(0, 199, 242, 0.08) 0%, transparent 70%);
 }
 
 :root .ambient-bg::after {
-  background: radial-gradient(ellipse, rgba(25, 118, 210, 0.03) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(111, 97, 246, 0.07) 0%, transparent 70%);
 }
 
 .dark .ambient-bg::before {
-  background: radial-gradient(ellipse, rgba(217, 119, 6, 0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(0, 199, 242, 0.12) 0%, transparent 70%);
 }
 
 .dark .ambient-bg::after {
-  background: radial-gradient(ellipse, rgba(33, 150, 243, 0.04) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(116, 103, 248, 0.1) 0%, transparent 70%);
 }
 
 @keyframes ambientFloat {
@@ -843,17 +922,22 @@ html {
 
 /* --- Marketing dark theme (always dark on landing) --- */
 .marketing-dark {
-  --bg-page: #0D1117;
-  --bg-card: #161B22;
-  --border-color: #30363D;
-  --divider: #21262D;
-  --text-primary: #E6EDF3;
-  --text-secondary: #A8B3BD;
-  --accent-color: #E5A00D;
-  --chart-blue: #2196F3;
-  --chart-amber: #FF9800;
-  --growth-green: #4CAF50;
-  --growth-red: #F44336;
+  --bg-page: #081826;
+  --bg-card: #102a43;
+  --bg-elevated: #163452;
+  --panel-soft: #1a3550;
+  --surface-strong: #243b53;
+  --border-color: #33506b;
+  --divider: #46627c;
+  --text-primary: #f7fbff;
+  --text-secondary: #b8c0cc;
+  --accent-color: #00c7f2;
+  --accent-strong: #5cdfff;
+  --chart-blue: #20bce5;
+  --chart-amber: #ffab3d;
+  --chart-purple: #7467f8;
+  --growth-green: #1dd48b;
+  --growth-red: #ff7b7b;
   color-scheme: dark;
 }
 

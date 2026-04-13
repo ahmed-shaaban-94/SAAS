@@ -100,15 +100,15 @@ export function ReturnsOverview() {
     <div>
       <SummaryStats stats={summaryStats} className="mb-6" />
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
+        <div className="viz-panel rounded-[1.7rem] p-5">
+          <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
             Top Returns by Amount
           </h3>
           <ReturnsChart items={productData} />
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="viz-panel rounded-[1.7rem] p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text-secondary">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
               Return Details
             </h3>
             <CsvExportButton

@@ -68,27 +68,27 @@ export function ScheduleOverview() {
   };
 
   return (
-    <div className="space-y-4 mt-6">
+    <div className="mt-6 space-y-4">
       <button
         onClick={() => setShowForm(!showForm)}
-        className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90"
+        className="flex items-center gap-1.5 rounded-2xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent/90"
       >
         <Plus className="h-4 w-4" /> New Schedule
       </button>
 
       {showForm && (
-        <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 space-y-3">
+        <div className="viz-panel rounded-[1.75rem] border border-accent/20 p-4 space-y-3">
           <input
             placeholder="Schedule name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary"
+            className="w-full rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
           />
           <div className="flex gap-2">
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value)}
-              className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary"
+              className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
             >
               {["dashboard", "products", "customers", "staff"].map((t) => (
                 <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
@@ -97,7 +97,7 @@ export function ScheduleOverview() {
             <select
               value={cron}
               onChange={(e) => setCron(e.target.value)}
-              className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary"
+              className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
             >
               {CRON_PRESETS.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
@@ -108,23 +108,22 @@ export function ScheduleOverview() {
             placeholder="Recipient emails (comma-separated)"
             value={recipients}
             onChange={(e) => setRecipients(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary"
+            className="w-full rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
           />
           <div className="flex gap-2">
-            <button onClick={handleCreate} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">
+            <button onClick={handleCreate} className="rounded-2xl bg-accent px-4 py-2.5 text-sm font-semibold text-white">
               Create
             </button>
-            <button onClick={() => setShowForm(false)} className="rounded-lg px-4 py-2 text-sm text-text-secondary hover:bg-divider">
+            <button onClick={() => setShowForm(false)} className="viz-panel-soft rounded-2xl px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary">
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Schedule list */}
       <div className="space-y-2">
         {schedules.map((s) => (
-          <div key={s.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
+          <div key={s.id} className="viz-panel flex items-center gap-3 rounded-[1.5rem] p-4">
             <Clock className="h-4 w-4 text-text-secondary flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-text-primary">{s.name}</p>
@@ -158,7 +157,7 @@ export function ScheduleOverview() {
           </div>
         ))}
         {schedules.length === 0 && (
-          <div className="rounded-xl border border-border bg-card p-8 text-center text-text-tertiary">
+          <div className="viz-panel rounded-[1.75rem] p-8 text-center text-text-tertiary">
             No report schedules configured
           </div>
         )}

@@ -50,10 +50,10 @@ import { DashboardContent } from "./dashboard-content";
 function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/10">
+      <div className="viz-panel-soft flex h-8 w-8 items-center justify-center rounded-xl">
         <Icon className="h-3.5 w-3.5 text-accent" />
       </div>
-      <h2 className="text-[11px] font-semibold uppercase tracking-widest text-text-secondary">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
         {title}
       </h2>
       <div className="flex-1 section-divider" />
@@ -76,7 +76,7 @@ export default function DashboardPage() {
             <CompareButton />
             <Link
               href="/dashboard/report"
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-text-secondary transition-all hover:bg-accent/10 hover:text-accent"
+              className="viz-panel-soft flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-text-secondary transition-all hover:text-accent"
             >
               <Printer className="h-4 w-4" />
               <span className="hidden sm:inline">Print Report</span>

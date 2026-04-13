@@ -78,21 +78,21 @@ export function CustomerOverview() {
     <div>
       <SummaryStats stats={stats} />
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
+        <div className="viz-panel rounded-[1.7rem] p-6">
+          <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
             Top Customers by Revenue
           </h3>
           <RankingChart items={data.items.slice(0, 10)} />
         </div>
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
+        <div className="viz-panel rounded-[1.7rem] p-6">
+          <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
             Revenue Distribution
           </h3>
           <DistributionChart data={chartData} />
         </div>
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="viz-panel rounded-[1.7rem] p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text-secondary">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
               Customer Rankings
             </h3>
             <CsvExportButton data={exportData} filename="customers" />

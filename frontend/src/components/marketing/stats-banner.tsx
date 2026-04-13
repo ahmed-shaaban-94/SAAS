@@ -87,8 +87,9 @@ export function StatsBanner() {
     <SectionWrapper variant="gradient">
       <div
         ref={ref}
-        className="rounded-2xl border border-border bg-card/80 px-6 py-12 backdrop-blur"
+        className="viz-panel rounded-[2rem] px-6 py-12 backdrop-blur"
       >
+        <div className="absolute inset-x-8 top-0 h-1 rounded-b-full bg-gradient-to-r from-chart-blue via-accent to-chart-purple" />
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {STATS.map((stat) => (
             <AnimatedStat

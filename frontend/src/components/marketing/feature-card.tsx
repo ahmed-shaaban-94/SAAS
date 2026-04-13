@@ -21,14 +21,14 @@ export function FeatureCard({ icon, title, description }: FeatureItem) {
   const Icon = iconMap[icon];
 
   return (
-    <div className="glow-card hover-lift group rounded-xl border border-border bg-card p-6 transition-all">
-      <div className="mb-4 inline-flex rounded-lg bg-accent/10 p-3 transition-colors group-hover:bg-accent/20">
+    <div className="viz-panel viz-card-hover glow-card hover-lift group rounded-[1.6rem] p-6 transition-all">
+      <div className="mb-5 inline-flex rounded-2xl bg-accent/10 p-3 transition-colors group-hover:bg-accent/18">
         {Icon && (
           <Icon className="h-6 w-6 text-accent transition-transform group-hover:scale-110" />
         )}
       </div>
-      <h3 className="mb-2 text-lg font-semibold">{title}</h3>
-      <p className="text-sm leading-relaxed text-text-secondary">{description}</p>
+      <h3 className="mb-3 text-xl font-semibold tracking-tight text-text-primary">{title}</h3>
+      <p className="text-sm leading-7 text-text-secondary">{description}</p>
     </div>
   );
 }

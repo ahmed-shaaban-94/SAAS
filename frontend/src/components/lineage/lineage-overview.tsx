@@ -102,8 +102,7 @@ export function LineageOverview() {
   if (error) return <ErrorRetry title="Failed to load lineage" />;
 
   return (
-    <div className="space-y-6 mt-6">
-      {/* Search + Legend */}
+    <div className="mt-6 space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
@@ -112,7 +111,7 @@ export function LineageOverview() {
             placeholder="Search models..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="rounded-lg border border-border bg-card py-2 pl-9 pr-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
+            className="viz-panel-soft rounded-xl py-2 pl-9 pr-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
           />
         </div>
         <div className="flex gap-4 text-xs">
@@ -128,7 +127,6 @@ export function LineageOverview() {
         </div>
       </div>
 
-      {/* Layer columns */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {(["bronze", "silver", "gold"] as const).map((layer) => (
           <div key={layer} className="space-y-2">
@@ -151,9 +149,8 @@ export function LineageOverview() {
         ))}
       </div>
 
-      {/* Impact analysis panel */}
       {selectedNode && impact && (
-        <div className="rounded-xl border border-accent/30 bg-accent/5 p-5 space-y-4 animate-fade-in">
+        <div className="viz-panel rounded-[1.75rem] border border-accent/20 p-5 space-y-4 animate-fade-in">
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-accent" />
             <h4 className="text-sm font-bold text-text-primary">
@@ -230,8 +227,7 @@ export function LineageOverview() {
             </div>
           )}
 
-          {/* Summary */}
-          <div className="rounded-lg bg-card border border-border p-3 text-xs text-text-secondary">
+          <div className="viz-panel-soft rounded-[1.2rem] p-3 text-xs text-text-secondary">
             <strong>Blast radius:</strong>{" "}
             {impact.directDependents.length + impact.transitiveDependents.length} downstream models affected
             {impact.maxDepth > 1 && ` across ${impact.maxDepth} layers`}

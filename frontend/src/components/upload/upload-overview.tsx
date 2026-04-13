@@ -125,13 +125,12 @@ export function UploadOverview() {
   };
 
   return (
-    <div className="space-y-6 mt-6">
-      {/* Dropzone */}
+    <div className="mt-6 space-y-6">
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
         onClick={() => inputRef.current?.click()}
-        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-card p-12 cursor-pointer hover:border-accent/50 transition-colors"
+        className="viz-panel flex cursor-pointer flex-col items-center justify-center rounded-[1.9rem] border-2 border-dashed border-border p-12 transition-colors hover:border-accent/50"
       >
         <Upload className="h-10 w-10 text-text-tertiary mb-3" />
         <p className="text-sm text-text-secondary">Drop files here or click to browse</p>
@@ -156,12 +155,11 @@ export function UploadOverview() {
 
       {uploading && <LoadingCard className="h-20" />}
 
-      {/* File list */}
       {files.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-text-primary">Uploaded Files</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Uploaded Files</h3>
           {files.map((f) => (
-            <div key={f.file_id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+            <div key={f.file_id} className="viz-panel-soft flex items-center gap-3 rounded-[1.2rem] p-3">
               <File className="h-4 w-4 text-text-secondary" />
               <div className="flex-1">
                 <p className="text-sm text-text-primary">{f.filename}</p>
@@ -169,7 +167,7 @@ export function UploadOverview() {
               </div>
               <button
                 onClick={() => handlePreview(f.file_id)}
-                className="rounded-lg border border-border px-2 py-1 text-xs text-text-secondary hover:bg-muted"
+                className="viz-panel-soft rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary transition-colors hover:text-accent"
               >
                 <Eye className="h-3 w-3 inline mr-1" />Preview
               </button>
@@ -182,7 +180,7 @@ export function UploadOverview() {
               <button
                 onClick={handleConfirm}
                 disabled={confirming}
-                className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-2xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
               >
                 {confirming ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -196,7 +194,7 @@ export function UploadOverview() {
             {confirmed && !isRunning && !progress?.status?.includes("success") && (
               <button
                 onClick={handleRunPipeline}
-                className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90"
+                className="flex items-center gap-1.5 rounded-2xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent/90"
               >
                 <Play className="h-4 w-4" />
                 Run Pipeline
@@ -205,14 +203,13 @@ export function UploadOverview() {
           </div>
 
           {confirmed && !progress && (
-            <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3 text-sm text-green-500">
+            <div className="viz-panel rounded-[1.25rem] border-green-500/20 bg-green-500/8 p-3 text-sm text-green-500">
               Files confirmed and ready for processing. Click &ldquo;Run Pipeline&rdquo; to start.
             </div>
           )}
         </div>
       )}
 
-      {/* Pipeline progress */}
       {progress && (
         <PipelineProgress
           progress={progress}
@@ -221,12 +218,11 @@ export function UploadOverview() {
         />
       )}
 
-      {/* Preview table */}
       {previewLoading && <LoadingCard className="h-64" />}
       {preview && !previewLoading && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-text-primary">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
               Preview: {preview.filename} ({preview.row_count} rows, {preview.columns.length} columns)
             </h3>
             <button onClick={() => setPreview(null)} className="text-text-secondary hover:text-text-primary">
@@ -235,17 +231,17 @@ export function UploadOverview() {
           </div>
 
           {preview.warnings.length > 0 && (
-            <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3 text-xs text-yellow-500">
+            <div className="viz-panel rounded-[1.25rem] border-yellow-500/20 bg-yellow-500/8 p-3 text-xs text-yellow-500">
               {preview.warnings.map((w, i) => <p key={i}>{w}</p>)}
             </div>
           )}
 
-          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <div className="viz-panel overflow-x-auto rounded-[1.75rem]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-border bg-background/50">
                   {preview.columns.map((col) => (
-                    <th key={col.name} className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">
+                    <th key={col.name} className="px-3 py-2 text-left font-semibold uppercase tracking-[0.14em] text-text-secondary whitespace-nowrap">
                       {col.name}
                       <br />
                       <span className="font-normal text-text-tertiary">{col.dtype}</span>

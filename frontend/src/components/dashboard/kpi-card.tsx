@@ -136,46 +136,40 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
     <div
       aria-label={ariaLabel}
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border p-4 sm:p-5",
-        // Glass morphism
-        "bg-card/80 backdrop-blur-sm",
-        "transition-all duration-300 hover:scale-[1.03] hover:shadow-lg",
-        "hover:border-accent/40 hover:shadow-accent/5",
-        hero && "border-accent/30 shadow-md shadow-accent/5 ring-1 ring-accent/10",
+        "viz-panel viz-card-hover group relative overflow-hidden rounded-[1.6rem] border border-border/80 p-4 sm:p-5",
+        hero && "border-accent/30 shadow-[0_20px_80px_rgba(0,199,242,0.16)]",
         className,
       )}
     >
-      {/* Gradient accent strip at top */}
       <div className={cn(
-        "absolute inset-x-0 top-0 h-1 bg-gradient-to-r transition-all duration-300 group-hover:h-1.5",
+        "absolute inset-x-5 top-0 h-1 rounded-b-full bg-gradient-to-r transition-all duration-300 group-hover:h-1.5",
         isPositive ? "from-growth-green to-growth-green/50" :
         isNegative ? "from-growth-red to-growth-red/50" :
-        "from-accent to-accent/50"
+        "from-chart-blue via-accent to-chart-purple"
       )} />
 
-      {/* Background glow on hover */}
       <div className={cn(
-        "absolute -right-4 -top-4 h-24 w-24 rounded-full bg-gradient-to-br opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100",
+        "absolute -right-6 -top-6 h-28 w-28 rounded-full bg-gradient-to-br opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100",
         gradient,
       )} />
 
-      <div className="relative flex items-start justify-between">
+      <div className="relative flex items-start justify-between gap-3">
         <div className="flex items-center gap-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary/90">
             {label}
           </p>
           {tooltip && <MetricTooltip description={tooltip} />}
         </div>
         {Icon && (
-          <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-accent/10 transition-all duration-300 group-hover:bg-accent/20 group-hover:scale-110 group-hover:rotate-3">
+          <div className="viz-panel-soft flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300 group-hover:bg-accent/12 sm:h-10 sm:w-10">
             <Icon className="h-4 w-4 text-accent" />
           </div>
         )}
       </div>
 
       <p className={cn(
-        "relative mt-2 font-bold tracking-tight text-text-primary truncate",
-        hero ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl",
+        "relative mt-3 font-bold tracking-tight text-text-primary truncate",
+        hero ? "text-[1.85rem] sm:text-[2.2rem]" : "text-xl sm:text-2xl",
       )} data-kpi-value>
         <AnimatedValue
           value={value}
@@ -187,12 +181,12 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
       </p>
 
       {subtitle && (
-        <p className="relative mt-0.5 text-[10px] text-text-secondary truncate">{subtitle}</p>
+        <p className="relative mt-1 text-[11px] text-text-secondary truncate">{subtitle}</p>
       )}
 
       {comparisonLine && (
         <p className={cn(
-          "relative mt-1 text-xs font-medium truncate",
+          "relative mt-1.5 text-xs font-medium truncate",
           isPositive ? "text-growth-green/80" : isNegative ? "text-growth-red/80" : "text-text-secondary",
         )}>
           {comparisonLine}
@@ -203,7 +197,7 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
         <div className="relative mt-2 flex items-center gap-1.5">
           <span
             className={cn(
-              "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+              "inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
               "transition-all duration-300 group-hover:scale-105",
               pillBg,
             )}
@@ -223,7 +217,7 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
       )}
 
       {sparkline && sparkline.length > 1 && (
-        <div className="relative mt-2 h-7">
+        <div className="viz-panel-soft relative mt-3 rounded-2xl px-2 py-1.5">
           <ResponsiveContainer width="100%" height={28}>
             <AreaChart data={sparkline.map((p) => ({ v: p.value }))}>
               <defs>
@@ -236,9 +230,9 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
                 type="monotone"
                 dataKey="v"
                 stroke="currentColor"
-                strokeWidth={1.5}
+                strokeWidth={1.9}
                 fill={`url(#${sparkId})`}
-                className="text-accent"
+                className="text-chart-blue"
               />
             </AreaChart>
           </ResponsiveContainer>

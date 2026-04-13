@@ -113,10 +113,9 @@ export function ScenarioOverview() {
   };
 
   return (
-    <div className="space-y-6 mt-6">
-      {/* Scenario Builder */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
+    <div className="mt-6 space-y-6">
+      <div className="viz-panel rounded-[1.75rem] p-5">
+        <h3 className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
           <Percent className="h-4 w-4 text-accent" />
           Scenario Parameters
         </h3>
@@ -133,7 +132,7 @@ export function ScenarioOverview() {
             <select
               value={months}
               onChange={(e) => setMonths(Number(e.target.value))}
-              className="rounded-lg border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+              className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
             >
               {[3, 6, 9, 12].map((m) => (
                 <option key={m} value={m}>{m}</option>
@@ -145,14 +144,14 @@ export function ScenarioOverview() {
 
           <button
             onClick={handleReset}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-secondary hover:bg-muted"
+            className="viz-panel-soft flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:text-text-primary"
           >
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </button>
           <button
             onClick={handleSimulate}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-2xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-accent/90 disabled:opacity-50"
           >
             <Play className="h-3.5 w-3.5" /> {loading ? "Simulating..." : "Run Simulation"}
           </button>
@@ -162,7 +161,7 @@ export function ScenarioOverview() {
       {loading && <LoadingCard className="h-64" />}
 
       {error && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-500">
+        <div className="viz-panel rounded-[1.35rem] border-red-500/20 bg-red-500/8 p-3 text-sm text-red-500">
           {error}
         </div>
       )}

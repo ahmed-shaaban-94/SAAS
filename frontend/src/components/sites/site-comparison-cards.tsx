@@ -25,7 +25,7 @@ function RankBadge({ rank }: { rank: number }) {
   const colors =
     rank === 1
       ? "bg-accent/20 text-accent"
-      : "bg-divider text-text-secondary";
+      : "bg-divider/80 text-text-secondary";
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors}`}
@@ -53,7 +53,7 @@ export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) 
         {items.map((site) => (
           <div
             key={site.key}
-            className="rounded-lg border border-border bg-card p-6"
+            className="viz-panel viz-card-hover rounded-[1.6rem] p-6"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -83,8 +83,8 @@ export function SiteComparisonCards({ items, total }: SiteComparisonCardsProps) 
         ))}
       </div>
 
-      <div className="mt-6 rounded-lg border border-border bg-card p-6">
-        <h3 className="mb-4 text-sm font-medium text-text-secondary">
+      <div className="viz-panel mt-6 rounded-[1.7rem] p-6">
+        <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
           Revenue Comparison
         </h3>
         <ResponsiveContainer width="100%" height={120}>

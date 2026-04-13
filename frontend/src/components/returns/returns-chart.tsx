@@ -8,6 +8,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import type { ReturnAnalysis } from "@/types/api";
 import { formatCurrency, truncate } from "@/lib/formatters";
@@ -63,7 +64,15 @@ export function ReturnsChart({ items, className }: ReturnsChartProps) {
               "Return Amount",
             ]}
           />
-          <Bar dataKey="value" radius={[0, 4, 4, 0]} />
+          <Bar dataKey="value" radius={[0, 8, 8, 0]}>
+            {chartData.map((entry, index) => (
+              <Cell
+                key={entry.name}
+                fill={CHART_THEME.palette[index % CHART_THEME.palette.length]}
+                fillOpacity={1 - index * 0.06}
+              />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

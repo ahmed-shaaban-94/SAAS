@@ -78,21 +78,24 @@ export const NarrativeSummaryCard = memo(function NarrativeSummaryCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border-l-4 border-l-accent p-4 sm:p-6",
+        "relative overflow-hidden rounded-[1.6rem] p-4 sm:p-6",
         isPrint
           ? "border border-border bg-white print:bg-white"
-          : "border border-amber-500/30 bg-card/80 backdrop-blur-sm shadow-amber-500/5 dark:border-amber-400/25",
+          : "viz-panel border border-border/80",
         className,
       )}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="h-4 w-4 text-accent" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+      <div className="absolute inset-x-6 top-0 h-1 rounded-b-full bg-gradient-to-r from-chart-purple via-accent to-chart-blue" />
+      <div className="mb-3 flex items-center gap-2">
+        <div className="viz-panel-soft rounded-xl p-2">
+          <Sparkles className="h-4 w-4 text-accent" />
+        </div>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
           {aiData ? "AI Summary" : "Business Summary"}
         </span>
       </div>
 
-      <p className="text-sm leading-relaxed text-text-primary">
+      <p className="text-sm leading-7 text-text-primary">
         {greeting && (
           <span className="font-semibold text-accent mr-1">{greeting}</span>
         )}
@@ -100,9 +103,9 @@ export const NarrativeSummaryCard = memo(function NarrativeSummaryCard({
       </p>
 
       {aiData?.highlights && aiData.highlights.length > 0 && (
-        <ul className="mt-3 space-y-1">
+        <ul className="mt-4 space-y-2">
           {aiData.highlights.map((h, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs text-text-secondary">
+            <li key={i} className="viz-panel-soft flex items-start gap-2 rounded-2xl px-3 py-2 text-xs text-text-secondary">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
               {h}
             </li>

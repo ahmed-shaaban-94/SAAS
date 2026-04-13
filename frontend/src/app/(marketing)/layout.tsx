@@ -9,10 +9,7 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className="marketing-dark min-h-screen"
-      style={{ background: "#0D1117", color: "#E6EDF3" }}
-    >
+    <div className="marketing-dark min-h-screen">
       <MouseGlow />
       <a
         href="#main-content"

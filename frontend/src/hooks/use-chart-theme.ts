@@ -20,53 +20,53 @@ export interface ChartTheme {
 }
 
 const DARK_PALETTE = [
-  "#6366F1", // indigo
-  "#E5A00D", // amber
-  "#A78BFA", // violet
-  "#22D3EE", // cyan
-  "#34D399", // emerald
-  "#818CF8", // indigo-light
-  "#FB923C", // orange
-  "#60A5FA", // blue-light
+  "#20BCE5", // cyan
+  "#1DD48B", // emerald
+  "#FFAB3D", // amber
+  "#7467F8", // violet
+  "#FF7B7B", // coral
+  "#70E1FF", // sky
+  "#FFD166", // gold
+  "#627D98", // slate
 ] as const;
 
 const LIGHT_PALETTE = [
-  "#4F46E5", // indigo
-  "#D97706", // amber
-  "#8B5CF6", // violet
-  "#0891B2", // cyan
-  "#059669", // emerald
-  "#6366F1", // indigo-light
-  "#EA580C", // orange
-  "#2563EB", // blue
+  "#1CB9E7", // cyan
+  "#1CC985", // emerald
+  "#FFAB3D", // amber
+  "#6F61F6", // violet
+  "#F46D75", // coral
+  "#18A4D0", // sky
+  "#FFC94A", // gold
+  "#31567D", // slate
 ] as const;
 
 const DARK_CHART_THEME: ChartTheme = {
-  tickFill: "#A8B3BD",
+  tickFill: "#B8C0CC",
   tickFontSize: 11,
-  gridStroke: "#21262D",
-  axisStroke: "#30363D",
-  tooltipBg: "#161B22",
-  tooltipBorder: "#30363D",
-  tooltipColor: "#E6EDF3",
-  accentColor: "#E5A00D",
-  chartBlue: "#6366F1",
-  chartAmber: "#E5A00D",
-  cardBg: "#161B22",
+  gridStroke: "#33506B",
+  axisStroke: "#46627C",
+  tooltipBg: "#102A43",
+  tooltipBorder: "#33506B",
+  tooltipColor: "#F7FBFF",
+  accentColor: "#00C7F2",
+  chartBlue: "#20BCE5",
+  chartAmber: "#FFAB3D",
+  cardBg: "#102A43",
   palette: DARK_PALETTE,
 };
 
 const LIGHT_CHART_THEME: ChartTheme = {
-  tickFill: "#57606A",
+  tickFill: "#627D98",
   tickFontSize: 11,
-  gridStroke: "#D0D7DE",
-  axisStroke: "#D0D7DE",
+  gridStroke: "#D7E2EC",
+  axisStroke: "#D7E2EC",
   tooltipBg: "#FFFFFF",
-  tooltipBorder: "#D0D7DE",
-  tooltipColor: "#1F2328",
-  accentColor: "#D97706",
-  chartBlue: "#4F46E5",
-  chartAmber: "#D97706",
+  tooltipBorder: "#D7E2EC",
+  tooltipColor: "#102A43",
+  accentColor: "#00C7F2",
+  chartBlue: "#1CB9E7",
+  chartAmber: "#FFAB3D",
   cardBg: "#FFFFFF",
   palette: LIGHT_PALETTE,
 };

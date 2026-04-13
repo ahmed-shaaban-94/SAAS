@@ -30,11 +30,14 @@ export function FeaturesGrid() {
     <SectionWrapper id="features">
       <div ref={containerRef}>
         <div className={`mb-12 text-center reveal-up ${isVisible ? "is-visible" : ""}`}>
-          <h2 className="text-3xl font-bold sm:text-4xl">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.26em] text-accent/80">
+            Core capabilities
+          </p>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Everything you need to{" "}
             <span className="gradient-text-animated">master your data</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-text-secondary">
             From raw Excel files to AI-powered insights, Data Pulse handles every
             step of your sales analytics pipeline.
           </p>

@@ -16,6 +16,11 @@ import {
 import { useMembers, useMyAccess, useSectors } from "@/hooks/use-members";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { Header } from "@/components/layout/header";
+import { PageTransition } from "@/components/layout/page-transition";
+import { AnalyticsSectionHeader } from "@/components/layout/analytics-section-header";
+import { LoadingCard } from "@/components/loading-card";
 import type { MemberResponse, RoleKey, SectorResponse } from "@/types/members";
 
 const ROLE_COLORS: Record<RoleKey, string> = {
@@ -717,30 +722,27 @@ export default function TeamPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-5xl space-y-6 p-6">
-        <h1 className="text-2xl font-bold text-text-primary">Team</h1>
-        <div className="animate-pulse space-y-4">
-          <div className="h-48 rounded-xl bg-card" />
-          <div className="h-64 rounded-xl bg-card" />
+      <PageTransition>
+        <Breadcrumbs />
+        <Header title="Team" description="Manage members, roles, and sector access" />
+        <div className="mx-auto max-w-5xl space-y-6">
+          <LoadingCard className="h-48 rounded-[1.75rem]" lines={4} />
+          <LoadingCard className="h-64 rounded-[1.75rem]" lines={6} />
         </div>
-      </div>
+      </PageTransition>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Team</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Manage members, roles, and sector access
-          </p>
-        </div>
+    <PageTransition>
+      <Breadcrumbs />
+      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <Header title="Team" description="Manage members, roles, and sector access" />
         {canManage && (
           <button
             onClick={() => setInviteOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-page transition-colors hover:bg-accent/90"
+            className="flex items-center gap-2 rounded-2xl bg-accent px-4 py-2.5 text-sm font-semibold text-page transition-colors hover:bg-accent/90"
           >
             <UserPlus className="h-4 w-4" />
             Invite Member
@@ -750,7 +752,7 @@ export default function TeamPage() {
 
       {/* Current user access card */}
       {access && (
-        <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
+        <div className="viz-panel rounded-[1.6rem] border border-accent/20 p-4">
           <div className="flex items-center gap-3">
             <Shield className="h-5 w-5 text-accent" />
             <div>
@@ -767,14 +769,8 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* Members List */}
       <section>
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="h-5 w-5 text-text-secondary" />
-          <h2 className="text-lg font-semibold text-text-primary">
-            Members ({members?.length ?? 0})
-          </h2>
-        </div>
+        <AnalyticsSectionHeader title={`Members ${members?.length ?? 0}`} icon={Users} />
         <div className="space-y-2">
           {members?.map((m) => (
             <MemberRow
@@ -794,14 +790,8 @@ export default function TeamPage() {
         </div>
       </section>
 
-      {/* Sectors */}
       <section>
-        <div className="flex items-center gap-2 mb-4">
-          <Building2 className="h-5 w-5 text-text-secondary" />
-          <h2 className="text-lg font-semibold text-text-primary">
-            Sectors ({sectors?.length ?? 0})
-          </h2>
-        </div>
+        <AnalyticsSectionHeader title={`Sectors ${sectors?.length ?? 0}`} icon={Building2} />
         <p className="mb-3 text-xs text-text-secondary">
           Sectors map to site codes in your sales data. Assign members to sectors to control what data they can see.
         </p>
@@ -818,7 +808,6 @@ export default function TeamPage() {
         </div>
       </section>
 
-      {/* Dialogs */}
       <InviteDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
@@ -856,6 +845,7 @@ export default function TeamPage() {
         onConfirm={handleDeleteSector}
         onCancel={() => setConfirmDeleteSector(null)}
       />
-    </div>
+      </div>
+    </PageTransition>
   );
 }

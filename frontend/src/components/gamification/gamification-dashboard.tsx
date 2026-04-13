@@ -24,8 +24,7 @@ export function GamificationDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
+      <div className="viz-panel-soft flex gap-1 rounded-[1.5rem] p-1.5">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -33,10 +32,10 @@ export function GamificationDashboard() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex flex-1 items-center justify-center gap-2 rounded-[1.1rem] px-3 py-2.5 text-sm font-medium transition-all",
                 activeTab === tab.key
-                  ? "bg-accent/10 text-accent"
-                  : "text-text-secondary hover:bg-divider hover:text-text-primary",
+                  ? "bg-accent text-page shadow-[0_12px_24px_rgba(0,199,242,0.22)]"
+                  : "text-text-secondary hover:bg-background/60 hover:text-text-primary",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -64,7 +63,7 @@ function BadgesTab() {
   if (loadingBadges) return <LoadingCard lines={6} />;
   if (!allBadges?.length) {
     return (
-      <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-text-secondary">
+      <div className="viz-panel rounded-[1.75rem] p-8 text-center text-sm text-text-secondary">
         No badges defined yet.
       </div>
     );
@@ -110,7 +109,7 @@ function CompetitionsTab() {
   if (isLoading) return <LoadingCard lines={4} />;
   if (!competitions?.length) {
     return (
-      <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-text-secondary">
+      <div className="viz-panel rounded-[1.75rem] p-8 text-center text-sm text-text-secondary">
         No competitions yet. Create one to get started!
       </div>
     );
@@ -124,7 +123,7 @@ function CompetitionsTab() {
     <div className="space-y-6">
       {active.length > 0 && (
         <div>
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-primary">
+          <h3 className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
             <Flame className="h-4 w-4 text-green-400" /> Active
           </h3>
           <div className="grid gap-3 md:grid-cols-2">
@@ -134,7 +133,7 @@ function CompetitionsTab() {
       )}
       {upcoming.length > 0 && (
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-text-primary">Upcoming</h3>
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Upcoming</h3>
           <div className="grid gap-3 md:grid-cols-2">
             {upcoming.map((c) => <CompetitionCard key={c.competition_id} competition={c} />)}
           </div>
@@ -142,7 +141,7 @@ function CompetitionsTab() {
       )}
       {completed.length > 0 && (
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-text-primary">Completed</h3>
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Completed</h3>
           <div className="grid gap-3 md:grid-cols-2">
             {completed.map((c) => <CompetitionCard key={c.competition_id} competition={c} />)}
           </div>

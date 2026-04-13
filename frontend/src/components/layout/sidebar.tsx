@@ -101,12 +101,12 @@ function UserInfo({ collapsed }: { collapsed?: boolean }) {
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-xs font-bold text-accent">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent shadow-[0_10px_24px_rgba(0,199,242,0.2)]">
           {initials || <User className="h-4 w-4" />}
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-divider hover:text-text-primary"
+          className="viz-panel-soft flex h-8 w-8 items-center justify-center rounded-xl text-text-secondary transition-colors hover:text-text-primary"
           title="Sign Out"
         >
           <LogOut className="h-4 w-4" />
@@ -118,7 +118,7 @@ function UserInfo({ collapsed }: { collapsed?: boolean }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/20 text-xs font-bold text-accent">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent shadow-[0_10px_24px_rgba(0,199,242,0.2)]">
           {initials || <User className="h-4 w-4" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -134,7 +134,7 @@ function UserInfo({ collapsed }: { collapsed?: boolean }) {
       </div>
       <button
         onClick={() => signOut({ callbackUrl: "/login" })}
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-divider hover:text-text-primary"
+        className="viz-panel-soft flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:text-text-primary"
       >
         <LogOut className="h-4 w-4" />
         Sign Out
@@ -174,8 +174,8 @@ function NavGroupSection({
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-lg mx-auto transition-colors cursor-pointer",
             hasActiveItem
-              ? "bg-accent/10 text-accent"
-              : "text-text-secondary hover:bg-divider hover:text-text-primary",
+              ? "bg-accent/12 text-accent shadow-[0_12px_24px_rgba(0,199,242,0.18)]"
+              : "text-text-secondary hover:bg-white/5 hover:text-text-primary",
           )}
           title={group.label}
         >
@@ -184,7 +184,7 @@ function NavGroupSection({
 
         {/* Flyout menu on hover */}
         <div className="pointer-events-none absolute left-full top-0 z-50 ml-2 opacity-0 transition-all duration-150 group-hover/grp:pointer-events-auto group-hover/grp:opacity-100">
-          <div className="rounded-lg border border-border bg-card py-1.5 shadow-xl min-w-[180px]">
+          <div className="viz-panel min-w-[180px] rounded-2xl py-1.5 shadow-xl">
             <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
               {group.label}
             </div>
@@ -205,8 +205,8 @@ function NavGroupSection({
                   className={cn(
                     "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors",
                     isActive
-                      ? "bg-accent/10 text-accent"
-                      : "text-text-secondary hover:bg-divider hover:text-text-primary",
+                      ? "bg-accent/12 text-accent"
+                      : "text-text-secondary hover:bg-white/5 hover:text-text-primary",
                   )}
                 >
                   {Icon && <Icon className="h-4 w-4" />}
@@ -239,7 +239,7 @@ function NavGroupSection({
           "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors",
           hasActiveItem
             ? "text-accent"
-            : "text-text-secondary hover:text-text-primary",
+            : "text-text-secondary hover:bg-white/5 hover:text-text-primary",
         )}
         aria-expanded={open}
       >
@@ -278,8 +278,8 @@ function NavGroupSection({
                 className={cn(
                   "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-accent/10 text-accent"
-                    : "text-text-secondary hover:bg-divider hover:text-text-primary",
+                    ? "bg-accent/12 text-accent"
+                    : "text-text-secondary hover:bg-white/5 hover:text-text-primary",
                 )}
               >
                 {Icon && <Icon className="h-4 w-4" />}
@@ -343,7 +343,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
       {/* Mobile hamburger button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-50 rounded-lg bg-card p-2 text-text-primary shadow-lg border border-border lg:hidden"
+        className="viz-panel fixed left-4 top-4 z-50 rounded-xl p-2 text-text-primary shadow-lg lg:hidden"
         aria-label="Open navigation"
         aria-expanded={mobileOpen}
       >
@@ -370,14 +370,14 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
             onTouchEnd={handleTouchEnd}
           >
             {/* Logo + close */}
-            <div className="flex h-14 items-center justify-between px-4">
+            <div className="flex h-16 items-center justify-between px-4">
               <div className="flex items-center gap-2">
                 <Activity className="h-6 w-6 text-accent" />
-                <span className="text-xl font-bold text-accent">DataPulse</span>
+                <span className="text-xl font-bold tracking-tight text-text-primary">DataPulse</span>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="rounded-md p-1 text-text-secondary hover:text-text-primary"
+                className="viz-panel-soft rounded-xl p-1.5 text-text-secondary hover:text-text-primary"
                 aria-label="Close navigation"
               >
                 <X className="h-5 w-5" />
@@ -417,27 +417,27 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 hidden h-screen flex-col border-r border-border bg-card transition-all duration-200 lg:flex",
+          "fixed left-0 top-0 z-40 hidden h-screen flex-col border-r border-border bg-card/95 backdrop-blur-xl transition-all duration-200 lg:flex",
           sidebarWidth,
         )}
       >
         {/* Logo + collapse toggle */}
         <div
           className={cn(
-            "flex h-14 items-center border-b border-border",
+            "flex h-16 items-center border-b border-border/70",
             collapsed ? "justify-center px-2" : "justify-between px-4",
           )}
         >
           <div className="flex items-center gap-2">
             <Activity className="h-6 w-6 text-accent flex-shrink-0" />
             {!collapsed && (
-              <span className="text-lg font-bold text-accent">DataPulse</span>
+              <span className="text-lg font-bold tracking-tight text-text-primary">DataPulse</span>
             )}
           </div>
           <button
             onClick={() => setCollapsed((prev) => !prev)}
             className={cn(
-              "rounded-md p-1.5 text-text-secondary transition-colors hover:bg-divider hover:text-text-primary",
+              "viz-panel-soft rounded-xl p-1.5 text-text-secondary transition-colors hover:text-text-primary",
               collapsed && "mx-auto mt-2",
             )}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}

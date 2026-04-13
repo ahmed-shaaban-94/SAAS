@@ -21,24 +21,22 @@ export function SummaryStats({ stats, className }: SummaryStatsProps) {
           <div
             key={stat.label}
             className={cn(
-              "group relative overflow-hidden rounded-xl border border-border bg-card p-4",
-              "transition-all duration-300 hover:border-accent/30 hover:shadow-md hover:shadow-accent/5",
+              "viz-panel viz-card-hover group relative overflow-hidden rounded-[1.5rem] p-4",
             )}
           >
-            {/* Subtle top accent line */}
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-accent/50 via-accent to-accent/50 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <div className="absolute inset-x-5 top-0 h-1 rounded-b-full bg-gradient-to-r from-chart-blue via-accent to-chart-purple opacity-80" />
 
             <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
                 {stat.label}
               </p>
               {Icon && (
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 transition-colors group-hover:bg-accent/15">
+                <div className="viz-panel-soft flex h-8 w-8 items-center justify-center rounded-xl transition-colors group-hover:bg-accent/15">
                   <Icon className="h-3.5 w-3.5 text-accent" />
                 </div>
               )}
             </div>
-            <p className="mt-1.5 text-base font-bold tracking-tight text-text-primary truncate" data-kpi-value title={stat.value}>
+            <p className="mt-3 text-xl font-bold tracking-tight text-text-primary truncate sm:text-2xl" data-kpi-value title={stat.value}>
               {stat.value}
             </p>
           </div>

@@ -61,7 +61,7 @@ export function Breadcrumbs() {
   });
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs">
+    <nav aria-label="Breadcrumb" className="mb-3 flex items-center gap-1 text-xs">
       {crumbs.map((crumb, index) => {
         const isLast = index === crumbs.length - 1;
 
@@ -71,11 +71,11 @@ export function Breadcrumbs() {
               <ChevronRight className="h-3 w-3 text-text-secondary" />
             )}
             {isLast ? (
-              <span className="font-medium text-accent">{crumb.label}</span>
+              <span className="rounded-full bg-accent/10 px-2.5 py-1 font-medium text-accent">{crumb.label}</span>
             ) : (
               <Link
                 href={crumb.href}
-                className="text-text-secondary transition-colors hover:text-text-primary"
+                className="rounded-full px-2 py-1 text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
               >
                 {crumb.label}
               </Link>

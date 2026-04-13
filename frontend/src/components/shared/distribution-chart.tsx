@@ -8,7 +8,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { CHART_COLORS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/formatters";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
@@ -48,7 +47,7 @@ export default function DistributionChart({
             {data.map((_, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                fill={CHART_THEME.palette[index % CHART_THEME.palette.length]}
               />
             ))}
           </Pie>

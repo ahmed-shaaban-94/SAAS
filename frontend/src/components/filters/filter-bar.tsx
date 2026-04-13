@@ -48,17 +48,18 @@ export function FilterBar() {
   return (
     <div className="mb-4 space-y-2 sm:mb-6 sm:space-y-3">
       {/* Row 1: Date presets (scrollable on mobile) */}
-      <div className="-mx-3 flex items-center gap-1.5 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 scrollbar-hide">
+      <div className="viz-panel rounded-[1.5rem] p-3 sm:p-4">
+        <div className="-mx-3 flex items-center gap-1.5 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 scrollbar-hide">
         {presets.map((preset) => (
           <button
             key={preset.label}
             onClick={() => handlePreset(preset)}
             aria-pressed={isActivePreset(preset)}
             className={cn(
-              "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+              "shrink-0 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
               isActivePreset(preset)
-                ? "bg-accent text-page"
-                : "bg-divider text-text-secondary hover:bg-border hover:text-text-primary",
+                ? "bg-accent text-page shadow-[0_10px_24px_rgba(0,199,242,0.2)]"
+                : "viz-panel-soft text-text-secondary hover:text-text-primary",
             )}
           >
             {preset.label}
@@ -73,59 +74,57 @@ export function FilterBar() {
             setFilters({ ...filters, start_date: start, end_date: end })
           }
         />
-      </div>
+        </div>
 
-      {/* Row 2: Filter actions */}
-      <div className="flex items-center gap-2">
-        {/* Save View button */}
-        <button
-          onClick={() => setSaveDialogOpen(true)}
-          aria-label="Save current view"
-          title="Save current filters as a view"
-          className="rounded-md px-2.5 py-1.5 text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
-        >
-          <Bookmark className="h-4 w-4" />
-        </button>
-
-        {/* More Filters toggle */}
-        <button
-          onClick={() => setExpanded((prev) => !prev)}
-          aria-expanded={expanded}
-          aria-label="Toggle advanced filters"
-          className={cn(
-            "ml-auto flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-            expanded
-              ? "bg-accent/10 text-accent"
-              : "bg-divider text-text-secondary hover:bg-border hover:text-text-primary",
-          )}
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Filters</span>
-          <ChevronDown
-            className={cn(
-              "h-3.5 w-3.5 transition-transform",
-              expanded && "rotate-180",
-            )}
-          />
-        </button>
-
-        {/* Clear button with badge */}
-        {hasFilters && (
+        {/* Row 2: Filter actions */}
+        <div className="mt-3 flex items-center gap-2">
           <button
-            onClick={() => {
-              clearFilters();
-              info("All filters cleared");
-            }}
-            aria-label={`Clear all ${activeFilterCount} filters`}
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-growth-red/10 hover:text-growth-red sm:px-3 sm:text-sm"
+            onClick={() => setSaveDialogOpen(true)}
+            aria-label="Save current view"
+            title="Save current filters as a view"
+            className="viz-panel-soft rounded-xl px-2.5 py-2 text-text-secondary transition-colors hover:text-accent"
           >
-            <X className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Clear</span>
-            <span className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-growth-red/15 text-xs font-semibold text-growth-red">
-              {activeFilterCount}
-            </span>
+            <Bookmark className="h-4 w-4" />
           </button>
-        )}
+
+          <button
+            onClick={() => setExpanded((prev) => !prev)}
+            aria-expanded={expanded}
+            aria-label="Toggle advanced filters"
+            className={cn(
+              "ml-auto flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+              expanded
+                ? "bg-accent/12 text-accent"
+                : "viz-panel-soft text-text-secondary hover:text-text-primary",
+            )}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Filters</span>
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform",
+                expanded && "rotate-180",
+              )}
+            />
+          </button>
+
+          {hasFilters && (
+            <button
+              onClick={() => {
+                clearFilters();
+                info("All filters cleared");
+              }}
+              aria-label={`Clear all ${activeFilterCount} filters`}
+              className="flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-growth-red/10 hover:text-growth-red sm:px-3 sm:text-sm"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Clear</span>
+              <span className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-growth-red/15 text-xs font-semibold text-growth-red">
+                {activeFilterCount}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Active filter chips (always visible) */}
@@ -133,7 +132,7 @@ export function FilterBar() {
 
       {/* Row 2: Collapsible slicer panel + custom date range */}
       {expanded && (
-        <div className="rounded-lg border border-divider bg-card/50 p-3">
+        <div className="viz-panel rounded-[1.5rem] p-3">
           {/* Slicer dropdowns (Power BI style) */}
           <SlicerPanel />
 
@@ -150,7 +149,7 @@ export function FilterBar() {
                 onChange={(e) =>
                   updateFilter("start_date", e.target.value || undefined)
                 }
-                className="h-9 rounded-lg border border-border bg-page px-3 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                className="h-9 rounded-xl border border-border bg-page px-3 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -164,7 +163,7 @@ export function FilterBar() {
                 onChange={(e) =>
                   updateFilter("end_date", e.target.value || undefined)
                 }
-                className="h-9 rounded-lg border border-border bg-page px-3 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                className="h-9 rounded-xl border border-border bg-page px-3 text-sm text-text-primary outline-none focus:border-accent focus:ring-1 focus:ring-accent"
               />
             </div>
           </div>

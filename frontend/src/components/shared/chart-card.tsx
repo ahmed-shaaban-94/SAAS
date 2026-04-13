@@ -19,18 +19,18 @@ export function ChartCard({ title, subtitle, badge, actions, children, className
     <section
       aria-label={title}
       className={cn(
-        "group rounded-xl border border-border bg-card p-3 sm:p-5",
-        "transition-all duration-300 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5",
+        "viz-panel viz-card-hover group rounded-[1.75rem] border border-border/80 p-4 sm:p-6",
         className,
       )}
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="absolute inset-x-6 top-0 h-1 rounded-b-full bg-gradient-to-r from-chart-blue via-accent to-chart-amber opacity-90" />
+      <div className="relative mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary/90">
             {title}
-          </h3>
+          </p>
           {subtitle && (
-            <p className="mt-1 text-xl font-bold text-text-primary" data-kpi-value>
+            <p className="mt-2 text-2xl font-bold tracking-tight text-text-primary sm:text-[2rem]" data-kpi-value>
               {subtitle}
             </p>
           )}
@@ -40,7 +40,7 @@ export function ChartCard({ title, subtitle, badge, actions, children, className
             <button
               onClick={onAnnotate}
               title="Add annotation"
-              className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-divider hover:text-accent"
+              className="viz-panel-soft rounded-xl p-2 text-text-secondary transition-colors hover:text-accent"
             >
               <MessageSquarePlus className="h-4 w-4" />
             </button>
@@ -49,7 +49,10 @@ export function ChartCard({ title, subtitle, badge, actions, children, className
           {badge}
         </div>
       </div>
-      {children}
+      <div className="viz-panel-soft relative rounded-[1.4rem] p-3 sm:p-4">
+        <div className="viz-grid-surface absolute inset-0 rounded-[1.4rem] opacity-30" />
+        <div className="relative">{children}</div>
+      </div>
     </section>
   );
 }

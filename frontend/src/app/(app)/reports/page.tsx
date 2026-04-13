@@ -100,7 +100,7 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_1fr] md:gap-6 lg:grid-cols-[280px_1fr]">
         {/* Template list */}
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
             Templates
           </h3>
           {templates.map((t) => (
@@ -108,10 +108,10 @@ export default function ReportsPage() {
               key={t.id}
               onClick={() => selectTemplate(t)}
               className={cn(
-                "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all",
+                "flex w-full items-start gap-3 rounded-[1.35rem] border p-3 text-left transition-all",
                 selectedTemplate?.id === t.id
-                  ? "border-accent bg-accent/5"
-                  : "border-border bg-card hover:border-accent/30",
+                  ? "viz-panel border-accent/30 bg-accent/8"
+                  : "viz-panel hover:border-accent/30",
               )}
             >
               <FileText className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
@@ -126,7 +126,7 @@ export default function ReportsPage() {
         {/* Report content */}
         <div>
           {!selectedTemplate && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
+            <div className="viz-panel-soft flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border/70 p-12 text-center">
               <FileText className="mb-4 h-12 w-12 text-text-secondary/40" />
               <p className="text-sm text-text-secondary">Select a report template</p>
             </div>
@@ -135,8 +135,8 @@ export default function ReportsPage() {
           {selectedTemplate && (
             <div className="space-y-6">
               {/* Parameters form */}
-              <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold text-text-primary">Parameters</h3>
+              <div className="viz-panel rounded-[1.75rem] p-4">
+                <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Parameters</h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {selectedTemplate.parameters.map((param) => (
                     <div key={param.name}>
@@ -149,7 +149,7 @@ export default function ReportsPage() {
                           onChange={(e) =>
                             setParamValues((prev) => ({ ...prev, [param.name]: e.target.value }))
                           }
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                          className="w-full rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm"
                         >
                           {param.options.map((opt) => (
                             <option key={opt} value={opt}>
@@ -170,7 +170,7 @@ export default function ReportsPage() {
                                   : e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                          className="w-full rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm"
                         />
                       )}
                     </div>
@@ -182,7 +182,7 @@ export default function ReportsPage() {
                     onClick={handleRender}
                     disabled={isLoading}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium",
+                      "flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold",
                       !isLoading
                         ? "bg-accent text-white hover:bg-accent/90"
                         : "bg-divider text-text-secondary cursor-not-allowed",
@@ -194,7 +194,7 @@ export default function ReportsPage() {
                   {report && (
                     <button
                       onClick={() => { info("Printing report..."); window.print(); }}
-                      className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
+                      className="viz-panel-soft flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary"
                     >
                       <Printer className="h-4 w-4" />
                       Print
@@ -204,7 +204,7 @@ export default function ReportsPage() {
               </div>
 
               {error && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
+                <div className="viz-panel rounded-[1.5rem] border border-red-500/20 bg-red-500/8 p-4 text-sm text-red-400">
                   {error}
                 </div>
               )}
@@ -219,7 +219,7 @@ export default function ReportsPage() {
                   </h2>
 
                   {report.sections.map((section, i) => (
-                    <div key={i} className="rounded-xl border border-border bg-card p-4 print:border-gray-300">
+                    <div key={i} className="viz-panel rounded-[1.5rem] p-4 print:border-gray-300">
                       {section.title && (
                         <h3 className="mb-3 text-sm font-semibold text-text-primary print:text-black">
                           {section.title}

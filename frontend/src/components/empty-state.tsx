@@ -49,7 +49,7 @@ export function EmptyState({
   description = "Try adjusting your filters or check back later.",
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-border border-dashed bg-card/50 backdrop-blur-sm p-16 animate-fade-in">
+    <div className="viz-panel-soft flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border/70 p-16 animate-fade-in">
       <EmptyIllustration />
       <h3 className="mt-5 text-lg font-semibold text-text-primary">{title}</h3>
       <p className="mt-1.5 max-w-sm text-center text-sm text-text-secondary">{description}</p>

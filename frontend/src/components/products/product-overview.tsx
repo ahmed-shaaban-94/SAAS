@@ -79,14 +79,14 @@ export function ProductOverview() {
     <div>
       <SummaryStats stats={stats} />
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
+        <div className="viz-panel rounded-[1.7rem] p-6">
+          <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
             Top Products by Revenue
           </h3>
           <RankingChart items={data.items.slice(0, 10)} />
         </div>
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-secondary">
+        <div className="viz-panel rounded-[1.7rem] p-6">
+          <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
             Revenue by Origin
           </h3>
           {originData && originData.length > 0 ? (
@@ -119,7 +119,7 @@ export function ProductOverview() {
                   />
                   <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={28}>
                     {originData.map((_, i) => (
-                      <Cell key={i} fill={["#4F46E5", "#2196F3", "#F59E0B", "#9E9E9E", "#6B7280"][i % 5]} />
+                      <Cell key={i} fill={CHART_THEME.palette[i % CHART_THEME.palette.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -129,7 +129,7 @@ export function ProductOverview() {
                   <span key={d.origin} className="flex items-center gap-1.5">
                     <span
                       className="inline-block h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: ["#4F46E5", "#2196F3", "#F59E0B", "#9E9E9E", "#6B7280"][i % 5] }}
+                      style={{ backgroundColor: CHART_THEME.palette[i % CHART_THEME.palette.length] }}
                     />
                     {d.origin}: {d.pct}% ({d.product_count} products)
                   </span>
@@ -142,9 +142,9 @@ export function ProductOverview() {
             </div>
           )}
         </div>
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="viz-panel rounded-[1.7rem] p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text-secondary">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
               Product Rankings
             </h3>
             <CsvExportButton data={exportData} filename="products" />

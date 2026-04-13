@@ -70,17 +70,16 @@ function BudgetSection({ year }: { year: number }) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-base font-semibold text-text-primary flex items-center gap-2">
+      <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
         <Wallet className="h-4 w-4 text-accent" />
         Budget vs Actual by Origin
       </h3>
 
-      {/* Origin KPI Cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data.by_origin.map((o) => {
           const met = o.ytd_actual >= o.ytd_budget;
           return (
-            <div key={o.origin} className="rounded-xl border border-border bg-card p-4">
+            <div key={o.origin} className="viz-panel viz-card-hover rounded-[1.5rem] p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-text-primary">{o.origin}</span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -111,9 +110,8 @@ function BudgetSection({ year }: { year: number }) {
         })}
       </div>
 
-      {/* Monthly Budget vs Actual Chart — stacked by origin */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h4 className="text-sm font-semibold text-text-primary mb-4">Monthly Budget vs Actual</h4>
+      <div className="viz-panel rounded-[1.75rem] p-4 sm:p-5">
+        <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Monthly Budget vs Actual</h4>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridStroke} />
@@ -145,7 +143,7 @@ function QuarterlyView({ year }: { year: number }) {
 
   if (isLoading) return <LoadingCard className="h-64" />;
   if (!data || data.quarters.length === 0) {
-    return <div className="rounded-xl border border-border bg-card p-8 text-center text-text-tertiary">No quarterly data for {year}</div>;
+    return <div className="viz-panel rounded-[1.75rem] p-8 text-center text-text-tertiary">No quarterly data for {year}</div>;
   }
 
   const chartData = data.quarters.map((q) => ({
@@ -157,8 +155,8 @@ function QuarterlyView({ year }: { year: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-text-primary mb-4">Quarterly Target vs Actual</h3>
+      <div className="viz-panel rounded-[1.75rem] p-4 sm:p-5">
+        <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Quarterly Target vs Actual</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.gridStroke} />
@@ -170,20 +168,20 @@ function QuarterlyView({ year }: { year: number }) {
             />
             <Legend wrapperStyle={{ fontSize: "11px" }} />
             <Bar dataKey="target" name="Target" fill={theme.gridStroke} radius={[4, 4, 0, 0]} opacity={0.5} />
-            <Bar dataKey="actual" name="Actual" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="actual" name="Actual" fill={theme.palette[0]} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card p-4">
+      <div className="viz-panel overflow-x-auto rounded-[1.75rem] p-4">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-2 px-3 font-medium text-text-secondary">Quarter</th>
-              <th className="text-right py-2 px-3 font-medium text-text-secondary">Target</th>
-              <th className="text-right py-2 px-3 font-medium text-text-secondary">Actual</th>
-              <th className="text-right py-2 px-3 font-medium text-text-secondary">Variance</th>
-              <th className="text-right py-2 px-3 font-medium text-text-secondary">Achievement</th>
+            <tr className="border-b border-border text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+              <th className="text-left py-2 px-3">Quarter</th>
+              <th className="text-right py-2 px-3">Target</th>
+              <th className="text-right py-2 px-3">Actual</th>
+              <th className="text-right py-2 px-3">Variance</th>
+              <th className="text-right py-2 px-3">Achievement</th>
             </tr>
           </thead>
           <tbody>
@@ -259,23 +257,21 @@ export function GoalsOverview() {
   }) ?? [];
 
   return (
-    <div className="space-y-6 mt-6">
-      {/* Year selector */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => setYear(y => y - 1)} className="rounded-lg px-3 py-1 text-sm text-text-secondary hover:bg-divider">&larr;</button>
+    <div className="mt-6 space-y-6">
+      <div className="viz-panel-soft flex flex-wrap items-center gap-3 rounded-[1.5rem] p-3 sm:p-4">
+        <button onClick={() => setYear(y => y - 1)} className="viz-panel-soft rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:text-accent">&larr;</button>
         <span className="text-lg font-bold text-text-primary">{year}</span>
         <button onClick={() => setYear(y => Math.min(y + 1, currentYear))} disabled={year >= currentYear}
-          className="rounded-lg px-3 py-1 text-sm text-text-secondary hover:bg-divider disabled:opacity-30">&rarr;</button>
-        {/* Monthly / Quarterly toggle */}
-        <div className="flex rounded-lg border border-border overflow-hidden ml-4">
+          className="viz-panel-soft rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:text-accent disabled:opacity-30">&rarr;</button>
+        <div className="ml-0 flex overflow-hidden rounded-xl border border-border sm:ml-4">
           {(["monthly", "quarterly"] as const).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`px-3 py-1 text-xs font-medium transition-colors ${
+              className={`px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${
                 viewMode === mode
                   ? "bg-accent text-white"
-                  : "text-text-secondary hover:bg-divider"
+                  : "text-text-secondary hover:bg-background/60"
               }`}
             >
               {mode === "monthly" ? "Monthly" : "Quarterly"}
@@ -284,32 +280,31 @@ export function GoalsOverview() {
         </div>
 
         <button onClick={() => setShowForm(!showForm)}
-          className="ml-auto flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors">
+          className="ml-auto flex items-center gap-1.5 rounded-2xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-accent/90">
           <Plus className="h-4 w-4" />
           Add Target
         </button>
       </div>
 
-      {/* Add target form */}
       {showForm && (
-        <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 animate-in fade-in slide-in-from-top-2">
-          <h4 className="text-sm font-semibold text-text-primary mb-3">Set Monthly Revenue Target</h4>
-          <div className="flex items-end gap-3">
+        <div className="viz-panel rounded-[1.75rem] border border-accent/20 p-5 animate-in fade-in slide-in-from-top-2">
+          <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Set Monthly Revenue Target</h4>
+          <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className="text-xs text-text-secondary block mb-1">Month</label>
               <input type="month" value={formMonth} onChange={(e) => setFormMonth(e.target.value)}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none" />
+                className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none" />
             </div>
             <div>
               <label className="text-xs text-text-secondary block mb-1">Target (EGP)</label>
               <input type="number" value={formValue} onChange={(e) => setFormValue(e.target.value)} placeholder="500000"
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none w-40" />
+                className="w-40 rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none" />
             </div>
             <button onClick={handleAddTarget} disabled={saving || !formMonth || !formValue}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors">
+              className="rounded-2xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:opacity-50">
               {saving ? "Saving..." : "Save"}
             </button>
-            <button onClick={() => setShowForm(false)} className="rounded-lg px-4 py-2 text-sm text-text-secondary hover:bg-divider">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="viz-panel-soft rounded-2xl px-4 py-2.5 text-sm text-text-secondary transition-colors hover:text-text-primary">Cancel</button>
           </div>
           {saveError && (
             <p className="mt-2 text-xs text-red-500">{saveError}</p>
@@ -320,48 +315,46 @@ export function GoalsOverview() {
       {viewMode === "quarterly" ? (
         <QuarterlyView year={year} />
       ) : !hasTargets ? (
-        <div className="rounded-xl border border-border bg-card p-12 text-center">
+        <div className="viz-panel rounded-[1.75rem] p-12 text-center">
           <Target className="h-12 w-12 text-text-secondary mx-auto mb-3 opacity-30" />
           <p className="text-sm text-text-secondary">No targets set for {year}</p>
           <p className="text-xs text-text-secondary mt-1">Click &quot;Add Target&quot; to set monthly revenue goals</p>
         </div>
       ) : (
         <>
-          {/* KPI Summary Cards */}
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-4">
+            <div className="viz-panel viz-card-hover flex items-center gap-4 rounded-[1.5rem] p-4">
               <ProgressRing pct={data!.ytd_achievement_pct} size={80} />
               <div>
-                <p className="text-xs text-text-secondary">YTD Achievement</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">YTD Achievement</p>
                 <p className="text-sm font-bold text-text-primary">{formatAbsolutePercent(data!.ytd_achievement_pct)}</p>
               </div>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <Target className="h-4 w-4 text-accent mb-2" />
-              <p className="text-xs text-text-secondary">YTD Target</p>
+            <div className="viz-panel viz-card-hover rounded-[1.5rem] p-4">
+              <Target className="mb-2 h-4 w-4 text-accent" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">YTD Target</p>
               <p className="text-lg font-bold text-text-primary">{formatCompact(data!.ytd_target)}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <CheckCircle2 className="h-4 w-4 text-green-500 mb-2" />
-              <p className="text-xs text-text-secondary">YTD Actual</p>
+            <div className="viz-panel viz-card-hover rounded-[1.5rem] p-4">
+              <CheckCircle2 className="mb-2 h-4 w-4 text-green-500" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">YTD Actual</p>
               <p className="text-lg font-bold text-text-primary">{formatCompact(data!.ytd_actual)}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="viz-panel viz-card-hover rounded-[1.5rem] p-4">
               {data!.ytd_actual >= data!.ytd_target ? (
-                <TrendingUp className="h-4 w-4 text-green-500 mb-2" />
+                <TrendingUp className="mb-2 h-4 w-4 text-green-500" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-red-500 mb-2" />
+                <TrendingDown className="mb-2 h-4 w-4 text-red-500" />
               )}
-              <p className="text-xs text-text-secondary">Variance</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Variance</p>
               <p className={`text-lg font-bold ${data!.ytd_actual >= data!.ytd_target ? "text-green-500" : "text-red-500"}`}>
                 {data!.ytd_actual >= data!.ytd_target ? "+" : ""}{formatCompact(data!.ytd_actual - data!.ytd_target)}
               </p>
             </div>
           </div>
 
-          {/* Target vs Actual Chart */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-text-primary mb-4">Monthly Target vs Actual</h3>
+          <div className="viz-panel rounded-[1.75rem] p-4 sm:p-5">
+            <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Monthly Target vs Actual</h3>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={theme.gridStroke} />
@@ -373,23 +366,22 @@ export function GoalsOverview() {
                 />
                 <Legend wrapperStyle={{ fontSize: "11px" }} />
                 <Bar dataKey="target" name="Target" fill={theme.gridStroke} radius={[4, 4, 0, 0]} opacity={0.5} />
-                <Bar dataKey="actual" name="Actual" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="actual" name="Actual" fill={theme.palette[0]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Monthly breakdown table */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-text-primary mb-3">Monthly Breakdown</h3>
+          <div className="viz-panel rounded-[1.75rem] p-4 sm:p-5">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">Monthly Breakdown</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 font-medium text-text-secondary">Month</th>
-                    <th className="text-right py-2 px-3 font-medium text-text-secondary">Target</th>
-                    <th className="text-right py-2 px-3 font-medium text-text-secondary">Actual</th>
-                    <th className="text-right py-2 px-3 font-medium text-text-secondary">Variance</th>
-                    <th className="text-right py-2 px-3 font-medium text-text-secondary">Achievement</th>
+                  <tr className="border-b border-border text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                    <th className="text-left py-2 px-3">Month</th>
+                    <th className="text-right py-2 px-3">Target</th>
+                    <th className="text-right py-2 px-3">Actual</th>
+                    <th className="text-right py-2 px-3">Variance</th>
+                    <th className="text-right py-2 px-3">Achievement</th>
                     <th className="py-2 px-3 w-32"></th>
                   </tr>
                 </thead>

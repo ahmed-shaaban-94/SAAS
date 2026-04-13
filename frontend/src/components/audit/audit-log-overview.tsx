@@ -40,13 +40,12 @@ export function AuditLogOverview() {
   if (error) return <ErrorRetry title="Failed to load audit log" />;
 
   return (
-    <div className="space-y-4 mt-6">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+    <div className="mt-6 space-y-5">
+      <div className="viz-panel-soft flex flex-wrap gap-2 rounded-[1.5rem] p-3">
         <select
           value={filters.method || ""}
           onChange={(e) => setFilters({ ...filters, method: e.target.value || undefined, page: 1 })}
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text-primary"
+          className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
         >
           <option value="">All Methods</option>
           {["GET", "POST", "PATCH", "PUT", "DELETE"].map((m) => (
@@ -59,46 +58,44 @@ export function AuditLogOverview() {
           placeholder="Filter endpoint..."
           value={filters.endpoint || ""}
           onChange={(e) => setFilters({ ...filters, endpoint: e.target.value || undefined, page: 1 })}
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary"
+          className="min-w-[220px] rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
         />
 
         <input
           type="date"
           value={filters.start_date || ""}
           onChange={(e) => setFilters({ ...filters, start_date: e.target.value || undefined, page: 1 })}
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text-primary"
+          className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
         />
         <input
           type="date"
           value={filters.end_date || ""}
           onChange={(e) => setFilters({ ...filters, end_date: e.target.value || undefined, page: 1 })}
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text-primary"
+          className="rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-sm text-text-primary"
         />
       </div>
 
-      {/* Summary */}
-      <div className="flex items-center gap-2 text-sm text-text-secondary">
+      <div className="viz-panel-soft inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-text-secondary">
         <ScrollText className="h-4 w-4" />
         <span>{data.total.toLocaleString()} entries</span>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      <div className="viz-panel overflow-x-auto rounded-[1.75rem] border border-border/80">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left text-xs text-text-secondary">
-              <th className="px-4 py-3 font-medium">Time</th>
-              <th className="px-4 py-3 font-medium">Method</th>
-              <th className="px-4 py-3 font-medium">Endpoint</th>
-              <th className="px-4 py-3 font-medium">Action</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Duration</th>
-              <th className="px-4 py-3 font-medium">User</th>
+            <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+              <th className="px-4 py-3">Time</th>
+              <th className="px-4 py-3">Method</th>
+              <th className="px-4 py-3">Endpoint</th>
+              <th className="px-4 py-3">Action</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Duration</th>
+              <th className="px-4 py-3">User</th>
             </tr>
           </thead>
           <tbody>
             {data.items.map((entry) => (
-              <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/50">
+              <tr key={entry.id} className="border-b border-border/50 transition-colors hover:bg-background/50">
                 <td className="px-4 py-2 text-xs text-text-secondary whitespace-nowrap">
                   {new Date(entry.created_at).toLocaleString()}
                 </td>
@@ -131,7 +128,6 @@ export function AuditLogOverview() {
         </table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <span className="text-xs text-text-secondary">
@@ -141,14 +137,14 @@ export function AuditLogOverview() {
             <button
               onClick={() => setFilters({ ...filters, page: Math.max(1, (filters.page || 1) - 1) })}
               disabled={data.page <= 1}
-              className="rounded-lg border border-border p-1.5 text-text-secondary hover:bg-muted disabled:opacity-30"
+              className="viz-panel-soft rounded-xl p-2 text-text-secondary transition-colors hover:text-accent disabled:opacity-30"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={() => setFilters({ ...filters, page: Math.min(totalPages, (filters.page || 1) + 1) })}
               disabled={data.page >= totalPages}
-              className="rounded-lg border border-border p-1.5 text-text-secondary hover:bg-muted disabled:opacity-30"
+              className="viz-panel-soft rounded-xl p-2 text-text-secondary transition-colors hover:text-accent disabled:opacity-30"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

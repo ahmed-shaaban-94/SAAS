@@ -69,7 +69,7 @@ export default function CsvExportButton({
       onClick={handleExport}
       disabled={data.length === 0}
       aria-label={`Export ${data.length} rows as CSV`}
-      className={`inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors hover:bg-card hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50 ${className ?? ""}`}
+      className={`viz-panel-soft inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50 ${className ?? ""}`}
     >
       {isSuccess ? (
         <SuccessAnimation show={isSuccess} className="h-4 w-4" />

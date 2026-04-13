@@ -11,7 +11,7 @@ interface TemplatePickerProps {
 export function TemplatePicker({ selectedId, onSelect }: TemplatePickerProps) {
   return (
     <div>
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
         Start with a template
       </h3>
       <div className="flex gap-3 overflow-x-auto pb-2">
@@ -23,10 +23,10 @@ export function TemplatePicker({ selectedId, onSelect }: TemplatePickerProps) {
               key={t.id}
               onClick={() => onSelect(t)}
               className={cn(
-                "flex min-w-[130px] flex-shrink-0 flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all",
+                "viz-card-hover flex min-w-[150px] flex-shrink-0 flex-col items-center gap-2 rounded-[1.4rem] border p-4 text-center transition-all",
                 isSelected
-                  ? "border-accent bg-accent/10"
-                  : "border-border bg-card hover:border-border-hover hover:bg-divider",
+                  ? "viz-panel border-accent/50 bg-accent/10"
+                  : "viz-panel border-border/70",
               )}
             >
               <Icon

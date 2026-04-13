@@ -67,43 +67,41 @@ export function QualityOverview() {
   const totalWarned = data.runs.reduce((s, r) => s + r.warned, 0);
 
   return (
-    <div className="space-y-6 mt-6">
-      {/* Summary cards */}
+    <div className="mt-6 space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4 flex flex-col items-center">
+        <div className="viz-panel viz-card-hover flex flex-col items-center rounded-[1.5rem] p-5">
           <PassRateRing rate={data.overall_pass_rate} />
-          <p className="text-xs text-text-secondary mt-2">Overall Pass Rate</p>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Overall Pass Rate</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <ShieldCheck className="h-4 w-4 text-green-500 mb-2" />
-          <p className="text-xs text-text-secondary">Total Runs</p>
+        <div className="viz-panel viz-card-hover rounded-[1.5rem] p-5">
+          <ShieldCheck className="mb-3 h-4 w-4 text-green-500" />
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Total Runs</p>
           <p className="text-2xl font-bold text-text-primary">{data.total_runs}</p>
         </div>
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
-          <ShieldX className="h-4 w-4 text-red-500 mb-2" />
-          <p className="text-xs text-text-secondary">Failed Checks</p>
+        <div className="viz-panel rounded-[1.5rem] border-red-500/20 bg-red-500/8 p-5">
+          <ShieldX className="mb-3 h-4 w-4 text-red-500" />
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Failed Checks</p>
           <p className="text-2xl font-bold text-red-500">{totalFailed}</p>
         </div>
-        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-          <AlertTriangle className="h-4 w-4 text-yellow-500 mb-2" />
-          <p className="text-xs text-text-secondary">Warnings</p>
+        <div className="viz-panel rounded-[1.5rem] border-yellow-500/20 bg-yellow-500/8 p-5">
+          <AlertTriangle className="mb-3 h-4 w-4 text-yellow-500" />
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Warnings</p>
           <p className="text-2xl font-bold text-yellow-500">{totalWarned}</p>
         </div>
       </div>
 
-      {/* Run history table */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      <div className="viz-panel overflow-x-auto rounded-[1.75rem] border border-border/80">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left text-xs text-text-secondary">
-              <th className="px-4 py-3 font-medium">Run</th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Checks</th>
-              <th className="px-4 py-3 font-medium">Pass Rate</th>
-              <th className="px-4 py-3 font-medium">Failed</th>
-              <th className="px-4 py-3 font-medium">Warned</th>
-              <th className="px-4 py-3 font-medium w-8"></th>
+            <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+              <th className="px-4 py-3">Run</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Checks</th>
+              <th className="px-4 py-3">Pass Rate</th>
+              <th className="px-4 py-3">Failed</th>
+              <th className="px-4 py-3">Warned</th>
+              <th className="px-4 py-3 w-8"></th>
             </tr>
           </thead>
           <tbody>
@@ -114,8 +112,8 @@ export function QualityOverview() {
                 className={cn(
                   "border-b border-border/50 cursor-pointer transition-colors",
                   selectedRunId === run.run_id
-                    ? "bg-accent/5"
-                    : "hover:bg-muted/50",
+                    ? "bg-accent/8"
+                    : "hover:bg-background/50",
                 )}
               >
                 <td className="px-4 py-2 text-xs text-text-secondary whitespace-nowrap">
@@ -156,7 +154,6 @@ export function QualityOverview() {
         </table>
       </div>
 
-      {/* Run detail panel — expands below table */}
       {selectedRunId && (
         <RunDetailPanel
           runId={selectedRunId}

@@ -9,6 +9,7 @@ import { ProductOverview } from "@/components/products/product-overview";
 import { ProductHierarchyView } from "@/components/products/product-hierarchy";
 import { ParetoChart } from "@/components/products/pareto-chart";
 import { ABCSummary } from "@/components/products/abc-summary";
+import { AnalyticsSectionHeader } from "@/components/layout/analytics-section-header";
 import { cn } from "@/lib/utils";
 import { BarChart3, FolderTree } from "lucide-react";
 
@@ -28,15 +29,15 @@ export default function ProductsPage() {
           title="Product Analytics"
           description="Top performing products by revenue"
         />
-        <div className="flex gap-1 rounded-lg bg-background p-1 self-start">
+        <div className="viz-panel-soft flex gap-1 rounded-2xl p-1 self-start">
           {VIEWS.map((v) => (
             <button
               key={v.key}
               onClick={() => setView(v.key)}
               className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all",
                 view === v.key
-                  ? "bg-accent/20 text-accent"
+                  ? "bg-accent/20 text-accent shadow-[0_10px_24px_rgba(0,199,242,0.18)]"
                   : "text-text-secondary hover:text-text-primary",
               )}
             >
@@ -51,15 +52,7 @@ export default function ProductsPage() {
 
       {/* ABC / Pareto Section */}
       <div className="mt-10">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/10">
-            <BarChart3 className="h-3.5 w-3.5 text-accent" />
-          </div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-text-secondary">
-            ABC / Pareto Analysis
-          </h2>
-          <div className="flex-1 section-divider" />
-        </div>
+        <AnalyticsSectionHeader title="ABC / Pareto Analysis" icon={BarChart3} />
         <div className="grid gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
           <div className="md:col-span-2">
             <ParetoChart />

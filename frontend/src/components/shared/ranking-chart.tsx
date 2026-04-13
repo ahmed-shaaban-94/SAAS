@@ -64,7 +64,7 @@ export function RankingChart({ items, className }: RankingChartProps) {
             {chartData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                fill={CHART_THEME.palette[index % CHART_THEME.palette.length]}
                 fillOpacity={1 - index * 0.06}
               />
             ))}

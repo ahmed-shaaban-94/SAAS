@@ -169,12 +169,12 @@ export default function CustomReportPage() {
 
         {/* Configuration Panel */}
         {model && (
-          <div className="rounded-xl border border-border bg-card p-5 space-y-6">
+          <div className="viz-panel rounded-[1.75rem] p-5 space-y-6">
             {/* Guided hint for From Scratch */}
             {selectedTemplate === "from-scratch" &&
               selectedMetrics.length === 0 &&
               selectedDimensions.length === 0 && (
-                <div className="flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+                <div className="viz-panel-soft flex items-start gap-3 rounded-[1.25rem] border border-accent/20 p-4">
                   <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
                   <div>
                     <p className="text-sm font-medium text-text-primary">
@@ -222,10 +222,10 @@ export default function CustomReportPage() {
 
         {/* Date Filter */}
         {model && (
-          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-            <h4 className="text-sm font-semibold text-text-primary">
+          <div className="viz-panel rounded-[1.75rem] p-5 space-y-3">
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
               Date range{" "}
-              <span className="font-normal text-text-secondary text-xs">
+              <span className="font-normal normal-case tracking-normal text-text-secondary text-xs">
                 (optional — defaults to all data)
               </span>
             </h4>
@@ -241,7 +241,7 @@ export default function CustomReportPage() {
                     startDate === formatDateParam(p.startDate) &&
                       endDate === formatDateParam(p.endDate)
                       ? "bg-accent text-white"
-                      : "bg-card border border-border text-text-secondary hover:border-border-hover hover:text-text-primary",
+                      : "viz-panel-soft border border-border text-text-secondary hover:text-text-primary",
                   )}
                 >
                   {p.label}
@@ -275,7 +275,7 @@ export default function CustomReportPage() {
             onClick={handleGenerate}
             disabled={!canGenerate || queryLoading}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold transition-all",
+              "flex items-center gap-2 rounded-2xl px-6 py-2.5 text-sm font-semibold transition-all",
               canGenerate && !queryLoading
                 ? "bg-accent text-white hover:bg-accent/90"
                 : "bg-divider text-text-secondary cursor-not-allowed",
@@ -288,7 +288,7 @@ export default function CustomReportPage() {
           {(result || error || selectedTemplate) && (
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:border-border-hover transition-colors"
+              className="viz-panel-soft flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Reset
@@ -298,7 +298,7 @@ export default function CustomReportPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6">
+          <div className="viz-panel rounded-[1.5rem] border border-red-500/20 bg-red-500/8 p-6">
             <p className="text-sm font-medium text-red-400">
               Report generation failed
             </p>

@@ -181,7 +181,6 @@ export default function BriefingPage() {
   return (
     <PageTransition>
       <div className="space-y-6 p-4 sm:p-6">
-        {/* ── Header ── */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <Header
@@ -200,7 +199,7 @@ export default function BriefingPage() {
             <button
               onClick={refreshAll}
               disabled={isLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-divider disabled:opacity-50"
+              className="viz-panel-soft flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary transition-colors hover:text-accent disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
@@ -210,9 +209,8 @@ export default function BriefingPage() {
           </div>
         </div>
 
-        {/* ── 5 KPI cards ── */}
         <section>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
             Key Performance Indicators
           </p>
           {kpiLoading ? (
@@ -220,7 +218,7 @@ export default function BriefingPage() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-28 animate-pulse rounded-xl bg-card"
+                  className="viz-panel h-28 animate-pulse rounded-[1.5rem]"
                 />
               ))}
             </div>
@@ -278,7 +276,7 @@ export default function BriefingPage() {
               />
             </div>
           ) : (
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-4 text-sm text-text-secondary">
+            <div className="viz-panel flex items-center gap-2 rounded-[1.5rem] p-4 text-sm text-text-secondary">
               <AlertTriangle className="h-4 w-4 text-chart-amber" />
               KPI data unavailable
             </div>
@@ -286,11 +284,10 @@ export default function BriefingPage() {
         </section>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          {/* ── AI Narrative ── */}
-          <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <section className="viz-panel flex flex-col gap-3 rounded-[1.75rem] p-5">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-accent" />
-              <p className="text-sm font-semibold text-text-primary">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
                 AI Narrative Summary
               </p>
             </div>
@@ -328,11 +325,10 @@ export default function BriefingPage() {
             )}
           </section>
 
-          {/* ── Top 3 Action Items ── */}
-          <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <section className="viz-panel flex flex-col gap-3 rounded-[1.75rem] p-5">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-chart-amber" />
-              <p className="text-sm font-semibold text-text-primary">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
                 Top Action Items
               </p>
             </div>

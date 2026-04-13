@@ -32,7 +32,7 @@ export function PricingCard({
   const cardContent = (
     <>
       {isPopular && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-semibold text-page z-10">
+        <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-semibold text-page">
           Popular
         </span>
       )}
@@ -48,7 +48,7 @@ export function PricingCard({
         {period && <span className="text-text-secondary">{period}</span>}
       </div>
       {badge && (
-        <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs font-semibold text-green-400">
+        <div className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-growth-green/10 px-3 py-1.5 text-xs font-semibold text-growth-green">
           <span>🎉</span> {badge}
         </div>
       )}
@@ -68,7 +68,7 @@ export function PricingCard({
           className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
             isPopular
               ? "cta-shimmer bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
-              : "border border-border bg-card text-text-primary hover:bg-divider"
+              : "viz-panel-soft text-text-primary hover:bg-white/10"
           }`}
         >
           {cta}
@@ -79,7 +79,7 @@ export function PricingCard({
           className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
             isPopular
               ? "cta-shimmer bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
-              : "border border-border bg-card text-text-primary hover:bg-divider"
+              : "viz-panel-soft text-text-primary hover:bg-white/10"
           }`}
         >
           {cta}
@@ -91,7 +91,7 @@ export function PricingCard({
   if (isPopular) {
     return (
       <div className="rotating-border">
-        <div className="relative flex flex-col p-8 bg-accent/5">
+        <div className="relative flex flex-col rounded-[1.75rem] p-8 bg-accent/5">
           {cardContent}
         </div>
       </div>
@@ -99,7 +99,7 @@ export function PricingCard({
   }
 
   return (
-    <div className="relative flex flex-col rounded-2xl border border-border bg-card p-8 hover-lift">
+    <div className="viz-panel viz-card-hover relative flex flex-col rounded-[1.75rem] p-8 hover-lift">
       {cardContent}
     </div>
   );

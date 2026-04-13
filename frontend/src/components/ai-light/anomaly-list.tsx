@@ -21,7 +21,7 @@ export function AnomalyList() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6">
+      <div className="viz-panel rounded-[1.75rem] p-6">
         <p className="text-sm text-growth-red">
           Failed to load anomaly report. Please try again later.
         </p>
@@ -39,10 +39,17 @@ export function AnomalyList() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <AlertTriangle className="h-5 w-5 text-amber-500" />
-        <h3 className="text-lg font-semibold text-text-primary">Anomalies</h3>
+    <div className="viz-panel rounded-[1.9rem] p-6 sm:p-7">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="viz-panel-soft flex h-10 w-10 items-center justify-center rounded-2xl">
+          <AlertTriangle className="h-4.5 w-4.5 text-amber-500" />
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
+            Anomalies
+          </p>
+          <h3 className="mt-2 text-xl font-bold text-text-primary sm:text-2xl">Outlier Report</h3>
+        </div>
         <span className="ml-auto text-xs text-text-secondary">
           {data.anomalies.length} of {data.total_checked} checked &middot; {data.period}
         </span>
@@ -51,7 +58,7 @@ export function AnomalyList() {
         {data.anomalies.map((anomaly, i) => (
           <div
             key={i}
-            className="rounded-lg border border-border bg-background p-4 transition-colors hover:border-accent/30"
+            className="viz-panel-soft rounded-[1.25rem] p-4 transition-colors hover:border-accent/30"
           >
             <div className="flex items-center gap-2">
               <span
