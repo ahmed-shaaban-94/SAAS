@@ -110,6 +110,8 @@ module = [
     "openpyxl.*",
     "prometheus_fastapi_instrumentator.*",
     "mcp.*",
+    "google.*",
+    "googleapiclient.*",
 ]
 ignore_missing_imports = true
 
