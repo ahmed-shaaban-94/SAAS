@@ -83,6 +83,10 @@
   --input: 206 35% 85%;
   --ring: 191 91% 47%;
   --radius: 1rem;
+
+  /* Shared card radii — keep skeleton, analytics card, and hero KPI card in sync */
+  --radius-card: 1.5rem;
+  --radius-card-hero: 1.75rem;
 }
 
 /* ═══════════════════════════════════════════════
@@ -138,6 +142,10 @@
   --input: 210 34% 31%;
   --ring: 191 91% 47%;
   --radius: 1rem;
+
+  /* Shared card radii — mirrored in light theme for consistent geometry */
+  --radius-card: 1.5rem;
+  --radius-card-hero: 1.75rem;
 }
 
 body {

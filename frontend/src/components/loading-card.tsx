@@ -28,12 +28,12 @@ export function LoadingCard({ className, lines = 3, layoutId }: LoadingCardProps
       ))}
 
       {/* Pulse glow overlay */}
-      <div className="absolute inset-0 rounded-xl loading-pulse-glow" />
+      <div className="absolute inset-0 rounded-[var(--radius-card)] loading-pulse-glow" />
     </>
   );
 
   const baseClassName = cn(
-    "relative overflow-hidden rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6",
+    "relative overflow-hidden rounded-[var(--radius-card)] border border-border bg-card/80 backdrop-blur-sm p-6",
     "animate-fade-in",
     className,
   );
