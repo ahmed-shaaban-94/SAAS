@@ -51,6 +51,11 @@ dev = [
 graph = [
     "mcp>=1.0,<2",
 ]
+ai = [
+    "langgraph>=0.2,<1",
+    "langchain-openai>=0.2,<1",
+    "langgraph-checkpoint-postgres>=2,<3",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
