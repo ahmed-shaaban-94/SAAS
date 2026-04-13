@@ -116,7 +116,7 @@ docker compose up -d --build
 | `bronze` | Raw data, as-is from source | Python bronze loader |
 | `public_staging` / `silver` | Cleaned, transformed | dbt staging models |
 | `public_marts` / `gold` | Aggregated, business-ready | dbt marts models (6 dims + 1 fact + 8 aggs) |
-| `brain` | Session tracking, decisions, incidents | Stop hook + MCP tools |
+| `brain` | Session tracking, decisions, incidents, project knowledge | Stop hook + MCP tools |
 
 ### Key Data Volumes
 
@@ -247,16 +247,18 @@ Indexes: Python symbols (functions, classes, methods), TypeScript components/hoo
 
 `src/datapulse/brain/` — PostgreSQL-backed session tracking with FTS + pgvector semantic search.
 
-**Storage**: `brain` schema in PostgreSQL (sessions, decisions, incidents tables).
+**Storage**: `brain` schema in PostgreSQL (sessions, decisions, incidents, knowledge tables).
 
 **MCP Tools** (registered in the same `datapulse-graph` MCP server):
 | Tool | Purpose |
 |------|---------|
-| `brain_search(query)` | Hybrid FTS + semantic search across all brain data |
+| `brain_search(query)` | Hybrid FTS + semantic search across all brain tables |
 | `brain_recent(count)` | Last N sessions with full detail |
 | `brain_session(id)` | Single session with linked decisions/incidents |
-| `brain_log_decision(title, body_md)` | Record a decision |
+| `brain_log_decision(title, body_md)` | Record a session-level decision |
 | `brain_log_incident(title, body_md, severity)` | Record an incident |
+| `brain_log_knowledge(title, body_md, category, tags)` | Store static project knowledge (architecture, API docs, runbooks, dbt explanations, onboarding) |
+| `brain_knowledge_search(query, category)` | Search the project knowledge base by keyword and/or category |
 
 **Hook**: Stop hook (`.claude/hooks/brain-session-end.sh`) auto-captures session data into PostgreSQL. Falls back to markdown files if DB is unavailable.
 

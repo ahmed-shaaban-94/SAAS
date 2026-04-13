@@ -1,4 +1,4 @@
-"""DataPulse Graph + Brain MCP Server — 9 tools for Claude Code integration.
+"""DataPulse Graph + Brain MCP Server — 11 tools for Claude Code integration.
 
 Graph tools:
     dp_impact   — Blast radius: what breaks if I change X?
@@ -7,11 +7,13 @@ Graph tools:
     dp_detect_changes — Map git diff to affected symbols
 
 Brain tools:
-    brain_search — Hybrid FTS + semantic search across sessions/decisions/incidents
-    brain_recent — Get the most recent sessions
-    brain_session — Full detail of a single session
-    brain_log_decision — Record a decision
-    brain_log_incident — Record an incident
+    brain_search          — Hybrid FTS + semantic search across all brain tables
+    brain_recent          — Get the most recent sessions
+    brain_session         — Full detail of a single session
+    brain_log_decision    — Record a decision
+    brain_log_incident    — Record an incident
+    brain_log_knowledge   — Store static project knowledge (architecture, API docs, runbooks, etc.)
+    brain_knowledge_search — Search the project knowledge base by keyword and/or category
 
 Usage:
     python -m datapulse.graph.mcp_server
@@ -430,6 +432,74 @@ def brain_log_incident(
             brain_db.update_embedding("incidents", row_id, vec)
 
         return json.dumps({"id": row_id, "title": title, "severity": severity, "status": "created"})
+    except Exception as exc:
+        return _brain_error(str(exc))
+
+
+@_tool()
+def brain_log_knowledge(
+    title: str,
+    body_md: str = "",
+    category: str = "general",
+    tags: list[str] | None = None,
+) -> str:
+    """Store a static project knowledge record in the brain.
+
+    Use for architecture documentation, API contracts, dbt model explanations,
+    runbooks, onboarding guides, glossary entries, or any reference material
+    that should be searchable across future sessions.
+
+    Args:
+        title: Short descriptive title (e.g. "Medallion Layers Explained").
+        body_md: Full content in markdown — can be as long as needed.
+        category: Logical grouping: "architecture", "api", "dbt", "runbook",
+                  "onboarding", "glossary", or any custom category.
+        tags: Search tags (e.g. ["bronze", "silver", "gold", "dbt"]).
+    """
+    try:
+        from datapulse.brain import db as brain_db
+        from datapulse.brain.embeddings import get_embedding
+
+        row_id = brain_db.insert_knowledge(
+            title=title,
+            body_md=body_md,
+            category=category,
+            tags=tags,
+        )
+
+        vec = get_embedding(f"{title}\n{body_md}")
+        if vec is not None:
+            brain_db.update_embedding("knowledge", row_id, vec)
+
+        return json.dumps(
+            {"id": row_id, "category": category, "title": title, "status": "created"}
+        )
+    except Exception as exc:
+        return _brain_error(str(exc))
+
+
+@_tool()
+def brain_knowledge_search(
+    query: str,
+    category: str | None = None,
+    limit: int = 20,
+) -> str:
+    """Search the project knowledge base by keyword and optional category.
+
+    Uses full-text search (FTS) with ts_rank scoring. Returns knowledge records
+    ranked by relevance. Optionally filter to a specific category.
+
+    Args:
+        query: Search terms (e.g. "bronze loader parquet", "auth JWT claims").
+        category: Optional filter — "architecture", "api", "dbt", "runbook",
+                  "onboarding", "glossary", or any category used when logging.
+        limit: Max results to return (default 20).
+    """
+    try:
+        from datapulse.brain import db as brain_db
+
+        results = brain_db.search_knowledge(query, category=category, limit=limit)
+        return json.dumps({"count": len(results), "results": _serialize(results)}, indent=2)
     except Exception as exc:
         return _brain_error(str(exc))
 
