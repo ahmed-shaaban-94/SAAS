@@ -1,10 +1,19 @@
 import { withSentryConfig } from "@sentry/nextjs";
-import bundleAnalyzer from "@next/bundle-analyzer";
 import createNextIntlPlugin from "next-intl/plugin";
 
-const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === "true",
-});
+// Load @next/bundle-analyzer lazily so `next lint` / `next build` still work
+// when the optional dev dependency is missing (fresh clones, CI lint job,
+// minimal installs). Falls back to an identity wrapper.
+async function resolveBundleAnalyzer() {
+  try {
+    const mod = await import("@next/bundle-analyzer");
+    return mod.default({ enabled: process.env.ANALYZE === "true" });
+  } catch {
+    return (cfg) => cfg;
+  }
+}
+
+const withBundleAnalyzer = await resolveBundleAnalyzer();
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
