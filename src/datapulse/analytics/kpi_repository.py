@@ -396,6 +396,18 @@ class KpiRepository:
         params["prev_start_key"] = prev_start_key
         params["prev_end_key"] = prev_end_key
 
+        # MTD / YTD windows — both anchored at the range's end date so users
+        # see the month-to-date and year-to-date running totals "as of" the
+        # range they're looking at. Scoped by the same dimensional filters
+        # so filtered views (category/brand/site/staff) show filtered MTD/YTD
+        # rather than company-wide totals.
+        mtd_start = date(end.year, end.month, 1)
+        ytd_start = date(end.year, 1, 1)
+        mtd_start_key = mtd_start.year * 10000 + mtd_start.month * 100 + mtd_start.day
+        ytd_start_key = ytd_start.year * 10000 + ytd_start.month * 100 + ytd_start.day
+        params["mtd_start_key"] = mtd_start_key
+        params["ytd_start_key"] = ytd_start_key
+
         # Sparkline date keys
         sparkline_start = end - timedelta(days=7)
         spark_start_key = (
@@ -407,6 +419,14 @@ class KpiRepository:
         prev_where = where_clause.replace(
             "f.date_key BETWEEN :start_key AND :end_key",
             "f.date_key BETWEEN :prev_start_key AND :prev_end_key",
+        )
+        mtd_where = where_clause.replace(
+            "f.date_key BETWEEN :start_key AND :end_key",
+            "f.date_key BETWEEN :mtd_start_key AND :end_key",
+        )
+        ytd_where = where_clause.replace(
+            "f.date_key BETWEEN :start_key AND :end_key",
+            "f.date_key BETWEEN :ytd_start_key AND :end_key",
         )
 
         stmt = text(f"""
@@ -437,6 +457,22 @@ class KpiRepository:
                 {join_clause}
                 WHERE {prev_where}
             ),
+            mtd_agg AS (
+                SELECT
+                    ROUND(SUM(f.sales), 2) AS mtd_gross,
+                    COUNT(*) FILTER (WHERE NOT f.is_return)::INT AS mtd_transactions
+                FROM public_marts.fct_sales f
+                {join_clause}
+                WHERE {mtd_where}
+            ),
+            ytd_agg AS (
+                SELECT
+                    ROUND(SUM(f.sales), 2) AS ytd_gross,
+                    COUNT(*) FILTER (WHERE NOT f.is_return)::INT AS ytd_transactions
+                FROM public_marts.fct_sales f
+                {join_clause}
+                WHERE {ytd_where}
+            ),
             sparkline AS (
                 SELECT json_agg(
                     json_build_object('period', d.full_date, 'value', COALESCE(day_total, 0))
@@ -460,10 +496,16 @@ class KpiRepository:
                 r.total_customers,
                 b.avg_basket_size,
                 p.prev_net,
+                m.mtd_gross,
+                m.mtd_transactions,
+                y.ytd_gross,
+                y.ytd_transactions,
                 sp.points AS sparkline_points
             FROM range_agg r
             CROSS JOIN basket b
             CROSS JOIN prev_period p
+            CROSS JOIN mtd_agg m
+            CROSS JOIN ytd_agg y
             CROSS JOIN sparkline sp
         """)
 
@@ -493,6 +535,12 @@ class KpiRepository:
             else _ZERO
         )
 
+        # MTD / YTD totals, scoped by the same dimensional filters.
+        mtd_gross = Decimal(str(row["mtd_gross"])) if row["mtd_gross"] is not None else _ZERO
+        ytd_gross = Decimal(str(row["ytd_gross"])) if row["ytd_gross"] is not None else _ZERO
+        mtd_txn = int(row["mtd_transactions"] or 0)
+        ytd_txn = int(row["ytd_transactions"] or 0)
+
         mom_growth: Decimal | None = None
         if row["prev_net"] is not None:
             prev_net = Decimal(str(row["prev_net"]))
@@ -512,8 +560,8 @@ class KpiRepository:
 
         return KPISummary(
             today_gross=period_net,
-            mtd_gross=_ZERO,
-            ytd_gross=_ZERO,
+            mtd_gross=mtd_gross,
+            ytd_gross=ytd_gross,
             mom_growth_pct=mom_growth,
             yoy_growth_pct=None,
             daily_quantity=total_quantity,
@@ -521,6 +569,8 @@ class KpiRepository:
             daily_customers=total_customers,
             avg_basket_size=avg_basket,
             daily_returns=total_returns,
+            mtd_transactions=mtd_txn,
+            ytd_transactions=ytd_txn,
             sparkline=sparkline,
         )
 
