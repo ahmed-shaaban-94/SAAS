@@ -350,6 +350,7 @@ def test_start_scheduler_enabled_by_default():
     with (
         patch.dict(os.environ, env, clear=True),
         patch("datapulse.scheduler.scheduler") as mock_sched,
+        patch("datapulse.scheduler._register_sync_schedules", return_value=0),
     ):
         mock_sched.running = False
 
