@@ -1,0 +1,268 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    description: "Bronze layer — raw data loaded from Excel files and manual entry"
+    tables:
+      - name: stock_receipts
+        description: "Raw stock receipt records from Excel import or manual entry"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: source_file
+            description: "Original source filename"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: receipt_date
+            description: "Date the receipt was issued"
+          - name: receipt_reference
+            description: "Supplier delivery note or GRN number"
+          - name: drug_code
+            description: "Product code, joins to dim_product"
+          - name: site_code
+            description: "Site code, joins to dim_site"
+          - name: batch_number
+            description: "Batch/lot number"
+          - name: expiry_date
+            description: "Batch expiry date"
+          - name: quantity
+            description: "Quantity received"
+          - name: unit_cost
+            description: "Unit cost at receipt"
+          - name: supplier_code
+            description: "Supplier identifier"
+          - name: po_reference
+            description: "Related purchase order number"
+          - name: notes
+            description: "Free-text notes"
+
+      - name: stock_adjustments
+        description: "Manual stock adjustments (damage, shrinkage, transfers, corrections)"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: source_file
+            description: "Original source filename"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: adjustment_date
+            description: "Date the adjustment was posted"
+          - name: adjustment_type
+            description: "Type: damage | shrinkage | transfer_in | transfer_out | correction | write_off"
+          - name: drug_code
+            description: "Product code"
+          - name: site_code
+            description: "Site code"
+          - name: batch_number
+            description: "Batch/lot number"
+          - name: quantity
+            description: "Adjustment quantity (positive = add, negative = remove)"
+          - name: reason
+            description: "Reason for the adjustment"
+          - name: authorized_by
+            description: "Authorizing staff member"
+          - name: notes
+            description: "Free-text notes"
+
+      - name: inventory_counts
+        description: "Physical stock count records for inventory reconciliation"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: source_file
+            description: "Original source filename"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: count_date
+            description: "Date the physical count was performed"
+          - name: drug_code
+            description: "Product code"
+          - name: site_code
+            description: "Site code"
+          - name: batch_number
+            description: "Batch/lot number"
+          - name: counted_quantity
+            description: "Physically counted quantity"
+          - name: counted_by
+            description: "Staff member who performed the count"
+          - name: notes
+            description: "Free-text notes"
+
+      - name: batches
+        description: "Batch/lot records with expiry dates and lifecycle status"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: source_file
+            description: "Original source filename"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: drug_code
+            description: "Product code"
+          - name: site_code
+            description: "Site code"
+          - name: batch_number
+            description: "Batch/lot number"
+          - name: expiry_date
+            description: "Expiry date for this batch"
+          - name: initial_quantity
+            description: "Quantity when batch was first received"
+          - name: current_quantity
+            description: "Current available quantity"
+          - name: unit_cost
+            description: "Unit cost at receipt"
+          - name: status
+            description: "Lifecycle status: active | near_expiry | expired | quarantined | written_off"
+          - name: quarantine_date
+            description: "Date placed in quarantine"
+          - name: write_off_date
+            description: "Date written off"
+          - name: write_off_reason
+            description: "Reason for write-off"
+
+      - name: suppliers
+        description: "Supplier directory with contact info and payment terms"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: source_file
+            description: "Original source filename"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: supplier_code
+            description: "Unique supplier identifier"
+          - name: supplier_name
+            description: "Supplier display name"
+          - name: contact_name
+            description: "Primary contact name"
+          - name: contact_phone
+            description: "Primary contact phone"
+          - name: contact_email
+            description: "Primary contact email"
+          - name: address
+            description: "Supplier address"
+          - name: payment_terms_days
+            description: "Payment terms in days"
+          - name: lead_time_days
+            description: "Typical lead time in days"
+          - name: is_active
+            description: "Whether the supplier is currently active"
+          - name: notes
+            description: "Free-text notes"
+
+      - name: purchase_orders
+        description: "Purchase order headers with lifecycle status"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: source_file
+            description: "Original source filename"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: po_number
+            description: "Unique purchase order number"
+          - name: po_date
+            description: "Date the PO was raised"
+          - name: supplier_code
+            description: "Supplier identifier"
+          - name: site_code
+            description: "Destination site"
+          - name: status
+            description: "Lifecycle status: draft | submitted | partial | received | cancelled"
+          - name: expected_date
+            description: "Expected delivery date"
+          - name: total_amount
+            description: "Total PO value"
+          - name: notes
+            description: "Free-text notes"
+          - name: created_by
+            description: "Staff member who created the PO"
+
+      - name: po_lines
+        description: "Purchase order line items"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: po_number
+            description: "Parent purchase order number"
+          - name: line_number
+            description: "Line sequence number within the PO"
+          - name: drug_code
+            description: "Product code"
+          - name: ordered_quantity
+            description: "Quantity ordered"
+          - name: unit_price
+            description: "Agreed unit price"
+          - name: received_quantity
+            description: "Quantity received to date"
+          - name: line_total
+            description: "Generated: ordered_quantity * unit_price"
+
+      - name: pos_transactions
+        description: "POS transaction records (design-only, populated when POS integration is active)"
+        loaded_at_field: loaded_at
+        columns:
+          - name: id
+            description: "Auto-generated primary key"
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: source_type
+            description: "Data origin: pos_api | manual | excel"
+          - name: loaded_at
+            description: "When the record was loaded into bronze"
+          - name: transaction_id
+            description: "Unique transaction identifier from POS system"
+          - name: transaction_date
+            description: "Timestamp of the transaction"
+          - name: site_code
+            description: "Site/branch where transaction occurred"
+          - name: register_id
+            description: "POS register identifier"
+          - name: cashier_id
+            description: "Cashier staff identifier"
+          - name: customer_id
+            description: "Customer identifier"
+          - name: drug_code
+            description: "Product code"
+          - name: batch_number
+            description: "Batch/lot dispensed"
+          - name: quantity
+            description: "Quantity dispensed"
+          - name: unit_price
+            description: "Selling price per unit"
+          - name: discount
+            description: "Discount amount applied"
+          - name: net_amount
+            description: "Net transaction amount after discount"
+          - name: payment_method
+            description: "Payment method: cash | card | insurance | mixed"
+          - name: insurance_no
+            description: "Insurance policy number"
+          - name: is_return
+            description: "Whether this is a return transaction"
+          - name: pharmacist_id
+            description: "Dispensing pharmacist identifier"

@@ -147,6 +147,9 @@ class Settings(BaseSettings):
     # Control Center (data control plane) — off by default until Phase 1d lands
     feature_control_center: bool = False
 
+    # Pharmaceutical Platform — inventory, expiry, dispensing, POS features
+    feature_platform: bool = False
+
     # Stripe billing
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
