@@ -37,12 +37,14 @@ from datapulse.api.routes import (
     notifications,
     onboarding,
     pipeline,
+    purchase_orders,
     queries,
     report_schedules,
     reports,
     reseller,
     scenarios,
     search,
+    suppliers,
     targets,
     upload,
     views,
@@ -234,6 +236,11 @@ def create_app() -> FastAPI:
     app.include_router(branding.router, prefix="/api/v1")
     app.include_router(branding.public_router, prefix="/api/v1")
     app.include_router(reseller.router, prefix="/api/v1")
+
+    # Pharma platform: Purchase Orders + Suppliers + Margin Analysis
+    app.include_router(purchase_orders.router, prefix="/api/v1")
+    app.include_router(purchase_orders.margins_router, prefix="/api/v1")
+    app.include_router(suppliers.router, prefix="/api/v1")
 
     # Control Center — behind feature flag; mounts router only when enabled
     if settings.feature_control_center:

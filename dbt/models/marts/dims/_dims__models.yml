@@ -1,6 +1,28 @@
 version: 2
 
 models:
+  - name: dim_supplier
+    description: "Supplier dimension. SCD Type 1. MD5 surrogate key on (tenant_id, supplier_code). -1 row for Unknown."
+    columns:
+      - name: supplier_key
+        description: "Surrogate key (MD5 hash truncated to 32-bit int)"
+        tests:
+          - not_null
+      - name: tenant_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
+      - name: supplier_code
+        description: "Natural key from bronze.suppliers"
+        tests:
+          - not_null
+      - name: supplier_name
+        description: "Supplier display name"
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the supplier is currently active"
+
   - name: dim_date
     description: "Calendar dimension (2023-01-01 to 2030-12-31). Egypt weekend = Friday & Saturday. Includes sort columns for Power BI and ISO week columns."
     meta:
