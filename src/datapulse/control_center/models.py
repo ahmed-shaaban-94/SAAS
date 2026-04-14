@@ -430,3 +430,18 @@ class SyncScheduleList(BaseModel):
     model_config = ConfigDict(frozen=True)
     items: list[SyncSchedule]
     total: int
+
+
+# ── Health summary (Phase 4) ──────────────────────────────────
+
+
+class HealthSummary(BaseModel):
+    """Aggregated health snapshot for the Control Center dashboard card."""
+
+    model_config = ConfigDict(frozen=True)
+
+    active_connections: int = 0
+    last_sync_at: datetime | None = None
+    active_release_version: int | None = None
+    pending_drafts: int = 0
+    failed_syncs_last_24h: int = 0

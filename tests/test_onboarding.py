@@ -92,25 +92,28 @@ class TestCompleteStep:
             "id": 1,
             "tenant_id": 1,
             "user_id": "user-1",
-            "steps_completed": ["connect_data", "first_report"],
-            "current_step": "first_goal",
+            "steps_completed": ["connect_data", "first_report", "first_goal"],
+            "current_step": "configure_first_profile",
             "completed_at": None,
             "skipped_at": None,
             "created_at": datetime.now(UTC),
         }
         now = datetime.now(UTC)
+        all_steps = ["connect_data", "first_report", "first_goal", "configure_first_profile"]
         mock_repo.upsert_status.return_value = {
             "id": 1,
             "tenant_id": 1,
             "user_id": "user-1",
-            "steps_completed": ["connect_data", "first_report", "first_goal"],
-            "current_step": "first_goal",
+            "steps_completed": all_steps,
+            "current_step": "configure_first_profile",
             "completed_at": now,
             "skipped_at": None,
             "created_at": now,
         }
 
-        result = service.complete_step(tenant_id=1, user_id="user-1", step="first_goal")
+        result = service.complete_step(
+            tenant_id=1, user_id="user-1", step="configure_first_profile"
+        )
 
         assert result.is_complete is True
         assert result.completed_at is not None

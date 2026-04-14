@@ -10,7 +10,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
-ONBOARDING_STEPS: list[str] = ["connect_data", "first_report", "first_goal"]
+ONBOARDING_STEPS: list[str] = [
+    "connect_data",
+    "first_report",
+    "first_goal",
+    "configure_first_profile",
+]
 
 
 class OnboardingStatus(BaseModel):
@@ -39,4 +44,4 @@ class CompleteStepRequest(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    step: Literal["connect_data", "first_report", "first_goal"]
+    step: Literal["connect_data", "first_report", "first_goal", "configure_first_profile"]

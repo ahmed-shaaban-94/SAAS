@@ -3,11 +3,13 @@
 import { ConnectDataStep } from "./steps/connect-data-step";
 import { FirstReportStep } from "./steps/first-report-step";
 import { FirstGoalStep } from "./steps/first-goal-step";
+import { ConfigureFirstProfileStep } from "./steps/configure-first-profile-step";
 
 const STEPS = [
   { key: "connect_data", label: "Connect Data" },
   { key: "first_report", label: "First Report" },
   { key: "first_goal", label: "Set a Goal" },
+  { key: "configure_first_profile", label: "Pipeline Profile" },
 ] as const;
 
 interface OnboardingWizardProps {
@@ -127,6 +129,11 @@ export function OnboardingWizard({
         {activeIndex === 2 && (
           <FirstGoalStep
             onComplete={() => handleCompleteStep("first_goal")}
+          />
+        )}
+        {activeIndex === 3 && (
+          <ConfigureFirstProfileStep
+            onComplete={() => handleCompleteStep("configure_first_profile")}
           />
         )}
       </div>

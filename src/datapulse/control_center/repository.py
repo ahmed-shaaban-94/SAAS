@@ -603,6 +603,61 @@ class PipelineReleaseRepository:
         row = self._session.execute(stmt).mappings().fetchone()
         return dict(row) if row else None
 
+    def count_for_tenant(self, tenant_id: int) -> int:
+        """Return the total number of releases for the given tenant."""
+        stmt = text("SELECT COUNT(*) FROM public.pipeline_releases WHERE tenant_id = :tenant_id")
+        return self._session.execute(stmt, {"tenant_id": tenant_id}).scalar() or 0
+
+    def get_health_summary(self, tenant_id: int) -> dict:
+        """Aggregate connection, release, draft, and sync data for the tenant.
+
+        Returns a flat dict with keys:
+          active_connections, last_sync_at, active_release_version,
+          pending_drafts, failed_syncs_last_24h
+        """
+        stmt = text("""
+            SELECT
+                (
+                    SELECT COUNT(*)
+                    FROM public.source_connections
+                    WHERE tenant_id = :tenant_id AND status = 'active'
+                ) AS active_connections,
+                (
+                    SELECT MAX(last_sync_at)
+                    FROM public.source_connections
+                    WHERE tenant_id = :tenant_id
+                ) AS last_sync_at,
+                (
+                    SELECT MAX(release_version)
+                    FROM public.pipeline_releases
+                    WHERE tenant_id = :tenant_id
+                ) AS active_release_version,
+                (
+                    SELECT COUNT(*)
+                    FROM public.pipeline_drafts
+                    WHERE tenant_id = :tenant_id
+                      AND status NOT IN ('published', 'publish_failed')
+                ) AS pending_drafts,
+                (
+                    SELECT COUNT(*)
+                    FROM public.sync_jobs sj
+                    JOIN public.pipeline_runs pr ON pr.id = sj.pipeline_run_id
+                    WHERE sj.tenant_id = :tenant_id
+                      AND pr.status = 'failed'
+                      AND sj.created_at >= now() - INTERVAL '24 hours'
+                ) AS failed_syncs_last_24h
+        """)
+        row = self._session.execute(stmt, {"tenant_id": tenant_id}).mappings().fetchone()
+        if row is None:
+            return {
+                "active_connections": 0,
+                "last_sync_at": None,
+                "active_release_version": None,
+                "pending_drafts": 0,
+                "failed_syncs_last_24h": 0,
+            }
+        return dict(row)
+
     # ── Write operations (Phase 1d — append-only) ───────────
 
     def create(

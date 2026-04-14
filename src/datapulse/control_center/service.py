@@ -22,6 +22,7 @@ from datapulse.control_center.models import (
     CanonicalDomainList,
     ConnectionPreviewResult,
     ConnectionTestResult,
+    HealthSummary,
     MappingTemplate,
     MappingTemplateList,
     PipelineDraft,
@@ -647,6 +648,21 @@ class ControlCenterService:
         except Exception:  # noqa: BLE001
             log.warning("cache_invalidation_failed_after_publish", tenant_id=tenant_id)
 
+        # Complete onboarding step on the tenant's very first release
+        if self._releases.count_for_tenant(tenant_id) == 1:
+            try:
+                from datapulse.onboarding.repository import OnboardingRepository  # noqa: PLC0415
+                from datapulse.onboarding.service import OnboardingService  # noqa: PLC0415
+
+                onboarding_svc = OnboardingService(OnboardingRepository(self._session))
+                onboarding_svc.complete_step(
+                    tenant_id=tenant_id,
+                    user_id=published_by or "system",
+                    step="configure_first_profile",
+                )
+            except ValueError:
+                pass  # step already completed — no-op
+
         log.info(
             "control_center.release.published",
             tenant_id=tenant_id,
@@ -840,3 +856,10 @@ class ControlCenterService:
         if deleted:
             log.info("control_center.schedule.deleted", schedule_id=schedule_id)
         return deleted
+
+    # ── Health summary (Phase 4) ─────────────────────────────
+
+    def get_health_summary(self, *, tenant_id: int) -> HealthSummary:
+        """Return aggregated health data for the Control Center dashboard."""
+        row = self._releases.get_health_summary(tenant_id)
+        return HealthSummary(**row)

@@ -30,6 +30,7 @@ from datapulse.control_center.models import (
     CreateMappingRequest,
     CreateProfileRequest,
     CreateScheduleRequest,
+    HealthSummary,
     MappingTemplate,
     MappingTemplateList,
     PipelineDraft,
@@ -885,3 +886,27 @@ def delete_schedule(
     found = service.delete_schedule(schedule_id)
     if not found:
         raise HTTPException(status_code=404, detail="schedule_not_found")
+
+
+# ------------------------------------------------------------------
+# Health summary — Phase 4
+# ------------------------------------------------------------------
+
+
+@router.get(
+    "/health-summary",
+    response_model=HealthSummary,
+    dependencies=[Depends(require_permission("control_center:connections:view"))],
+)
+@limiter.limit("60/minute")
+def get_health_summary(
+    request: Request,
+    service: ServiceDep,
+    user: UserDep,
+) -> HealthSummary:
+    """Return aggregated health data for the Control Center dashboard.
+
+    Queries existing tables only — no new tables required.
+    """
+    tenant_id = int(user.get("tenant_id", 1))
+    return service.get_health_summary(tenant_id=tenant_id)
