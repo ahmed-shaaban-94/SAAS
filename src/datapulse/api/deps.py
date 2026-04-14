@@ -50,7 +50,11 @@ from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
 from datapulse.pipeline.repository import PipelineRepository
 from datapulse.pipeline.service import PipelineService
+from datapulse.purchase_orders.repository import PurchaseOrderRepository
+from datapulse.purchase_orders.service import PurchaseOrderService
 from datapulse.reports.schedule_service import ScheduleService
+from datapulse.suppliers.repository import SuppliersRepository
+from datapulse.suppliers.service import SuppliersService
 
 logger = structlog.get_logger()
 
@@ -263,6 +267,20 @@ def get_search_service(
     from datapulse.analytics.search_repository import SearchRepository
 
     return SearchService(SearchRepository(session))
+
+
+def get_po_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> PurchaseOrderService:
+    """Factory for PurchaseOrderService — wires repository to service."""
+    return PurchaseOrderService(PurchaseOrderRepository(session))
+
+
+def get_supplier_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> SuppliersService:
+    """Factory for SuppliersService — wires repository to service."""
+    return SuppliersService(SuppliersRepository(session))
 
 
 def get_inventory_service(

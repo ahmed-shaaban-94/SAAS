@@ -1,6 +1,50 @@
 version: 2
 
 models:
+  # ── agg_margin_analysis ──────────────────────────────────────────────
+  - name: agg_margin_analysis
+    description: "Margin analysis per product per month. Revenue from fct_sales, COGS from weighted average PO unit prices."
+    columns:
+      - name: tenant_id
+        tests:
+          - not_null
+      - name: product_key
+        tests:
+          - not_null
+      - name: year
+        tests:
+          - not_null
+      - name: month
+        tests:
+          - not_null
+      - name: revenue
+        description: "Total gross sales revenue for the period"
+      - name: cogs
+        description: "Cost of goods sold (units_sold * weighted_unit_cost)"
+      - name: gross_margin
+        description: "Revenue minus COGS"
+      - name: margin_pct
+        description: "Gross margin as a fraction of revenue (0-1)"
+
+  # ── agg_supplier_performance ─────────────────────────────────────────
+  - name: agg_supplier_performance
+    description: "Supplier performance metrics. Grain: one row per supplier. Includes avg lead time, fill rate, and total spend."
+    columns:
+      - name: tenant_id
+        tests:
+          - not_null
+      - name: supplier_key
+        tests:
+          - not_null
+      - name: total_orders
+        description: "Total number of purchase orders placed"
+      - name: fill_rate
+        description: "Fraction of ordered value that was received (0-1)"
+      - name: avg_lead_days
+        description: "Average actual lead time in days for received orders"
+      - name: total_spend
+        description: "Sum of total ordered values across all POs"
+
   # ── agg_sales_daily ──────────────────────────────────────────────────
   - name: agg_sales_daily
     description: "Daily sales aggregation. Grain: (date_key, site_key, billing_way)"

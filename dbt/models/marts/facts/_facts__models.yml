@@ -1,6 +1,46 @@
 version: 2
 
 models:
+  - name: fct_purchase_orders
+    description: "Purchase Orders fact table. Grain: one row per purchase order. Aggregates line totals from fct_po_lines."
+    columns:
+      - name: tenant_id
+        tests:
+          - not_null
+      - name: po_number
+        tests:
+          - not_null
+      - name: supplier_key
+        description: "FK to dim_supplier (-1 = Unknown)"
+        tests:
+          - not_null
+      - name: site_key
+        description: "FK to dim_site (-1 = Unknown)"
+        tests:
+          - not_null
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['draft', 'submitted', 'partial', 'received', 'cancelled']
+
+  - name: fct_po_lines
+    description: "Purchase Order Lines fact table. Grain: one row per PO line item."
+    columns:
+      - name: tenant_id
+        tests:
+          - not_null
+      - name: po_number
+        tests:
+          - not_null
+      - name: line_number
+        tests:
+          - not_null
+      - name: product_key
+        description: "FK to dim_product (-1 = Unknown)"
+        tests:
+          - not_null
+
   - name: fct_sales
     description: "Sales fact table. Grain: one line-item per invoice. Integer surrogate keys with COALESCE to -1 (Unknown). Financials rounded to 2 decimals."
     meta:
