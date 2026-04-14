@@ -15,11 +15,8 @@ from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative
 from datapulse.ai_light.service import AILightService
-
 
 # ── contract helpers ──────────────────────────────────────────────────────
 
@@ -55,8 +52,8 @@ def _make_legacy_service() -> tuple[AILightService, Any]:
     ranking = MagicMock()
     ranking.items = []
 
-    with patch("datapulse.ai_light.service.AnalyticsRepository") as MockRepo:
-        inst = MockRepo.return_value
+    with patch("datapulse.ai_light.service.AnalyticsRepository") as mock_repo_cls:
+        inst = mock_repo_cls.return_value
         inst.get_kpi_summary.return_value = kpi
         inst.get_top_products.return_value = ranking
         inst.get_top_customers.return_value = ranking
@@ -189,8 +186,9 @@ class TestAnomalyReportContract:
 
     def test_anomaly_report_field_names_stable(self):
         """AnomalyReport field contract: anomalies, period, total_checked."""
-        report = AnomalyReport(anomalies=[], period="2026-01-01 to 2026-01-31", total_checked=30)
-        assert set(AnomalyReport.model_fields.keys()) == {"anomalies", "period", "total_checked"}
+        assert set(AnomalyReport.model_fields.keys()) == {
+            "anomalies", "period", "total_checked"
+        }
 
     def test_graph_run_failure_returns_empty_anomaly_report(self):
         from datapulse.ai_light.graph_service import AILightGraphService
@@ -267,10 +265,9 @@ class TestChangeNarrativeContract:
         _assert_same_shape(result, reference)
 
     def test_change_narrative_field_names_stable(self):
-        cn = ChangeNarrative(
-            narrative="x", deltas=[], current_period="2026-04-12", previous_period="2026-03-12"
-        )
-        assert set(ChangeNarrative.model_fields.keys()) == {"narrative", "deltas", "current_period", "previous_period"}
+        assert set(ChangeNarrative.model_fields.keys()) == {
+            "narrative", "deltas", "current_period", "previous_period"
+        }
 
     def test_graph_run_failure_returns_empty_change_narrative(self):
         from datapulse.ai_light.graph_service import AILightGraphService
