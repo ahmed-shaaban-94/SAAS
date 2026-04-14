@@ -20,6 +20,7 @@ from datapulse.ai_light.service import AILightService
 
 # ── contract helpers ──────────────────────────────────────────────────────
 
+
 def _assert_same_shape(model_a: Any, model_b: Any) -> None:
     """Assert that two Pydantic model instances have the same field names."""
     assert type(model_a) is type(model_b), (
@@ -29,6 +30,7 @@ def _assert_same_shape(model_a: Any, model_b: Any) -> None:
 
 
 # ── legacy service fixtures ───────────────────────────────────────────────
+
 
 def _make_legacy_service() -> tuple[AILightService, Any]:
     """Return (service, mock_session) for the legacy AILightService."""
@@ -65,6 +67,7 @@ def _make_legacy_service() -> tuple[AILightService, Any]:
 
 # ── graph service fixture ─────────────────────────────────────────────────
 
+
 def _make_graph_service(degraded: bool = False):
     """Return a mock AILightGraphService that returns valid model instances."""
     from datapulse.ai_light.graph_service import AILightGraphService
@@ -80,6 +83,7 @@ def _make_graph_service(degraded: bool = False):
 
 
 # ── AISummary contract ────────────────────────────────────────────────────
+
 
 class TestSummaryContract:
     """Both services must return AISummary with identical field names."""
@@ -134,6 +138,7 @@ class TestSummaryContract:
 
 # ── AnomalyReport contract ────────────────────────────────────────────────
 
+
 class TestAnomalyReportContract:
     def test_graph_service_detect_anomalies_returns_anomaly_report(self):
         from datapulse.ai_light.graph_service import AILightGraphService
@@ -186,9 +191,7 @@ class TestAnomalyReportContract:
 
     def test_anomaly_report_field_names_stable(self):
         """AnomalyReport field contract: anomalies, period, total_checked."""
-        assert set(AnomalyReport.model_fields.keys()) == {
-            "anomalies", "period", "total_checked"
-        }
+        assert set(AnomalyReport.model_fields.keys()) == {"anomalies", "period", "total_checked"}
 
     def test_graph_run_failure_returns_empty_anomaly_report(self):
         from datapulse.ai_light.graph_service import AILightGraphService
@@ -207,6 +210,7 @@ class TestAnomalyReportContract:
 
 
 # ── ChangeNarrative contract ──────────────────────────────────────────────
+
 
 class TestChangeNarrativeContract:
     def test_graph_service_explain_changes_returns_change_narrative(self):
@@ -266,7 +270,10 @@ class TestChangeNarrativeContract:
 
     def test_change_narrative_field_names_stable(self):
         assert set(ChangeNarrative.model_fields.keys()) == {
-            "narrative", "deltas", "current_period", "previous_period"
+            "narrative",
+            "deltas",
+            "current_period",
+            "previous_period",
         }
 
     def test_graph_run_failure_returns_empty_change_narrative(self):

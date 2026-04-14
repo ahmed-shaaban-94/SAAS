@@ -109,17 +109,13 @@ def make_fetch_data_node(
         try:
             if insight == "summary":
                 updates["kpi_data"] = tools["get_kpi_summary"](target_date=target)
-                updates["top_products"] = tools["get_top_products"](
-                    start_date=start, end_date=end
-                )
+                updates["top_products"] = tools["get_top_products"](start_date=start, end_date=end)
                 updates["top_customers"] = tools["get_top_customers"](
                     start_date=start, end_date=end
                 )
 
             elif insight == "anomalies":
-                updates["daily_trend"] = tools["get_daily_trend"](
-                    start_date=start, end_date=end
-                )
+                updates["daily_trend"] = tools["get_daily_trend"](start_date=start, end_date=end)
                 updates["anomaly_alerts"] = tools["get_active_anomaly_alerts"](limit=10).get(
                     "alerts", []
                 )
@@ -147,9 +143,7 @@ def make_fetch_data_node(
                         previous_start=prev_start,
                         previous_end=prev_end,
                     )
-                    staff = tools["get_top_staff"](
-                        start_date=curr_start, end_date=curr_end
-                    )
+                    staff = tools["get_top_staff"](start_date=curr_start, end_date=curr_end)
                     updates["top_gainers"] = gainers
                     updates["top_losers"] = losers
                     updates["top_staff"] = staff
@@ -298,16 +292,22 @@ def make_analyze_node(
             staff = state.get("top_staff") or {}
 
             def _fmt_movers(items: list) -> str:
-                return ", ".join(
-                    f"{_sanitize(m.get('name', ''))}: {float(m.get('change_pct', 0)):+.1f}%"
-                    for m in items[:3]
-                ) or "None"
+                return (
+                    ", ".join(
+                        f"{_sanitize(m.get('name', ''))}: {float(m.get('change_pct', 0)):+.1f}%"
+                        for m in items[:3]
+                    )
+                    or "None"
+                )
 
             def _fmt_staff(items: list) -> str:
-                return ", ".join(
-                    f"{_sanitize(m.get('name', ''))}: {float(m.get('value', 0)):,.0f} EGP"
-                    for m in items[:3]
-                ) or "None"
+                return (
+                    ", ".join(
+                        f"{_sanitize(m.get('name', ''))}: {float(m.get('value', 0)):,.0f} EGP"
+                        for m in items[:3]
+                    )
+                    or "None"
+                )
 
             current_dt = state.get("current_date") or date.today()
             previous_dt = state.get("previous_date") or (current_dt - timedelta(days=30))

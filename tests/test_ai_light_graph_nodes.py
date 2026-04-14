@@ -20,6 +20,7 @@ from datapulse.ai_light.graph.nodes import (
 
 # ── helpers ───────────────────────────────────────────────────────────────
 
+
 def _state(**kwargs):
     defaults = {
         "insight_type": "summary",
@@ -36,6 +37,7 @@ def _state(**kwargs):
 
 # ── plan_summary ──────────────────────────────────────────────────────────
 
+
 class TestPlanSummary:
     def test_returns_step_trace(self):
         result = plan_summary(_state())
@@ -51,6 +53,7 @@ class TestPlanSummary:
 
 
 # ── plan_anomalies ────────────────────────────────────────────────────────
+
 
 class TestPlanAnomalies:
     def test_returns_step_trace(self):
@@ -71,6 +74,7 @@ class TestPlanAnomalies:
 
 # ── plan_changes ──────────────────────────────────────────────────────────
 
+
 class TestPlanChanges:
     def test_returns_step_trace(self):
         result = plan_changes(_state(insight_type="changes"))
@@ -87,6 +91,7 @@ class TestPlanChanges:
 
 
 # ── validate node ─────────────────────────────────────────────────────────
+
 
 class TestValidate:
     def test_ok_when_parsed_present_and_valid_summary(self):
@@ -162,6 +167,7 @@ class TestValidate:
 
 # ── fallback node ─────────────────────────────────────────────────────────
 
+
 class TestFallback:
     def test_degraded_true(self):
         result = fallback(_state(insight_type="summary", kpi_data={}))
@@ -221,13 +227,19 @@ class TestFallback:
         )
         # Both must return the same set of output keys
         expected_keys = {
-            "narrative", "highlights", "anomalies_list", "deltas", "degraded", "step_trace"
+            "narrative",
+            "highlights",
+            "anomalies_list",
+            "deltas",
+            "degraded",
+            "step_trace",
         }
         assert expected_keys.issubset(fb.keys())
         assert expected_keys.issubset(sy.keys())
 
 
 # ── synthesize node ───────────────────────────────────────────────────────
+
 
 class TestSynthesize:
     def test_summary_extracts_narrative_and_highlights(self):
@@ -261,9 +273,7 @@ class TestSynthesize:
         state = _state(
             insight_type="anomalies",
             llm_parsed_output={
-                "anomalies": [
-                    {"date": "2026-01-05", "description": "x", "severity": "CRITICAL"}
-                ],
+                "anomalies": [{"date": "2026-01-05", "description": "x", "severity": "CRITICAL"}],
                 "narrative": "",
             },
             statistical_analysis={},
@@ -293,6 +303,7 @@ class TestSynthesize:
 
 
 # ── make_fetch_data_node ──────────────────────────────────────────────────
+
 
 class TestFetchDataNode:
     def _make_tools(self, **overrides):
@@ -331,11 +342,13 @@ class TestFetchDataNode:
 
         tools = self._make_tools()
         node = make_fetch_data_node(tools)
-        result = node(_state(
-            insight_type="anomalies",
-            start_date=date(2026, 3, 1),
-            end_date=date(2026, 4, 1),
-        ))
+        result = node(
+            _state(
+                insight_type="anomalies",
+                start_date=date(2026, 3, 1),
+                end_date=date(2026, 4, 1),
+            )
+        )
         tools["get_daily_trend"].assert_called_once()
         tools["get_active_anomaly_alerts"].assert_called_once()
         assert "daily_trend" in result
@@ -346,11 +359,13 @@ class TestFetchDataNode:
 
         tools = self._make_tools()
         node = make_fetch_data_node(tools)
-        result = node(_state(
-            insight_type="changes",
-            current_date=date(2026, 4, 1),
-            previous_date=date(2026, 3, 1),
-        ))
+        result = node(
+            _state(
+                insight_type="changes",
+                current_date=date(2026, 4, 1),
+                previous_date=date(2026, 3, 1),
+            )
+        )
         assert tools["get_kpi_summary"].call_count == 2  # current + previous
         tools["get_top_gainers"].assert_called_once()
         tools["get_top_losers"].assert_called_once()
@@ -360,15 +375,14 @@ class TestFetchDataNode:
     def test_fetch_data_error_appended_to_errors(self):
         from datapulse.ai_light.graph.nodes import make_fetch_data_node
 
-        tools = self._make_tools(
-            get_kpi_summary=MagicMock(side_effect=RuntimeError("DB down"))
-        )
+        tools = self._make_tools(get_kpi_summary=MagicMock(side_effect=RuntimeError("DB down")))
         node = make_fetch_data_node(tools)
         result = node(_state(insight_type="summary"))
         assert any("fetch_data" in e for e in result.get("errors", []))
 
 
 # ── make_analyze_node ─────────────────────────────────────────────────────
+
 
 class TestAnalyzeNode:
     def _mock_client(self, response: str = '{"narrative":"ok","highlights":["H1"]}'):
@@ -387,31 +401,38 @@ class TestAnalyzeNode:
 
         client = self._mock_client()
         node = make_analyze_node(client, self._mock_settings())
-        result = node(_state(
-            insight_type="summary",
-            kpi_data={"today_gross": 100000.0, "mtd_gross": 3000000.0,
-                      "ytd_gross": 30000000.0, "mom_growth_pct": 5.0,
-                      "yoy_growth_pct": 10.0, "daily_transactions": 50,
-                      "daily_customers": 30},
-            top_products={"items": []},
-            top_customers={"items": []},
-        ))
+        result = node(
+            _state(
+                insight_type="summary",
+                kpi_data={
+                    "today_gross": 100000.0,
+                    "mtd_gross": 3000000.0,
+                    "ytd_gross": 30000000.0,
+                    "mom_growth_pct": 5.0,
+                    "yoy_growth_pct": 10.0,
+                    "daily_transactions": 50,
+                    "daily_customers": 30,
+                },
+                top_products={"items": []},
+                top_customers={"items": []},
+            )
+        )
         assert result.get("statistical_analysis") is not None
         assert result.get("llm_parsed_output") is not None
 
     def test_anomalies_builds_stat_analysis(self):
         from datapulse.ai_light.graph.nodes import make_analyze_node
 
-        client = self._mock_client(
-            '{"anomalies":[],"narrative":"all normal"}'
-        )
+        client = self._mock_client('{"anomalies":[],"narrative":"all normal"}')
         node = make_analyze_node(client, self._mock_settings())
         points = [{"period": f"2026-01-{i:02d}", "value": 5000 + i * 100} for i in range(1, 10)]
-        result = node(_state(
-            insight_type="anomalies",
-            daily_trend={"points": points},
-            anomaly_alerts=[],
-        ))
+        result = node(
+            _state(
+                insight_type="anomalies",
+                daily_trend={"points": points},
+                anomaly_alerts=[],
+            )
+        )
         stat = result.get("statistical_analysis", {})
         assert "avg" in stat
         assert "std" in stat
@@ -421,18 +442,25 @@ class TestAnalyzeNode:
 
         client = self._mock_client('{"narrative":"up","key_changes":["sales up"]}')
         node = make_analyze_node(client, self._mock_settings())
-        kpi = {"today_gross": 100000.0, "mtd_gross": 3000000.0, "ytd_gross": 30000000.0,
-               "daily_transactions": 50, "daily_customers": 30}
-        result = node(_state(
-            insight_type="changes",
-            kpi_current={**kpi},
-            kpi_previous={k: v * 0.9 for k, v in kpi.items()},
-            current_date=date(2026, 4, 1),
-            previous_date=date(2026, 3, 1),
-            top_gainers={"gainers": []},
-            top_losers={"losers": []},
-            top_staff={"items": []},
-        ))
+        kpi = {
+            "today_gross": 100000.0,
+            "mtd_gross": 3000000.0,
+            "ytd_gross": 30000000.0,
+            "daily_transactions": 50,
+            "daily_customers": 30,
+        }
+        result = node(
+            _state(
+                insight_type="changes",
+                kpi_current={**kpi},
+                kpi_previous={k: v * 0.9 for k, v in kpi.items()},
+                current_date=date(2026, 4, 1),
+                previous_date=date(2026, 3, 1),
+                top_gainers={"gainers": []},
+                top_losers={"losers": []},
+                top_staff={"items": []},
+            )
+        )
         assert "deltas" in result.get("statistical_analysis", {})
 
     def test_skips_llm_when_not_configured(self):
@@ -441,9 +469,9 @@ class TestAnalyzeNode:
         client = MagicMock()
         client.is_configured = False
         node = make_analyze_node(client, self._mock_settings())
-        result = node(_state(
-            insight_type="summary", kpi_data={}, top_products={}, top_customers={}
-        ))
+        result = node(
+            _state(insight_type="summary", kpi_data={}, top_products={}, top_customers={})
+        )
         assert result.get("llm_parsed_output") is None
         client.chat.assert_not_called()
 
@@ -452,12 +480,20 @@ class TestAnalyzeNode:
 
         client = self._mock_client("this is not json at all")
         node = make_analyze_node(client, self._mock_settings())
-        result = node(_state(
-            insight_type="summary",
-            kpi_data={"today_gross": 1.0, "mtd_gross": 1.0, "ytd_gross": 1.0,
-                      "mom_growth_pct": 0, "yoy_growth_pct": 0,
-                      "daily_transactions": 0, "daily_customers": 0},
-            top_products={"items": []},
-            top_customers={"items": []},
-        ))
+        result = node(
+            _state(
+                insight_type="summary",
+                kpi_data={
+                    "today_gross": 1.0,
+                    "mtd_gross": 1.0,
+                    "ytd_gross": 1.0,
+                    "mom_growth_pct": 0,
+                    "yoy_growth_pct": 0,
+                    "daily_transactions": 0,
+                    "daily_customers": 0,
+                },
+                top_products={"items": []},
+                top_customers={"items": []},
+            )
+        )
         assert any("json_parse" in e for e in (result.get("errors") or []))
