@@ -58,8 +58,9 @@ def _get_graph(settings: Settings):
 
 
 def _params_hash(data: dict) -> str:
-    return hashlib.md5(  # noqa: S324 (non-cryptographic, just cache key)
-        json.dumps(data, sort_keys=True, default=str).encode()
+    return hashlib.md5(  # nosec B324 (non-cryptographic cache key, not used for security)
+        json.dumps(data, sort_keys=True, default=str).encode(),
+        usedforsecurity=False,
     ).hexdigest()[:16]
 
 
@@ -104,9 +105,7 @@ class AILightGraphService:
     ) -> AnomalyReport:
         end = end_date or date.today()
         start = start_date or (end - timedelta(days=30))
-        state = self._build_initial_state(
-            "anomalies", start_date=str(start), end_date=str(end)
-        )
+        state = self._build_initial_state("anomalies", start_date=str(start), end_date=str(end))
         final = self._run_sync(state)
         anomalies = [
             Anomaly(
@@ -274,6 +273,7 @@ class AILightGraphService:
         """Extract tenant_id from the session's LOCAL setting."""
         try:
             from sqlalchemy import text
+
             row = self._session.execute(
                 text("SELECT current_setting('app.tenant_id', true)")
             ).scalar()
@@ -302,8 +302,7 @@ class AILightGraphService:
             "_session": self._session,
             "_openrouter_api_key": self._settings.openrouter_api_key,
             "_openrouter_model": (
-                self._settings.openrouter_agent_model
-                or self._settings.openrouter_model
+                self._settings.openrouter_agent_model or self._settings.openrouter_model
             ),
             "_tools": self._build_tool_registry(),
             "_start_ms": time.monotonic() * 1000,
@@ -328,10 +327,9 @@ class AILightGraphService:
         # Optional tools — only register if the repos are importable
         try:
             from datapulse.analytics.trend_repository import TrendRepository
+
             trend_repo = TrendRepository(self._session)
-            tools["get_daily_trend"] = lambda: _to_dict(
-                trend_repo.get_daily_trend(default_filter)
-            )
+            tools["get_daily_trend"] = lambda: _to_dict(trend_repo.get_daily_trend(default_filter))
             tools["get_monthly_trend"] = lambda: _to_dict(
                 trend_repo.get_monthly_trend(default_filter)
             )
@@ -339,9 +337,9 @@ class AILightGraphService:
             pass
 
         try:
-            from datapulse.anomalies.repository import AnomalyRepository
             from datapulse.anomalies.service import AnomalyService
-            anomaly_svc = AnomalyService(AnomalyRepository(self._session))
+
+            anomaly_svc = AnomalyService(self._session)
             tools["get_active_anomaly_alerts"] = lambda: _to_dict(
                 anomaly_svc.get_active_alerts(limit=20)
             )
@@ -351,6 +349,7 @@ class AILightGraphService:
         try:
             from datapulse.forecasting.repository import ForecastingRepository
             from datapulse.forecasting.service import ForecastingService
+
             fc_svc = ForecastingService(ForecastingRepository(self._session))
             tools["get_forecast_summary"] = lambda: _to_dict(fc_svc.get_forecast_summary())
         except ImportError:
@@ -359,10 +358,9 @@ class AILightGraphService:
         try:
             from datapulse.targets.repository import TargetsRepository
             from datapulse.targets.service import TargetsService
+
             tgt_svc = TargetsService(TargetsRepository(self._session))
-            tools["get_target_vs_actual"] = lambda: _to_dict(
-                tgt_svc.get_target_summary(today.year)
-            )
+            tools["get_target_vs_actual"] = lambda: _to_dict(tgt_svc.get_target_summary(today.year))
         except ImportError:
             pass
 
@@ -386,6 +384,7 @@ class AILightGraphService:
 
     def _to_deep_dive_response(self, run_id: str, final: dict) -> DeepDiveResponse:
         from datapulse.ai_light.models import AIInsightMeta
+
         meta = AIInsightMeta(
             run_id=run_id,
             model=final.get("model_used", ""),

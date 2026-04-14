@@ -65,8 +65,11 @@ def _base_state(insight_type: str = "summary", api_key: str = "") -> dict:
         "_openrouter_model": "openai/gpt-4o-mini",
         "_tools": {
             "get_kpi_summary": lambda: {
-                "today_gross": 50000, "mtd_gross": 1000000, "ytd_gross": 5000000,
-                "daily_transactions": 200, "daily_customers": 150,
+                "today_gross": 50000,
+                "mtd_gross": 1000000,
+                "ytd_gross": 5000000,
+                "daily_transactions": 200,
+                "daily_customers": 150,
             },
             "get_top_products": lambda: {"items": [{"name": "Widget A", "value": 10000}]},
             "get_top_customers": lambda: {"items": [{"name": "Customer X", "value": 5000}]},
@@ -80,6 +83,7 @@ def _base_state(insight_type: str = "summary", api_key: str = "") -> dict:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestGraphCompilation:
     def test_graph_compiles_successfully(self, compiled_graph):
         assert compiled_graph is not None
@@ -89,8 +93,16 @@ class TestGraphCompilation:
         graph_repr = compiled_graph.get_graph()
         node_ids = set(graph_repr.nodes.keys())
         expected = {
-            "cache_check", "route", "plan_summary", "fetch_data", "analyze",
-            "validate", "synthesize", "fallback", "cost_track", "cache_write",
+            "cache_check",
+            "route",
+            "plan_summary",
+            "fetch_data",
+            "analyze",
+            "validate",
+            "synthesize",
+            "fallback",
+            "cost_track",
+            "cache_write",
         }
         assert expected.issubset(node_ids), f"Missing nodes: {expected - node_ids}"
 

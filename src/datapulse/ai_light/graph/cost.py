@@ -18,7 +18,7 @@ log = get_logger(__name__)
 # Cost in USD cents per 1,000 tokens (input / output)
 # Source: openrouter.ai pricing as of 2026-04
 _COST_TABLE: dict[str, tuple[float, float]] = {
-    "openai/gpt-4o-mini": (0.015, 0.060),       # 0.015 / 0.060 per 1k
+    "openai/gpt-4o-mini": (0.015, 0.060),  # 0.015 / 0.060 per 1k
     "openai/gpt-4o": (0.25, 0.75),
     "anthropic/claude-3.5-haiku": (0.025, 0.125),
     "anthropic/claude-3.5-sonnet": (0.15, 0.75),

@@ -43,6 +43,7 @@ _MAX_VALIDATE_RETRIES = 2
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _now_ts() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -94,6 +95,7 @@ def _parse_json(raw: str) -> dict | list:
 # cache_check
 # ---------------------------------------------------------------------------
 
+
 def cache_check(state: dict) -> dict:
     """Check Redis for a cached response.  Returns cache_hit=True and pre-fills
     outputs if found, or cache_hit=False to continue the graph."""
@@ -106,6 +108,7 @@ def cache_check(state: dict) -> dict:
 # route  (no-op — handled by conditional edge in builder)
 # ---------------------------------------------------------------------------
 
+
 def route(state: dict) -> dict:
     return _step("route", "pass")
 
@@ -113,6 +116,7 @@ def route(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 # plan_* nodes
 # ---------------------------------------------------------------------------
+
 
 def plan_summary(state: dict) -> dict:
     return {
@@ -139,9 +143,14 @@ def plan_deep_dive(state: dict) -> dict:
     return {
         **_step("plan_deep_dive", "pass"),
         "planned_tools": [
-            "get_kpi_summary", "get_daily_trend", "get_monthly_trend",
-            "get_top_products", "get_top_customers",
-            "get_active_anomaly_alerts", "get_forecast_summary", "get_target_vs_actual",
+            "get_kpi_summary",
+            "get_daily_trend",
+            "get_monthly_trend",
+            "get_top_products",
+            "get_top_customers",
+            "get_active_anomaly_alerts",
+            "get_forecast_summary",
+            "get_target_vs_actual",
         ],
     }
 
@@ -149,6 +158,7 @@ def plan_deep_dive(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 # fetch_data
 # ---------------------------------------------------------------------------
+
 
 def fetch_data(state: dict) -> dict:
     """Execute pre-planned tool calls using closures bound to the tenant session.
@@ -185,6 +195,7 @@ def fetch_data(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 # analyze
 # ---------------------------------------------------------------------------
+
 
 def analyze(state: dict) -> dict:
     """Run statistical analysis and call OpenRouter for the narrative."""
@@ -262,18 +273,18 @@ def _build_prompt(insight_type: str, fetched: dict, state: dict, stats: dict) ->
             daily_transactions=kpi.get("daily_transactions", 0),
             daily_customers=kpi.get("daily_customers", 0),
             top_products="\n".join(
-                f"  {i+1}. {p.get('name','')}: {p.get('value',0):,.0f} EGP"
+                f"  {i + 1}. {p.get('name', '')}: {p.get('value', 0):,.0f} EGP"
                 for i, p in enumerate(top_products[:5])
             ),
             top_customers="\n".join(
-                f"  {i+1}. {c.get('name','')}: {c.get('value',0):,.0f} EGP"
+                f"  {i + 1}. {c.get('name', '')}: {c.get('value', 0):,.0f} EGP"
                 for i, c in enumerate(top_customers[:5])
             ),
         )
 
     if insight_type == "anomalies":
         daily_text = "\n".join(
-            f"  {p.get('period','')}: {p.get('value',0):,.0f} EGP" for p in points
+            f"  {p.get('period', '')}: {p.get('value', 0):,.0f} EGP" for p in points
         )
         return ANOMALY_PROMPT.format(
             daily_data=daily_text or "(no data)",
@@ -307,6 +318,7 @@ def _build_prompt(insight_type: str, fetched: dict, state: dict, stats: dict) ->
 # ---------------------------------------------------------------------------
 # validate
 # ---------------------------------------------------------------------------
+
 
 def validate(state: dict) -> dict:
     """Validate LLM output against the Pydantic schema for this insight type.
@@ -345,6 +357,7 @@ def validate(state: dict) -> dict:
 # fallback
 # ---------------------------------------------------------------------------
 
+
 def fallback(state: dict) -> dict:
     """Stats-only narrative when LLM validation exhausted or circuit open."""
     stats = state.get("statistical_analysis") or {}
@@ -373,6 +386,7 @@ def fallback(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 # synthesize  (Phase D: interrupt point for HITL)
 # ---------------------------------------------------------------------------
+
 
 def synthesize(state: dict) -> dict:
     """Compose the final response from validated LLM output.
@@ -406,6 +420,7 @@ def synthesize(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 # cost_track
 # ---------------------------------------------------------------------------
+
 
 def cost_track(state: dict) -> dict:
     """Write an ai_invocations row (best-effort; never raises)."""
@@ -444,6 +459,7 @@ def cost_track(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 # cache_write
 # ---------------------------------------------------------------------------
+
 
 def cache_write(state: dict) -> dict:
     """Write result to Redis (delegated to graph_service; node is a no-op marker)."""

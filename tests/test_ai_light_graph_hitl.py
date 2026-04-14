@@ -107,6 +107,7 @@ def client_approved() -> TestClient:
 # 1. HITL flow: POST deep-dive → 202 Draft → GET review → POST approve
 # ---------------------------------------------------------------------------
 
+
 class TestHITLFlow:
     def test_post_deep_dive_require_review_returns_202(self, client_hitl: TestClient):
         resp = client_hitl.post(
@@ -187,6 +188,7 @@ class TestHITLFlow:
 # 2. Non-HITL deep-dive (synchronous, no review)
 # ---------------------------------------------------------------------------
 
+
 class TestDeepDiveSync:
     def test_post_deep_dive_returns_200_when_no_review(self, client_approved: TestClient):
         resp = client_approved.post(
@@ -225,6 +227,7 @@ class TestDeepDiveSync:
 # 3. Checkpoint persistence — mock PostgresSaver behaviour
 # ---------------------------------------------------------------------------
 
+
 class TestCheckpointPersistence:
     def test_get_review_after_restart_reads_from_checkpointer(self):
         """Simulate a server restart by creating a new service instance pointing to
@@ -255,12 +258,19 @@ class TestCheckpointPersistence:
 # 4. SSE streaming — assert event order
 # ---------------------------------------------------------------------------
 
+
 class TestSSEStreaming:
     def test_summary_stream_emits_events(self):
         async def _mock_stream(insight_type, **kwargs):
             nodes = [
-                "cache_check", "route", "plan_summary", "fetch_data",
-                "analyze", "validate", "synthesize", "cost_track",
+                "cache_check",
+                "route",
+                "plan_summary",
+                "fetch_data",
+                "analyze",
+                "validate",
+                "synthesize",
+                "cost_track",
             ]
             for node in nodes:
                 yield node, {"status": "done"}
@@ -321,10 +331,6 @@ class TestSSEStreaming:
             assert response.status_code == 200
             content = b"".join(response.iter_bytes()).decode()
 
-        events = [
-            json.loads(line[6:])
-            for line in content.split("\n")
-            if line.startswith("data: ")
-        ]
+        events = [json.loads(line[6:]) for line in content.split("\n") if line.startswith("data: ")]
         statuses = {e["status"] for e in events}
         assert "running" in statuses or "complete" in statuses

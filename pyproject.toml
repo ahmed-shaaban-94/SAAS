@@ -39,6 +39,8 @@ dependencies = [
     "reportlab>=4.0,<5",
     "python-multipart>=0.0.7,<1",
     "prometheus-fastapi-instrumentator>=6.0,<8",
+    "langgraph>=0.2,<1",
+    "langgraph-checkpoint>=1.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -121,6 +123,7 @@ module = [
     "langchain_core.*",
     "langchain_openai.*",
     "langgraph.*",
+    "langgraph_checkpoint.*",
 ]
 ignore_missing_imports = true
 

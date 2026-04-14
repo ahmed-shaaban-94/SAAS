@@ -25,6 +25,7 @@ from datapulse.ai_light.graph.nodes import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _base_state(**overrides) -> dict:
     return {
         "tenant_id": "1",
@@ -44,6 +45,7 @@ def _base_state(**overrides) -> dict:
 # cache_check
 # ---------------------------------------------------------------------------
 
+
 class TestCacheCheck:
     def test_returns_cache_hit_false(self):
         result = cache_check(_base_state())
@@ -54,6 +56,7 @@ class TestCacheCheck:
 # ---------------------------------------------------------------------------
 # plan_* nodes
 # ---------------------------------------------------------------------------
+
 
 class TestPlanNodes:
     def test_plan_summary(self):
@@ -78,6 +81,7 @@ class TestPlanNodes:
 # ---------------------------------------------------------------------------
 # fetch_data
 # ---------------------------------------------------------------------------
+
 
 class TestFetchData:
     def test_calls_planned_tools(self):
@@ -109,6 +113,7 @@ class TestFetchData:
 # analyze
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyze:
     def test_no_api_key_returns_no_output(self):
         state = _base_state(_openrouter_api_key="", fetched_data={})
@@ -139,6 +144,7 @@ class TestAnalyze:
 # validate
 # ---------------------------------------------------------------------------
 
+
 class TestValidate:
     def test_valid_summary_output(self):
         state = _base_state(
@@ -168,6 +174,7 @@ class TestValidate:
 # fallback
 # ---------------------------------------------------------------------------
 
+
 class TestFallback:
     def test_returns_degraded_narrative(self):
         state = _base_state(
@@ -187,6 +194,7 @@ class TestFallback:
 # ---------------------------------------------------------------------------
 # synthesize (Phase D: HITL)
 # ---------------------------------------------------------------------------
+
 
 class TestSynthesize:
     def test_composes_from_parsed_output(self):
@@ -222,6 +230,7 @@ class TestSynthesize:
 # ---------------------------------------------------------------------------
 # cost_track
 # ---------------------------------------------------------------------------
+
 
 class TestCostTrack:
     def test_skips_when_no_session(self):

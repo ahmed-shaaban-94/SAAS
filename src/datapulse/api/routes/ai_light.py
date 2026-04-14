@@ -19,7 +19,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -54,9 +54,10 @@ ServiceDep = Annotated[AILightService, Depends(get_ai_light_service)]
 # SSE helpers
 # ---------------------------------------------------------------------------
 
+
 def _sse_event(node: str, status: str, data: dict | None = None) -> str:
     """Format a single Server-Sent Event."""
-    payload = {"node": node, "status": status}
+    payload: dict[str, Any] = {"node": node, "status": status}
     if data:
         payload["partial_state"] = data
     return f"data: {json.dumps(payload)}\n\n"
@@ -81,6 +82,7 @@ async def _stream_insight(service, insight_type: str, **params) -> AsyncIterator
 # Status
 # ---------------------------------------------------------------------------
 
+
 @router.get("/status")
 @limiter.limit("20/minute")
 async def get_status(request: Request, service: ServiceDep) -> dict:
@@ -91,6 +93,7 @@ async def get_status(request: Request, service: ServiceDep) -> dict:
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
+
 
 @router.get("/summary", response_model=AISummary)
 @limiter.limit("20/minute")
@@ -124,6 +127,7 @@ async def get_summary(
 # ---------------------------------------------------------------------------
 # Anomalies
 # ---------------------------------------------------------------------------
+
 
 @router.get("/anomalies", response_model=AnomalyReport)
 @limiter.limit("20/minute")
@@ -161,6 +165,7 @@ async def get_anomalies(
 # Changes
 # ---------------------------------------------------------------------------
 
+
 @router.get("/changes", response_model=ChangeNarrative)
 @limiter.limit("20/minute")
 async def get_changes(
@@ -196,6 +201,7 @@ async def get_changes(
 # ---------------------------------------------------------------------------
 # Deep-dive (Phase C/D)
 # ---------------------------------------------------------------------------
+
 
 @router.post("/deep-dive", status_code=200)
 @limiter.limit("10/minute")
@@ -238,6 +244,7 @@ async def post_deep_dive(
         if isinstance(result, DeepDiveDraft):
             # HITL: paused before synthesize
             from fastapi.responses import JSONResponse
+
             return JSONResponse(status_code=202, content=result.model_dump(mode="json"))
         return result
     except Exception as exc:
@@ -248,6 +255,7 @@ async def post_deep_dive(
 # ---------------------------------------------------------------------------
 # HITL review endpoints (Phase D)
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/review/{run_id}",
@@ -275,7 +283,7 @@ async def get_review(
         raise HTTPException(
             status_code=404,
             detail=f"No pending review found for run_id={run_id!r}. "
-                   "The run may have already completed or expired.",
+            "The run may have already completed or expired.",
         )
     return draft
 

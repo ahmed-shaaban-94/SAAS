@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from langgraph.graph.message import add_messages  # noqa: F401 (re-used pattern reference)
-
 
 def _append(existing: list | None, new: list) -> list:
     """Reducer: append new items to an existing list; never replace."""

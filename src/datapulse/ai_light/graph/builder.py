@@ -109,38 +109,54 @@ def build_graph(settings: Settings):
     graph.add_edge(START, "cache_check")
 
     # After cache_check: hit → END, miss → route
-    graph.add_conditional_edges("cache_check", cache_or_continue, {
-        "__end__": END,
-        "route": "route",
-    })
+    graph.add_conditional_edges(
+        "cache_check",
+        cache_or_continue,
+        {
+            "__end__": END,
+            "route": "route",
+        },
+    )
 
     # After route: branch by insight_type
-    graph.add_conditional_edges("route", route_by_type, {
-        "plan_summary": "plan_summary",
-        "plan_anomalies": "plan_anomalies",
-        "plan_changes": "plan_changes",
-        "plan_deep_dive": "plan_deep_dive",
-    })
+    graph.add_conditional_edges(
+        "route",
+        route_by_type,
+        {
+            "plan_summary": "plan_summary",
+            "plan_anomalies": "plan_anomalies",
+            "plan_changes": "plan_changes",
+            "plan_deep_dive": "plan_deep_dive",
+        },
+    )
 
     # All plan_* → fetch_data
     for plan_node in ("plan_summary", "plan_anomalies", "plan_changes", "plan_deep_dive"):
         graph.add_edge(plan_node, "fetch_data")
 
     # fetch_data → analyze OR fallback (circuit breaker)
-    graph.add_conditional_edges("fetch_data", circuit_breaker_check, {
-        "analyze": "analyze",
-        "fallback": "fallback",
-    })
+    graph.add_conditional_edges(
+        "fetch_data",
+        circuit_breaker_check,
+        {
+            "analyze": "analyze",
+            "fallback": "fallback",
+        },
+    )
 
     # analyze → validate
     graph.add_edge("analyze", "validate")
 
     # validate → synthesize | analyze (retry) | fallback
-    graph.add_conditional_edges("validate", validate_or_retry, {
-        "synthesize": "synthesize",
-        "analyze": "analyze",
-        "fallback": "fallback",
-    })
+    graph.add_conditional_edges(
+        "validate",
+        validate_or_retry,
+        {
+            "synthesize": "synthesize",
+            "analyze": "analyze",
+            "fallback": "fallback",
+        },
+    )
 
     # synthesize / fallback → cost_track → cache_write → END
     graph.add_edge("synthesize", "cost_track")
