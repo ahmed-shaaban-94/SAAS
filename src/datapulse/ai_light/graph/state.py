@@ -13,6 +13,10 @@ def _append(left: list | None, right: list | None) -> list:
     return (left or []) + (right or [])
 
 
+# Alias used by tests
+_append_reducer = _append
+
+
 class AILightState(TypedDict, total=False):
     """State schema for the AI Light LangGraph.
 
