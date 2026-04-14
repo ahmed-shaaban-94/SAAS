@@ -6,6 +6,7 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
+    from datapulse.expiry.service import ExpiryService
     from datapulse.inventory.service import InventoryService
 
 import structlog
@@ -272,3 +273,13 @@ def get_inventory_service(
 
     repo = InventoryRepository(session)
     return InventoryService(repo)
+
+
+def get_expiry_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> ExpiryService:
+    from datapulse.expiry.repository import ExpiryRepository
+    from datapulse.expiry.service import ExpiryService
+
+    repo = ExpiryRepository(session)
+    return ExpiryService(repo)

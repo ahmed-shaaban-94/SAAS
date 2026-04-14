@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: feat_expiry_alerts
+    description: >
+      Batch expiry alert feature set.
+      Grain: one row per batch with an alert bucket derived from days_to_expiry.
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, batch_key]
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: batch_key
+        tests: [not_null]
+      - name: drug_code
+        tests: [not_null]
+      - name: drug_name
+        tests: [not_null]
+      - name: site_code
+        tests: [not_null]
+      - name: batch_number
+        tests: [not_null]
+      - name: current_quantity
+        tests: [not_null]
+      - name: days_to_expiry
+        tests: [not_null]
+      - name: alert_level
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['expired', 'critical', 'warning', 'caution', 'safe']
