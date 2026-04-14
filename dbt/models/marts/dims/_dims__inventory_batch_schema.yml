@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: dim_batch
+    description: >
+      Batch/lot dimension (SCD Type 1).
+      Grain: one row per (tenant_id, drug_code, site_code, batch_number).
+      Includes lifecycle status, expiry metrics, and an Unknown member at key=-1 per tenant.
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, batch_key]
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, drug_code, site_code, batch_number]
+    columns:
+      - name: batch_key
+        description: "Surrogate key (INT). -1 = Unknown per tenant."
+        tests: [not_null]
+      - name: tenant_id
+        tests: [not_null]
+      - name: drug_code
+        tests: [not_null]
+      - name: site_code
+        tests: [not_null]
+      - name: batch_number
+        tests: [not_null]
+      - name: expiry_date
+        description: "Batch expiry date"
+      - name: current_quantity
+        description: "Current quantity tracked on the batch master"
+        tests: [not_null]
+      - name: status
+        description: "Stored lifecycle status from bronze"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['active', 'near_expiry', 'expired', 'quarantined', 'written_off']
+      - name: computed_status
+        description: "Derived current status based on stored status and days_to_expiry"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['active', 'near_expiry', 'expired', 'quarantined', 'written_off']

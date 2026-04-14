@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
+
+if TYPE_CHECKING:
+    from datapulse.expiry.service import ExpiryService
+    from datapulse.inventory.service import InventoryService
 
 import structlog
 from fastapi import Depends
@@ -277,3 +281,23 @@ def get_supplier_service(
 ) -> SuppliersService:
     """Factory for SuppliersService — wires repository to service."""
     return SuppliersService(SuppliersRepository(session))
+
+
+def get_inventory_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> InventoryService:
+    from datapulse.inventory.repository import InventoryRepository
+    from datapulse.inventory.service import InventoryService
+
+    repo = InventoryRepository(session)
+    return InventoryService(repo)
+
+
+def get_expiry_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> ExpiryService:
+    from datapulse.expiry.repository import ExpiryRepository
+    from datapulse.expiry.service import ExpiryService
+
+    repo = ExpiryRepository(session)
+    return ExpiryService(repo)

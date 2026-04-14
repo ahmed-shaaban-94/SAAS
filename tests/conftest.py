@@ -92,6 +92,8 @@ def pytest_configure(config):
                 "purchase_orders:write",
                 "suppliers:read",
                 "suppliers:write",
+                "inventory:read",
+                "inventory:write",
             },
             sector_ids=[],
             is_admin=True,

@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: fct_batch_status
+    description: >
+      Batch lifecycle event fact table.
+      Grain: one event per batch milestone (received, near_expiry, expired, quarantined, written_off).
+    columns:
+      - name: event_key
+        description: "Deterministic 64-bit MD5 surrogate"
+        tests: [not_null, unique]
+      - name: tenant_id
+        tests: [not_null]
+      - name: batch_key
+        description: "FK to dim_batch"
+        tests: [not_null]
+      - name: product_key
+        description: "FK to dim_product"
+        tests: [not_null]
+      - name: site_key
+        description: "FK to dim_site"
+        tests: [not_null]
+      - name: date_key
+        description: "FK to dim_date"
+        tests: [not_null]
+      - name: event_date
+        description: "Date the lifecycle event occurs"
+        tests: [not_null]
+      - name: event_type
+        description: "Lifecycle event type"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['received', 'near_expiry', 'expired', 'quarantined', 'written_off']
