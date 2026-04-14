@@ -124,11 +124,13 @@ def test_discover_prevents_path_traversal(tmp_path: Path):
 
 def test_read_adds_source_file_column(tmp_path: Path):
     source = tmp_path / "batches_Q1.xlsx"
-    df_in = pl.DataFrame({
-        "Drug Code": ["D001"],
-        "Batch Number": ["B001"],
-        "Expiry Date": ["2025-06-01"],
-    })
+    df_in = pl.DataFrame(
+        {
+            "Drug Code": ["D001"],
+            "Batch Number": ["B001"],
+            "Expiry Date": ["2025-06-01"],
+        }
+    )
 
     loader = ExcelBatchesLoader(tmp_path)
     with patch("datapulse.bronze.batches_loader.pl.read_excel", return_value=df_in):
@@ -144,13 +146,15 @@ def test_read_adds_source_file_column(tmp_path: Path):
 
 
 def _make_valid_df() -> pl.DataFrame:
-    return pl.DataFrame({
-        "Drug Code": ["D001", "D002"],
-        "Batch Number": ["B001", "B002"],
-        "Expiry Date": ["2025-06-01", "2025-12-01"],
-        "Site Code": ["S01", "S01"],
-        "Current Quantity": [100.0, 50.0],
-    })
+    return pl.DataFrame(
+        {
+            "Drug Code": ["D001", "D002"],
+            "Batch Number": ["B001", "B002"],
+            "Expiry Date": ["2025-06-01", "2025-12-01"],
+            "Site Code": ["S01", "S01"],
+            "Current Quantity": [100.0, 50.0],
+        }
+    )
 
 
 def test_validate_renames_columns(loader: ExcelBatchesLoader):
@@ -162,69 +166,83 @@ def test_validate_renames_columns(loader: ExcelBatchesLoader):
 
 
 def test_validate_missing_drug_code_raises(loader: ExcelBatchesLoader):
-    df = pl.DataFrame({
-        "Batch Number": ["B001"],
-        "Expiry Date": ["2025-06-01"],
-    })
+    df = pl.DataFrame(
+        {
+            "Batch Number": ["B001"],
+            "Expiry Date": ["2025-06-01"],
+        }
+    )
     with pytest.raises(ValueError, match="drug_code"):
         loader.validate(df)
 
 
 def test_validate_missing_batch_number_raises(loader: ExcelBatchesLoader):
-    df = pl.DataFrame({
-        "Drug Code": ["D001"],
-        "Expiry Date": ["2025-06-01"],
-    })
+    df = pl.DataFrame(
+        {
+            "Drug Code": ["D001"],
+            "Expiry Date": ["2025-06-01"],
+        }
+    )
     with pytest.raises(ValueError, match="batch_number"):
         loader.validate(df)
 
 
 def test_validate_missing_expiry_date_raises(loader: ExcelBatchesLoader):
-    df = pl.DataFrame({
-        "Drug Code": ["D001"],
-        "Batch Number": ["B001"],
-    })
+    df = pl.DataFrame(
+        {
+            "Drug Code": ["D001"],
+            "Batch Number": ["B001"],
+        }
+    )
     with pytest.raises(ValueError, match="expiry_date"):
         loader.validate(df)
 
 
 def test_validate_null_drug_code_raises(loader: ExcelBatchesLoader):
-    df = pl.DataFrame({
-        "Drug Code": [None],
-        "Batch Number": ["B001"],
-        "Expiry Date": ["2025-06-01"],
-    })
+    df = pl.DataFrame(
+        {
+            "Drug Code": [None],
+            "Batch Number": ["B001"],
+            "Expiry Date": ["2025-06-01"],
+        }
+    )
     with pytest.raises(ValueError, match="drug_code, batch_number, and expiry_date"):
         loader.validate(df)
 
 
 def test_validate_null_batch_number_raises(loader: ExcelBatchesLoader):
-    df = pl.DataFrame({
-        "Drug Code": ["D001"],
-        "Batch Number": [None],
-        "Expiry Date": ["2025-06-01"],
-    })
+    df = pl.DataFrame(
+        {
+            "Drug Code": ["D001"],
+            "Batch Number": [None],
+            "Expiry Date": ["2025-06-01"],
+        }
+    )
     with pytest.raises(ValueError, match="drug_code, batch_number, and expiry_date"):
         loader.validate(df)
 
 
 def test_validate_null_expiry_date_raises(loader: ExcelBatchesLoader):
-    df = pl.DataFrame({
-        "Drug Code": ["D001"],
-        "Batch Number": ["B001"],
-        "Expiry Date": [None],
-    })
+    df = pl.DataFrame(
+        {
+            "Drug Code": ["D001"],
+            "Batch Number": ["B001"],
+            "Expiry Date": [None],
+        }
+    )
     with pytest.raises(ValueError, match="drug_code, batch_number, and expiry_date"):
         loader.validate(df)
 
 
 def test_validate_partial_null_raises(loader: ExcelBatchesLoader):
     """If any row has a null required field, validation must fail."""
-    df = pl.DataFrame({
-        "Drug Code": ["D001", None],
-        "Batch Number": ["B001", "B002"],
-        "Expiry Date": ["2025-06-01", "2025-12-01"],
-    })
+    df = pl.DataFrame(
+        {
+            "Drug Code": ["D001", None],
+            "Batch Number": ["B001", "B002"],
+            "Expiry Date": ["2025-06-01", "2025-12-01"],
+        }
+    )
     with pytest.raises(ValueError):
         loader.validate(df)
 

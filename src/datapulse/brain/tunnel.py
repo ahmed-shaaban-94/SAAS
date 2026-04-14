@@ -55,10 +55,14 @@ def _ssh_base_args(ssh_user: str, ssh_host: str, ssh_key: str) -> list[str]:
     """Return common SSH args shared by the inspect and tunnel invocations."""
     return [
         "ssh",
-        "-i", ssh_key,
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "BatchMode=yes",
-        "-o", "ConnectTimeout=10",
+        "-i",
+        ssh_key,
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
         f"{ssh_user}@{ssh_host}",
     ]
 
@@ -112,9 +116,7 @@ def ensure_tunnel() -> int | None:
         return _tunnel_port
 
     ssh_user = os.environ.get("BRAIN_SSH_USER", "root")
-    ssh_key = os.path.expanduser(
-        os.environ.get("BRAIN_SSH_KEY", "~/.ssh/id_ed25519")
-    )
+    ssh_key = os.path.expanduser(os.environ.get("BRAIN_SSH_KEY", "~/.ssh/id_ed25519"))
     container = os.environ.get("BRAIN_DB_CONTAINER", "datapulse-db")
     remote_port = 5432
     local_port = _free_port()
@@ -127,11 +129,15 @@ def ensure_tunnel() -> int | None:
     _tunnel_proc = subprocess.Popen(
         _ssh_base_args(ssh_user, ssh_host, ssh_key)[:-1]  # drop the host arg
         + [
-            "-L", f"{local_port}:{container_ip}:{remote_port}",
+            "-L",
+            f"{local_port}:{container_ip}:{remote_port}",
             "-N",
-            "-o", "ExitOnForwardFailure=yes",
-            "-o", "ServerAliveInterval=30",
-            "-o", "ServerAliveCountMax=3",
+            "-o",
+            "ExitOnForwardFailure=yes",
+            "-o",
+            "ServerAliveInterval=30",
+            "-o",
+            "ServerAliveCountMax=3",
             f"{ssh_user}@{ssh_host}",
         ],
         stdout=subprocess.DEVNULL,
@@ -161,6 +167,7 @@ def tunnel_database_url() -> str | None:
     """
     try:
         from dotenv import load_dotenv
+
         load_dotenv()
     except ImportError:
         pass
@@ -177,4 +184,5 @@ def tunnel_database_url() -> str | None:
         return None  # Fall through to direct URL path
 
     from urllib.parse import quote_plus
+
     return f"postgresql://{user}:{quote_plus(password)}@127.0.0.1:{port}/{db_name}"
