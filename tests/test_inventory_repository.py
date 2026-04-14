@@ -37,11 +37,18 @@ def _mock_rows(*dicts) -> MagicMock:
 def test_get_stock_levels_no_filters(repo, mock_session):
     mock_session.execute.return_value = _mock_rows(
         {
-            "product_key": 1, "drug_code": "D001", "drug_name": "Paracetamol",
-            "drug_brand": "Generic", "site_key": 1, "site_code": "S01",
-            "site_name": "Main", "current_quantity": Decimal("100"),
-            "total_received": Decimal("200"), "total_dispensed": Decimal("100"),
-            "total_wastage": Decimal("0"), "last_movement_date": None,
+            "product_key": 1,
+            "drug_code": "D001",
+            "drug_name": "Paracetamol",
+            "drug_brand": "Generic",
+            "site_key": 1,
+            "site_code": "S01",
+            "site_name": "Main",
+            "current_quantity": Decimal("100"),
+            "total_received": Decimal("200"),
+            "total_dispensed": Decimal("100"),
+            "total_wastage": Decimal("0"),
+            "last_movement_date": None,
         }
     )
     result = repo.get_stock_levels(InventoryFilter())
@@ -69,11 +76,18 @@ def test_get_stock_levels_with_drug_filter(repo, mock_session):
 def test_get_stock_level_by_drug(repo, mock_session):
     mock_session.execute.return_value = _mock_rows(
         {
-            "product_key": 1, "drug_code": "D001", "drug_name": "Paracetamol",
-            "drug_brand": "Generic", "site_key": 1, "site_code": "S01",
-            "site_name": "Main", "current_quantity": Decimal("50"),
-            "total_received": Decimal("100"), "total_dispensed": Decimal("50"),
-            "total_wastage": Decimal("0"), "last_movement_date": date(2025, 1, 10),
+            "product_key": 1,
+            "drug_code": "D001",
+            "drug_name": "Paracetamol",
+            "drug_brand": "Generic",
+            "site_key": 1,
+            "site_code": "S01",
+            "site_name": "Main",
+            "current_quantity": Decimal("50"),
+            "total_received": Decimal("100"),
+            "total_dispensed": Decimal("50"),
+            "total_wastage": Decimal("0"),
+            "last_movement_date": date(2025, 1, 10),
         }
     )
     result = repo.get_stock_level_by_drug("D001", InventoryFilter())
@@ -91,10 +105,16 @@ def test_get_stock_level_by_drug(repo, mock_session):
 def test_get_movements_no_filters(repo, mock_session):
     mock_session.execute.return_value = _mock_rows(
         {
-            "movement_key": 1, "movement_date": date(2025, 1, 1),
-            "movement_type": "receipt", "drug_code": "D001", "drug_name": "Paracetamol",
-            "site_code": "S01", "batch_number": None, "quantity": Decimal("100"),
-            "unit_cost": Decimal("5.0"), "reference": "REF001",
+            "movement_key": 1,
+            "movement_date": date(2025, 1, 1),
+            "movement_type": "receipt",
+            "drug_code": "D001",
+            "drug_name": "Paracetamol",
+            "site_code": "S01",
+            "batch_number": None,
+            "quantity": Decimal("100"),
+            "unit_cost": Decimal("5.0"),
+            "reference": "REF001",
         }
     )
     result = repo.get_movements(InventoryFilter())
@@ -124,8 +144,11 @@ def test_get_movements_by_drug(repo, mock_session):
 def test_get_valuation(repo, mock_session):
     mock_session.execute.return_value = _mock_rows(
         {
-            "product_key": 1, "drug_code": "D001", "drug_name": "Paracetamol",
-            "site_key": 1, "site_code": "S01",
+            "product_key": 1,
+            "drug_code": "D001",
+            "drug_name": "Paracetamol",
+            "site_key": 1,
+            "site_code": "S01",
             "weighted_avg_cost": Decimal("4.75"),
             "current_quantity": Decimal("200"),
             "stock_value": Decimal("950.00"),
@@ -151,10 +174,14 @@ def test_get_valuation_by_drug(repo, mock_session):
 def test_get_reorder_alerts(repo, mock_session):
     mock_session.execute.return_value = _mock_rows(
         {
-            "product_key": 1, "site_key": 1,
-            "drug_code": "D001", "drug_name": "Paracetamol",
-            "site_code": "S01", "current_quantity": Decimal("5"),
-            "reorder_point": Decimal("20"), "reorder_quantity": Decimal("100"),
+            "product_key": 1,
+            "site_key": 1,
+            "drug_code": "D001",
+            "drug_name": "Paracetamol",
+            "site_code": "S01",
+            "current_quantity": Decimal("5"),
+            "reorder_point": Decimal("20"),
+            "reorder_quantity": Decimal("100"),
         }
     )
     result = repo.get_reorder_alerts(InventoryFilter())
@@ -170,10 +197,16 @@ def test_get_reorder_alerts(repo, mock_session):
 def test_get_counts(repo, mock_session):
     mock_session.execute.return_value = _mock_rows(
         {
-            "count_key": 1, "tenant_id": 1, "product_key": 1, "site_key": 1,
-            "count_date": date(2025, 6, 1), "drug_code": "D001",
-            "site_code": "S01", "batch_number": None,
-            "counted_quantity": Decimal("95"), "counted_by": "John",
+            "count_key": 1,
+            "tenant_id": 1,
+            "product_key": 1,
+            "site_key": 1,
+            "count_date": date(2025, 6, 1),
+            "drug_code": "D001",
+            "site_code": "S01",
+            "batch_number": None,
+            "counted_quantity": Decimal("95"),
+            "counted_by": "John",
         }
     )
     result = repo.get_counts(InventoryFilter())
@@ -197,11 +230,17 @@ def test_get_counts_with_date_range(repo, mock_session):
 def test_get_reconciliation(repo, mock_session):
     mock_session.execute.return_value = _mock_rows(
         {
-            "product_key": 1, "site_key": 1, "count_date": date(2025, 6, 1),
-            "drug_code": "D001", "drug_name": "Paracetamol",
-            "site_code": "S01", "site_name": "Main Pharmacy",
-            "counted_quantity": Decimal("95"), "calculated_quantity": Decimal("100"),
-            "variance": Decimal("-5"), "variance_pct": Decimal("-0.05"),
+            "product_key": 1,
+            "site_key": 1,
+            "count_date": date(2025, 6, 1),
+            "drug_code": "D001",
+            "drug_name": "Paracetamol",
+            "site_code": "S01",
+            "site_name": "Main Pharmacy",
+            "counted_quantity": Decimal("95"),
+            "calculated_quantity": Decimal("100"),
+            "variance": Decimal("-5"),
+            "variance_pct": Decimal("-0.05"),
         }
     )
     result = repo.get_reconciliation(InventoryFilter())

@@ -34,7 +34,7 @@ def _cache_key(method: str, params: dict[str, Any] | None = None) -> str:
     prefix = f"dp:{version}:{tenant_segment}:inv"
     if params:
         raw = json.dumps(params, sort_keys=True, default=str)
-        h = hashlib.md5(raw.encode()).hexdigest()[:12]  # noqa: S324
+        h = hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()[:12]  # noqa: S324
         return f"{prefix}:{method}:{h}"
     return f"{prefix}:{method}"
 

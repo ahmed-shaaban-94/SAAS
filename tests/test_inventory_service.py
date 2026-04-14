@@ -47,6 +47,7 @@ def _stock_level() -> StockLevel:
 
 def _movement() -> StockMovement:
     from datetime import date
+
     return StockMovement(
         movement_key=1,
         movement_date=date(2025, 3, 1),
@@ -107,9 +108,13 @@ def test_get_movements_by_drug_calls_repo(service, mock_repo):
 def test_get_valuation_calls_repo(service, mock_repo):
     mock_repo.get_valuation.return_value = [
         StockValuation(
-            product_key=1, drug_code="D001", drug_name="Para",
-            site_key=1, site_code="S01",
-            weighted_avg_cost=Decimal("5"), current_quantity=Decimal("100"),
+            product_key=1,
+            drug_code="D001",
+            drug_name="Para",
+            site_key=1,
+            site_code="S01",
+            weighted_avg_cost=Decimal("5"),
+            current_quantity=Decimal("100"),
             stock_value=Decimal("500"),
         )
     ]
@@ -130,8 +135,12 @@ def test_get_counts_calls_repo(service, mock_repo):
 
     mock_repo.get_counts.return_value = [
         InventoryCount(
-            count_key=1, tenant_id=1, product_key=1, site_key=1,
-            count_date=date(2025, 6, 1), counted_quantity=Decimal("95"),
+            count_key=1,
+            tenant_id=1,
+            product_key=1,
+            site_key=1,
+            count_date=date(2025, 6, 1),
+            counted_quantity=Decimal("95"),
         )
     ]
     result = service.get_counts(InventoryFilter())
@@ -145,9 +154,15 @@ def test_get_reconciliation_calls_repo(service, mock_repo):
 
     mock_repo.get_reconciliation.return_value = [
         StockReconciliation(
-            product_key=1, site_key=1, count_date=date(2025, 6, 1),
-            drug_code="D001", drug_name="Para", site_code="S01", site_name="Main",
-            counted_quantity=Decimal("95"), calculated_quantity=Decimal("100"),
+            product_key=1,
+            site_key=1,
+            count_date=date(2025, 6, 1),
+            drug_code="D001",
+            drug_name="Para",
+            site_code="S01",
+            site_name="Main",
+            counted_quantity=Decimal("95"),
+            calculated_quantity=Decimal("100"),
             variance=Decimal("-5"),
         )
     ]
@@ -194,8 +209,11 @@ def test_get_valuation_cache_hit(service, mock_repo):
 def test_create_adjustment_calls_repo(service, mock_repo):
     mock_repo.get_reorder_alerts.return_value = []
     req = AdjustmentRequest(
-        drug_code="D001", site_code="S01",
-        adjustment_type="damage", quantity=Decimal("-5"), reason="Test",
+        drug_code="D001",
+        site_code="S01",
+        adjustment_type="damage",
+        quantity=Decimal("-5"),
+        reason="Test",
     )
     service.create_adjustment(tenant_id=1, request=req)
     mock_repo.create_adjustment.assert_called_once_with(1, req)
@@ -205,8 +223,11 @@ def test_create_adjustment_triggers_reorder_check_for_damage(service, mock_repo)
     """Negative/damage adjustments trigger a reorder alert check."""
     mock_repo.get_reorder_alerts.return_value = []
     req = AdjustmentRequest(
-        drug_code="D001", site_code="S01",
-        adjustment_type="damage", quantity=Decimal("-10"), reason="Broken",
+        drug_code="D001",
+        site_code="S01",
+        adjustment_type="damage",
+        quantity=Decimal("-10"),
+        reason="Broken",
     )
     service.create_adjustment(tenant_id=1, request=req)
     mock_repo.get_reorder_alerts.assert_called_once()
@@ -216,8 +237,11 @@ def test_create_adjustment_logs_reorder_warning(service, mock_repo):
     """If post-adjustment stock is below reorder point, warning is logged."""
     mock_repo.get_reorder_alerts.return_value = [_alert()]  # site_code matches
     req = AdjustmentRequest(
-        drug_code="D001", site_code="S01",
-        adjustment_type="shrinkage", quantity=Decimal("-20"), reason="Theft",
+        drug_code="D001",
+        site_code="S01",
+        adjustment_type="shrinkage",
+        quantity=Decimal("-20"),
+        reason="Theft",
     )
     with patch("datapulse.inventory.service.log") as mock_log:
         service.create_adjustment(tenant_id=1, request=req)
@@ -227,8 +251,11 @@ def test_create_adjustment_logs_reorder_warning(service, mock_repo):
 def test_create_adjustment_no_reorder_check_for_positive(service, mock_repo):
     """Positive adjustments (correction + qty) do not trigger reorder check."""
     req = AdjustmentRequest(
-        drug_code="D001", site_code="S01",
-        adjustment_type="correction", quantity=Decimal("10"), reason="Audit",
+        drug_code="D001",
+        site_code="S01",
+        adjustment_type="correction",
+        quantity=Decimal("10"),
+        reason="Audit",
     )
     service.create_adjustment(tenant_id=1, request=req)
     mock_repo.get_reorder_alerts.assert_not_called()

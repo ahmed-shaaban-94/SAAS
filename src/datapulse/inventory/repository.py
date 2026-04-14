@@ -146,9 +146,7 @@ class InventoryRepository:
         self, drug_code: str, filters: InventoryFilter
     ) -> list[StockMovement]:
         """Return all movements for a specific drug."""
-        updated = InventoryFilter(
-            **{**filters.model_dump(), "drug_code": drug_code}
-        )
+        updated = InventoryFilter(**{**filters.model_dump(), "drug_code": drug_code})
         return self.get_movements(updated)
 
     # ── Valuation ─────────────────────────────────────────────────────────
@@ -348,18 +346,21 @@ class InventoryRepository:
             )
         """)
 
-        self._session.execute(stmt, {
-            "tenant_id": tenant_id,
-            "source_file": "api",
-            "adjustment_date": date.today(),
-            "adjustment_type": request.adjustment_type,
-            "drug_code": request.drug_code,
-            "site_code": request.site_code,
-            "batch_number": request.batch_number,
-            "quantity": float(request.quantity),
-            "reason": request.reason,
-            "loaded_at": datetime.now(tz=UTC),
-        })
+        self._session.execute(
+            stmt,
+            {
+                "tenant_id": tenant_id,
+                "source_file": "api",
+                "adjustment_date": date.today(),
+                "adjustment_type": request.adjustment_type,
+                "drug_code": request.drug_code,
+                "site_code": request.site_code,
+                "batch_number": request.batch_number,
+                "quantity": float(request.quantity),
+                "reason": request.reason,
+                "loaded_at": datetime.now(tz=UTC),
+            },
+        )
         log.info(
             "adjustment_created",
             drug_code=request.drug_code,

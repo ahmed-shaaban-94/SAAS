@@ -171,10 +171,12 @@ def test_validate_passes_with_optional_columns(loader):
 
 
 def test_validate_multiple_nulls_reported(loader):
-    df = pl.DataFrame({
-        "Drug Code": [None, None, "D001"],
-        "Adjustment Date": ["2025-01-01", "2025-01-02", "2025-01-03"],
-    })
+    df = pl.DataFrame(
+        {
+            "Drug Code": [None, None, "D001"],
+            "Adjustment Date": ["2025-01-01", "2025-01-02", "2025-01-03"],
+        }
+    )
     with pytest.raises(ValueError, match="drug_code has 2 null"):
         loader.validate(df)
 
