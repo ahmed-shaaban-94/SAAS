@@ -136,3 +136,14 @@ class AdjustmentRequest(BaseModel):
     quantity: JsonDecimal
     batch_number: Annotated[str | None, Field(max_length=100)] = None
     reason: Annotated[str, Field(max_length=500)]
+
+
+class ReorderConfigFilter(BaseModel):
+    """Query filters for reorder config list endpoint."""
+
+    model_config = ConfigDict(frozen=True)
+
+    site_code: Annotated[str | None, Field(max_length=100)] = None
+    drug_code: Annotated[str | None, Field(max_length=100)] = None
+    is_active: bool | None = True
+    limit: int = Field(default=100, ge=1, le=500)

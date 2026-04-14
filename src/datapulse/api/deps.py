@@ -301,3 +301,23 @@ def get_expiry_service(
 
     repo = ExpiryRepository(session)
     return ExpiryService(repo)
+
+
+def get_dispensing_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.dispensing.repository import DispensingRepository
+    from datapulse.dispensing.service import DispensingService
+
+    repo = DispensingRepository(session)
+    return DispensingService(repo)
+
+
+def get_reorder_config_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.inventory.reorder_repository import ReorderConfigRepository
+    from datapulse.inventory.reorder_service import ReorderConfigService
+
+    repo = ReorderConfigRepository(session)
+    return ReorderConfigService(repo)
