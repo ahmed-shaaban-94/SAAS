@@ -28,6 +28,11 @@ from datapulse.inventory.models import (
     StockReconciliation,
     StockValuation,
 )
+from datapulse.inventory.reorder_service import (
+    ReorderConfigRequest,
+    ReorderConfigResponse,
+    ReorderConfigService,
+)
 from datapulse.inventory.service import InventoryService
 from datapulse.rbac.dependencies import require_permission
 
@@ -74,9 +79,10 @@ def _check_inventory_plan(limits: PlanLimits) -> None:
 
 
 # Dependency type aliases
-from datapulse.api.deps import get_inventory_service  # noqa: E402 (avoids circular at module level)
+from datapulse.api.deps import get_inventory_service, get_reorder_config_service  # noqa: E402
 
 ServiceDep = Annotated[InventoryService, Depends(get_inventory_service)]
+ReorderServiceDep = Annotated[ReorderConfigService, Depends(get_reorder_config_service)]
 PlanDep = Annotated[PlanLimits, Depends(get_tenant_plan_limits)]
 
 
@@ -297,3 +303,108 @@ def get_reconciliation(
     _check_inventory_plan(limits)
     set_cache_headers(response, 300)
     return service.get_reconciliation(_to_filter(params))
+
+
+# ------------------------------------------------------------------
+# 11. GET /inventory/reorder-config — list reorder configurations
+# ------------------------------------------------------------------
+
+
+@router.get("/reorder-config", response_model=list[ReorderConfigResponse])
+@limiter.limit("60/minute")
+def list_reorder_configs(
+    request: Request,
+    response: Response,
+    reorder_svc: ReorderServiceDep,
+    limits: PlanDep,
+    user: Annotated[dict, Depends(get_current_user)],
+    _: Annotated[None, Depends(require_permission("inventory:read"))],
+    site_code: str | None = None,
+    drug_code: str | None = None,
+    is_active: bool | None = True,
+    limit: int = 100,
+) -> list[ReorderConfigResponse]:
+    """List reorder configurations for the current tenant."""
+    _check_inventory_plan(limits)
+    set_cache_headers(response, 120)
+    tenant_id = int(user.get("tenant_id", "1"))
+    return reorder_svc.list_configs(
+        tenant_id, site_code=site_code, drug_code=drug_code, is_active=is_active, limit=limit
+    )
+
+
+# ------------------------------------------------------------------
+# 12. GET /inventory/reorder-config/{drug_code}/{site_code}
+# ------------------------------------------------------------------
+
+
+@router.get(
+    "/reorder-config/{drug_code}/{site_code}",
+    response_model=ReorderConfigResponse,
+)
+@limiter.limit("60/minute")
+def get_reorder_config(
+    request: Request,
+    response: Response,
+    drug_code: Annotated[str, Path(max_length=100)],
+    site_code: Annotated[str, Path(max_length=100)],
+    reorder_svc: ReorderServiceDep,
+    limits: PlanDep,
+    user: Annotated[dict, Depends(get_current_user)],
+    _: Annotated[None, Depends(require_permission("inventory:read"))],
+) -> ReorderConfigResponse:
+    """Return reorder config for a specific drug/site combination."""
+    _check_inventory_plan(limits)
+    set_cache_headers(response, 120)
+    tenant_id = int(user.get("tenant_id", "1"))
+    config = reorder_svc.get_config(tenant_id, drug_code, site_code)
+    if config is None:
+        raise HTTPException(status_code=404, detail="Reorder config not found")
+    return config
+
+
+# ------------------------------------------------------------------
+# 13. PUT /inventory/reorder-config — create or update
+# ------------------------------------------------------------------
+
+
+@router.put("/reorder-config", response_model=ReorderConfigResponse, status_code=200)
+@limiter.limit("30/minute")
+def upsert_reorder_config(
+    request: Request,
+    body: ReorderConfigRequest,
+    reorder_svc: ReorderServiceDep,
+    limits: PlanDep,
+    user: Annotated[dict, Depends(get_current_user)],
+    _: Annotated[None, Depends(require_permission("inventory:write"))],
+) -> ReorderConfigResponse:
+    """Create or update a reorder config. Validates min_stock <= reorder_point <= max_stock."""
+    _check_inventory_plan(limits)
+    tenant_id = int(user.get("tenant_id", "1"))
+    username = user.get("preferred_username") or user.get("email")
+    return reorder_svc.upsert_config(tenant_id, body, updated_by=username)
+
+
+# ------------------------------------------------------------------
+# 14. DELETE /inventory/reorder-config/{drug_code}/{site_code}
+# ------------------------------------------------------------------
+
+
+@router.delete("/reorder-config/{drug_code}/{site_code}", status_code=200)
+@limiter.limit("30/minute")
+def deactivate_reorder_config(
+    request: Request,
+    drug_code: Annotated[str, Path(max_length=100)],
+    site_code: Annotated[str, Path(max_length=100)],
+    reorder_svc: ReorderServiceDep,
+    limits: PlanDep,
+    user: Annotated[dict, Depends(get_current_user)],
+    _: Annotated[None, Depends(require_permission("inventory:write"))],
+) -> dict:
+    """Soft-delete (deactivate) a reorder config entry."""
+    _check_inventory_plan(limits)
+    tenant_id = int(user.get("tenant_id", "1"))
+    found = reorder_svc.deactivate_config(tenant_id, drug_code, site_code)
+    if not found:
+        raise HTTPException(status_code=404, detail="Reorder config not found")
+    return {"status": "deactivated", "drug_code": drug_code, "site_code": site_code}
