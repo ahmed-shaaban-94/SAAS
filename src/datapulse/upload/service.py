@@ -9,7 +9,12 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from datapulse.logging import get_logger
-from datapulse.upload.models import ColumnInfo, PreviewResult, UploadedFile
+from datapulse.upload.models import (
+    ColumnInfo,
+    InventoryPreviewResult,
+    PreviewResult,
+    UploadedFile,
+)
 
 log = get_logger(__name__)
 
@@ -20,6 +25,68 @@ MAX_PREVIEW_ROWS = 100
 # Magic bytes for file type validation
 _MAGIC_XLSX = b"PK\x03\x04"  # OOXML (xlsx, docx, zip)
 _MAGIC_XLS = b"\xd0\xcf\x11\xe0"  # OLE2 Compound Document (xls, doc)
+
+# ── Inventory file type detection ──────────────────────────────────
+# Maps known Excel header sets to loader registry keys.
+# Detection works by checking which header set has the most matches.
+
+INVENTORY_HEADER_SIGNATURES: dict[str, frozenset[str]] = {
+    "stock_receipts": frozenset(
+        {
+            "Receipt Date",
+            "Receipt Reference",
+            "Drug Code",
+            "Quantity",
+            "Unit Cost",
+            "Batch Number",
+        }
+    ),
+    "stock_adjustments": frozenset(
+        {
+            "Adjustment Date",
+            "Adjustment Type",
+            "Drug Code",
+            "Quantity",
+            "Reason",
+        }
+    ),
+    "inventory_counts": frozenset(
+        {
+            "Count Date",
+            "Drug Code",
+            "Counted Quantity",
+            "Counted By",
+        }
+    ),
+    "batches": frozenset(
+        {
+            "Drug Code",
+            "Batch Number",
+            "Expiry Date",
+            "Initial Quantity",
+            "Current Quantity",
+        }
+    ),
+    "suppliers": frozenset(
+        {
+            "Supplier Code",
+            "Supplier Name",
+            "Contact Name",
+            "Payment Terms (Days)",
+        }
+    ),
+    "purchase_orders": frozenset(
+        {
+            "PO Number",
+            "PO Date",
+            "Supplier Code",
+            "Status",
+        }
+    ),
+}
+
+# Minimum fraction of signature headers that must match to accept detection
+_MIN_MATCH_RATIO = 0.6
 
 
 def _validate_magic_bytes(ext: str, content: bytes) -> None:
@@ -122,6 +189,131 @@ class UploadService:
             sample_rows=sample_rows,
             warnings=warnings,
         )
+
+    @staticmethod
+    def detect_inventory_type(headers: list[str]) -> str | None:
+        """Detect inventory file type from Excel/CSV column headers.
+
+        Compares the file's header row against known column-map signatures.
+        Returns the loader registry key (e.g. 'stock_receipts') or None.
+        """
+        header_set = frozenset(headers)
+        best_match: str | None = None
+        best_score = 0.0
+
+        for file_type, signature in INVENTORY_HEADER_SIGNATURES.items():
+            matched = header_set & signature
+            if not signature:
+                continue
+            score = len(matched) / len(signature)
+            if score > best_score and score >= _MIN_MATCH_RATIO:
+                best_score = score
+                best_match = file_type
+
+        return best_match
+
+    def preview_inventory_file(self, file_id: str) -> InventoryPreviewResult:
+        """Preview an uploaded file with inventory type detection.
+
+        Reads the file, detects the inventory type from headers, and returns
+        preview data with the detected type for user confirmation.
+        """
+        import polars as pl
+
+        try:
+            normalized_id = str(uuid.UUID(file_id))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid file ID format") from exc
+
+        matching = list(self._tenant_dir.glob(f"{normalized_id}.*"))
+        if not matching:
+            raise FileNotFoundError(f"File {file_id} not found")
+
+        file_path = matching[0]
+        ext = file_path.suffix.lower()
+
+        if ext == ".csv":
+            df = pl.read_csv(file_path, n_rows=MAX_PREVIEW_ROWS, infer_schema_length=200)
+        else:
+            df = pl.read_excel(file_path, engine="calamine")
+            if df.height > MAX_PREVIEW_ROWS:
+                df = df.head(MAX_PREVIEW_ROWS)
+
+        detected_type = self.detect_inventory_type(df.columns)
+        if detected_type is None:
+            raise ValueError(
+                "Cannot detect inventory file type from headers. "
+                f"Found columns: {df.columns[:10]}. "
+                "Expected headers matching stock_receipts, stock_adjustments, "
+                "inventory_counts, batches, suppliers, or purchase_orders."
+            )
+
+        signature = INVENTORY_HEADER_SIGNATURES[detected_type]
+        matched_headers = [h for h in df.columns if h in signature]
+
+        warnings: list[str] = []
+        columns = []
+        for col in df.columns:
+            series = df[col]
+            null_count = series.null_count()
+            if null_count > df.height * 0.5:
+                warnings.append(f"Column '{col}' has >50% nulls ({null_count}/{df.height})")
+            sample = [str(v) for v in series.head(3).to_list() if v is not None]
+            columns.append(
+                ColumnInfo(
+                    name=col,
+                    dtype=str(series.dtype),
+                    null_count=null_count,
+                    sample_values=sample,
+                )
+            )
+
+        sample_rows = [[str(v) if v is not None else "" for v in row] for row in df.head(10).rows()]
+
+        log.info(
+            "inventory_file_detected",
+            file_id=file_id,
+            detected_type=detected_type,
+            matched_headers=matched_headers,
+            row_count=df.height,
+        )
+
+        return InventoryPreviewResult(
+            file_id=file_id,
+            filename=file_path.name,
+            detected_type=detected_type,
+            row_count=df.height,
+            columns=columns,
+            sample_rows=sample_rows,
+            warnings=warnings,
+            matched_headers=matched_headers,
+        )
+
+    def confirm_inventory_upload(
+        self, file_ids: list[str], target_dir: str | None = None
+    ) -> list[str]:
+        """Move confirmed inventory files to the appropriate raw data directory.
+
+        Uses a separate directory from sales files to keep data organized.
+        """
+        raw_dir = Path(target_dir) if target_dir else self._raw_dir.parent / "inventory"
+        moved = []
+        for fid in file_ids:
+            try:
+                normalized_fid = str(uuid.UUID(fid))
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Invalid file ID format") from exc
+
+            matching = list(self._tenant_dir.glob(f"{normalized_fid}.*"))
+            if not matching:
+                continue
+            raw_dir.mkdir(parents=True, exist_ok=True)
+            src = matching[0]
+            dest = raw_dir / src.name
+            shutil.move(str(src), str(dest))
+            moved.append(str(dest))
+            log.info("inventory_file_confirmed", file_id=fid, destination=str(dest))
+        return moved
 
     def confirm_upload(self, file_ids: list[str]) -> list[str]:
         """Move confirmed files to the raw data directory."""
