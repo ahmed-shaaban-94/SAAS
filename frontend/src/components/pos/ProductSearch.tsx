@@ -73,7 +73,7 @@ export function ProductSearch({ siteCode, onSelect, className }: ProductSearchPr
         {products.length === 0 && debouncedQuery.length >= 2 && !isLoading && (
           <div className="flex flex-col items-center py-8 text-text-secondary">
             <Package className="mb-2 h-6 w-6 opacity-40" />
-            <p className="text-sm">No drugs found for "{debouncedQuery}"</p>
+            <p className="text-sm">No drugs found for &quot;{debouncedQuery}&quot;</p>
           </div>
         )}
         {products.map((drug) => (
