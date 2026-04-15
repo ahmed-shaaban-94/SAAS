@@ -223,7 +223,8 @@ class SplitPaymentProcessor:
         """
         # Validate split totals
         split_total = sum(
-            Decimal(str(s.get("amount", 0))) for s in splits
+            (Decimal(str(s.get("amount", 0))) for s in splits),
+            start=Decimal("0"),
         ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
         expected = grand_total.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
 
@@ -251,8 +252,8 @@ class SplitPaymentProcessor:
                     message=f"Payment failed for {method}: {result.message}",
                 )
 
-        total_charged = sum(p.amount_charged for p in parts)
-        total_change = sum(p.change_due for p in parts)
+        total_charged = sum((p.amount_charged for p in parts), start=Decimal("0"))
+        total_change = sum((p.change_due for p in parts), start=Decimal("0"))
         return SplitPaymentResult(
             success=True,
             parts=parts,
