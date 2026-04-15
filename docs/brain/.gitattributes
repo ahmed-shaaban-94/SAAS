@@ -1,0 +1,4 @@
+# session-log.csv is append-only — use union merge to avoid conflicts
+# when multiple worktree branches each add rows.
+docs/brain/session-log.csv merge=union
+session-log.csv merge=union

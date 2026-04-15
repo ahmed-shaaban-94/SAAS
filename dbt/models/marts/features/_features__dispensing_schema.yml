@@ -1,0 +1,175 @@
+version: 2
+
+models:
+  # -- feat_dispense_rate -------------------------------------------------------
+  - name: feat_dispense_rate
+    description: >
+      Average quantity dispensed per day per product per site over the last 90 days.
+      Grain: one row per (tenant_id, product_key, site_key).
+    meta:
+      label: "Dispense Rate"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - product_key
+            - site_key
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: product_key
+        description: "Foreign key to dim_product"
+        tests: [not_null]
+      - name: site_key
+        description: "Foreign key to dim_site"
+        tests: [not_null]
+      - name: drug_code
+        tests: [not_null]
+      - name: drug_name
+        tests: [not_null]
+      - name: site_code
+        tests: [not_null]
+      - name: active_days
+        description: "Number of days with recorded dispense activity in the 90-day window"
+        tests: [not_null]
+      - name: total_dispensed_90d
+        description: "Total quantity dispensed over last 90 days"
+        tests: [not_null]
+      - name: avg_daily_dispense
+        description: "Average quantity dispensed per active day"
+      - name: avg_weekly_dispense
+        description: "Projected average weekly dispense"
+      - name: avg_monthly_dispense
+        description: "Projected average monthly dispense"
+      - name: last_dispense_date_key
+        description: "Date key of the most recent dispense event"
+
+  # -- feat_days_of_stock -------------------------------------------------------
+  - name: feat_days_of_stock
+    description: >
+      Days of stock remaining per product per site (current_stock / avg_daily_dispense).
+      Returns NULL for days_of_stock when no recent dispense history exists (safe divide-by-zero).
+      Grain: one row per (tenant_id, product_key, site_key).
+    meta:
+      label: "Days of Stock"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - product_key
+            - site_key
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: product_key
+        description: "Foreign key to dim_product"
+        tests: [not_null]
+      - name: site_key
+        description: "Foreign key to dim_site"
+        tests: [not_null]
+      - name: drug_code
+        tests: [not_null]
+      - name: drug_name
+        tests: [not_null]
+      - name: current_quantity
+        description: "Current stock on hand"
+        tests: [not_null]
+      - name: days_of_stock
+        description: "Estimated days of stock remaining; NULL if no dispense history"
+      - name: avg_daily_dispense
+        description: "Average daily dispense rate from feat_dispense_rate"
+
+  # -- feat_product_velocity ----------------------------------------------------
+  - name: feat_product_velocity
+    description: >
+      Product velocity classification: fast_mover / normal_mover / slow_mover / dead_stock.
+      Extends feat_product_lifecycle with dispense rate relative to category average.
+      Grain: one row per (tenant_id, product_key).
+    meta:
+      label: "Product Velocity"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - product_key
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: product_key
+        description: "Foreign key to dim_product"
+        tests: [not_null]
+      - name: drug_code
+        tests: [not_null]
+      - name: drug_name
+        tests: [not_null]
+      - name: drug_category
+        description: "Product category used for relative comparison"
+      - name: lifecycle_phase
+        description: "Lifecycle stage from feat_product_lifecycle"
+      - name: velocity_class
+        description: "Velocity classification based on category-relative dispense rate"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['fast_mover', 'normal_mover', 'slow_mover', 'dead_stock']
+      - name: avg_daily_dispense
+        description: "Average daily dispense rate (from feat_dispense_rate)"
+      - name: category_avg_daily
+        description: "Category-level average daily dispense rate"
+
+  # -- feat_stockout_risk -------------------------------------------------------
+  - name: feat_stockout_risk
+    description: >
+      Products at risk of stockout: current_quantity <= reorder_point or days_of_stock < reorder_lead_days.
+      Joins feat_days_of_stock with public.reorder_config (app table).
+      Grain: one row per (tenant_id, product_key, site_key) at risk.
+    meta:
+      label: "Stockout Risk"
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - tenant_id
+            - product_key
+            - site_key
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: product_key
+        tests: [not_null]
+      - name: site_key
+        tests: [not_null]
+      - name: drug_code
+        tests: [not_null]
+      - name: risk_level
+        description: "stockout | critical | at_risk | safe"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['stockout', 'critical', 'at_risk', 'safe']
+      - name: suggested_reorder_qty
+        description: "MAX(reorder_point - current_quantity, 0)"
+        tests: [not_null]
+
+  # -- feat_reorder_alerts ------------------------------------------------------
+  - name: feat_reorder_alerts
+    description: >
+      Active reorder alerts (stockout, critical, at_risk) ordered by severity then quantity.
+      Subset of feat_stockout_risk where risk_level is actionable.
+      Grain: one row per (tenant_id, product_key, site_key) with active alert.
+    meta:
+      label: "Reorder Alerts"
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: product_key
+        tests: [not_null]
+      - name: site_key
+        tests: [not_null]
+      - name: drug_code
+        tests: [not_null]
+      - name: risk_level
+        description: "stockout | critical | at_risk"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['stockout', 'critical', 'at_risk']

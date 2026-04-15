@@ -59,6 +59,8 @@ export interface NavGroup {
 // links when only the backend READ routes exist.
 const FEATURE_CONTROL_CENTER =
   process.env.NEXT_PUBLIC_FEATURE_CONTROL_CENTER === "true";
+const FEATURE_PLATFORM =
+  process.env.NEXT_PUBLIC_FEATURE_PLATFORM === "true";
 
 // ── Grouped navigation ───────────────────────────────────
 const CONTROL_CENTER_GROUP: NavGroup = {
@@ -72,6 +74,20 @@ const CONTROL_CENTER_GROUP: NavGroup = {
     { label: "Mappings",  href: "/control-center/mappings",  icon: "GitBranch",         minRole: "editor" },
     { label: "Releases",  href: "/control-center/releases",  icon: "History",           minRole: "admin"  },
     { label: "Sync Runs", href: "/control-center/sync-runs", icon: "Activity",          minRole: "admin"  },
+  ],
+};
+
+const OPERATIONS_GROUP: NavGroup = {
+  id: "operations",
+  label: "Operations",
+  icon: "Warehouse",
+  minRole: "editor",
+  items: [
+    { label: "Inventory", href: "/inventory", icon: "Package", minRole: "editor" },
+    { label: "Dispensing", href: "/dispensing", icon: "Activity", minRole: "viewer" },
+    { label: "Expiry Tracking", href: "/expiry", icon: "Calendar", minRole: "editor" },
+    { label: "Purchase Orders", href: "/purchase-orders", icon: "ClipboardList", minRole: "editor" },
+    { label: "Suppliers", href: "/suppliers", icon: "Truck", minRole: "editor" },
   ],
 };
 
@@ -136,6 +152,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Audit Log", href: "/audit", icon: "ScrollText", minRole: "editor" },
     ],
   },
+  ...(FEATURE_PLATFORM ? [OPERATIONS_GROUP] : []),
   {
     id: "settings",
     label: "Settings",
@@ -144,17 +161,6 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Branding", href: "/branding", icon: "Palette", minRole: "admin" },
       { label: "Billing", href: "/billing", icon: "CreditCard", minRole: "owner" },
-    ],
-  },
-  {
-    id: "operations",
-    label: "Operations",
-    icon: "Package",
-    minRole: "editor",
-    items: [
-      { label: "Purchase Orders", href: "/purchase-orders", icon: "ScrollText", minRole: "editor" },
-      { label: "Suppliers",       href: "/suppliers",       icon: "Building2",  minRole: "editor" },
-      { label: "Dispensing",      href: "/dispensing",      icon: "BarChart3",  minRole: "viewer" },
     ],
   },
   ...(FEATURE_CONTROL_CENTER ? [CONTROL_CENTER_GROUP] : []),

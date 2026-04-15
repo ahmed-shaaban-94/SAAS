@@ -12,9 +12,11 @@ import {
   Brain,
   Briefcase,
   Building2,
+  Calendar,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   CreditCard,
   Database,
   FileBarChart,
@@ -39,6 +41,8 @@ import {
   UserCog,
   Users,
   Users2,
+  Truck,
+  Warehouse,
   Workflow,
   X,
 } from "lucide-react";
@@ -83,6 +87,10 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ScrollText,
   Settings,
   Palette,
+  Warehouse,
+  Calendar,
+  ClipboardList,
+  Truck,
 };
 
 function UserInfo({ collapsed }: { collapsed?: boolean }) {

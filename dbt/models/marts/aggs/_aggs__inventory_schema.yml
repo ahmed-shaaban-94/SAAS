@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  - name: agg_stock_levels
+    description: >
+      Current stock level per product per site.
+      Grain: one row per (tenant_id, product_key, site_key).
+      current_quantity = cumulative SUM of all movement quantities.
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: product_key
+        description: "FK to dim_product"
+        tests:
+          - not_null
+      - name: site_key
+        description: "FK to dim_site"
+        tests:
+          - not_null
+      - name: drug_code
+        description: "Product code"
+        tests:
+          - not_null
+      - name: current_quantity
+        description: "Current stock quantity (SUM of all movements)"
+        tests:
+          - not_null
+      - name: total_received
+        description: "Total quantity received via receipts"
+      - name: total_dispensed
+        description: "Total quantity dispensed (outgoing sales)"
+      - name: total_wastage
+        description: "Total quantity lost to damage, shrinkage, or write-off"
+      - name: last_movement_date
+        description: "Date of the most recent movement"
+
+  - name: agg_stock_valuation
+    description: >
+      Stock valuation per product per site using weighted average cost (WAC).
+      Grain: one row per (tenant_id, product_key, site_key).
+      WAC = SUM(receipt_qty * unit_cost) / SUM(receipt_qty).
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: product_key
+        description: "FK to dim_product"
+        tests:
+          - not_null
+      - name: site_key
+        description: "FK to dim_site"
+        tests:
+          - not_null
+      - name: weighted_avg_cost
+        description: "Weighted average cost per unit"
+      - name: current_quantity
+        description: "Current quantity on hand (from agg_stock_levels)"
+      - name: stock_value
+        description: "Total stock value = current_quantity * weighted_avg_cost"
+
+  - name: agg_stock_reconciliation
+    description: >
+      Comparison between physical counts and calculated stock levels.
+      Grain: one row per (tenant_id, product_key, site_key, count_date).
+      variance = counted_quantity - calculated_quantity.
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: product_key
+        description: "FK to dim_product"
+        tests:
+          - not_null
+      - name: site_key
+        description: "FK to dim_site"
+        tests:
+          - not_null
+      - name: count_date
+        description: "Date of the physical count"
+        tests:
+          - not_null
+      - name: counted_quantity
+        description: "Physically counted quantity"
+      - name: calculated_quantity
+        description: "Quantity calculated from movement ledger"
+      - name: variance
+        description: "counted - calculated"
+      - name: variance_pct
+        description: "variance / calculated (NULL if calculated = 0)"

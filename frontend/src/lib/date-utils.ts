@@ -26,6 +26,11 @@ export function formatDateParam(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+export function formatDateLabel(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(`${value}T00:00:00`) : value;
+  return format(date, "MMM dd, yyyy");
+}
+
 export interface DatePreset {
   label: string;
   startDate: Date;

@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: stg_batches
+    description: >
+      Silver layer batch master.
+      Deduplicates by (tenant_id, drug_code, site_code, batch_number),
+      keeps the latest loaded row, and preserves lifecycle dates.
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests: [not_null]
+      - name: drug_code
+        description: "Product code"
+        tests: [not_null]
+      - name: site_code
+        description: "Site code"
+        tests: [not_null]
+      - name: batch_number
+        description: "Batch/lot number"
+        tests: [not_null]
+      - name: expiry_date
+        description: "Expiry date for the batch"
+        tests: [not_null]
+      - name: initial_quantity
+        description: "Quantity when the batch was first received"
+        tests: [not_null]
+      - name: current_quantity
+        description: "Current remaining quantity"
+        tests: [not_null]
+      - name: status
+        description: "Lifecycle status"
+        tests: [not_null]

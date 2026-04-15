@@ -125,6 +125,15 @@ export async function patchAPI<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
+export async function putAPI<T>(path: string, body: unknown): Promise<T> {
+  const url = `${API_BASE_URL}${path}`;
+  return _request<T>(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function deleteAPI(path: string): Promise<void> {
   const url = `${API_BASE_URL}${path}`;
   const controller = new AbortController();
