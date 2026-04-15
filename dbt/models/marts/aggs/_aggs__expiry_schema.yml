@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: agg_expiry_summary
+    description: >
+      Expiry summary by site and computed batch status.
+      Grain: one row per (tenant_id, site_key, expiry_bucket).
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns: [tenant_id, site_key, expiry_bucket]
+    columns:
+      - name: tenant_id
+        tests: [not_null]
+      - name: site_key
+        tests: [not_null]
+      - name: expiry_bucket
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['active', 'near_expiry', 'expired', 'quarantined', 'written_off']
+      - name: batch_count
+        tests: [not_null]
+      - name: total_quantity
+        tests: [not_null]

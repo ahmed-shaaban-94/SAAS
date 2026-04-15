@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: fct_stock_movements
+    description: >
+      Central inventory fact table — UNION of 4 movement streams:
+      receipts (incoming), adjustments (+/-), dispenses (outgoing from sales),
+      returns (incoming from sales returns). Grain: one movement event.
+    columns:
+      - name: movement_key
+        description: "MD5 surrogate key (64-bit integer)"
+        tests:
+          - not_null
+          - unique
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: movement_date
+        description: "Date of the movement event"
+        tests:
+          - not_null
+      - name: movement_type
+        description: "receipt | adjustment_type | dispense | return"
+        tests:
+          - not_null
+      - name: quantity
+        description: "Quantity moved (positive = in, negative = out)"
+        tests:
+          - not_null
+      - name: product_key
+        description: "FK to dim_product (-1 = unknown)"
+        tests:
+          - not_null
+      - name: site_key
+        description: "FK to dim_site (-1 = unknown)"
+        tests:
+          - not_null
+      - name: date_key
+        description: "FK to dim_date (-1 = unknown)"
+        tests:
+          - not_null
+      - name: loaded_at
+        description: "Source loaded_at watermark for incremental loading"
+
+  - name: fct_inventory_counts
+    description: >
+      Physical inventory count fact table.
+      Grain: one count record per (tenant, drug, site, count_date, batch).
+      Used for reconciliation against calculated stock levels from fct_stock_movements.
+    columns:
+      - name: count_key
+        description: "MD5 surrogate key (64-bit integer)"
+        tests:
+          - not_null
+          - unique
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: count_date
+        description: "Date the physical count was performed"
+        tests:
+          - not_null
+      - name: counted_quantity
+        description: "Physically counted quantity"
+        tests:
+          - not_null
+      - name: product_key
+        description: "FK to dim_product (-1 = unknown)"
+        tests:
+          - not_null
+      - name: site_key
+        description: "FK to dim_site (-1 = unknown)"
+        tests:
+          - not_null

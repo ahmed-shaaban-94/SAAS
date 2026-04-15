@@ -18,15 +18,34 @@ _DICT = psycopg2.extras.RealDictCursor
 
 
 def _database_url() -> str | None:
-    """Resolve DATABASE_URL from env, loading .env if needed."""
-    url = os.environ.get("DATABASE_URL")
+    """Resolve database URL, with SSH tunnel support for remote droplets.
+
+    Resolution order:
+    1. SSH tunnel  — when BRAIN_SSH_HOST + BRAIN_DB_PASSWORD are set, opens an
+                     automatic SSH tunnel and returns a localhost URL through it.
+                     No port needs to be exposed on the remote server.
+    2. BRAIN_DATABASE_URL — direct URL override (e.g. for VPN or exposed port).
+    3. DATABASE_URL — default Docker local connection.
+    """
+    # 1. SSH tunnel path (automated — zero droplet config needed)
+    try:
+        from datapulse.brain.tunnel import tunnel_database_url
+
+        url = tunnel_database_url()
+        if url:
+            return url
+    except Exception:
+        pass  # Tunnel unavailable — fall through
+
+    # 2 & 3. Direct URL (env or dotenv)
+    url = os.environ.get("BRAIN_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if url:
         return url
     try:
         from dotenv import load_dotenv
 
         load_dotenv()
-        return os.environ.get("DATABASE_URL")
+        return os.environ.get("BRAIN_DATABASE_URL") or os.environ.get("DATABASE_URL")
     except ImportError:
         return None
 

@@ -37,12 +37,14 @@ from datapulse.api.routes import (
     notifications,
     onboarding,
     pipeline,
+    purchase_orders,
     queries,
     report_schedules,
     reports,
     reseller,
     scenarios,
     search,
+    suppliers,
     targets,
     upload,
     views,
@@ -235,10 +237,26 @@ def create_app() -> FastAPI:
     app.include_router(branding.public_router, prefix="/api/v1")
     app.include_router(reseller.router, prefix="/api/v1")
 
+    # Pharma platform: Purchase Orders + Suppliers + Margin Analysis
+    app.include_router(purchase_orders.router, prefix="/api/v1")
+    app.include_router(purchase_orders.margins_router, prefix="/api/v1")
+    app.include_router(suppliers.router, prefix="/api/v1")
+
     # Control Center — behind feature flag; mounts router only when enabled
     if settings.feature_control_center:
         app.include_router(control_center.router, prefix="/api/v1")
         logger.info("control_center_enabled")
+
+    # Pharmaceutical Platform — inventory, expiry, dispensing, POS features
+    if settings.feature_platform:
+        from datapulse.api.routes import dispensing as dispensing_routes
+        from datapulse.api.routes import expiry as expiry_routes
+        from datapulse.api.routes import inventory as inventory_routes
+
+        app.include_router(inventory_routes.router, prefix="/api/v1")
+        app.include_router(expiry_routes.router, prefix="/api/v1")
+        app.include_router(dispensing_routes.router, prefix="/api/v1")
+        logger.info("feature_platform_enabled")
 
     # Prometheus metrics — exposes /metrics endpoint with HTTP request
     # counters and duration histograms.  Nginx should block external access
