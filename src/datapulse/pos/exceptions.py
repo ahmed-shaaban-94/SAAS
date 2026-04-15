@@ -71,11 +71,20 @@ class PharmacistVerificationRequiredError(PosError):
     Maps to HTTP 403 Forbidden (authorization step needed, not missing auth).
     """
 
-    def __init__(self, drug_code: str, drug_category: str | None = None) -> None:
-        category_hint = f" (category: {drug_category})" if drug_category else ""
+    def __init__(
+        self,
+        drug_code: str,
+        drug_category: str | None = None,
+        message: str | None = None,
+    ) -> None:
+        if message is None:
+            category_hint = f" (category: {drug_category})" if drug_category else ""
+            message = (
+                f"Drug {drug_code}{category_hint} is a controlled substance. "
+                "Pharmacist verification is required before dispensing."
+            )
         super().__init__(
-            message=f"Drug {drug_code}{category_hint} is a controlled substance. "
-            "Pharmacist verification is required before dispensing.",
+            message=message,
             detail=f"drug_code={drug_code} category={drug_category}",
         )
         self.drug_code = drug_code

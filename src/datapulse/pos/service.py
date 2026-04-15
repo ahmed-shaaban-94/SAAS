@@ -18,7 +18,7 @@ Design
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -44,6 +44,7 @@ from datapulse.pos.models import (
     CashDrawerEventResponse,
     CheckoutRequest,
     CheckoutResponse,
+    PharmacistVerifyResponse,
     PosCartItem,
     PosProductResult,
     PosStockInfo,
@@ -57,6 +58,7 @@ from datapulse.pos.models import (
     VoidResponse,
 )
 from datapulse.pos.payment import get_gateway
+from datapulse.pos.pharmacist_verifier import TOKEN_TTL_SECONDS, PharmacistVerifier
 from datapulse.pos.receipt import generate_pdf_receipt, generate_thermal_receipt
 from datapulse.pos.repository import PosRepository
 from datapulse.pos.terminal import (
@@ -133,9 +135,11 @@ class PosService:
         self,
         repo: PosRepository,
         inventory: InventoryServiceProtocol,
+        verifier: PharmacistVerifier | None = None,
     ) -> None:
         self._repo = repo
         self._inventory = inventory
+        self._verifier = verifier
 
     # ──────────────────────────────────────────────────────────────
     # Terminal lifecycle
@@ -1076,3 +1080,50 @@ class PosService:
         """Return cash drawer events for a terminal, most recent first."""
         rows = self._repo.get_cash_events(terminal_id, limit=limit)
         return [CashDrawerEventResponse.model_validate(r) for r in rows]
+
+    # ──────────────────────────────────────────────────────────────
+    # Pharmacist PIN verification (B7)
+    # ──────────────────────────────────────────────────────────────
+
+    def verify_pharmacist_pin(
+        self,
+        *,
+        pharmacist_id: str,
+        credential: str,
+        drug_code: str,
+    ) -> PharmacistVerifyResponse:
+        """Validate a pharmacist PIN and return a short-lived verification token.
+
+        The token encodes ``pharmacist_id`` + ``drug_code`` + timestamp, signed
+        with the application secret key. Pass it as ``pharmacist_id`` in a
+        subsequent ``add_item`` call to authorise the controlled-substance
+        dispensing without repeating the PIN check.
+
+        Raises
+        ------
+        PharmacistVerificationRequiredError
+            When the credential is wrong, the user has no PIN registered,
+            or no ``PharmacistVerifier`` was injected (configuration error).
+        """
+        if self._verifier is None:
+            raise PharmacistVerificationRequiredError(
+                drug_code=drug_code,
+                message="Pharmacist verification is not configured on this server.",
+            )
+
+        token = self._verifier.verify_and_issue(
+            pharmacist_id=pharmacist_id,
+            credential=credential,
+            drug_code=drug_code,
+        )
+
+        expires_at = datetime.now(tz=UTC).replace(microsecond=0) + timedelta(
+            seconds=TOKEN_TTL_SECONDS
+        )
+
+        return PharmacistVerifyResponse(
+            token=token,
+            pharmacist_id=pharmacist_id,
+            drug_code=drug_code,
+            expires_at=expires_at,
+        )

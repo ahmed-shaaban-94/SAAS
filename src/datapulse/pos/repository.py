@@ -1040,3 +1040,32 @@ class PosRepository:
         )
         # ON CONFLICT DO NOTHING returns no row on duplicate — that's intentional
         return dict(row) if row else {}
+
+    # ──────────────────────────────────────────────────────────────
+    # Pharmacist PIN lookup (B7)
+    # ──────────────────────────────────────────────────────────────
+
+    def get_pharmacist_pin_hash(self, pharmacist_id: str) -> str | None:
+        """Return the stored PIN hash for a pharmacist member, or None.
+
+        Looks up ``tenant_members.pharmacist_pin_hash`` by ``user_id``.
+        RLS scopes the query to the current tenant automatically.
+        Returns ``None`` when the member does not exist or has no PIN set.
+        """
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT pharmacist_pin_hash
+                    FROM   public.tenant_members
+                    WHERE  user_id = :user_id
+                      AND  is_active = TRUE
+                    LIMIT 1
+                """),
+                {"user_id": pharmacist_id},
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return None
+        return row["pharmacist_pin_hash"]

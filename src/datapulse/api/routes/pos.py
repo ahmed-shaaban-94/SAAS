@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_pos_service
 from datapulse.api.limiter import limiter
+from datapulse.billing.pos_guard import require_pos_plan
 from datapulse.logging import get_logger
 from datapulse.pos.models import (
     AddItemRequest,
@@ -33,6 +34,8 @@ from datapulse.pos.models import (
     CheckoutRequest,
     CheckoutResponse,
     CloseShiftRequest,
+    PharmacistVerifyRequest,
+    PharmacistVerifyResponse,
     PosCartItem,
     PosProductResult,
     PosStockInfo,
@@ -52,13 +55,15 @@ from datapulse.pos.models import (
     VoidResponse,
 )
 from datapulse.pos.service import PosService
+from datapulse.rbac.dependencies import require_permission
 
 log = get_logger(__name__)
 
 router = APIRouter(
     prefix="/pos",
     tags=["pos"],
-    dependencies=[Depends(get_current_user)],
+    # B7: billing guard enforces platform/enterprise plan; auth guard requires JWT.
+    dependencies=[Depends(get_current_user), Depends(require_pos_plan())],
 )
 
 ServiceDep = Annotated[PosService, Depends(get_pos_service)]
@@ -84,6 +89,7 @@ def _staff_id_of(user: CurrentUser) -> str:
     "/terminals",
     response_model=TerminalSessionResponse,
     status_code=201,
+    dependencies=[Depends(require_permission("pos:terminal:open"))],
 )
 @limiter.limit("30/minute")
 def open_terminal(
@@ -443,6 +449,7 @@ def send_receipt_email(
 @router.post(
     "/transactions/{transaction_id}/void",
     response_model=VoidResponse,
+    dependencies=[Depends(require_permission("pos:transaction:void"))],
 )
 @limiter.limit("10/minute")
 async def void_transaction(
@@ -474,6 +481,7 @@ async def void_transaction(
     "/returns",
     response_model=ReturnResponse,
     status_code=201,
+    dependencies=[Depends(require_permission("pos:return:create"))],
 )
 @limiter.limit("20/minute")
 async def process_return(
@@ -610,7 +618,11 @@ def get_current_shift(
     return shift
 
 
-@router.post("/shifts/{shift_id}/close", response_model=ShiftSummaryResponse)
+@router.post(
+    "/shifts/{shift_id}/close",
+    response_model=ShiftSummaryResponse,
+    dependencies=[Depends(require_permission("pos:shift:reconcile"))],
+)
 @limiter.limit("20/minute")
 def close_shift(
     request: Request,
@@ -674,3 +686,39 @@ def list_cash_events(
     """List cash drawer events for a terminal, most recent first."""
     _ = user
     return service.get_cash_events(terminal_id, limit=limit)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Controlled substance verification (B7)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/controlled/verify",
+    response_model=PharmacistVerifyResponse,
+    dependencies=[Depends(require_permission("pos:controlled:verify"))],
+)
+@limiter.limit("10/minute")
+def verify_pharmacist(
+    request: Request,
+    body: PharmacistVerifyRequest,
+    service: ServiceDep,
+    user: CurrentUser,
+) -> PharmacistVerifyResponse:
+    """Verify a pharmacist PIN for controlled-substance dispensing.
+
+    The pharmacist submits their ``pharmacist_id`` (JWT sub) and ``credential``
+    (PIN) for a specific ``drug_code``.  On success, returns a short-lived
+    signed token (5 min TTL) to be passed as ``pharmacist_id`` in the
+    subsequent ``add_item`` call — avoiding a PIN re-entry per item.
+
+    Requires the ``pos:controlled:verify`` permission (``pos_pharmacist`` or
+    ``pos_manager`` roles).  Rate-limited to 10 requests/minute to limit
+    brute-force exposure.
+    """
+    _ = user
+    return service.verify_pharmacist_pin(
+        pharmacist_id=body.pharmacist_id,
+        credential=body.credential,
+        drug_code=body.drug_code,
+    )
