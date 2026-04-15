@@ -23,7 +23,6 @@ from datapulse.pos.payment import (
     get_gateway,
 )
 
-
 # ---------------------------------------------------------------------------
 # CashGateway
 # ---------------------------------------------------------------------------
@@ -165,7 +164,8 @@ class TestSplitPaymentProcessor:
         result = proc.process(
             grand_total=Decimal("100.00"),
             splits=[
-                {"method": "cash", "amount": Decimal("50.00"), "tendered": Decimal("30.00")},  # underpay
+                # underpay — cash split only covers 30 of required 50
+                {"method": "cash", "amount": Decimal("50.00"), "tendered": Decimal("30.00")},
                 {"method": "insurance", "amount": Decimal("50.00"), "insurance_no": "INS-X"},
             ],
         )
