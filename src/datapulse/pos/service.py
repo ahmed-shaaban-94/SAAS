@@ -671,8 +671,7 @@ class PosService:
         if header["status"] != TransactionStatus.completed.value:
             raise PosError(
                 message=(
-                    f"Only completed transactions can be voided "
-                    f"(current: {header['status']})"
+                    f"Only completed transactions can be voided (current: {header['status']})"
                 ),
                 detail=f"transaction_id={transaction_id} status={header['status']}",
             )
@@ -732,8 +731,7 @@ class PosService:
         if header["status"] != TransactionStatus.completed.value:
             raise PosError(
                 message=(
-                    f"Only completed transactions can be returned "
-                    f"(current: {header['status']})"
+                    f"Only completed transactions can be returned (current: {header['status']})"
                 ),
                 detail=f"transaction_id={original_transaction_id} status={header['status']}",
             )

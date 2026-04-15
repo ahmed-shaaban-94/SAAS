@@ -120,7 +120,7 @@ export default function PosHistoryPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      router.push(`/returns?txn=${txn.id}`)
+                      router.push(`/pos-returns?txn=${txn.id}`)
                     }
                     className={cn(
                       "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5",
