@@ -146,6 +146,17 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Billing", href: "/billing", icon: "CreditCard", minRole: "owner" },
     ],
   },
+  {
+    id: "operations",
+    label: "Operations",
+    icon: "Package",
+    minRole: "editor",
+    items: [
+      { label: "Purchase Orders", href: "/purchase-orders", icon: "ScrollText", minRole: "editor" },
+      { label: "Suppliers",       href: "/suppliers",       icon: "Building2",  minRole: "editor" },
+      { label: "Dispensing",      href: "/dispensing",      icon: "BarChart3",  minRole: "viewer" },
+    ],
+  },
   ...(FEATURE_CONTROL_CENTER ? [CONTROL_CENTER_GROUP] : []),
 ];
 
