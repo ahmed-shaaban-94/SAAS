@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { processReturn } from "@/hooks/use-pos-returns";
 import { cn } from "@/lib/utils";
-import type { ReturnReason, ReturnResponse, TransactionDetailResponse } from "@/types/pos";
+import type { PosCartItem, ReturnReason, ReturnResponse, TransactionDetailResponse } from "@/types/pos";
 
 interface ReturnFormProps {
   transaction: TransactionDetailResponse;
@@ -33,8 +33,21 @@ export function ReturnForm({ transaction, onSuccess }: ReturnFormProps) {
     setIsLoading(true);
     setError(null);
     try {
+      // Send full PosCartItem array as required by backend ReturnRequest
+      const items: PosCartItem[] = transaction.items.map((item) => ({
+        drug_code: item.drug_code,
+        drug_name: item.drug_name,
+        batch_number: item.batch_number,
+        expiry_date: item.expiry_date,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        discount: item.discount,
+        line_total: item.line_total,
+        is_controlled: item.is_controlled,
+      }));
       const result = await processReturn({
         original_transaction_id: transaction.id,
+        items,
         reason,
         refund_method: refundMethod,
         notes: notes.trim() || undefined,

@@ -115,6 +115,15 @@ export interface VoidRequest {
   reason: string;
 }
 
+export interface VoidResponse {
+  id: number;
+  transaction_id: number;
+  tenant_id: number;
+  voided_by: string;
+  reason: string;
+  voided_at: string;
+}
+
 // ---- Product Search ----
 
 export interface PosProductResult {
@@ -179,15 +188,10 @@ export interface CashDrawerEventResponse {
 
 export interface ReturnRequest {
   original_transaction_id: number;
-  items: ReturnItemRequest[];
+  items: PosCartItem[];
   reason: ReturnReason;
   refund_method: RefundMethod;
   notes?: string;
-}
-
-export interface ReturnItemRequest {
-  drug_code: string;
-  quantity: number;
 }
 
 export interface ReturnResponse {
