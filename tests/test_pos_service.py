@@ -756,7 +756,7 @@ class TestCheckout:
                     cash_tendered=Decimal("50"),
                 ),
             )
-        assert "less than" in str(exc_info.value.message).lower()
+        assert "insufficient" in str(exc_info.value.message).lower()
 
     @pytest.mark.asyncio
     async def test_insurance_requires_insurance_no(

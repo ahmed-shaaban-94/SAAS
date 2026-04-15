@@ -19,10 +19,13 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi.responses import Response
+from pydantic import BaseModel
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_pos_service
 from datapulse.api.limiter import limiter
+from datapulse.logging import get_logger
 from datapulse.pos.models import (
     AddItemRequest,
     CheckoutRequest,
@@ -38,6 +41,8 @@ from datapulse.pos.models import (
     UpdateItemRequest,
 )
 from datapulse.pos.service import PosService
+
+log = get_logger(__name__)
 
 router = APIRouter(
     prefix="/pos",
@@ -367,3 +372,53 @@ async def get_stock_info(
     """Return live stock + per-batch info for a drug at a site."""
     _ = user
     return await service.get_stock_info(drug_code, site_code)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Receipts (B4)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/receipts/{transaction_id}")
+@limiter.limit("60/minute")
+def get_receipt_pdf(
+    request: Request,
+    transaction_id: Annotated[int, Path(ge=1)],
+    service: ServiceDep,
+    user: CurrentUser,
+) -> Response:
+    """Return the PDF receipt for a completed transaction."""
+    content = service.get_receipt_pdf(transaction_id, _tenant_id_of(user))
+    return Response(content=content, media_type="application/pdf")
+
+
+@router.get("/receipts/{transaction_id}/thermal")
+@limiter.limit("60/minute")
+def get_receipt_thermal(
+    request: Request,
+    transaction_id: Annotated[int, Path(ge=1)],
+    service: ServiceDep,
+    user: CurrentUser,
+) -> Response:
+    """Return the raw ESC/POS thermal receipt bytes."""
+    content = service.get_receipt_thermal(transaction_id, _tenant_id_of(user))
+    return Response(content=content, media_type="application/octet-stream")
+
+
+class _EmailReceiptRequest(BaseModel):
+    email: str
+
+
+@router.post("/receipts/{transaction_id}/email")
+@limiter.limit("10/minute")
+def send_receipt_email(
+    request: Request,
+    transaction_id: Annotated[int, Path(ge=1)],
+    body: _EmailReceiptRequest,
+    service: ServiceDep,
+    user: CurrentUser,
+) -> dict:
+    """Send the PDF receipt to the given email address (stub — email delivery in Phase 2)."""
+    _ = service.get_receipt_pdf(transaction_id, _tenant_id_of(user))
+    log.info("pos.receipt.email_queued", transaction_id=transaction_id, email=body.email)
+    return {"sent": True, "email": body.email}

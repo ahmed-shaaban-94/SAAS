@@ -25,7 +25,6 @@ from typing import Any
 from datapulse.logging import get_logger
 from datapulse.pos.constants import (
     CONTROLLED_CATEGORIES,
-    PaymentMethod,
     TerminalStatus,
     TransactionStatus,
 )
@@ -50,6 +49,8 @@ from datapulse.pos.models import (
     TransactionDetailResponse,
     TransactionResponse,
 )
+from datapulse.pos.payment import get_gateway
+from datapulse.pos.receipt import generate_pdf_receipt, generate_thermal_receipt
 from datapulse.pos.repository import PosRepository
 from datapulse.pos.terminal import (
     assert_can_transition,
@@ -432,24 +433,15 @@ class PosService:
         grand_total = subtotal - _to_decimal(request.transaction_discount) + tax_total
         grand_total = grand_total.quantize(Decimal("0.0001"))
 
-        # ── Payment validation ──────────────────────────────────────
-        change_due = Decimal("0")
-        if request.payment_method == PaymentMethod.cash:
-            tendered = _to_decimal(request.cash_tendered)
-            if tendered < grand_total:
-                raise PosError(
-                    message=(
-                        f"Cash tendered ({tendered}) is less than grand total ({grand_total})"
-                    ),
-                    detail=f"transaction_id={transaction_id}",
-                )
-            change_due = (tendered - grand_total).quantize(Decimal("0.0001"))
-        elif request.payment_method == PaymentMethod.insurance:
-            if not request.insurance_no:
-                raise PosError(
-                    message="Insurance number is required for insurance payment",
-                    detail=f"transaction_id={transaction_id}",
-                )
+        # ── Payment (B4: gateway delegation) ───────────────────────
+        gateway = get_gateway(request.payment_method.value)
+        payment_result = gateway.process_payment(
+            grand_total,
+            tendered=_to_decimal(request.cash_tendered or 0),
+            insurance_no=request.insurance_no,
+        )
+        payment_result.raise_if_failed()
+        change_due = payment_result.change_due
 
         receipt_number = _build_receipt_number(tenant_id, transaction_id)
 
@@ -504,6 +496,32 @@ class PosService:
                 insurance_no=request.insurance_no,
                 is_return=False,
                 pharmacist_id=item.get("pharmacist_id"),
+            )
+
+        # ── Receipt generation (B4) ────────────────────────────────
+        payment_info = {
+            "method": request.payment_method.value,
+            "amount_charged": float(grand_total),
+            "change_due": float(change_due),
+            "insurance_no": request.insurance_no,
+        }
+        txn_for_receipt = {
+            **header,
+            "receipt_number": receipt_number,
+            "grand_total": grand_total,
+            "subtotal": subtotal,
+            "discount_total": discount_total,
+            "tax_total": tax_total,
+        }
+        for fmt, content in (
+            ("thermal", generate_thermal_receipt(txn_for_receipt, items, payment_info)),
+            ("pdf", generate_pdf_receipt(txn_for_receipt, items, payment_info)),
+        ):
+            self._repo.save_receipt(
+                transaction_id=transaction_id,
+                tenant_id=tenant_id,
+                fmt=fmt,
+                content=content,
             )
 
         log.info(
@@ -578,3 +596,48 @@ class PosService:
                 for b in batches
             ],
         )
+
+    # ──────────────────────────────────────────────────────────────
+    # Receipts (B4)
+    # ──────────────────────────────────────────────────────────────
+
+    def get_receipt_pdf(self, transaction_id: int, tenant_id: int) -> bytes:
+        """Return stored PDF receipt bytes; regenerate on demand if missing."""
+        row = self._repo.get_receipt(transaction_id, "pdf")
+        if row and row.get("content"):
+            return bytes(row["content"])
+        return self._regenerate_receipt(transaction_id, tenant_id, "pdf")
+
+    def get_receipt_thermal(self, transaction_id: int, tenant_id: int) -> bytes:
+        """Return stored thermal ESC/POS bytes; regenerate on demand if missing."""
+        row = self._repo.get_receipt(transaction_id, "thermal")
+        if row and row.get("content"):
+            return bytes(row["content"])
+        return self._regenerate_receipt(transaction_id, tenant_id, "thermal")
+
+    def _regenerate_receipt(self, transaction_id: int, tenant_id: int, fmt: str) -> bytes:
+        """Regenerate a receipt on demand (fallback when no stored receipt exists)."""
+        from fastapi import HTTPException  # local import avoids circular dependency
+
+        header = self._repo.get_transaction(transaction_id)
+        if header is None:
+            raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
+        items = self._repo.get_transaction_items(transaction_id)
+        payment_info = {
+            "method": header.get("payment_method", "cash"),
+            "amount_charged": float(_to_decimal(header.get("grand_total", 0))),
+            "change_due": 0.0,
+            "insurance_no": None,
+        }
+        content = (
+            generate_pdf_receipt(header, items, payment_info)
+            if fmt == "pdf"
+            else generate_thermal_receipt(header, items, payment_info)
+        )
+        self._repo.save_receipt(
+            transaction_id=transaction_id,
+            tenant_id=tenant_id,
+            fmt=fmt,
+            content=content,
+        )
+        return content
