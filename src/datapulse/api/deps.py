@@ -321,3 +321,20 @@ def get_reorder_config_service(
 
     repo = ReorderConfigRepository(session)
     return ReorderConfigService(repo)
+
+
+def get_pos_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    """Factory for :class:`PosService` — wires repo + (mocked) inventory protocol.
+
+    The mock inventory service is replaced with the real Plan A
+    ``InventoryService`` adapter in B8 (POS integration session).
+    """
+    from datapulse.pos.inventory_contract import MockInventoryService
+    from datapulse.pos.repository import PosRepository
+    from datapulse.pos.service import PosService
+
+    repo = PosRepository(session)
+    inventory = MockInventoryService()
+    return PosService(repo, inventory)

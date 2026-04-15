@@ -115,6 +115,47 @@ def create_app() -> FastAPI:
     async def tenant_error_handler(request: Request, exc: TenantError) -> JSONResponse:
         return JSONResponse(status_code=403, content={"detail": exc.message})
 
+    # POS-specific exception handlers — must be registered BEFORE the generic
+    # DataPulseError handler so they take precedence over the catch-all 400.
+    from datapulse.pos.exceptions import (
+        InsufficientStockError,
+        PharmacistVerificationRequiredError,
+        ShiftNotOpenError,
+        TerminalNotActiveError,
+        VoidNotAllowedError,
+    )
+
+    @app.exception_handler(InsufficientStockError)
+    async def pos_insufficient_stock_handler(
+        request: Request, exc: InsufficientStockError
+    ) -> JSONResponse:
+        logger.info("pos.insufficient_stock", detail=exc.detail)
+        return JSONResponse(status_code=409, content={"detail": exc.message})
+
+    @app.exception_handler(TerminalNotActiveError)
+    async def pos_terminal_not_active_handler(
+        request: Request, exc: TerminalNotActiveError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": exc.message})
+
+    @app.exception_handler(PharmacistVerificationRequiredError)
+    async def pos_pharmacist_required_handler(
+        request: Request, exc: PharmacistVerificationRequiredError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=403, content={"detail": exc.message})
+
+    @app.exception_handler(VoidNotAllowedError)
+    async def pos_void_not_allowed_handler(
+        request: Request, exc: VoidNotAllowedError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": exc.message})
+
+    @app.exception_handler(ShiftNotOpenError)
+    async def pos_shift_not_open_handler(
+        request: Request, exc: ShiftNotOpenError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": exc.message})
+
     @app.exception_handler(DataPulseError)
     async def datapulse_error_handler(request: Request, exc: DataPulseError) -> JSONResponse:
         logger.warning("datapulse_error", error=exc.message, detail=exc.detail)
@@ -252,10 +293,12 @@ def create_app() -> FastAPI:
         from datapulse.api.routes import dispensing as dispensing_routes
         from datapulse.api.routes import expiry as expiry_routes
         from datapulse.api.routes import inventory as inventory_routes
+        from datapulse.api.routes import pos as pos_routes
 
         app.include_router(inventory_routes.router, prefix="/api/v1")
         app.include_router(expiry_routes.router, prefix="/api/v1")
         app.include_router(dispensing_routes.router, prefix="/api/v1")
+        app.include_router(pos_routes.router, prefix="/api/v1")
         logger.info("feature_platform_enabled")
 
     # Prometheus metrics — exposes /metrics endpoint with HTTP request
