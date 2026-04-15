@@ -73,9 +73,7 @@ class TestCashGateway:
             result.raise_if_failed()
 
     def test_raise_if_failed_does_nothing_on_success(self):
-        result = PaymentResult(
-            success=True, method="cash", amount_charged=Decimal("10")
-        )
+        result = PaymentResult(success=True, method="cash", amount_charged=Decimal("10"))
         result.raise_if_failed()  # should not raise
 
 

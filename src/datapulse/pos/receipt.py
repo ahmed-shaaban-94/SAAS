@@ -45,7 +45,7 @@ def _gs(*bytes_: int) -> bytes:
     return bytes([GS, *bytes_])
 
 
-INIT = _esc(ord("@"))            # Initialize
+INIT = _esc(ord("@"))  # Initialize
 ALIGN_LEFT = _esc(ord("a"), 0)
 ALIGN_CENTER = _esc(ord("a"), 1)
 ALIGN_RIGHT = _esc(ord("a"), 2)
@@ -115,12 +115,13 @@ def generate_thermal_receipt(
     created_at = transaction.get("created_at", datetime.now())
     if isinstance(created_at, str):
         import contextlib
+
         with contextlib.suppress(ValueError):
             created_at = datetime.fromisoformat(created_at)
     date_str = (
-        created_at.strftime("%Y-%m-%d %H:%M") if hasattr(created_at, "strftime") else str(
-            created_at
-        )
+        created_at.strftime("%Y-%m-%d %H:%M")
+        if hasattr(created_at, "strftime")
+        else str(created_at)
     )
 
     buf += _line(date_str)
@@ -262,12 +263,13 @@ def generate_pdf_receipt(
     created_at = transaction.get("created_at", datetime.now())
     if isinstance(created_at, str):
         import contextlib
+
         with contextlib.suppress(ValueError):
             created_at = datetime.fromisoformat(created_at)
     date_str = (
-        created_at.strftime("%Y-%m-%d %H:%M") if hasattr(created_at, "strftime") else str(
-            created_at
-        )
+        created_at.strftime("%Y-%m-%d %H:%M")
+        if hasattr(created_at, "strftime")
+        else str(created_at)
     )
 
     story.append(Paragraph(f"Date: {date_str}", styles["Normal"]))
@@ -276,10 +278,12 @@ def generate_pdf_receipt(
         story.append(Paragraph(f"Receipt #: {receipt_no}", styles["Normal"]))
     site = transaction.get("site_code", "")
     staff = transaction.get("staff_id", "")
-    story.append(Paragraph(
-        f"Terminal: {site} | Staff: {staff}",
-        styles["Normal"],
-    ))
+    story.append(
+        Paragraph(
+            f"Terminal: {site} | Staff: {staff}",
+            styles["Normal"],
+        )
+    )
     customer_id = transaction.get("customer_id")
     if customer_id:
         story.append(Paragraph(f"Customer: {customer_id}", styles["Normal"]))
@@ -307,13 +311,15 @@ def generate_pdf_receipt(
         price = Decimal(str(item.get("unit_price", 0)))
         total = Decimal(str(item.get("line_total", 0)))
         controlled_marker = " [C]" if item.get("is_controlled") else ""
-        table_data.append([
-            name + controlled_marker,
-            batch_exp[:20],
-            f"{qty:.0f}",
-            f"{price:.2f}",
-            f"{total:.2f}",
-        ])
+        table_data.append(
+            [
+                name + controlled_marker,
+                batch_exp[:20],
+                f"{qty:.0f}",
+                f"{price:.2f}",
+                f"{total:.2f}",
+            ]
+        )
 
     items_table = Table(
         table_data,
@@ -337,12 +343,16 @@ def generate_pdf_receipt(
     totals_data.append(["TOTAL", f"{grand_total:.2f}"])
 
     totals_table = Table(totals_data, colWidths=[120 * mm, 27 * mm])
-    totals_table.setStyle(TableStyle([
-        ("FONTNAME", (-1, -1), (-1, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("LINEABOVE", (0, -1), (-1, -1), 0.5, colors.black),
-    ]))
+    totals_table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (-1, -1), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                ("LINEABOVE", (0, -1), (-1, -1), 0.5, colors.black),
+            ]
+        )
+    )
     story.append(totals_table)
     story.append(Spacer(1, 3 * mm))
 
@@ -365,23 +375,29 @@ def generate_pdf_receipt(
     controlled_items = [i for i in items if i.get("is_controlled")]
     if controlled_items:
         story.append(Spacer(1, 3 * mm))
-        story.append(Paragraph(
-            "<b>[C] = Controlled Substance</b> — dispensed under pharmacist supervision.",
-            styles["Normal"],
-        ))
+        story.append(
+            Paragraph(
+                "<b>[C] = Controlled Substance</b> — dispensed under pharmacist supervision.",
+                styles["Normal"],
+            )
+        )
         for item in controlled_items:
             ph = item.get("pharmacist_id", "")
-            story.append(Paragraph(
-                f"  {item.get('drug_name', '')} — Pharmacist: {ph}",
-                styles["Normal"],
-            ))
+            story.append(
+                Paragraph(
+                    f"  {item.get('drug_name', '')} — Pharmacist: {ph}",
+                    styles["Normal"],
+                )
+            )
 
     # --- Footer ---
     story.append(Spacer(1, 5 * mm))
-    story.append(Paragraph(
-        "<i>Thank you for your purchase. For returns, present this receipt within 7 days.</i>",
-        styles["Normal"],
-    ))
+    story.append(
+        Paragraph(
+            "<i>Thank you for your purchase. For returns, present this receipt within 7 days.</i>",
+            styles["Normal"],
+        )
+    )
 
     doc.build(story)
     return buf.getvalue()
