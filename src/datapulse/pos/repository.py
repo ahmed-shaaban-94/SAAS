@@ -363,8 +363,12 @@ class PosRepository:
                         id, transaction_id, drug_code, quantity, unit_price,
                         discount, line_total, is_controlled
                 """),
-                {"item_id": item_id, "quantity": quantity, "line_total": line_total,
-                 "discount": discount},
+                {
+                    "item_id": item_id,
+                    "quantity": quantity,
+                    "line_total": line_total,
+                    "discount": discount,
+                },
             )
             .mappings()
             .first()
@@ -377,7 +381,9 @@ class PosRepository:
             text("DELETE FROM pos.transaction_items WHERE id = :item_id"),
             {"item_id": item_id},
         )
-        return (result.rowcount or 0) > 0
+        # SQLAlchemy ``Result`` for DML statements is a ``CursorResult`` exposing
+        # ``rowcount``; the generic ``Result`` type doesn't, hence the ignore.
+        return (result.rowcount or 0) > 0  # type: ignore[attr-defined]
 
     def get_transaction_items(self, transaction_id: int) -> list[dict[str, Any]]:
         """Return all line items for a transaction, ordered by insertion."""
@@ -434,9 +440,7 @@ class PosRepository:
         )
         return dict(row)
 
-    def get_receipt(
-        self, transaction_id: int, fmt: str
-    ) -> dict[str, Any] | None:
+    def get_receipt(self, transaction_id: int, fmt: str) -> dict[str, Any] | None:
         """Retrieve the most-recent receipt of a given format for a transaction."""
         row = (
             self._session.execute(
@@ -579,8 +583,12 @@ class PosRepository:
                     ORDER  BY opened_at DESC
                     LIMIT  :limit OFFSET :offset
                 """),
-                {"tenant_id": tenant_id, "terminal_id": terminal_id,
-                 "limit": limit, "offset": offset},
+                {
+                    "tenant_id": tenant_id,
+                    "terminal_id": terminal_id,
+                    "limit": limit,
+                    "offset": offset,
+                },
             )
             .mappings()
             .all()
@@ -774,9 +782,7 @@ class PosRepository:
         )
         return dict(row) if row else None
 
-    def list_returns_for_transaction(
-        self, original_transaction_id: int
-    ) -> list[dict[str, Any]]:
+    def list_returns_for_transaction(self, original_transaction_id: int) -> list[dict[str, Any]]:
         """Return all return records linked to an original transaction."""
         rows = (
             self._session.execute(
@@ -797,6 +803,92 @@ class PosRepository:
     # ──────────────────────────────────────────────────────────────
     # Bronze write
     # ──────────────────────────────────────────────────────────────
+
+    # ──────────────────────────────────────────────────────────────
+    # Product search (dim_product + latest unit price from fct_sales)
+    # ──────────────────────────────────────────────────────────────
+
+    def search_dim_products(
+        self,
+        query: str,
+        *,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Search ``public_marts.dim_product`` by drug_code / drug_name / drug_brand.
+
+        Tenant isolation is enforced by RLS via ``SET LOCAL app.tenant_id``.
+        ``unit_price`` is the most-recent unit_price from ``public_marts.fct_sales``
+        (falls back to 0 when the drug has never been sold).
+        """
+        pattern = f"%{query}%"
+        rows = (
+            self._session.execute(
+                text("""
+                    SELECT
+                        p.drug_code,
+                        p.drug_name,
+                        p.drug_brand,
+                        p.drug_cluster,
+                        p.drug_category,
+                        COALESCE(
+                            (
+                                SELECT f.unit_price
+                                FROM   public_marts.fct_sales f
+                                WHERE  f.tenant_id = p.tenant_id
+                                AND    f.drug_code = p.drug_code
+                                ORDER  BY f.invoice_date DESC
+                                LIMIT  1
+                            ),
+                            0
+                        ) AS unit_price
+                    FROM   public_marts.dim_product p
+                    WHERE  (
+                           p.drug_name  ILIKE :pattern
+                        OR p.drug_code  ILIKE :pattern
+                        OR p.drug_brand ILIKE :pattern
+                    )
+                    ORDER  BY p.drug_name
+                    LIMIT  :limit
+                """),
+                {"pattern": pattern, "limit": limit},
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
+
+    def get_product_by_code(self, drug_code: str) -> dict[str, Any] | None:
+        """Return a single product by ``drug_code`` with its most-recent unit price."""
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT
+                        p.drug_code,
+                        p.drug_name,
+                        p.drug_brand,
+                        p.drug_cluster,
+                        p.drug_category,
+                        COALESCE(
+                            (
+                                SELECT f.unit_price
+                                FROM   public_marts.fct_sales f
+                                WHERE  f.tenant_id = p.tenant_id
+                                AND    f.drug_code = p.drug_code
+                                ORDER  BY f.invoice_date DESC
+                                LIMIT  1
+                            ),
+                            0
+                        ) AS unit_price
+                    FROM   public_marts.dim_product p
+                    WHERE  p.drug_code = :drug_code
+                    LIMIT  1
+                """),
+                {"drug_code": drug_code},
+            )
+            .mappings()
+            .first()
+        )
+        return dict(row) if row else None
 
     def insert_bronze_pos_transaction(
         self,

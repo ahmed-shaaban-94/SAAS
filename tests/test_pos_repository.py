@@ -58,10 +58,15 @@ def _make_execute(rows: list[dict] | dict | None, *, mode: str = "one"):
 class TestCreateTerminalSession:
     def test_returns_row_dict(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 1, "tenant_id": 10, "site_code": "S1",
-            "staff_id": "USR1", "terminal_name": "Terminal-1",
-            "status": "open", "opened_at": datetime.datetime(2026, 4, 15, 8, 0),
-            "closed_at": None, "opening_cash": Decimal("200.00"),
+            "id": 1,
+            "tenant_id": 10,
+            "site_code": "S1",
+            "staff_id": "USR1",
+            "terminal_name": "Terminal-1",
+            "status": "open",
+            "opened_at": datetime.datetime(2026, 4, 15, 8, 0),
+            "closed_at": None,
+            "opening_cash": Decimal("200.00"),
             "closing_cash": None,
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
@@ -76,10 +81,18 @@ class TestCreateTerminalSession:
 
     def test_sql_contains_insert(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(
-            {"id": 1, "tenant_id": 1, "site_code": "S1", "staff_id": "U",
-             "terminal_name": "T", "status": "open",
-             "opened_at": datetime.datetime(2026, 1, 1), "closed_at": None,
-             "opening_cash": Decimal("0"), "closing_cash": None},
+            {
+                "id": 1,
+                "tenant_id": 1,
+                "site_code": "S1",
+                "staff_id": "U",
+                "terminal_name": "T",
+                "status": "open",
+                "opened_at": datetime.datetime(2026, 1, 1),
+                "closed_at": None,
+                "opening_cash": Decimal("0"),
+                "closing_cash": None,
+            },
             mode="one",
         )
         repo.create_terminal_session(tenant_id=1, site_code="S1", staff_id="U")
@@ -90,15 +103,26 @@ class TestCreateTerminalSession:
 
     def test_params_passed_correctly(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(
-            {"id": 2, "tenant_id": 5, "site_code": "PHX", "staff_id": "DR1",
-             "terminal_name": "Desk-2", "status": "open",
-             "opened_at": datetime.datetime(2026, 4, 15), "closed_at": None,
-             "opening_cash": Decimal("500"), "closing_cash": None},
+            {
+                "id": 2,
+                "tenant_id": 5,
+                "site_code": "PHX",
+                "staff_id": "DR1",
+                "terminal_name": "Desk-2",
+                "status": "open",
+                "opened_at": datetime.datetime(2026, 4, 15),
+                "closed_at": None,
+                "opening_cash": Decimal("500"),
+                "closing_cash": None,
+            },
             mode="one",
         )
         repo.create_terminal_session(
-            tenant_id=5, site_code="PHX", staff_id="DR1",
-            terminal_name="Desk-2", opening_cash=Decimal("500"),
+            tenant_id=5,
+            site_code="PHX",
+            staff_id="DR1",
+            terminal_name="Desk-2",
+            opening_cash=Decimal("500"),
         )
         params = mock_session.execute.call_args[0][1]
         assert params["tenant_id"] == 5
@@ -110,11 +134,16 @@ class TestCreateTerminalSession:
 class TestUpdateTerminalStatus:
     def test_returns_updated_row(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 1, "tenant_id": 1, "site_code": "S1", "staff_id": "U",
-            "terminal_name": "T", "status": "closed",
+            "id": 1,
+            "tenant_id": 1,
+            "site_code": "S1",
+            "staff_id": "U",
+            "terminal_name": "T",
+            "status": "closed",
             "opened_at": datetime.datetime(2026, 4, 15, 8, 0),
             "closed_at": datetime.datetime(2026, 4, 15, 18, 0),
-            "opening_cash": Decimal("200"), "closing_cash": Decimal("300"),
+            "opening_cash": Decimal("200"),
+            "closing_cash": Decimal("300"),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="first")
 
@@ -127,9 +156,7 @@ class TestUpdateTerminalStatus:
         mock_session.execute.return_value = _make_execute(None, mode="first")
         assert repo.update_terminal_status(999, status="closed") is None
 
-    def test_sql_uses_coalesce_for_closing_cash(
-        self, repo: PosRepository, mock_session: MagicMock
-    ):
+    def test_sql_uses_coalesce_for_closing_cash(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(None, mode="first")
         repo.update_terminal_status(1, status="active")
         sql_text = str(mock_session.execute.call_args[0][0])
@@ -138,10 +165,18 @@ class TestUpdateTerminalStatus:
 
 class TestGetTerminalSession:
     def test_returns_row(self, repo: PosRepository, mock_session: MagicMock):
-        row = {"id": 7, "tenant_id": 3, "site_code": "X", "staff_id": "U",
-               "terminal_name": "T", "status": "active",
-               "opened_at": datetime.datetime(2026, 4, 15), "closed_at": None,
-               "opening_cash": Decimal("0"), "closing_cash": None}
+        row = {
+            "id": 7,
+            "tenant_id": 3,
+            "site_code": "X",
+            "staff_id": "U",
+            "terminal_name": "T",
+            "status": "active",
+            "opened_at": datetime.datetime(2026, 4, 15),
+            "closed_at": None,
+            "opening_cash": Decimal("0"),
+            "closing_cash": None,
+        }
         mock_session.execute.return_value = _make_execute(row, mode="first")
         result = repo.get_terminal_session(7)
         assert result["id"] == 7
@@ -154,10 +189,18 @@ class TestGetTerminalSession:
 class TestGetActiveTerminals:
     def test_returns_list(self, repo: PosRepository, mock_session: MagicMock):
         rows = [
-            {"id": 1, "tenant_id": 1, "site_code": "S1", "staff_id": "U",
-             "terminal_name": "T1", "status": "active",
-             "opened_at": datetime.datetime(2026, 4, 15), "closed_at": None,
-             "opening_cash": Decimal("0"), "closing_cash": None},
+            {
+                "id": 1,
+                "tenant_id": 1,
+                "site_code": "S1",
+                "staff_id": "U",
+                "terminal_name": "T1",
+                "status": "active",
+                "opened_at": datetime.datetime(2026, 4, 15),
+                "closed_at": None,
+                "opening_cash": Decimal("0"),
+                "closing_cash": None,
+            },
         ]
         mock_session.execute.return_value = _make_execute(rows, mode="all")
         result = repo.get_active_terminals(tenant_id=1)
@@ -180,28 +223,46 @@ class TestGetActiveTerminals:
 class TestCreateTransaction:
     def test_returns_draft_transaction(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 100, "tenant_id": 1, "terminal_id": 5, "staff_id": "USR",
-            "pharmacist_id": None, "customer_id": None, "site_code": "S1",
-            "subtotal": Decimal("0"), "discount_total": Decimal("0"),
-            "tax_total": Decimal("0"), "grand_total": Decimal("0"),
-            "payment_method": None, "status": "draft",
-            "receipt_number": None, "created_at": datetime.datetime(2026, 4, 15),
+            "id": 100,
+            "tenant_id": 1,
+            "terminal_id": 5,
+            "staff_id": "USR",
+            "pharmacist_id": None,
+            "customer_id": None,
+            "site_code": "S1",
+            "subtotal": Decimal("0"),
+            "discount_total": Decimal("0"),
+            "tax_total": Decimal("0"),
+            "grand_total": Decimal("0"),
+            "payment_method": None,
+            "status": "draft",
+            "receipt_number": None,
+            "created_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
-        result = repo.create_transaction(
-            tenant_id=1, terminal_id=5, staff_id="USR", site_code="S1"
-        )
+        result = repo.create_transaction(tenant_id=1, terminal_id=5, staff_id="USR", site_code="S1")
         assert result["id"] == 100
         assert result["status"] == "draft"
 
     def test_sql_inserts_draft(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(
-            {"id": 1, "tenant_id": 1, "terminal_id": 1, "staff_id": "U",
-             "pharmacist_id": None, "customer_id": None, "site_code": "S",
-             "subtotal": Decimal("0"), "discount_total": Decimal("0"),
-             "tax_total": Decimal("0"), "grand_total": Decimal("0"),
-             "payment_method": None, "status": "draft",
-             "receipt_number": None, "created_at": datetime.datetime(2026, 1, 1)},
+            {
+                "id": 1,
+                "tenant_id": 1,
+                "terminal_id": 1,
+                "staff_id": "U",
+                "pharmacist_id": None,
+                "customer_id": None,
+                "site_code": "S",
+                "subtotal": Decimal("0"),
+                "discount_total": Decimal("0"),
+                "tax_total": Decimal("0"),
+                "grand_total": Decimal("0"),
+                "payment_method": None,
+                "status": "draft",
+                "receipt_number": None,
+                "created_at": datetime.datetime(2026, 1, 1),
+            },
             mode="one",
         )
         repo.create_transaction(tenant_id=1, terminal_id=1, staff_id="U", site_code="S")
@@ -212,12 +273,23 @@ class TestCreateTransaction:
 
 class TestGetTransaction:
     def test_returns_row(self, repo: PosRepository, mock_session: MagicMock):
-        row = {"id": 55, "tenant_id": 2, "terminal_id": 3, "staff_id": "S",
-               "pharmacist_id": None, "customer_id": None, "site_code": "X",
-               "subtotal": Decimal("50"), "discount_total": Decimal("0"),
-               "tax_total": Decimal("5"), "grand_total": Decimal("55"),
-               "payment_method": "cash", "status": "completed",
-               "receipt_number": "RCP-001", "created_at": datetime.datetime(2026, 4, 15)}
+        row = {
+            "id": 55,
+            "tenant_id": 2,
+            "terminal_id": 3,
+            "staff_id": "S",
+            "pharmacist_id": None,
+            "customer_id": None,
+            "site_code": "X",
+            "subtotal": Decimal("50"),
+            "discount_total": Decimal("0"),
+            "tax_total": Decimal("5"),
+            "grand_total": Decimal("55"),
+            "payment_method": "cash",
+            "status": "completed",
+            "receipt_number": "RCP-001",
+            "created_at": datetime.datetime(2026, 4, 15),
+        }
         mock_session.execute.return_value = _make_execute(row, mode="first")
         result = repo.get_transaction(55)
         assert result["receipt_number"] == "RCP-001"
@@ -230,10 +302,18 @@ class TestGetTransaction:
 class TestListTransactions:
     def test_returns_list_filtered(self, repo: PosRepository, mock_session: MagicMock):
         rows = [
-            {"id": 1, "tenant_id": 1, "terminal_id": 2, "staff_id": "U",
-             "customer_id": None, "grand_total": Decimal("100"),
-             "payment_method": "cash", "status": "completed",
-             "receipt_number": "RCP-1", "created_at": datetime.datetime(2026, 4, 15)},
+            {
+                "id": 1,
+                "tenant_id": 1,
+                "terminal_id": 2,
+                "staff_id": "U",
+                "customer_id": None,
+                "grand_total": Decimal("100"),
+                "payment_method": "cash",
+                "status": "completed",
+                "receipt_number": "RCP-1",
+                "created_at": datetime.datetime(2026, 4, 15),
+            },
         ]
         mock_session.execute.return_value = _make_execute(rows, mode="all")
         result = repo.list_transactions(tenant_id=1, status="completed")
@@ -255,19 +335,29 @@ class TestListTransactions:
 class TestAddTransactionItem:
     def test_returns_item_row(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 10, "transaction_id": 100, "tenant_id": 1,
-            "drug_code": "DRG001", "drug_name": "Amoxicillin 500mg",
-            "batch_number": "B001", "expiry_date": datetime.date(2027, 1, 1),
-            "quantity": Decimal("2"), "unit_price": Decimal("5.00"),
-            "discount": Decimal("0"), "line_total": Decimal("10.00"),
-            "is_controlled": False, "pharmacist_id": None,
+            "id": 10,
+            "transaction_id": 100,
+            "tenant_id": 1,
+            "drug_code": "DRG001",
+            "drug_name": "Amoxicillin 500mg",
+            "batch_number": "B001",
+            "expiry_date": datetime.date(2027, 1, 1),
+            "quantity": Decimal("2"),
+            "unit_price": Decimal("5.00"),
+            "discount": Decimal("0"),
+            "line_total": Decimal("10.00"),
+            "is_controlled": False,
+            "pharmacist_id": None,
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
 
         result = repo.add_transaction_item(
-            transaction_id=100, tenant_id=1,
-            drug_code="DRG001", drug_name="Amoxicillin 500mg",
-            quantity=Decimal("2"), unit_price=Decimal("5.00"),
+            transaction_id=100,
+            tenant_id=1,
+            drug_code="DRG001",
+            drug_name="Amoxicillin 500mg",
+            quantity=Decimal("2"),
+            unit_price=Decimal("5.00"),
             line_total=Decimal("10.00"),
         )
         assert result["line_total"] == Decimal("10.00")
@@ -275,19 +365,31 @@ class TestAddTransactionItem:
 
     def test_controlled_substance_flag(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 11, "transaction_id": 100, "tenant_id": 1,
-            "drug_code": "CTRL01", "drug_name": "Morphine",
-            "batch_number": None, "expiry_date": None,
-            "quantity": Decimal("1"), "unit_price": Decimal("50"),
-            "discount": Decimal("0"), "line_total": Decimal("50"),
-            "is_controlled": True, "pharmacist_id": "PHR001",
+            "id": 11,
+            "transaction_id": 100,
+            "tenant_id": 1,
+            "drug_code": "CTRL01",
+            "drug_name": "Morphine",
+            "batch_number": None,
+            "expiry_date": None,
+            "quantity": Decimal("1"),
+            "unit_price": Decimal("50"),
+            "discount": Decimal("0"),
+            "line_total": Decimal("50"),
+            "is_controlled": True,
+            "pharmacist_id": "PHR001",
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
         result = repo.add_transaction_item(
-            transaction_id=100, tenant_id=1,
-            drug_code="CTRL01", drug_name="Morphine",
-            quantity=Decimal("1"), unit_price=Decimal("50"),
-            line_total=Decimal("50"), is_controlled=True, pharmacist_id="PHR001",
+            transaction_id=100,
+            tenant_id=1,
+            drug_code="CTRL01",
+            drug_name="Morphine",
+            quantity=Decimal("1"),
+            unit_price=Decimal("50"),
+            line_total=Decimal("50"),
+            is_controlled=True,
+            pharmacist_id="PHR001",
         )
         params = mock_session.execute.call_args[0][1]
         assert params["is_controlled"] is True
@@ -298,9 +400,13 @@ class TestAddTransactionItem:
 class TestUpdateItemQuantity:
     def test_updates_and_returns_row(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 10, "transaction_id": 100, "drug_code": "DRG001",
-            "quantity": Decimal("3"), "unit_price": Decimal("5.00"),
-            "discount": Decimal("0"), "line_total": Decimal("15.00"),
+            "id": 10,
+            "transaction_id": 100,
+            "drug_code": "DRG001",
+            "quantity": Decimal("3"),
+            "unit_price": Decimal("5.00"),
+            "discount": Decimal("0"),
+            "line_total": Decimal("15.00"),
             "is_controlled": False,
         }
         mock_session.execute.return_value = _make_execute(expected, mode="first")
@@ -332,11 +438,21 @@ class TestRemoveItem:
 class TestGetTransactionItems:
     def test_returns_items_list(self, repo: PosRepository, mock_session: MagicMock):
         rows = [
-            {"id": 1, "transaction_id": 10, "tenant_id": 1, "drug_code": "A",
-             "drug_name": "Drug A", "batch_number": None, "expiry_date": None,
-             "quantity": Decimal("1"), "unit_price": Decimal("10"),
-             "discount": Decimal("0"), "line_total": Decimal("10"),
-             "is_controlled": False, "pharmacist_id": None},
+            {
+                "id": 1,
+                "transaction_id": 10,
+                "tenant_id": 1,
+                "drug_code": "A",
+                "drug_name": "Drug A",
+                "batch_number": None,
+                "expiry_date": None,
+                "quantity": Decimal("1"),
+                "unit_price": Decimal("10"),
+                "discount": Decimal("0"),
+                "line_total": Decimal("10"),
+                "is_controlled": False,
+                "pharmacist_id": None,
+            },
         ]
         mock_session.execute.return_value = _make_execute(rows, mode="all")
         result = repo.get_transaction_items(10)
@@ -352,14 +468,15 @@ class TestGetTransactionItems:
 class TestSaveReceipt:
     def test_saves_thermal_receipt(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 1, "transaction_id": 100, "tenant_id": 1,
-            "format": "thermal", "file_path": None,
+            "id": 1,
+            "transaction_id": 100,
+            "tenant_id": 1,
+            "format": "thermal",
+            "file_path": None,
             "generated_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
-        result = repo.save_receipt(
-            transaction_id=100, tenant_id=1, fmt="thermal", content=b"\x1b@"
-        )
+        result = repo.save_receipt(transaction_id=100, tenant_id=1, fmt="thermal", content=b"\x1b@")
         assert result["format"] == "thermal"
         params = mock_session.execute.call_args[0][1]
         assert params["fmt"] == "thermal"
@@ -367,14 +484,19 @@ class TestSaveReceipt:
 
     def test_saves_pdf_receipt_with_path(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 2, "transaction_id": 100, "tenant_id": 1,
-            "format": "pdf", "file_path": "/receipts/receipt-100.pdf",
+            "id": 2,
+            "transaction_id": 100,
+            "tenant_id": 1,
+            "format": "pdf",
+            "file_path": "/receipts/receipt-100.pdf",
             "generated_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
         result = repo.save_receipt(
-            transaction_id=100, tenant_id=1,
-            fmt="pdf", file_path="/receipts/receipt-100.pdf",
+            transaction_id=100,
+            tenant_id=1,
+            fmt="pdf",
+            file_path="/receipts/receipt-100.pdf",
         )
         assert result["file_path"] == "/receipts/receipt-100.pdf"
 
@@ -382,9 +504,13 @@ class TestSaveReceipt:
 class TestGetReceipt:
     def test_returns_most_recent_receipt(self, repo: PosRepository, mock_session: MagicMock):
         row = {
-            "id": 1, "transaction_id": 100, "tenant_id": 1,
-            "format": "pdf", "content": b"%PDF",
-            "file_path": None, "generated_at": datetime.datetime(2026, 4, 15),
+            "id": 1,
+            "transaction_id": 100,
+            "tenant_id": 1,
+            "format": "pdf",
+            "content": b"%PDF",
+            "file_path": None,
+            "generated_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
         result = repo.get_receipt(100, "pdf")
@@ -404,16 +530,26 @@ class TestCreateShiftRecord:
     def test_creates_open_shift(self, repo: PosRepository, mock_session: MagicMock):
         opened = datetime.datetime(2026, 4, 15, 8, 0)
         expected = {
-            "id": 1, "terminal_id": 5, "tenant_id": 1, "staff_id": "USR",
-            "shift_date": datetime.date(2026, 4, 15), "opened_at": opened,
-            "closed_at": None, "opening_cash": Decimal("200"),
-            "closing_cash": None, "expected_cash": None, "variance": None,
+            "id": 1,
+            "terminal_id": 5,
+            "tenant_id": 1,
+            "staff_id": "USR",
+            "shift_date": datetime.date(2026, 4, 15),
+            "opened_at": opened,
+            "closed_at": None,
+            "opening_cash": Decimal("200"),
+            "closing_cash": None,
+            "expected_cash": None,
+            "variance": None,
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
         result = repo.create_shift_record(
-            terminal_id=5, tenant_id=1, staff_id="USR",
+            terminal_id=5,
+            tenant_id=1,
+            staff_id="USR",
             shift_date=datetime.date(2026, 4, 15),
-            opened_at=opened, opening_cash=Decimal("200"),
+            opened_at=opened,
+            opening_cash=Decimal("200"),
         )
         assert result["closed_at"] is None
         assert result["opening_cash"] == Decimal("200")
@@ -422,11 +558,17 @@ class TestCreateShiftRecord:
 class TestGetCurrentShift:
     def test_returns_open_shift(self, repo: PosRepository, mock_session: MagicMock):
         row = {
-            "id": 3, "terminal_id": 5, "tenant_id": 1, "staff_id": "USR",
+            "id": 3,
+            "terminal_id": 5,
+            "tenant_id": 1,
+            "staff_id": "USR",
             "shift_date": datetime.date(2026, 4, 15),
             "opened_at": datetime.datetime(2026, 4, 15, 8, 0),
-            "closed_at": None, "opening_cash": Decimal("200"),
-            "closing_cash": None, "expected_cash": None, "variance": None,
+            "closed_at": None,
+            "opening_cash": Decimal("200"),
+            "closing_cash": None,
+            "expected_cash": None,
+            "variance": None,
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
         result = repo.get_current_shift(5)
@@ -443,12 +585,17 @@ class TestGetCurrentShift:
 class TestUpdateShiftRecord:
     def test_closes_shift_with_variance(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 3, "terminal_id": 5, "tenant_id": 1, "staff_id": "USR",
+            "id": 3,
+            "terminal_id": 5,
+            "tenant_id": 1,
+            "staff_id": "USR",
             "shift_date": datetime.date(2026, 4, 15),
             "opened_at": datetime.datetime(2026, 4, 15, 8, 0),
             "closed_at": datetime.datetime(2026, 4, 15, 18, 0),
-            "opening_cash": Decimal("200"), "closing_cash": Decimal("850"),
-            "expected_cash": Decimal("840"), "variance": Decimal("10"),
+            "opening_cash": Decimal("200"),
+            "closing_cash": Decimal("850"),
+            "expected_cash": Decimal("840"),
+            "variance": Decimal("10"),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="first")
         result = repo.update_shift_record(
@@ -469,25 +616,36 @@ class TestUpdateShiftRecord:
 class TestRecordCashEvent:
     def test_records_sale_event(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 1, "terminal_id": 5, "tenant_id": 1,
-            "event_type": "sale", "amount": Decimal("55.50"),
-            "reference_id": "TXN-100", "timestamp": datetime.datetime(2026, 4, 15),
+            "id": 1,
+            "terminal_id": 5,
+            "tenant_id": 1,
+            "event_type": "sale",
+            "amount": Decimal("55.50"),
+            "reference_id": "TXN-100",
+            "timestamp": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
         result = repo.record_cash_event(
-            terminal_id=5, tenant_id=1, event_type="sale",
-            amount=Decimal("55.50"), reference_id="TXN-100",
+            terminal_id=5,
+            tenant_id=1,
+            event_type="sale",
+            amount=Decimal("55.50"),
+            reference_id="TXN-100",
         )
         assert result["event_type"] == "sale"
         assert result["amount"] == Decimal("55.50")
 
-    def test_sql_insert_into_cash_drawer_events(
-        self, repo: PosRepository, mock_session: MagicMock
-    ):
+    def test_sql_insert_into_cash_drawer_events(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(
-            {"id": 1, "terminal_id": 1, "tenant_id": 1, "event_type": "float",
-             "amount": Decimal("100"), "reference_id": None,
-             "timestamp": datetime.datetime(2026, 1, 1)},
+            {
+                "id": 1,
+                "terminal_id": 1,
+                "tenant_id": 1,
+                "event_type": "float",
+                "amount": Decimal("100"),
+                "reference_id": None,
+                "timestamp": datetime.datetime(2026, 1, 1),
+            },
             mode="one",
         )
         repo.record_cash_event(
@@ -500,9 +658,15 @@ class TestRecordCashEvent:
 class TestGetCashEvents:
     def test_returns_events(self, repo: PosRepository, mock_session: MagicMock):
         rows = [
-            {"id": 1, "terminal_id": 5, "tenant_id": 1, "event_type": "sale",
-             "amount": Decimal("50"), "reference_id": None,
-             "timestamp": datetime.datetime(2026, 4, 15)},
+            {
+                "id": 1,
+                "terminal_id": 5,
+                "tenant_id": 1,
+                "event_type": "sale",
+                "amount": Decimal("50"),
+                "reference_id": None,
+                "timestamp": datetime.datetime(2026, 4, 15),
+            },
         ]
         mock_session.execute.return_value = _make_execute(rows, mode="all")
         result = repo.get_cash_events(terminal_id=5)
@@ -517,22 +681,33 @@ class TestGetCashEvents:
 class TestCreateVoidLog:
     def test_creates_void_record(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 1, "transaction_id": 55, "tenant_id": 1,
-            "voided_by": "SUPERVISOR", "reason": "customer request",
+            "id": 1,
+            "transaction_id": 55,
+            "tenant_id": 1,
+            "voided_by": "SUPERVISOR",
+            "reason": "customer request",
             "voided_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
         result = repo.create_void_log(
-            transaction_id=55, tenant_id=1,
-            voided_by="SUPERVISOR", reason="customer request",
+            transaction_id=55,
+            tenant_id=1,
+            voided_by="SUPERVISOR",
+            reason="customer request",
         )
         assert result["voided_by"] == "SUPERVISOR"
         assert result["transaction_id"] == 55
 
     def test_sql_appends_void_log(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(
-            {"id": 1, "transaction_id": 1, "tenant_id": 1,
-             "voided_by": "S", "reason": "R", "voided_at": datetime.datetime(2026, 1, 1)},
+            {
+                "id": 1,
+                "transaction_id": 1,
+                "tenant_id": 1,
+                "voided_by": "S",
+                "reason": "R",
+                "voided_at": datetime.datetime(2026, 1, 1),
+            },
             mode="one",
         )
         repo.create_void_log(transaction_id=1, tenant_id=1, voided_by="S", reason="R")
@@ -543,8 +718,11 @@ class TestCreateVoidLog:
 class TestGetVoidLog:
     def test_returns_void_record(self, repo: PosRepository, mock_session: MagicMock):
         row = {
-            "id": 1, "transaction_id": 55, "tenant_id": 1,
-            "voided_by": "SUPERVISOR", "reason": "Test",
+            "id": 1,
+            "transaction_id": 55,
+            "tenant_id": 1,
+            "voided_by": "SUPERVISOR",
+            "reason": "Test",
             "voided_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
@@ -564,33 +742,51 @@ class TestGetVoidLog:
 class TestCreateReturn:
     def test_creates_return_record(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 1, "tenant_id": 1,
-            "original_transaction_id": 55, "return_transaction_id": None,
-            "staff_id": "USR", "reason": "defective",
-            "refund_amount": Decimal("50"), "refund_method": "cash",
-            "notes": None, "created_at": datetime.datetime(2026, 4, 15),
+            "id": 1,
+            "tenant_id": 1,
+            "original_transaction_id": 55,
+            "return_transaction_id": None,
+            "staff_id": "USR",
+            "reason": "defective",
+            "refund_amount": Decimal("50"),
+            "refund_method": "cash",
+            "notes": None,
+            "created_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
         result = repo.create_return(
-            tenant_id=1, original_transaction_id=55, staff_id="USR",
-            reason="defective", refund_amount=Decimal("50"), refund_method="cash",
+            tenant_id=1,
+            original_transaction_id=55,
+            staff_id="USR",
+            reason="defective",
+            refund_amount=Decimal("50"),
+            refund_method="cash",
         )
         assert result["reason"] == "defective"
         assert result["refund_amount"] == Decimal("50")
 
     def test_links_return_transaction(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 2, "tenant_id": 1,
-            "original_transaction_id": 55, "return_transaction_id": 60,
-            "staff_id": "USR", "reason": "wrong_drug",
-            "refund_amount": Decimal("25"), "refund_method": "credit_note",
-            "notes": "Wrong dosage", "created_at": datetime.datetime(2026, 4, 15),
+            "id": 2,
+            "tenant_id": 1,
+            "original_transaction_id": 55,
+            "return_transaction_id": 60,
+            "staff_id": "USR",
+            "reason": "wrong_drug",
+            "refund_amount": Decimal("25"),
+            "refund_method": "credit_note",
+            "notes": "Wrong dosage",
+            "created_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="one")
         repo.create_return(
-            tenant_id=1, original_transaction_id=55, staff_id="USR",
-            reason="wrong_drug", refund_amount=Decimal("25"),
-            refund_method="credit_note", return_transaction_id=60,
+            tenant_id=1,
+            original_transaction_id=55,
+            staff_id="USR",
+            reason="wrong_drug",
+            refund_amount=Decimal("25"),
+            refund_method="credit_note",
+            return_transaction_id=60,
             notes="Wrong dosage",
         )
         params = mock_session.execute.call_args[0][1]
@@ -601,11 +797,16 @@ class TestCreateReturn:
 class TestGetReturn:
     def test_returns_row(self, repo: PosRepository, mock_session: MagicMock):
         row = {
-            "id": 1, "tenant_id": 1,
-            "original_transaction_id": 55, "return_transaction_id": None,
-            "staff_id": "U", "reason": "expired",
-            "refund_amount": Decimal("10"), "refund_method": "cash",
-            "notes": None, "created_at": datetime.datetime(2026, 4, 15),
+            "id": 1,
+            "tenant_id": 1,
+            "original_transaction_id": 55,
+            "return_transaction_id": None,
+            "staff_id": "U",
+            "reason": "expired",
+            "refund_amount": Decimal("10"),
+            "refund_method": "cash",
+            "notes": None,
+            "created_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
         assert repo.get_return(1)["reason"] == "expired"
@@ -618,16 +819,30 @@ class TestGetReturn:
 class TestListReturnsForTransaction:
     def test_returns_all_linked_returns(self, repo: PosRepository, mock_session: MagicMock):
         rows = [
-            {"id": 1, "tenant_id": 1, "original_transaction_id": 55,
-             "return_transaction_id": None, "staff_id": "U",
-             "reason": "defective", "refund_amount": Decimal("10"),
-             "refund_method": "cash", "notes": None,
-             "created_at": datetime.datetime(2026, 4, 15)},
-            {"id": 2, "tenant_id": 1, "original_transaction_id": 55,
-             "return_transaction_id": None, "staff_id": "U",
-             "reason": "expired", "refund_amount": Decimal("5"),
-             "refund_method": "cash", "notes": None,
-             "created_at": datetime.datetime(2026, 4, 15)},
+            {
+                "id": 1,
+                "tenant_id": 1,
+                "original_transaction_id": 55,
+                "return_transaction_id": None,
+                "staff_id": "U",
+                "reason": "defective",
+                "refund_amount": Decimal("10"),
+                "refund_method": "cash",
+                "notes": None,
+                "created_at": datetime.datetime(2026, 4, 15),
+            },
+            {
+                "id": 2,
+                "tenant_id": 1,
+                "original_transaction_id": 55,
+                "return_transaction_id": None,
+                "staff_id": "U",
+                "reason": "expired",
+                "refund_amount": Decimal("5"),
+                "refund_method": "cash",
+                "notes": None,
+                "created_at": datetime.datetime(2026, 4, 15),
+            },
         ]
         mock_session.execute.return_value = _make_execute(rows, mode="all")
         result = repo.list_returns_for_transaction(55)
@@ -648,8 +863,10 @@ class TestListReturnsForTransaction:
 class TestInsertBronzePosTransaction:
     def test_inserts_pos_transaction(self, repo: PosRepository, mock_session: MagicMock):
         expected = {
-            "id": 1, "transaction_id": "POS-100",
-            "drug_code": "DRG001", "net_amount": Decimal("50"),
+            "id": 1,
+            "transaction_id": "POS-100",
+            "drug_code": "DRG001",
+            "net_amount": Decimal("50"),
             "loaded_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(expected, mode="first")
@@ -674,12 +891,19 @@ class TestInsertBronzePosTransaction:
         """Ensure the 'POS-' prefix is passed (C3 collision prevention)."""
         mock_session.execute.return_value = _make_execute(None, mode="first")
         repo.insert_bronze_pos_transaction(
-            tenant_id=1, transaction_id="POS-999",
+            tenant_id=1,
+            transaction_id="POS-999",
             transaction_date=datetime.datetime(2026, 4, 15),
-            site_code="S1", register_id=None, cashier_id="U",
-            customer_id=None, drug_code="D", batch_number=None,
-            quantity=Decimal("1"), unit_price=Decimal("10"),
-            net_amount=Decimal("10"), payment_method="cash",
+            site_code="S1",
+            register_id=None,
+            cashier_id="U",
+            customer_id=None,
+            drug_code="D",
+            batch_number=None,
+            quantity=Decimal("1"),
+            unit_price=Decimal("10"),
+            net_amount=Decimal("10"),
+            payment_method="cash",
         )
         params = mock_session.execute.call_args[0][1]
         assert params["transaction_id"].startswith("POS-"), (
@@ -690,41 +914,60 @@ class TestInsertBronzePosTransaction:
         """Duplicate bronze inserts must be silently ignored (idempotent)."""
         mock_session.execute.return_value = _make_execute(None, mode="first")
         repo.insert_bronze_pos_transaction(
-            tenant_id=1, transaction_id="POS-1",
+            tenant_id=1,
+            transaction_id="POS-1",
             transaction_date=datetime.datetime(2026, 4, 15),
-            site_code="S1", register_id=None, cashier_id="U",
-            customer_id=None, drug_code="D", batch_number=None,
-            quantity=Decimal("1"), unit_price=Decimal("1"),
-            net_amount=Decimal("1"), payment_method="cash",
+            site_code="S1",
+            register_id=None,
+            cashier_id="U",
+            customer_id=None,
+            drug_code="D",
+            batch_number=None,
+            quantity=Decimal("1"),
+            unit_price=Decimal("1"),
+            net_amount=Decimal("1"),
+            payment_method="cash",
         )
         sql = str(mock_session.execute.call_args[0][0])
         assert "ON CONFLICT" in sql
         assert "DO NOTHING" in sql
 
-    def test_returns_empty_dict_on_duplicate(
-        self, repo: PosRepository, mock_session: MagicMock
-    ):
+    def test_returns_empty_dict_on_duplicate(self, repo: PosRepository, mock_session: MagicMock):
         """ON CONFLICT DO NOTHING returns no row — repository returns empty dict."""
         mock_session.execute.return_value = _make_execute(None, mode="first")
         result = repo.insert_bronze_pos_transaction(
-            tenant_id=1, transaction_id="POS-1",
+            tenant_id=1,
+            transaction_id="POS-1",
             transaction_date=datetime.datetime(2026, 4, 15),
-            site_code="S1", register_id=None, cashier_id="U",
-            customer_id=None, drug_code="D", batch_number=None,
-            quantity=Decimal("1"), unit_price=Decimal("1"),
-            net_amount=Decimal("1"), payment_method="cash",
+            site_code="S1",
+            register_id=None,
+            cashier_id="U",
+            customer_id=None,
+            drug_code="D",
+            batch_number=None,
+            quantity=Decimal("1"),
+            unit_price=Decimal("1"),
+            net_amount=Decimal("1"),
+            payment_method="cash",
         )
         assert result == {}
 
     def test_return_flag_passed_through(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(None, mode="first")
         repo.insert_bronze_pos_transaction(
-            tenant_id=1, transaction_id="POS-2",
+            tenant_id=1,
+            transaction_id="POS-2",
             transaction_date=datetime.datetime(2026, 4, 15),
-            site_code="S1", register_id=None, cashier_id="U",
-            customer_id=None, drug_code="D", batch_number=None,
-            quantity=Decimal("1"), unit_price=Decimal("1"),
-            net_amount=Decimal("-1"), payment_method="cash",
+            site_code="S1",
+            register_id=None,
+            cashier_id="U",
+            customer_id=None,
+            drug_code="D",
+            batch_number=None,
+            quantity=Decimal("1"),
+            unit_price=Decimal("1"),
+            net_amount=Decimal("-1"),
+            payment_method="cash",
             is_return=True,
         )
         params = mock_session.execute.call_args[0][1]

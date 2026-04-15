@@ -28,7 +28,10 @@ CREATE INDEX IF NOT EXISTS idx_pos_shifts_open
     ON pos.shift_records (terminal_id)
     WHERE closed_at IS NULL;
 
-COMMENT ON INDEX idx_pos_txn_history_cover IS
+-- COMMENT ON INDEX requires schema-qualified names because the ``pos`` schema
+-- is not on the default search_path for the migration role. Without the
+-- qualifier psql raises "relation does not exist".
+COMMENT ON INDEX pos.idx_pos_txn_history_cover IS
     'Covering index for transaction list endpoint — avoids table heap fetch for common columns.';
-COMMENT ON INDEX idx_pos_items_controlled IS
+COMMENT ON INDEX pos.idx_pos_items_controlled IS
     'Partial index for controlled-substance audit queries — only indexes rows where is_controlled=true.';
