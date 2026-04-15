@@ -8,13 +8,10 @@ config_json shape:
         "spreadsheet_id":    "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms",
         "sheet_name":        "Sheet1",          # tab name (default: Sheet1)
         "header_row":        1,                 # 1-based row containing column headers
-        "service_account_key": {                # full service-account JSON object
-            "type": "service_account",
-            "project_id": "...",
-            "private_key_id": "...",
-            "private_key": "-----BEGIN RSA PRIVATE KEY-----\\n...",
-            "client_email": "...",
-            ...
+        "service_account_key": {
+            "<google service-account json>": "include the credential fields from the "
+            "downloaded key file, such as project identifier, client email, and "
+            "private key material"
         }
     }
 
