@@ -1,0 +1,7 @@
+node_modules/
+dist/
+out/
+resources/nextjs/
+*.exe
+*.msi
+*.nsis
