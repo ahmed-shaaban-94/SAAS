@@ -83,3 +83,6 @@ docs/brain/sessions/*
 !docs/brain/sessions/.gitkeep
 docs/brain/_INDEX.md
 # session-log.csv is intentionally NOT ignored — it's the shared team log
+
+# Git worktrees
+.worktrees/
