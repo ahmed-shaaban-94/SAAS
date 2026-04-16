@@ -4,14 +4,13 @@ import type { PricingTier } from "@/lib/marketing-constants";
 
 function getCtaHref(name: string): string {
   switch (name) {
-    case "Starter":
-      return "/login";
-    case "Pro":
-      return "/login?callbackUrl=/billing";
-    case "Enterprise":
-      return "mailto:support@smartdatapulse.tech?subject=Enterprise%20Plan";
+    case "Explorer Pilot":
+    case "Operations Pilot":
+      return "#pilot-access";
+    case "Enterprise Rollout":
+      return "mailto:support@smartdatapulse.tech?subject=Enterprise%20Rollout";
     default:
-      return "/login";
+      return "#pilot-access";
   }
 }
 
