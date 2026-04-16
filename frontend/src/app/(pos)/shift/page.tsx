@@ -6,7 +6,7 @@ import { Monitor, DollarSign, Loader2 } from "lucide-react";
 import { ShiftSummary } from "@/components/pos/ShiftSummary";
 import { openTerminal, closeTerminal } from "@/hooks/use-pos-terminal";
 import { cn } from "@/lib/utils";
-import type { TerminalSessionResponse, ShiftSummaryResponse } from "@/types/pos";
+import type { TerminalSessionResponse } from "@/types/pos";
 
 type ShiftView = "open" | "active" | "close" | "closed";
 
@@ -54,7 +54,7 @@ export default function ShiftPage() {
   });
 
   const [view, setView] = useState<ShiftView>(terminal ? "active" : "open");
-  const [shiftResult, setShiftResult] = useState<ShiftSummaryResponse | null>(null);
+  const [shiftResult, setShiftResult] = useState<TerminalSessionResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

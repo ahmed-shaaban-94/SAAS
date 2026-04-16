@@ -2,10 +2,10 @@
 
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ShiftSummaryResponse } from "@/types/pos";
+import type { TerminalSessionResponse } from "@/types/pos";
 
 interface ShiftSummaryProps {
-  shiftData: ShiftSummaryResponse;
+  shiftData: TerminalSessionResponse;
 }
 
 function fmt(n: number | null | undefined): string {
@@ -21,7 +21,12 @@ function VarianceIndicator({ variance }: { variance: number | null }) {
 }
 
 export function ShiftSummary({ shiftData }: ShiftSummaryProps) {
-  const variance = shiftData.variance;
+  const variance =
+    shiftData.closing_cash !== null && shiftData.opening_cash !== null
+      ? shiftData.closing_cash - shiftData.opening_cash
+      : null;
+
+  const shiftDate = new Date(shiftData.opened_at).toLocaleDateString();
 
   return (
     <div className="space-y-4">
@@ -30,7 +35,7 @@ export function ShiftSummary({ shiftData }: ShiftSummaryProps) {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-text-secondary">Shift Date</p>
-            <p className="text-sm font-semibold text-text-primary">{shiftData.shift_date}</p>
+            <p className="text-sm font-semibold text-text-primary">{shiftDate}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-text-secondary">Cashier</p>
@@ -45,55 +50,37 @@ export function ShiftSummary({ shiftData }: ShiftSummaryProps) {
         </div>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border bg-surface p-3">
-          <p className="text-xs text-text-secondary">Total Sales</p>
-          <p className="mt-1 text-base font-bold tabular-nums text-accent">
-            EGP {fmt(shiftData.total_sales)}
-          </p>
+      {/* Cash Variance */}
+      <div
+        className={cn(
+          "rounded-xl border bg-surface p-3",
+          variance === null
+            ? "border-border"
+            : variance > 0
+              ? "border-green-500/30"
+              : variance < 0
+                ? "border-destructive/30"
+                : "border-border",
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-text-secondary">Cash Variance</p>
+          <VarianceIndicator variance={variance} />
         </div>
-        <div className="rounded-xl border border-border bg-surface p-3">
-          <p className="text-xs text-text-secondary">Transactions</p>
-          <p className="mt-1 text-base font-bold text-text-primary">
-            {shiftData.total_transactions}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-surface p-3">
-          <p className="text-xs text-text-secondary">Returns</p>
-          <p className="mt-1 text-base font-bold text-text-primary">{shiftData.total_returns}</p>
-        </div>
-        <div
+        <p
           className={cn(
-            "rounded-xl border bg-surface p-3",
+            "mt-1 text-base font-bold tabular-nums",
             variance === null
-              ? "border-border"
+              ? "text-text-primary"
               : variance > 0
-                ? "border-green-500/30"
+                ? "text-green-400"
                 : variance < 0
-                  ? "border-destructive/30"
-                  : "border-border",
+                  ? "text-destructive"
+                  : "text-text-primary",
           )}
         >
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-text-secondary">Cash Variance</p>
-            <VarianceIndicator variance={variance} />
-          </div>
-          <p
-            className={cn(
-              "mt-1 text-base font-bold tabular-nums",
-              variance === null
-                ? "text-text-primary"
-                : variance > 0
-                  ? "text-green-400"
-                  : variance < 0
-                    ? "text-destructive"
-                    : "text-text-primary",
-            )}
-          >
-            {variance !== null ? `EGP ${fmt(Math.abs(variance))}` : "—"}
-          </p>
-        </div>
+          {variance !== null ? `EGP ${fmt(Math.abs(variance))}` : "—"}
+        </p>
       </div>
 
       {/* Cash reconciliation */}
@@ -104,10 +91,6 @@ export function ShiftSummary({ shiftData }: ShiftSummaryProps) {
         <div className="flex justify-between text-sm">
           <span className="text-text-secondary">Opening Cash</span>
           <span className="tabular-nums text-text-primary">EGP {fmt(shiftData.opening_cash)}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-text-secondary">Expected</span>
-          <span className="tabular-nums text-text-primary">EGP {fmt(shiftData.expected_cash)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-text-secondary">Closing Count</span>

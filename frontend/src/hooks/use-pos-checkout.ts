@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { postAPI } from "@/lib/api-client";
+import { patchAPI, postAPI } from "@/lib/api-client";
 import type {
   TransactionCreateRequest,
-  TransactionDetailResponse,
   AddItemRequest,
   UpdateItemRequest,
   CheckoutRequest,
   CheckoutResponse,
+  PosCartItem,
   VoidRequest,
   TransactionResponse,
 } from "@/types/pos";
@@ -34,10 +34,13 @@ export function usePosCheckout() {
 
   async function createTransaction(
     req: TransactionCreateRequest,
-  ): Promise<TransactionDetailResponse> {
+  ): Promise<TransactionResponse> {
     setLoading(true);
     try {
-      const txn = await postAPI<TransactionDetailResponse>("/api/v1/pos/transactions", req);
+      // Backend expects terminal_id, site_code etc. as query params (not body)
+      const qs = new URLSearchParams({ terminal_id: String(req.terminal_id), site_code: req.site_code });
+      if (req.customer_id) qs.set("customer_id", req.customer_id);
+      const txn = await postAPI<TransactionResponse>(`/api/v1/pos/transactions?${qs}`);
       setState({ transactionId: txn.id, isLoading: false, error: null });
       return txn;
     } catch (e) {
@@ -49,15 +52,15 @@ export function usePosCheckout() {
   async function addItem(
     transactionId: number,
     req: AddItemRequest,
-  ): Promise<TransactionDetailResponse> {
+  ): Promise<PosCartItem> {
     setLoading(true);
     try {
-      const txn = await postAPI<TransactionDetailResponse>(
+      const item = await postAPI<PosCartItem>(
         `/api/v1/pos/transactions/${transactionId}/items`,
         req,
       );
       setState((s) => ({ ...s, isLoading: false }));
-      return txn;
+      return item;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to add item");
       throw e;
@@ -66,34 +69,21 @@ export function usePosCheckout() {
 
   async function updateItem(
     transactionId: number,
-    itemIdx: number,
+    itemId: number,
     req: UpdateItemRequest,
-  ): Promise<TransactionDetailResponse> {
-    return postAPI<TransactionDetailResponse>(
-      `/api/v1/pos/transactions/${transactionId}/items/${itemIdx}`,
+  ): Promise<PosCartItem> {
+    return patchAPI<PosCartItem>(
+      `/api/v1/pos/transactions/${transactionId}/items/${itemId}`,
       req,
     );
   }
 
   async function removeItem(
     transactionId: number,
-    itemIdx: number,
-  ): Promise<TransactionDetailResponse> {
-    // deleteAPI discards the response body; use _request via getAuthHeaders directly
-    const { getSession } = await import("next-auth/react");
-    const { API_BASE_URL } = await import("@/lib/constants");
-    const session = await getSession();
-    const token = session?.accessToken ?? null;
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(
-      `${API_BASE_URL}/api/v1/pos/transactions/${transactionId}/items/${itemIdx}`,
-      { method: "DELETE", headers },
-    );
-    if (!res.ok) {
-      const body = await res.text().catch(() => "Unknown error");
-      throw new Error(`API error ${res.status}: ${body}`);
-    }
-    return res.json() as Promise<TransactionDetailResponse>;
+    itemId: number,
+  ): Promise<void> {
+    const { deleteAPI } = await import("@/lib/api-client");
+    await deleteAPI(`/api/v1/pos/transactions/${transactionId}/items/${itemId}`);
   }
 
   async function checkout(
