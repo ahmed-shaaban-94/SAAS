@@ -23,7 +23,7 @@ export function usePosTerminal(siteCode?: string) {
 }
 
 export async function openTerminal(req: TerminalOpenRequest): Promise<TerminalSessionResponse> {
-  return postAPI<TerminalSessionResponse>("/api/v1/pos/terminals/open", req);
+  return postAPI<TerminalSessionResponse>("/api/v1/pos/terminals", req);
 }
 
 export async function pauseTerminal(terminalId: number): Promise<TerminalSessionResponse> {
@@ -37,6 +37,6 @@ export async function resumeTerminal(terminalId: number): Promise<TerminalSessio
 export async function closeTerminal(
   terminalId: number,
   req: TerminalCloseRequest,
-): Promise<ShiftSummaryResponse> {
-  return postAPI<ShiftSummaryResponse>(`/api/v1/pos/terminals/${terminalId}/close`, req);
+): Promise<TerminalSessionResponse> {
+  return postAPI<TerminalSessionResponse>(`/api/v1/pos/terminals/${terminalId}/close`, req);
 }

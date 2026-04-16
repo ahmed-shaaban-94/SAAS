@@ -91,6 +91,7 @@ export interface AddItemRequest {
 export interface UpdateItemRequest {
   quantity?: number;
   discount?: number;
+  override_price?: number;
 }
 
 // ---- Checkout ----
