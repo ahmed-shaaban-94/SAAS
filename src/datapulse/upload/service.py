@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import shutil
 import uuid
+from collections.abc import AsyncIterable
+from contextlib import suppress
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -113,31 +115,72 @@ def _validate_magic_bytes(ext: str, content: bytes) -> None:
             raise ValueError("CSV file is not valid UTF-8. Upload a UTF-8 encoded CSV.") from exc
 
 
+def _validate_extension(filename: str) -> str:
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise ValueError(f"Unsupported file type: {ext}. Allowed: {ALLOWED_EXTENSIONS}")
+    return ext
+
+
 class UploadService:
     def __init__(self, raw_data_dir: str = "/app/data/raw/sales", tenant_id: str = "0") -> None:
         self._raw_dir = Path(raw_data_dir)
         self._tenant_dir = TEMP_DIR / str(tenant_id)
         self._tenant_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_temp_file(self, filename: str, content: bytes) -> UploadedFile:
-        """Save uploaded file to per-tenant temp directory, return file metadata."""
-        ext = Path(filename).suffix.lower()
-        if ext not in ALLOWED_EXTENSIONS:
-            raise ValueError(f"Unsupported file type: {ext}. Allowed: {ALLOWED_EXTENSIONS}")
-
-        _validate_magic_bytes(ext, content)
-
+    def _build_upload_target(self, filename: str) -> tuple[str, Path, str]:
+        ext = _validate_extension(filename)
         file_id = str(uuid.uuid4())
         dest = self._tenant_dir / f"{file_id}{ext}"
-        dest.write_bytes(content)
+        return file_id, dest, ext
 
-        log.info("file_uploaded", file_id=file_id, filename=filename, size=len(content))
+    @staticmethod
+    def _build_uploaded_file(file_id: str, filename: str, size_bytes: int) -> UploadedFile:
         return UploadedFile(
             file_id=file_id,
             filename=filename,
-            size_bytes=len(content),
+            size_bytes=size_bytes,
             status="uploaded",
         )
+
+    def save_temp_file(self, filename: str, content: bytes) -> UploadedFile:
+        """Save uploaded file to per-tenant temp directory, return file metadata."""
+        file_id, dest, ext = self._build_upload_target(filename)
+        _validate_magic_bytes(ext, content)
+
+        dest.write_bytes(content)
+
+        log.info("file_uploaded", file_id=file_id, filename=filename, size=len(content))
+        return self._build_uploaded_file(file_id, filename, len(content))
+
+    async def save_temp_file_stream(
+        self,
+        filename: str,
+        chunks: AsyncIterable[bytes],
+    ) -> UploadedFile:
+        """Stream an upload to disk without buffering the entire file in memory."""
+        file_id, dest, ext = self._build_upload_target(filename)
+        sample = bytearray()
+        total = 0
+
+        try:
+            with dest.open("wb") as handle:
+                async for chunk in chunks:
+                    if not chunk:
+                        continue
+                    total += len(chunk)
+                    if len(sample) < 1024:
+                        sample.extend(chunk[: 1024 - len(sample)])
+                    handle.write(chunk)
+
+            _validate_magic_bytes(ext, bytes(sample))
+        except Exception:
+            with suppress(FileNotFoundError):
+                dest.unlink()
+            raise
+
+        log.info("file_uploaded", file_id=file_id, filename=filename, size=total)
+        return self._build_uploaded_file(file_id, filename, total)
 
     def preview_file(self, file_id: str) -> PreviewResult:
         """Read first N rows from an uploaded file and return preview."""

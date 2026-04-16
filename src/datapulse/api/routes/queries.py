@@ -19,7 +19,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from datapulse.api.auth import get_current_user
 from datapulse.api.limiter import limiter
 from datapulse.logging import get_logger
-from datapulse.tasks.async_executor import get_job_result, submit_query
+from datapulse.tasks.async_executor import (
+    QueryCapacityExceededError,
+    get_job_result,
+    submit_query,
+)
 from datapulse.tasks.models import QueryResponse, QueryResult, QueryStatus, QuerySubmit
 
 log = get_logger(__name__)
@@ -87,11 +91,14 @@ async def submit_query_endpoint(
 
     tenant_id = user.get("tenant_id", "1")
 
-    job_id = await submit_query(
-        sql=body.sql,
-        tenant_id=tenant_id,
-        row_limit=body.row_limit,
-    )
+    try:
+        job_id = await submit_query(
+            sql=body.sql,
+            tenant_id=tenant_id,
+            row_limit=body.row_limit,
+        )
+    except QueryCapacityExceededError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
 
     if job_id is None:
         raise HTTPException(
