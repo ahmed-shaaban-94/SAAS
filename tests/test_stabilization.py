@@ -181,7 +181,10 @@ def test_backpressure_rejects_when_all_slots_are_busy():
 
     try:
         with (
-            patch("datapulse.api.routes.queries.get_job_result", return_value={"status": "pending"}),
+            patch(
+                "datapulse.api.routes.queries.get_job_result",
+                return_value={"status": "pending"},
+            ),
             TestClient(app, raise_server_exceptions=False) as client,
         ):
             resp = client.get("/api/v1/queries/job-123")

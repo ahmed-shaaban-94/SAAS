@@ -71,7 +71,7 @@ def _reserve_query_slot(tenant_id: str) -> None:
 
     with _QUERY_SLOT_LOCK:
         tenant_slots = _QUERY_SLOTS_BY_TENANT.get(tenant_id, 0)
-        if _QUERY_SLOTS_IN_USE >= _max_concurrent_jobs():
+        if _max_concurrent_jobs() <= _QUERY_SLOTS_IN_USE:
             raise QueryCapacityExceededError("Too many async queries are already running.")
         if tenant_slots >= _max_concurrent_jobs_per_tenant():
             raise QueryCapacityExceededError("Tenant async query capacity reached. Retry shortly.")
