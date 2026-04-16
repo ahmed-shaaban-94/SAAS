@@ -18,7 +18,8 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_pos_service
+from datapulse.api.deps import get_pos_service, get_tenant_plan_limits
+from datapulse.billing.plans import PLAN_LIMITS
 from datapulse.pos.constants import (
     PaymentMethod,
     TerminalStatus,
@@ -37,6 +38,8 @@ from datapulse.pos.models import (
     TerminalSession,
     TransactionResponse,
 )
+from datapulse.rbac.dependencies import get_access_context
+from datapulse.rbac.models import AccessContext
 
 pytestmark = pytest.mark.unit
 
@@ -56,8 +59,25 @@ def _make_app(service: MagicMock) -> FastAPI:
 
     app = FastAPI()
     app.include_router(pos_router, prefix="/api/v1")
+    _ctx = AccessContext(
+        member_id=1,
+        tenant_id=1,
+        user_id="test-user",
+        role_key="admin",
+        permissions={
+            "pos:terminal:open",
+            "pos:transaction:create",
+            "pos:transaction:void",
+            "pos:return:create",
+            "pos:shift:reconcile",
+            "pos:shift:open",
+            "pos:controlled:verify",
+        },
+    )
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_pos_service] = lambda: service
+    app.dependency_overrides[get_tenant_plan_limits] = lambda: PLAN_LIMITS["platform"]
+    app.dependency_overrides[get_access_context] = lambda: _ctx
 
     # Replicate the production exception -> status mapping for these tests
     @app.exception_handler(InsufficientStockError)

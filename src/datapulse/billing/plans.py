@@ -63,6 +63,25 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         max_suppliers=500,
         stock_alerts=True,
     ),
+    # Platform tier: Analytics + POS + Inventory for pharmaceutical operations.
+    # Upsell path from Pro ($49) → Platform ($99). seeded by migration 075.
+    "platform": PlanLimits(
+        data_sources=5,
+        max_rows=1_000_000,
+        ai_insights=True,
+        pipeline_automation=True,
+        quality_gates=True,
+        name="Platform",
+        price_display="$99/mo",
+        inventory_management=True,
+        expiry_tracking=True,
+        dispensing_analytics=True,
+        purchase_orders=True,
+        pos_integration=True,
+        max_stock_items=100_000,
+        max_suppliers=1_000,
+        stock_alerts=True,
+    ),
     "enterprise": PlanLimits(
         data_sources=-1,
         max_rows=-1,

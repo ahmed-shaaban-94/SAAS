@@ -326,15 +326,26 @@ def get_reorder_config_service(
 def get_pos_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ):
-    """Factory for :class:`PosService` — wires repo + (mocked) inventory protocol.
+    """Factory for :class:`PosService` — wires repo + inventory + pharmacist verifier.
 
     The mock inventory service is replaced with the real Plan A
     ``InventoryService`` adapter in B8 (POS integration session).
+    The :class:`PharmacistVerifier` uses the repo's pin-lookup closure and
+    the application secret key so the service stays dependency-free.
     """
     from datapulse.pos.inventory_contract import MockInventoryService
+    from datapulse.pos.pharmacist_verifier import PharmacistVerifier
     from datapulse.pos.repository import PosRepository
     from datapulse.pos.service import PosService
 
+    settings = get_settings()
     repo = PosRepository(session)
     inventory = MockInventoryService()
-    return PosService(repo, inventory)
+    # Use pipeline_webhook_secret as the HMAC signing key for pharmacist tokens.
+    # Falls back to a non-empty dev stub so that dev mode still works.
+    signing_secret = settings.pipeline_webhook_secret or "dev-pos-pharmacist-secret"
+    verifier = PharmacistVerifier(
+        secret_key=signing_secret,
+        pin_lookup=repo.get_pharmacist_pin_hash,
+    )
+    return PosService(repo, inventory, verifier)
