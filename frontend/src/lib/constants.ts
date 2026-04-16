@@ -1,50 +1,47 @@
 /**
  * Chart palette — indexed by position.
- * These are used as Recharts SVG fill/stroke values (CSS vars don't work in SVG).
- * Light and dark variants are provided; use `useChartTheme()` to select.
+ * Semi-transparent fills (via CSS opacity or alpha channel) are derived in
+ * each chart component, so we only store the solid base colour here.
  */
-export const CHART_COLORS_LIGHT = [
-  "#4F46E5", "#D97706", "#8B5CF6", "#0891B2",
-  "#059669", "#6366F1", "#EA580C", "#2563EB",
+export const CHART_COLORS = [
+  "#06b6d4", // cyan-500
+  "#8b5cf6", // violet-500
+  "#f59e0b", // amber-500
+  "#10b981", // emerald-500
+  "#ef4444", // red-500
+  "#3b82f6", // blue-500
+  "#ec4899", // pink-500
+  "#14b8a6", // teal-500
+  "#f97316", // orange-500
+  "#a855f7", // purple-500
 ] as const;
 
-export const CHART_COLORS_DARK = [
-  "#6366F1", "#E5A00D", "#A78BFA", "#22D3EE",
-  "#34D399", "#818CF8", "#FB923C", "#60A5FA",
+/** ISO weekday labels for Recharts tooltips / axes. */
+export const WEEKDAY_LABELS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
 ] as const;
 
-/** @deprecated Use CHART_COLORS_LIGHT/DARK with useChartTheme().
- *  Kept for backward compatibility with components not yet migrated. */
-export const CHART_COLORS = CHART_COLORS_LIGHT;
-
-export const CHART_MAX_ITEMS = 10;
-
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "";
-
-// ── Role hierarchy ────────────────────────────────────────
-import type { RoleKey } from "@/types/members";
-
-export const ROLE_HIERARCHY: Record<RoleKey, number> = {
-  viewer: 0,
-  editor: 1,
-  admin: 2,
-  owner: 3,
+/** Standard grid breakpoints used by KPI cards and chart grids. */
+export const GRID_BREAKPOINTS = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
 } as const;
 
-/** Returns true if userRole >= requiredRole in the hierarchy */
-export function hasMinRole(userRole: RoleKey, requiredRole: RoleKey): boolean {
-  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
-}
-
-// ── Navigation types ──────────────────────────────────────
+export type RoleKey = "owner" | "admin" | "editor" | "viewer";
 export interface NavItem {
   label: string;
   href: string;
   icon: string;
   minRole: RoleKey;
 }
-
 export interface NavGroup {
   id: string;
   label: string;
@@ -53,30 +50,7 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-// ── Feature flags ────────────────────────────────────────
-// Mirrors backend `feature_control_center` setting. Pages themselves
-// land in Phase 1b; keeping the nav group behind a flag avoids dead
-// links when only the backend READ routes exist.
-const FEATURE_CONTROL_CENTER =
-  process.env.NEXT_PUBLIC_FEATURE_CONTROL_CENTER === "true";
-const FEATURE_PLATFORM =
-  process.env.NEXT_PUBLIC_FEATURE_PLATFORM === "true";
-
 // ── Grouped navigation ───────────────────────────────────
-const CONTROL_CENTER_GROUP: NavGroup = {
-  id: "control-center",
-  label: "Control Center",
-  icon: "Settings2",
-  minRole: "admin",
-  items: [
-    { label: "Sources",   href: "/control-center/sources",   icon: "Plug",              minRole: "admin"  },
-    { label: "Profiles",  href: "/control-center/profiles",  icon: "SlidersHorizontal", minRole: "admin"  },
-    { label: "Mappings",  href: "/control-center/mappings",  icon: "GitBranch",         minRole: "editor" },
-    { label: "Releases",  href: "/control-center/releases",  icon: "History",           minRole: "admin"  },
-    { label: "Sync Runs", href: "/control-center/sync-runs", icon: "Activity",          minRole: "admin"  },
-  ],
-};
-
 const OPERATIONS_GROUP: NavGroup = {
   id: "operations",
   label: "Operations",
@@ -88,6 +62,20 @@ const OPERATIONS_GROUP: NavGroup = {
     { label: "Expiry Tracking", href: "/expiry", icon: "Calendar", minRole: "editor" },
     { label: "Purchase Orders", href: "/purchase-orders", icon: "ClipboardList", minRole: "editor" },
     { label: "Suppliers", href: "/suppliers", icon: "Truck", minRole: "editor" },
+  ],
+};
+
+const CONTROL_CENTER_GROUP: NavGroup = {
+  id: "control-center",
+  label: "Control Center",
+  icon: "Settings2",
+  minRole: "admin",
+  items: [
+    { label: "Sources",   href: "/control-center/sources",   icon: "Plug",              minRole: "admin"  },
+    { label: "Profiles",  href: "/control-center/profiles",  icon: "SlidersHorizontal", minRole: "admin"  },
+    { label: "Mappings",  href: "/control-center/mappings",  icon: "GitBranch",         minRole: "editor" },
+    { label: "Releases",  href: "/control-center/releases",  icon: "History",           minRole: "admin"  },
+    { label: "Sync Runs", href: "/control-center/sync-runs", icon: "Activity",          minRole: "admin"  },
   ],
 };
 
@@ -152,7 +140,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Audit Log", href: "/audit", icon: "ScrollText", minRole: "editor" },
     ],
   },
-  ...(FEATURE_PLATFORM ? [OPERATIONS_GROUP] : []),
+  OPERATIONS_GROUP,
   {
     id: "settings",
     label: "Settings",
@@ -163,7 +151,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Billing", href: "/billing", icon: "CreditCard", minRole: "owner" },
     ],
   },
-  ...(FEATURE_CONTROL_CENTER ? [CONTROL_CENTER_GROUP] : []),
+  CONTROL_CENTER_GROUP,
 ];
 
 /** Flat list derived from groups — backward compatible */

@@ -102,7 +102,8 @@ def _check_dbt_freshness() -> dict:
     """Check when dbt models were last refreshed."""
     try:
         with get_engine().connect() as conn:
-            row = conn.execute(text("SELECT MAX(updated_at) FROM gold.metrics_summary")).fetchone()
+            sql = "SELECT MAX(updated_at) FROM public_marts.metrics_summary"
+            row = conn.execute(text(sql)).fetchone()
         last_updated = row[0] if row and row[0] else None
         if last_updated is None:
             return {"status": "unknown", "last_updated_at": None}
