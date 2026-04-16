@@ -1,47 +1,50 @@
 /**
  * Chart palette — indexed by position.
- * Semi-transparent fills (via CSS opacity or alpha channel) are derived in
- * each chart component, so we only store the solid base colour here.
+ * These are used as Recharts SVG fill/stroke values (CSS vars don't work in SVG).
+ * Light and dark variants are provided; use `useChartTheme()` to select.
  */
-export const CHART_COLORS = [
-  "#06b6d4", // cyan-500
-  "#8b5cf6", // violet-500
-  "#f59e0b", // amber-500
-  "#10b981", // emerald-500
-  "#ef4444", // red-500
-  "#3b82f6", // blue-500
-  "#ec4899", // pink-500
-  "#14b8a6", // teal-500
-  "#f97316", // orange-500
-  "#a855f7", // purple-500
+export const CHART_COLORS_LIGHT = [
+  "#4F46E5", "#D97706", "#8B5CF6", "#0891B2",
+  "#059669", "#6366F1", "#EA580C", "#2563EB",
 ] as const;
 
-/** ISO weekday labels for Recharts tooltips / axes. */
-export const WEEKDAY_LABELS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
+export const CHART_COLORS_DARK = [
+  "#6366F1", "#E5A00D", "#A78BFA", "#22D3EE",
+  "#34D399", "#818CF8", "#FB923C", "#60A5FA",
 ] as const;
 
-/** Standard grid breakpoints used by KPI cards and chart grids. */
-export const GRID_BREAKPOINTS = {
-  sm: 640,
-  md: 768,
-  lg: 1024,
-  xl: 1280,
+/** @deprecated Use CHART_COLORS_LIGHT/DARK with useChartTheme().
+ *  Kept for backward compatibility with components not yet migrated. */
+export const CHART_COLORS = CHART_COLORS_LIGHT;
+
+export const CHART_MAX_ITEMS = 10;
+
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "";
+
+// ── Role hierarchy ────────────────────────────────────────
+import type { RoleKey } from "@/types/members";
+
+export const ROLE_HIERARCHY: Record<RoleKey, number> = {
+  viewer: 0,
+  editor: 1,
+  admin: 2,
+  owner: 3,
 } as const;
 
-export type RoleKey = "owner" | "admin" | "editor" | "viewer";
+/** Returns true if userRole >= requiredRole in the hierarchy */
+export function hasMinRole(userRole: RoleKey, requiredRole: RoleKey): boolean {
+  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
+}
+
+// ── Navigation types ──────────────────────────────────────
 export interface NavItem {
   label: string;
   href: string;
   icon: string;
   minRole: RoleKey;
 }
+
 export interface NavGroup {
   id: string;
   label: string;
@@ -62,6 +65,20 @@ const OPERATIONS_GROUP: NavGroup = {
     { label: "Expiry Tracking", href: "/expiry", icon: "Calendar", minRole: "editor" },
     { label: "Purchase Orders", href: "/purchase-orders", icon: "ClipboardList", minRole: "editor" },
     { label: "Suppliers", href: "/suppliers", icon: "Truck", minRole: "editor" },
+  ],
+};
+
+const POS_GROUP: NavGroup = {
+  id: "pos",
+  label: "Point of Sale",
+  icon: "ShoppingCart",
+  minRole: "editor",
+  items: [
+    { label: "Terminal", href: "/terminal", icon: "Monitor", minRole: "editor" },
+    { label: "Checkout", href: "/checkout", icon: "CreditCard", minRole: "editor" },
+    { label: "Shift Management", href: "/shift", icon: "Clock", minRole: "editor" },
+    { label: "Transaction History", href: "/history", icon: "Receipt", minRole: "viewer" },
+    { label: "Returns", href: "/pos-returns", icon: "RotateCcw", minRole: "editor" },
   ],
 };
 
@@ -140,7 +157,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Audit Log", href: "/audit", icon: "ScrollText", minRole: "editor" },
     ],
   },
-  OPERATIONS_GROUP,
   {
     id: "settings",
     label: "Settings",
@@ -151,6 +167,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Billing", href: "/billing", icon: "CreditCard", minRole: "owner" },
     ],
   },
+  OPERATIONS_GROUP,
+  POS_GROUP,
   CONTROL_CENTER_GROUP,
 ];
 
