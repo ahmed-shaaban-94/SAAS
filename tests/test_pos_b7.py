@@ -25,6 +25,8 @@ from datapulse.billing.plans import PLAN_LIMITS, get_plan_limits
 from datapulse.pos.exceptions import PharmacistVerificationRequiredError
 from datapulse.pos.models import PharmacistVerifyResponse
 from datapulse.pos.pharmacist_verifier import PharmacistVerifier, hash_pin
+from datapulse.rbac.dependencies import get_access_context
+from datapulse.rbac.models import AccessContext
 
 pytestmark = pytest.mark.unit
 
@@ -218,6 +220,13 @@ def _make_verify_app(mock_service: MagicMock) -> FastAPI:
     app.dependency_overrides[get_current_user] = lambda: _MOCK_USER
     app.dependency_overrides[get_pos_service] = lambda: mock_service
     app.dependency_overrides[get_tenant_plan_limits] = lambda: PLAN_LIMITS["platform"]
+    app.dependency_overrides[get_access_context] = lambda: AccessContext(
+        member_id=1,
+        tenant_id=1,
+        user_id=PHARMACIST_ID,
+        role_key="pos_pharmacist",
+        permissions={"pos:controlled:verify"},
+    )
     app.include_router(pos_router, prefix="/api/v1")
 
     @app.exception_handler(PharmacistVerificationRequiredError)
