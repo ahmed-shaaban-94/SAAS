@@ -20,7 +20,7 @@ def test_default_filter_none(analytics_service, mock_repo):
     max_date = date(2025, 3, 31)
     mock_repo.get_data_date_range.return_value = (date(2023, 1, 1), max_date)
 
-    result = analytics_service._default_filter(None)
+    result = analytics_service._kpi._default_filter(None)
 
     assert result.date_range is not None
     assert result.date_range.start_date == max_date - timedelta(days=30)
@@ -36,7 +36,7 @@ def test_default_filter_passthrough(analytics_service):
         ),
         limit=5,
     )
-    result = analytics_service._default_filter(custom_filter)
+    result = analytics_service._kpi._default_filter(custom_filter)
     assert result is custom_filter
 
 
