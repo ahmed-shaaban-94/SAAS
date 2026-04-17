@@ -142,8 +142,7 @@ export const NAV_GROUPS: NavGroup[] = [
     minRole: "editor",
     items: [
       { label: "Import Data", href: "/upload", icon: "Upload", minRole: "editor" },
-      { label: "Data Quality", href: "/quality", icon: "ShieldCheck", minRole: "editor" },
-      { label: "Data Lineage", href: "/lineage", icon: "GitBranch", minRole: "editor" },
+      { label: "Pipeline Health", href: "/quality", icon: "ShieldCheck", minRole: "editor" },
     ],
   },
   {
