@@ -11,49 +11,19 @@
  * "nothing to show" into a next-step router, not a dead end.
  */
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Sparkles, Upload, Loader2 } from "lucide-react";
 
-import { postAPI } from "@/lib/api-client";
-import { trackUploadCompleted } from "@/lib/analytics-events";
-
-interface SampleLoadResult {
-  rows_loaded: number;
-  pipeline_run_id: string;
-  duration_seconds: number;
-}
+import { useLoadSample } from "@/hooks/use-load-sample";
 
 export function LoadSampleAction() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleClick() {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await postAPI<SampleLoadResult>(
-        "/api/v1/onboarding/load-sample",
-      );
-      trackUploadCompleted({
-        run_id: result.pipeline_run_id,
-        duration_seconds: result.duration_seconds,
-        rows_loaded: result.rows_loaded,
-      });
-      router.push("/dashboard?first_upload=1");
-    } catch {
-      setError("Could not load sample data. Please try again.");
-      setLoading(false);
-    }
-  }
+  const { loading, error, loadSample } = useLoadSample();
 
   return (
     <div className="flex flex-col items-center gap-2">
       <button
         type="button"
-        onClick={handleClick}
+        onClick={() => void loadSample()}
         disabled={loading}
         className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-page transition-opacity disabled:cursor-not-allowed disabled:opacity-70 hover:opacity-90"
       >

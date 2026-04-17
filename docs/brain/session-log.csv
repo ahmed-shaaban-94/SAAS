@@ -49,3 +49,5 @@ timestamp,branch,user,layers,modules
 2026-04-17T15:08,claude/ttfi-baseline-399,Ahmed Shaaban,[api;frontend;test],[api;frontend;pipeline]
 2026-04-17T15:12,claude/ttfi-baseline-399,Ahmed Shaaban,[api;frontend;test],[api;frontend;pipeline]
 2026-04-17T15:17,claude/ttfi-baseline-399,Ahmed Shaaban,[api;frontend;test],[api;frontend;pipeline]
+2026-04-17T19:35,main,Ahmed Shaaban,[api;frontend;test],[api;frontend;insights_first;onboarding]
+2026-04-17T19:36,main,Ahmed Shaaban,[api;frontend;test],[api;frontend;insights_first;onboarding]

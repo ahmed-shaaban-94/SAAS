@@ -3,56 +3,22 @@
 /**
  * "Use sample pharma data" CTA (Phase 2 Task 1 / #400).
  *
- * Primary alternative on step 1 of the upload wizard: a single click that
- * asks the onboarding API to load a curated 5k-row pharma demo dataset
- * (#401) and redirects the user to the dashboard's first-insight view.
- *
- * Failures stay inline — we never swallow the error.
+ * Primary alternative on step 1 of the upload wizard. Delegates the
+ * endpoint call + tracker + redirect to `useLoadSample` (follow-up #8)
+ * so the logic stays in one place.
  */
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Sparkles, Loader2 } from "lucide-react";
-import { postAPI } from "@/lib/api-client";
-import { trackUploadCompleted } from "@/lib/analytics-events";
-
-interface SampleLoadResult {
-  rows_loaded: number;
-  pipeline_run_id: string;
-  duration_seconds: number;
-}
+import { useLoadSample } from "@/hooks/use-load-sample";
 
 export function SampleDataCta() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleClick() {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await postAPI<SampleLoadResult>(
-        "/api/v1/onboarding/load-sample",
-      );
-      // Semantically a sample-load IS a completed upload — fire the same
-      // funnel event so the onboarding strip + TTFI baseline see it.
-      trackUploadCompleted({
-        run_id: result.pipeline_run_id,
-        duration_seconds: result.duration_seconds,
-        rows_loaded: result.rows_loaded,
-      });
-      router.push("/dashboard?first_upload=1");
-    } catch {
-      setError("Could not load sample data. Please try again.");
-      setLoading(false);
-    }
-  }
+  const { loading, error, loadSample } = useLoadSample();
 
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onClick={handleClick}
+        onClick={() => void loadSample()}
         disabled={loading}
         className="viz-panel-soft flex w-full items-center justify-center gap-2 rounded-[1.5rem] border border-accent/30 bg-accent/8 px-5 py-4 text-sm font-semibold text-text-primary transition-colors hover:bg-accent/12 disabled:cursor-not-allowed disabled:opacity-70"
       >
