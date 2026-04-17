@@ -45,3 +45,13 @@ class CompleteStepRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     step: Literal["connect_data", "first_report", "first_goal", "configure_first_profile"]
+
+
+class SampleLoadResult(BaseModel):
+    """Result of loading the curated pharma sample dataset."""
+
+    model_config = ConfigDict(frozen=True)
+
+    rows_loaded: int
+    pipeline_run_id: str
+    duration_seconds: float
