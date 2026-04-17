@@ -38,19 +38,29 @@ Phase 1 scope. They are sized separately and will each get their own design + pl
 ### 1.4 Single-terminal enforcement
 
 Multi-terminal sites are not supported in Phase 1. The restriction is enforced at
-**three layers** so it cannot be bypassed by configuration error:
+**four layers** so it cannot be bypassed by configuration error *or* by a second
+physical machine impersonating an existing terminal:
 
-1. **Tenant flag** — `tenants.pos_multi_terminal_allowed BOOLEAN NOT NULL DEFAULT false`.
-   Toggling to `true` is a manual DBA operation reserved for F1.
-2. **Server guard** — `POST /pos/terminals` (open a new terminal) fails with 409
-   when the tenant already has an `open` or `active` terminal and `pos_multi_terminal_allowed=false`.
-3. **Client guard** — on launch, the client calls `GET /pos/capabilities`; if the
-   server reports `multi_terminal: false` and another terminal is already open for
-   the tenant, this terminal refuses to open a shift and shows
+1. **Tenant flag** — `tenants.pos_multi_terminal_allowed BOOLEAN NOT NULL DEFAULT false`
+   and `tenants.pos_max_terminals INTEGER NOT NULL DEFAULT 1`. Toggling either is
+   a manual DBA operation reserved for F1.
+2. **Server guard on terminal-create** — `POST /pos/terminals` fails with 409
+   when registering a device would exceed `pos_max_terminals` OR when another
+   terminal is already `open`/`active` and `pos_multi_terminal_allowed=false`.
+3. **Device-bound per-request guard (§8.9)** — every mutating POS endpoint
+   requires an Ed25519 signature from the device registered to that `terminal_id`.
+   A second physical machine cannot operate an existing terminal even with a
+   valid JWT, because it lacks the device private key stored in the first
+   machine's DPAPI store.
+4. **Client guard** — on launch the client calls `GET /pos/capabilities` (feature
+   flags only) *and* `GET /pos/terminals/active-for-me` (tenant-scoped state); if
+   `multi_terminal_supported=false` and another terminal is already open for the
+   tenant from a different device, this client refuses to open a shift with
    `⛔ Another terminal is already active for this pharmacy — close it first`.
 
-This makes "two tills during an outage" structurally impossible: the second terminal
-cannot even open a shift, online or offline.
+This makes "two tills during an outage" structurally impossible: layer 3 rejects
+a second device at every mutating request, and layer 4 prevents the second
+machine from even reaching the open-shift step.
 
 ### 1.3 Definition of done
 
@@ -83,7 +93,7 @@ A pharmacist at a **single-terminal pharmacy** can:
 1. **Hardware integration** — keyboard-emulation barcode scanner, ESC/POS thermal printer, cash drawer kick
 2. **Half-day offline mode with provisional semantics** — local SQLite catalog + transaction queue; offline sales are *provisional* until server-confirmed; explicit reconciliation workflow for rejected queue items; shift close blocked while unreconciled items exist
 3. **Sync infrastructure + capability negotiation** — required `Idempotency-Key` contract (non-optional on server), `GET /pos/capabilities` version/feature negotiation, retry with exponential backoff, separate push + pull workers
-4. **Packaging, updater, security** — signed NSIS installer, auto-update via GitHub Releases with server-capability + schema-compatibility gating, Windows DPAPI-backed offline auth with terminal-scoped grants, Sentry crash reporting
+4. **Packaging, updater, security** — signed NSIS installer, auto-update via GitHub Releases with server-capability + schema-compatibility gating, Windows DPAPI storage, **Ed25519-signed offline grants** (server-only private key), **device-bound terminal credential** (per-request Ed25519 proof) preventing second-machine takeover, Sentry crash reporting
 5. **Professional UI/UX** — dark-first cart-dominant terminal, keyboard + touch dual-primary, Arabic + English, accessibility-first, clear provisional/confirmed visual distinction
 
 ---
@@ -183,21 +193,30 @@ frontend/src/
 
 | Change | Why |
 |---|---|
-| Migration `XXX_pos_idempotency_keys.sql` | Request deduplication for offline retries |
+| Migration `XXX_pos_idempotency_keys.sql` | Request deduplication for offline retries — applies to the *financial commit* endpoints only |
 | `src/datapulse/api/deps.py::idempotency_handler` | Shared FastAPI dependency — replay cached response, 409 on hash-mismatch |
-| Apply dependency to `POST /pos/transactions`, `POST /pos/transactions/{id}/void`, `POST /pos/returns`, `POST /pos/shifts/{id}/close`, `POST /pos/terminals/{id}/close` | Every mutating POS endpoint |
+| **New** atomic commit endpoint: `POST /pos/transactions/commit` | Accepts a full transaction (draft fields + items + checkout) in one payload; idempotent; designed for offline queue replay. The current 3-step flow (`POST /transactions` → `POST /transactions/{id}/items` → `POST /transactions/{id}/checkout`) remains for interactive online-only callers but is not used by the desktop offline queue. |
+| Apply idempotency dependency to the actual financial-mutation endpoints: `POST /pos/transactions/commit`, `POST /pos/transactions/{id}/checkout`, `POST /pos/transactions/{id}/void`, `POST /pos/returns`, `POST /pos/shifts/{id}/close`, `POST /pos/terminals/{id}/close` | The commit is where stock/cash actually move. Draft creation and item add/patch/delete remain non-idempotent (they are reversible mid-cart state). |
 | Verify / add `GET /pos/catalog/products?site=&since=` | Client-pulled catalog snapshot |
 | Verify / add `GET /pos/catalog/stock?site=&since=` | Client-pulled stock snapshot |
-| Nightly cleanup task in `src/datapulse/tasks/` | Delete expired idempotency keys |
+| **New** endpoints for capability + tenant-scoped state: `GET /pos/capabilities` (public, feature-only), `GET /pos/terminals/active-for-me` (authenticated, returns the caller's tenant's active terminals) | Separates feature negotiation from tenant-scoped terminal state (§1.4, §6.6) |
+| **New** device-bound terminal credential infrastructure (see §8.9) | Binds a terminal_id to a physical machine so a second workstation cannot operate it |
+| Nightly cleanup task in `src/datapulse/tasks/` | Delete expired idempotency keys — retention must be ≥ provisional TTL (see §6.4) |
 
 ### 3.5 Data flow — checkout (online, server-confirmed path)
 
 1. Cashier presses **F2** → renderer navigates to `/checkout`
 2. Cashier enters payment method + tendered → submit
 3. Renderer generates `client_txn_id` (UUID v4)
-4. Renderer writes to local `transactions_queue` (status=`pending`, `confirmation=provisional`)
+4. Renderer writes to local `transactions_queue` (status=`pending`, `confirmation=provisional`,
+   endpoint=`POST /pos/transactions/commit`). Payload is the full atomic transaction
+   (staff, terminal, items, totals, payment method, tendered, customer).
 5. Renderer calls `ipcRenderer.invoke('sync:push-one', local_id)` with a **3s timeout**
-6. Main sends `POST /pos/transactions` with `Idempotency-Key: <client_txn_id>`
+6. Main sends `POST /pos/transactions/commit` with headers:
+   - `Idempotency-Key: <client_txn_id>`
+   - `X-Terminal-Token: <device-bound token, see §8.9>`
+   - `Authorization: Bearer <current JWT>` (online path) OR
+     `X-Offline-Grant: <signed grant, see §8.8>` (timeout/offline path)
 7. On 2xx within the timeout → main updates row to `synced` + `confirmation=confirmed`,
    persists server `id` + `receipt_number`
 8. Renderer receives success → receipt payload marked **`✓ CONFIRMED`** →
@@ -242,11 +261,11 @@ Each rejected provisional sale offers three resolution paths:
 3. **Issue corrective void** — prints a void receipt for the customer to return;
    reopens the original receipt reference number as void
 
-**Shift-close guard:** `POST /pos/shifts/{id}/close` refuses on the client side if
-any queue row has `status in (pending, failed) AND confirmation=provisional`. The
-UI shows a blocking modal: `Cannot close shift — 2 provisional sales unresolved.
-Resolve them in Sync Issues first.` This makes it structurally impossible to bank
-cash for an unconfirmed sale and move on.
+**Shift-close guard:** `POST /pos/shifts/{id}/close` refuses on the client side
+whenever the unresolved predicate (§6.1) is true — i.e. any queue row has
+`status IN ('pending','rejected')`. The UI shows a blocking modal:
+`Cannot close shift — 2 provisional sales unresolved. Resolve them in Sync Issues first.`
+This makes it structurally impossible to bank cash for an unconfirmed sale and move on.
 
 ---
 
@@ -400,9 +419,9 @@ printer.testPrint()                    → { success }
 
 drawer.open()                          → { success }
 
-sync.pushNow()                         → { pushed, failed }
+sync.pushNow()                         → { pushed, rejected }
 sync.pullNow(entity?)                  → { pulled }
-sync.state()                           → { online, last_sync_at, pending, failed }
+sync.state()                           → { online, last_sync_at, pending, rejected }
 
 updater.check() / updater.install()
 app.version()
@@ -535,15 +554,47 @@ CREATE TABLE schema_history (
 
 ## 6. Sync Infrastructure
 
-### 6.1 Client — push worker
+### 6.1 Client — push worker (canonical queue state machine)
+
+**Canonical states** — reused identically in schema, push worker, shift-close
+guard, updater gate, and Sync Issues UI. No section may invent a new state.
+
+| State | Meaning | Confirmation | Unresolved? |
+|---|---|---|---|
+| `pending` | Enqueued, not yet pushed OR backoff-waiting | `provisional` | **yes** |
+| `syncing` | In-flight push | `provisional` | no (transient — never persists across crashes, recovered to `pending` on boot) |
+| `synced` | Server accepted (2xx or 409 replay) | `confirmed` | no |
+| `rejected` | Server refused (4xx non-409) — needs reconciliation | `provisional` | **yes** |
+| `reconciled` | Resolved via supervisor override / record-loss / corrective-void | `reconciled` | no |
+
+**Unresolved predicate** (single source of truth for all safety gates):
+```sql
+status IN ('pending','rejected')
+```
+
+Every guard uses exactly this predicate:
+- Shift-close guard (§3.6)
+- Updater-install gate (§4.5 `requires_queue_drained`)
+- Sync Issues UI count + list
+
+**Push worker behaviour:**
 
 - Runs every 10s when online; immediate on reconnect
-- Pushes one pending row at a time (not batched — isolates failure, keeps idempotency trivial)
-- On 2xx → `status='synced'`, server id + response persisted
-- On 4xx (not 409 replay) → `status='failed'`, surfaced in `/settings → Sync Issues`
-- On 5xx / network error → exponential backoff: 1s, 2s, 4s, 8s, 30s, 2m, 5m (cap)
-- After 10 consecutive failures → `status='failed'`, user-visible error
-- Concurrent push protection: SQLite `UPDATE … WHERE status='pending' LIMIT 1 RETURNING …` claims the row
+- Pushes one row at a time (isolates failure, keeps idempotency trivial)
+- Claims a row with `UPDATE queue SET status='syncing' WHERE status='pending' AND …
+  ORDER BY created_at LIMIT 1 RETURNING *`
+- On **2xx** → `status='synced'`, `confirmation='confirmed'`, server id + response persisted
+- On **409** (idempotency replay) → treated as 2xx; server already has this transaction
+- On **4xx** (non-409) → `status='rejected'`, `confirmation='provisional'`, surfaced
+  in `/settings → Sync Issues`. `retry_count` and `last_error` recorded.
+- On **5xx / network error / timeout** → row returns to `status='pending'` with
+  `next_attempt_at` set by exponential backoff: 1s, 2s, 4s, 8s, 30s, 2m, 5m (cap)
+- After **10 consecutive network/5xx failures on the same row** → still `pending`,
+  but a sticky warning appears in Sync Issues; the row never silently becomes
+  `rejected` from infra failures alone (only from 4xx server decisions).
+- **Boot recovery:** any `status='syncing'` row on startup (crashed mid-push) is
+  reset to `pending` with its idempotency key preserved — duplicate writes are
+  prevented by server idempotency, not by client-side guessing.
 
 ### 6.2 Client — pull worker
 
@@ -584,13 +635,33 @@ CREATE TABLE pos_idempotency_keys (
   response_status INTEGER,
   response_body   JSONB,
   created_at      TIMESTAMPTZ DEFAULT now(),
-  expires_at      TIMESTAMPTZ NOT NULL             -- now() + 24h
+  expires_at      TIMESTAMPTZ NOT NULL             -- now() + IDEMPOTENCY_TTL (see below)
 );
 CREATE INDEX ix_pos_idemp_expires ON pos_idempotency_keys(expires_at);
 -- RLS: tenant_id scoped
 ALTER TABLE pos_idempotency_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pos_idempotency_keys FORCE ROW LEVEL SECURITY;
 ```
+
+**TTL — must exceed provisional window:**
+
+The retention window for dedupe keys must be strictly longer than the longest
+time a client is permitted to keep retrying the same mutation. Otherwise a client
+can retry after the dedupe row is garbage-collected and the server will process
+the same transaction twice.
+
+```
+provisional_ttl_hours    = 72     # client side; advertised in capabilities
+idempotency_ttl_hours    = 168    # = 7 days; server side; provisional_ttl + 96h safety margin
+```
+
+The client refuses to push any queued row whose `created_at` is older than
+`provisional_ttl_hours`; it moves stale rows to `status='rejected'` with
+`last_error='provisional_expired'` so they land in Sync Issues for manual
+reconciliation instead of being retried past the server's dedupe horizon.
+
+This yields the invariant: **every client retry falls inside the server's
+idempotency window**, so double-processing is impossible even at the edges.
 
 **FastAPI dependency (`api/deps.py`):**
 
@@ -632,7 +703,7 @@ network reconnect, the client fetches `GET /pos/capabilities` and caches the
 response. The client refuses to push mutations if any required capability is
 missing or has rolled back.
 
-**Endpoint (unauthenticated, tenant-agnostic — advertises server features only):**
+**Endpoint (unauthenticated, feature-only — no tenant state):**
 
 ```
 GET /pos/capabilities
@@ -644,19 +715,44 @@ GET /pos/capabilities
   "max_client_version":    null,             // null = no upper bound
   "idempotency":           "v1",              // required — client refuses if missing
   "capabilities": {
-    "idempotency_key_header":    true,        // required
-    "pos_catalog_stream":        true,        // GET /pos/catalog/*
-    "pos_shift_close":           true,
-    "pos_corrective_void":       true,
-    "override_reason_header":    true,        // X-Override-Reason for reconciliation
-    "multi_terminal":            false        // §1.4 enforcement
+    "idempotency_key_header":      true,      // required
+    "pos_commit_endpoint":         true,      // POST /pos/transactions/commit — required
+    "pos_catalog_stream":          true,      // GET /pos/catalog/*
+    "pos_shift_close":             true,
+    "pos_corrective_void":         true,
+    "override_reason_header":      true,      // X-Override-Reason for reconciliation
+    "terminal_device_token":       true,      // required — §8.9
+    "offline_grant_asymmetric":    true,      // required — §8.8 asymmetric signature
+    "multi_terminal_supported":    false      // server-wide feature flag — Phase 1 always false
   },
   "enforced_policies": {
-    "idempotency_ttl_hours":     24,
-    "provisional_ttl_hours":     72           // server-side cap on how long a provisional can stay unconfirmed
-  }
+    "idempotency_ttl_hours":       168,       // 7 days — strictly longer than provisional_ttl
+    "provisional_ttl_hours":       72,
+    "offline_grant_max_age_hours": 12
+  },
+  "tenant_key_endpoint":   "/pos/tenant-key",  // Ed25519 public-key rotation endpoint, authenticated
+  "device_registration_endpoint": "/pos/terminals/register-device"
 }
 ```
+
+**Separate tenant-scoped endpoint for active-terminal check:**
+
+```
+GET /pos/terminals/active-for-me          // authenticated, tenant-scoped
+
+200 OK
+{
+  "active_terminals": [
+    { "terminal_id": 42, "device_fingerprint": "sha256:…", "opened_at": "…" }
+  ],
+  "multi_terminal_allowed": false            // tenant flag, from §1.4
+}
+```
+
+The capabilities endpoint stays feature-only and cannot leak tenant state.
+The active-terminal endpoint authoritatively answers "may this machine open a
+new terminal for this tenant" using both the tenant flag and the device
+fingerprint of the caller.
 
 **Client behaviour:**
 
@@ -870,23 +966,27 @@ Implementation: `hardware/dpapi.ts` wraps Node's `crypto.protectData()` /
 `unprotectData()` via `node-dpapi-prebuilt`. The IPC surface exposes only
 opaque cipher blobs; plaintext tokens never leave the main process.
 
-#### 8.8.2 Terminal-scoped offline grant
+#### 8.8.2 Terminal-scoped offline grant (asymmetric signing)
 
-When a shift opens **while online**, the server issues a signed **Offline Grant**:
+When a shift opens **while online**, the server issues a signed **Offline Grant**.
+The grant is signed with the tenant's **Ed25519 private key, which never leaves
+the server.** The client only ever holds the tenant's *public* verification key,
+which is useless for minting or altering grants — only for verifying them.
 
 ```
 POST /pos/shifts/open
-→ { shift: {...}, offline_grant: {jwt_blob} }
+→ { shift: {...}, offline_grant: { payload, signature_ed25519, key_id } }
 
-jwt_blob (HS256, issued by API, keyed to tenant):
+grant payload (signed, not encrypted):
 {
   "iss":            "datapulse-pos",
   "terminal_id":    42,
   "tenant_id":      7,
+  "device_fingerprint": "sha256:…",              // MUST match §8.9 machine fingerprint
   "staff_id":       "s-123",
   "shift_id":       1001,
   "issued_at":      "2026-04-17T06:00:00Z",
-  "offline_expires_at":  "2026-04-17T18:00:00Z",    // issued_at + 12h (configurable per tenant)
+  "offline_expires_at":  "2026-04-17T18:00:00Z",  // issued_at + 12h (configurable per tenant)
   "role_snapshot": {
     "can_checkout":          true,
     "can_void":              false,
@@ -896,13 +996,45 @@ jwt_blob (HS256, issued by API, keyed to tenant):
     "can_process_returns":   false,
     "can_open_drawer_no_sale": false,
     "can_close_shift":       true
-  }
+  },
+  "supervisor_pin_hashes": [                       // scrypt(pin, server_pepper)
+    { "staff_id": "s-009", "hash": "scrypt$…" },
+    { "staff_id": "s-014", "hash": "scrypt$…" }
+  ],
+  "capabilities_version":   "v1"
 }
 ```
 
-The grant is stored DPAPI-encrypted in `settings.offline_grant`. Its signature is
-verified on every privileged action in the main process using the tenant's HS256
-key (fetched at shift-open and rotated daily by the server).
+**Key management:**
+
+- Every tenant has a long-lived Ed25519 signing keypair on the server side.
+- The server rotates the **signing key** (private) daily; the public key has a
+  `key_id` and a 7-day overlap window so clients can still verify recent grants.
+- Client fetches the current public key set via `GET /pos/tenant-key` (authenticated,
+  returns array of `{key_id, public_key, valid_from, valid_until}`) on every
+  reconnect and caches them DPAPI-encrypted. Old public keys in the overlap
+  window stay valid for grant verification but not for issuing new grants.
+- **No tenant signing secret or HMAC pepper ever reaches the terminal.** The only
+  server-side secret the terminal could conceivably be relevant to is the scrypt
+  pepper for supervisor PINs — and that is also NOT shipped; instead, the PINs
+  are hashed on the server with the pepper, and only the scrypt-output hash goes
+  into the grant. Offline PIN verification compares `scrypt(input_pin, pepper_placeholder)`
+  — this is not possible without the pepper, so supervisor PIN verification uses
+  a different pattern:
+    - The grant embeds a short list of **time-bound single-use supervisor codes**
+      (6-digit numeric, scrypt-hashed on the server with a per-grant salt stored
+      in the grant). Each code is valid once for that grant's lifetime.
+    - The pharmacy admin distributes these codes to supervisors verbally at
+      shift-open. Supervisors enter a code for each override action; the client
+      verifies the entered code against the grant's hash set and marks that code
+      used in `audit_log` so it cannot be reused.
+    - This inverts the trust model: the server controls code generation; the
+      terminal only verifies one-way hashes without needing the pepper.
+
+The grant blob + public keys are stored DPAPI-encrypted in `settings`. The grant
+signature is verified on every privileged action in the main process using the
+cached Ed25519 public key. Any verification failure → grant discarded → app
+falls to read-only mode (§8.8.3).
 
 #### 8.8.3 Degradation policy
 
@@ -953,6 +1085,89 @@ On every reconnect:
 If the refresh call returns 401/403 → session was revoked server-side → enter
 "revoked" state (see table above), preserve cart, lock further mutations.
 
+### 8.9 Device-bound terminal credential
+
+The `multi_terminal_supported: false` flag (§1.4) plus "server rejects a second
+terminal-create call" is **not sufficient by itself**. An authenticated caller
+could still target an arbitrary `terminal_id` on existing mutating endpoints from
+a second physical machine. The server must also bind each terminal to a specific
+device so that only that device's requests are accepted for that terminal.
+
+#### 8.9.1 One-time device registration
+
+First launch flow (requires online + admin credentials):
+
+1. Client generates an **Ed25519 keypair** in the main process. The private key is
+   stored DPAPI-encrypted in `settings.device_private_key` and never leaves the machine.
+2. Client also computes a **device fingerprint**: SHA256 of `hostname |
+   machineGuid (Windows registry) | MAC of primary NIC | OS serial`.
+   Stored in `settings.device_fingerprint`.
+3. Client calls `POST /pos/terminals/register-device` with:
+   ```
+   {
+     "tenant_id":       7,
+     "terminal_name":   "Pharmacy-1-Till",
+     "public_key":      "<ed25519 pub>",
+     "device_fingerprint": "sha256:…",
+     "admin_credential": "<admin password or one-time registration token>"
+   }
+   ```
+4. Server creates row in `pos_terminal_devices(terminal_id, tenant_id, public_key,
+   device_fingerprint, registered_at, revoked_at)`. A tenant can register at most
+   `tenants.pos_max_terminals` (default 1 in Phase 1; §1.4 enforces).
+5. Server returns `{ terminal_id, device_id }`.
+
+#### 8.9.2 Per-request device proof
+
+Every mutating POS request (commit, void, return, shift-open, shift-close,
+terminal-open, terminal-close, drawer-no-sale, reconciliation override) includes:
+
+```
+X-Terminal-Token: <base64(ed25519_sign(device_private_key, <canonical_request_digest>))>
+X-Device-Fingerprint: sha256:…
+```
+
+where `canonical_request_digest = SHA256(method | path | idempotency_key |
+body_sha256 | iso8601_timestamp_rounded_to_minute)`.
+
+Server-side `Depends(device_token_verifier)` dependency:
+- Looks up `pos_terminal_devices` row for the `terminal_id` in the request path
+- Verifies the Ed25519 signature with the stored public key
+- Rejects with **401** if: no device row, key revoked, signature fails, fingerprint
+  mismatch, timestamp skew > 5 min
+- Rejects with **403** if: device row exists but is for a different terminal
+
+This means: **a second physical machine cannot operate an existing open terminal
+even with valid JWT, because it lacks the device private key.**
+
+#### 8.9.3 Device revocation / re-pairing
+
+Administrator actions (via the admin UI, not the POS itself):
+- Revoke device: sets `revoked_at`; all subsequent mutations from that device
+  get 401. Client falls to read-only and shows "This terminal has been
+  deregistered. Contact administrator."
+- Re-pair terminal: revokes current device, clears `device_fingerprint`, allows
+  a new device to register for that terminal_id.
+
+#### 8.9.4 Protection against key theft
+
+- Private key sits in DPAPI (`CurrentUser` scope) — moving `pos.db` to another
+  machine does not transfer the key.
+- Additional guard: on every request, server checks the claimed
+  `X-Device-Fingerprint` against the registered fingerprint. If a fired admin
+  copies the DPAPI key out (e.g., by logging in as that Windows user and
+  dumping memory), the hostname/MAC/machineGuid combination still has to match.
+- Detection: if fingerprint mismatches but signature verifies, the server logs
+  a security event and revokes the device automatically.
+
+#### 8.9.5 Offline behaviour
+
+When offline, the client signs requests with its device private key as usual;
+signatures are validated by the server on reconnect (the timestamp-rounded
+digest accommodates offline queues up to 5 min of skew; longer-queued requests
+use a "flight timestamp" relative to the signed grant window, verified against
+the grant's `issued_at`/`offline_expires_at`).
+
 ---
 
 ## 9. Testing
@@ -996,6 +1211,23 @@ If the refresh call returns 401/403 → session was revoked server-side → ente
     → verify refuses to boot with correct "install v… or later" message
   - **Pre-migration backup:** advance schema, corrupt migration → verify restore
     from `.bak` file and app recovers
+  - **Device-bound rejection:** register device A; attempt `POST /pos/transactions/commit`
+    from device B against the same terminal_id with B's signature → verify 401
+  - **Device fingerprint mismatch:** swap `X-Device-Fingerprint` header to a
+    different value with a still-valid signature → verify 401 + server logs
+    security event
+  - **Asymmetric grant tampering:** edit decoded grant payload to flip
+    `can_void=true` without re-signing → verify signature verification fails +
+    grant discarded + app falls to read-only
+  - **One-time supervisor code reuse:** use a supervisor code to authorize a
+    void → attempt the same code a second time → verify rejected + audit log
+  - **Idempotency TTL > provisional TTL invariant:** enqueue offline at T=0;
+    advance mock clock to T=71h → verify push still retries; advance to T=73h →
+    verify client marks row `rejected` with `provisional_expired` (before server
+    dedupe horizon at T=168h)
+  - **Commit atomicity vs draft flow:** mock server returns 500 mid-sync → verify
+    offline queue retries `POST /pos/transactions/commit` with same
+    `Idempotency-Key` and never falls back to the 3-step draft→items→checkout path
 
 ### 9.4 Backend
 
@@ -1003,13 +1235,28 @@ If the refresh call returns 401/403 → session was revoked server-side → ente
 - pytest for cleanup task
 - Existing POS endpoint tests stay green — only change is the added header
 - pytest for `GET /pos/capabilities`: returns required flags, serializes cleanly,
-  is unauthenticated but rate-limited
+  is unauthenticated but rate-limited, and **never includes tenant-scoped data**
+- pytest for `GET /pos/terminals/active-for-me`: returns only the caller's tenant's
+  terminals, respects RLS, returns empty for tenants with no registered terminals
 - pytest for single-terminal guard on `POST /pos/terminals`: second concurrent
-  terminal rejected with 409 when tenant flag is false; allowed when true
+  terminal rejected with 409 when `pos_max_terminals=1`; allowed when raised
+- pytest for `POST /pos/transactions/commit` (new atomic endpoint): creates
+  transaction + items + finalizes payment + decrements stock in one DB
+  transaction; idempotent via `Idempotency-Key`; 409 on hash-mismatch
+- pytest for `Depends(device_token_verifier)`: verifies Ed25519 signature against
+  registered device row; 401 on missing row / bad signature / fingerprint mismatch /
+  timestamp skew; 403 when device row is for a different terminal_id
 - pytest for offline-grant issuance on `POST /pos/shifts/open`: grant embeds
-  correct role snapshot, signature verifies, `offline_expires_at` respects tenant setting
+  correct role snapshot + device fingerprint, signed with **server's Ed25519
+  private key**, public key published at `GET /pos/tenant-key` verifies the
+  signature, `offline_expires_at` respects tenant setting
+- pytest for key rotation: old public keys remain valid within 7-day overlap
+  window, expired keys rejected
+- pytest for supervisor one-time codes: each code valid once per grant, reuse rejected
 - pytest for override reconciliation path (`X-Override-Reason` header on retry)
   requiring supervisor credential and recording in audit log
+- pytest for idempotency retention invariant: `IDEMPOTENCY_TTL > PROVISIONAL_TTL`
+  is enforced at boot/config-load; mismatched values raise a startup error
 
 ### 9.5 Manual hardware smoke (pre-release checklist)
 
@@ -1098,10 +1345,14 @@ Local SQLite is created on first launch.
 | Keyboard shortcuts collide with Arabic IME | Test with Windows Arabic keyboard layout; fall back to Ctrl+shortcut alternates |
 | Power loss mid-transaction | WAL journal + queue row written before API call — resumes on next launch |
 | Provisional sale takes cash for a transaction the server rejects | §3.6 reconciliation workflow (retry-override / record-loss / corrective-void) + §1.3 shift-close guard blocks banking the cash until resolved |
-| Terminal used while offline by revoked staff | §8.8 terminal-scoped offline grant with 12h max age, DPAPI-protected; revocation takes effect at next reconnect; read-only mode after grant expiry |
+| Terminal used while offline by revoked staff | §8.8 terminal-scoped offline grant with 12h max age, DPAPI-protected, Ed25519-signed with server-only private key; revocation takes effect at next reconnect; read-only mode after grant expiry |
 | Bad release ships non-downgradeable schema | §4.5 pre-migration backups, bi-directional version check refuses to boot on newer schema, update manifest gates incompatible releases until queue is drained |
 | Server idempotency accidentally disabled in an incident | §6.6 capability negotiation — clients stop syncing instead of silently retrying non-idempotently; §10.4 designates idempotency as non-revertible capability |
-| Two tills accidentally activated at a single-terminal pharmacy | §1.4 three-layer enforcement (tenant flag + server guard + client guard); second terminal cannot open a shift |
+| Two tills accidentally activated at a single-terminal pharmacy | §1.4 four-layer enforcement (tenant flag + server guard on create + **per-request device-bound Ed25519 proof** + client guard via tenant-scoped state endpoint); a second physical machine cannot mutate an existing terminal |
+| Client-side signing key could mint elevated offline grants | §8.8 grants signed by **server-only** Ed25519 private key; client holds only public verification key + one-way hashed supervisor codes; no signing material or pepper ships to terminal |
+| Dedupe window expires before client stops retrying | §6.4 `idempotency_ttl_hours=168` > `provisional_ttl_hours=72`; stale provisional rows become `rejected` client-side before they can be retried past server dedupe horizon |
+| Idempotency attached to wrong endpoint (draft vs commit) | §3 routes table puts `Idempotency-Key` on `POST /pos/transactions/commit` (new atomic endpoint) + `checkout` + `void` + `return` + `shift-close` + `terminal-close` — never on draft create/item-add; draft changes are reversible cart state, only the commit is irreversible |
+| Queue-state terminology drift across sections | §6.1 defines canonical five-state machine (`pending/syncing/synced/rejected/reconciled`) and unresolved predicate `status IN ('pending','rejected')`; all safety gates reference it by ID rather than redefining |
 
 ---
 
