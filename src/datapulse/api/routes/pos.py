@@ -750,6 +750,11 @@ from datapulse.pos.models import (  # noqa: E402
     TenantKeysResponse,
     TenantPublicKey,
 )
+from datapulse.pos.devices import register_device  # noqa: E402
+from datapulse.pos.models import (  # noqa: E402,F811
+    DeviceRegisterRequest,
+    DeviceRegisterResponse,
+)
 from datapulse.pos.tenant_keys import list_public_keys  # noqa: E402
 
 capabilities_router = APIRouter(prefix="/pos", tags=["pos"])
@@ -778,6 +783,43 @@ def capabilities(request: Request) -> CapabilitiesDoc:
 # ──────────────────────────────────────────────────────────────────────────────
 # M1 — Tenant signing public keys (§8.8.2)
 # ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/terminals/register-device",
+    response_model=DeviceRegisterResponse,
+    dependencies=[Depends(require_permission("pos:device:register"))],
+)
+@limiter.limit("10/minute")
+def register_terminal_device(
+    request: Request,
+    payload: DeviceRegisterRequest,
+    user: CurrentUser,
+    session=Depends(get_tenant_session),
+) -> DeviceRegisterResponse:
+    """Register a physical device (Ed25519 public key + fingerprint) to a terminal.
+
+    First-launch flow: the desktop client generates a keypair locally, keeps
+    the private key in Windows DPAPI, and posts the public key here. Every
+    subsequent mutating POS request is signed with that private key and
+    verified by ``device_token_verifier`` (§8.9).
+    """
+    from datetime import datetime, timezone
+
+    tenant_id = _tenant_id_of(user)
+    device_id = register_device(
+        session,
+        tenant_id=tenant_id,
+        terminal_id=payload.terminal_id,
+        public_key_b64=payload.public_key,
+        device_fingerprint=payload.device_fingerprint,
+    )
+    session.commit()
+    return DeviceRegisterResponse(
+        device_id=device_id,
+        terminal_id=payload.terminal_id,
+        registered_at=datetime.now(timezone.utc),
+    )
 
 
 @router.get("/tenant-key", response_model=TenantKeysResponse)

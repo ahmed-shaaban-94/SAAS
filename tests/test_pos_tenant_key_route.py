@@ -46,7 +46,8 @@ def _make_app(fake_keys: list[TenantKey]) -> FastAPI:
     app.dependency_overrides[get_pos_service] = lambda: MagicMock()
     app.dependency_overrides[get_tenant_plan_limits] = lambda: PLAN_LIMITS["platform"]
     app.dependency_overrides[get_access_context] = lambda: AccessContext(
-        user_id="test-user", tenant_id=1, role_keys=frozenset({"admin"}), permission_keys=frozenset()
+        member_id=1, tenant_id=1, user_id="test-user", role_key="admin",
+        permissions=set(), is_admin=True,
     )
 
     # Patch list_public_keys to return our fake keys regardless of session
