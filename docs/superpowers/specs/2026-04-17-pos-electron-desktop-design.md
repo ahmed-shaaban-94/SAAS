@@ -201,6 +201,9 @@ frontend/src/
 | Verify / add `GET /pos/catalog/stock?site=&since=` | Client-pulled stock snapshot |
 | **New** endpoints for capability + tenant-scoped state: `GET /pos/capabilities` (public, feature-only), `GET /pos/terminals/active-for-me` (authenticated, returns the caller's tenant's active terminals) | Separates feature negotiation from tenant-scoped terminal state (§1.4, §6.6) |
 | **New** device-bound terminal credential infrastructure (see §8.9) | Binds a terminal_id to a physical machine so a second workstation cannot operate it |
+| **New** column `pos_transactions.commit_confirmed_at TIMESTAMPTZ` + migration to back-fill existing rows | Authoritative server-side signal that a transaction reached final state; used by shift-close guard (§3.6) |
+| **New** tables `pos_override_consumptions` + `pos_grants_issued` + `shifts_close_attempts` | Server-side one-time-use ledger for override codes (§8.8.6) + grant code_id registry + shift-close forensic audit |
+| **New** FastAPI dependency `Depends(override_token_verifier)` | Applied to every route that accepts `X-Override-Token` (void, commit-with-override, no-sale drawer, price override) |
 | Nightly cleanup task in `src/datapulse/tasks/` | Delete expired idempotency keys — retention must be ≥ provisional TTL (see §6.4) |
 
 ### 3.5 Data flow — checkout (online, server-confirmed path)
@@ -262,11 +265,84 @@ Each rejected provisional sale offers three resolution paths:
 3. **Issue corrective void** — prints a void receipt for the customer to return;
    reopens the original receipt reference number as void
 
-**Shift-close guard:** `POST /pos/shifts/{id}/close` refuses on the client side
-whenever the unresolved predicate (§6.1) is true — i.e. any queue row has
-`status IN ('pending','syncing','rejected')`. The UI shows a blocking modal:
-`Cannot close shift — 2 provisional sales unresolved. Resolve them in Sync Issues first.`
-This makes it structurally impossible to bank cash for an unconfirmed sale and move on.
+**Shift-close guard (defense-in-depth, server-enforced):**
+
+Client-side refusal alone is insufficient — a UI bug, manual API call, or
+compromised client could close while provisional work exists. Close is a
+joint client + server invariant:
+
+**1. Client-side pre-check.** UI refuses to call close while the §6.1
+unresolved predicate is true. User sees `Cannot close — N unresolved sales`.
+
+**2. Request body.** When the user invokes close, the client posts to
+`POST /pos/shifts/{id}/close` with:
+
+```
+{
+  "closing_cash": "1234.56",
+  "notes": "...",
+  "local_unresolved": {
+    "count": 0,
+    "digest": "sha256:…"          // SHA256 of sorted list of unresolved client_txn_ids
+  }
+}
+```
+
+Plus the usual `X-Signed-At`, `X-Terminal-Id`, `X-Terminal-Token` headers
+(§8.9.2) so the server authenticates this claim as coming from the
+registered device.
+
+**3. Server-enforced validation.** The close route runs two authoritative
+checks before any ledger action:
+
+a. **Client claim check:** `local_unresolved.count == 0` must hold. Non-zero
+   → 409 `{ "reason": "provisional_work_pending", "count": N }`. The client's
+   digest is stored in `shifts_close_attempts` for forensic audit even on rejection.
+
+b. **Server-side shift integrity check:** A new DB query runs:
+   ```sql
+   SELECT count(*) FROM pos_transactions
+    WHERE shift_id = :shift_id
+      AND tenant_id = :tenant_id
+      AND terminal_id = :terminal_id
+      AND commit_confirmed_at IS NULL;              -- new column, set atomically by commit
+   ```
+   Non-zero → 409 `{ "reason": "server_side_incomplete_transactions", "count": N }`.
+
+**Required migration.** Add `pos_transactions.commit_confirmed_at TIMESTAMPTZ`
+(nullable, indexed on `(shift_id, terminal_id) WHERE commit_confirmed_at IS NULL`).
+The new atomic `POST /pos/transactions/commit` endpoint sets it within the same
+DB transaction that writes the transaction row. Legacy draft-then-checkout
+flow sets it at checkout time. Existing committed rows are back-filled to
+`created_at` in the migration.
+
+**4. Drain protocol.** If the client's pre-check fires because rows are in
+`syncing` (transient), the UI polls `shift.canClose()` every 500ms for up to
+10s before escalating to a modal (§6.1 drain protocol).
+
+This combination — client pre-check + server checks both client's claim and
+server's own incomplete-transaction count — makes a fraudulent or buggy
+close structurally impossible. A compromised client that lies about
+`count: 0` is caught by check 3b; a client that doesn't lie but has orphan
+local work is caught by check 3a.
+
+```sql
+CREATE TABLE shifts_close_attempts (
+  id              BIGSERIAL PRIMARY KEY,
+  shift_id        INTEGER NOT NULL,
+  tenant_id       INTEGER NOT NULL,
+  terminal_id     INTEGER NOT NULL,
+  attempted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  outcome         TEXT NOT NULL               -- 'accepted' | 'rejected_client' | 'rejected_server'
+    CHECK (outcome IN ('accepted','rejected_client','rejected_server')),
+  claimed_unresolved_count    INTEGER,
+  claimed_unresolved_digest   TEXT,
+  server_incomplete_count     INTEGER,
+  rejection_reason            TEXT
+);
+CREATE INDEX ix_shifts_close_attempts_shift ON shifts_close_attempts(shift_id);
+-- RLS tenant_id scoped
+```
 
 ---
 
@@ -1104,9 +1180,86 @@ ipcMain.handle('drawer:open-no-sale', async (_evt, { overrideCode }) => {
 ```
 
 `authz.consumeOverrideCode` performs constant-time `scrypt` comparison against
-unused entries in `grant.override_codes`, atomically marks the matched
-`code_id` as used in `audit_log`, and returns the matched entry. All override
-consumption is recorded for forensic audit. No supervisor PINs anywhere.
+unused entries in `grant.override_codes`. On match, it **mints a device-signed
+override token** that the client attaches to the subsequent privileged request
+so the **server can independently verify** that an override was legitimately
+authorized and one-time-consumed. Local client-side marking alone is not
+trusted — a forgeable `X-Override-Code-Id` header would be worthless.
+
+```ts
+// authz.consumeOverrideCode(grant, code) → OverrideToken
+const claim = {
+  grant_id:          grant.grant_id,
+  code_id:           matched.code_id,
+  tenant_id:         grant.tenant_id,
+  terminal_id:       grant.terminal_id,
+  shift_id:          grant.shift_id,
+  action:            'retry_override' | 'void' | 'no_sale' | 'price_override' | 'discount_above_limit',
+  action_subject_id: 'txn_123' | null,        // target object if applicable
+  consumed_at:       new Date().toISOString()
+};
+const signature = ed25519_sign(device_private_key, canonicalize(claim));
+return { claim, signature };                   // X-Override-Token header value
+```
+
+#### 8.8.6 Server-side verification of override tokens
+
+Every privileged mutation that can bypass normal limits — `commit` with
+`X-Override-Reason`, `void`, `drawer:open-no-sale`, price-override items —
+requires an `X-Override-Token` header carrying `{ claim, signature }`.
+
+**Required backend migration:** new ledger table.
+
+```sql
+CREATE TABLE pos_override_consumptions (
+  grant_id          TEXT NOT NULL,
+  code_id           TEXT NOT NULL,
+  tenant_id         INTEGER NOT NULL,
+  terminal_id       INTEGER NOT NULL,
+  shift_id          INTEGER NOT NULL,
+  action            TEXT NOT NULL,
+  action_subject_id TEXT,
+  consumed_at       TIMESTAMPTZ NOT NULL,
+  recorded_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  request_idempotency_key TEXT,                  -- links to the request that burned it
+  PRIMARY KEY (grant_id, code_id)                -- enforces one-time use
+);
+CREATE INDEX ix_pos_override_terminal ON pos_override_consumptions(terminal_id, consumed_at);
+-- RLS tenant_id scoped
+```
+
+**Server-side `Depends(override_token_verifier)` dependency** for each
+override-requiring route:
+
+1. Parse `X-Override-Token` → `{ claim, signature }`.
+2. Verify `signature` with the device's registered Ed25519 public key (§8.9).
+   Fail → 401.
+3. Verify `claim.terminal_id` matches `X-Terminal-Id` and `claim.tenant_id`
+   matches the caller's tenant. Mismatch → 401.
+4. Look up the grant record (server keeps the authoritative list of grants
+   it issued, including each grant's `override_codes` `code_id` set). Verify
+   `claim.code_id` is in that set. Absent → 401 `invalid_code_id`.
+5. Verify `claim.action` matches the route being called. Mismatch → 403.
+6. **Atomic one-time-use insert:**
+   ```sql
+   INSERT INTO pos_override_consumptions (...)
+   VALUES (:grant_id, :code_id, ...);        -- PK conflict if already consumed
+   ```
+   Conflict → 409 `override_already_consumed`. Success → proceed with business logic
+   **in the same DB transaction** (if business logic fails, consumption rolls back).
+
+This design gives the server the authoritative one-time-use ledger, so a
+malicious client cannot:
+- Forge an override (would need the device private key)
+- Replay an override (unique PK blocks second insert)
+- Swap an override between actions (claim.action is signed + validated)
+- Use another terminal's override (terminal_id is signed + validated)
+
+**Server also stores (when issuing the grant) the full code_id set per grant
+in `pos_grants_issued (grant_id, code_ids JSONB, issued_at, expires_at)`** so
+step 4's lookup is O(1). The salt/hash stay client-side only — the server
+never needs to re-verify the plaintext code itself, just that the device
+attests "we verified it" with a signature the server trusts.
 
 #### 8.8.5 Grant rotation + reconnect
 
@@ -1333,7 +1486,24 @@ their `signed_at` is still inside the original grant window.
     `supervisorPin` argument → verify handler rejects with
     `override_invalid_or_used` (the PIN path must not exist)
   - **Override-code consumption:** use a valid `overrideCode` to authorize a
-    void → attempt any further override using the same `code_id` → verify rejected
+    void → attempt any further override using the same `code_id` → verify
+    rejected both client-side (audit_log) and server-side (`pos_override_consumptions`
+    PK conflict → 409)
+  - **Server-enforced shift close (honest client):** client posts close with
+    `local_unresolved.count=0` AND server has zero rows with
+    `commit_confirmed_at IS NULL` for this shift → close accepted
+  - **Server-enforced shift close (lying client):** spoof a direct API call
+    with `local_unresolved.count=0` while server actually has an incomplete
+    commit → verify 409 `server_side_incomplete_transactions` + forensic row
+    in `shifts_close_attempts`
+  - **Server-enforced shift close (buggy client, honest state):** client
+    reports `count=5` → verify 409 `provisional_work_pending`
+  - **Override token forgery:** submit a `X-Override-Token` with a valid
+    `code_id` but signed by a different device's key → verify server-side
+    signature verification fails → 401
+  - **Override token replay:** submit the same signed `X-Override-Token`
+    twice → verify second attempt returns 409 `override_already_consumed`
+    before any business write
 
 ### 9.4 Backend
 
@@ -1370,6 +1540,22 @@ their `signed_at` is still inside the original grant window.
 - pytest asserting every mutating POS endpoint requires `terminal_id` in the
   request body OR `X-Terminal-Id` header (enforced by FastAPI dependency chain;
   a route missing the dependency fails the contract test)
+- pytest for `POST /pos/shifts/{id}/close` server-side invariants:
+  - both checks pass → close accepted + `shifts_close_attempts` row with
+    `outcome=accepted`
+  - client claims 0 but server sees incomplete transactions → 409
+    `server_side_incomplete_transactions` + forensic row with
+    `outcome=rejected_server`
+  - client claims non-zero → 409 `provisional_work_pending` + forensic row
+    with `outcome=rejected_client`
+- pytest for `Depends(override_token_verifier)`:
+  - signed by wrong device → 401
+  - `code_id` not in grant's registered set → 401 `invalid_code_id`
+  - `claim.action` mismatches route → 403
+  - replay of a previously-consumed `(grant_id, code_id)` → 409
+    `override_already_consumed` BEFORE any business write commits
+  - on business write failure, override consumption rolls back (same DB
+    transaction) — a subsequent retry with the same token must succeed
 - pytest for override reconciliation path (`X-Override-Reason` header on retry)
   requiring supervisor credential and recording in audit log
 - pytest for idempotency retention invariant: `IDEMPOTENCY_TTL > PROVISIONAL_TTL`
@@ -1470,6 +1656,9 @@ Local SQLite is created on first launch.
 | Device-proof could be bypassed on body-based routes (e.g. commit) | §8.9.2 canonical envelope requires `terminal_id` as a first-class field (body or `X-Terminal-Id` header) on every mutating route; verifier binds to that explicit field before business logic runs; same contract applies uniformly to path-based and body-based routes |
 | Long-queued offline requests break device-proof timestamp | §8.9.2 canonical digest uses explicit signed `X-Signed-At` that is captured at enqueue and never mutated; single verification formula covers both immediate and 72h-delayed replay; no "flight timestamp" fallback mode |
 | In-flight (`syncing`) rows race past safety gates | §6.1 treats `syncing` as unresolved; shift-close uses a drain protocol that polls until resolution or escalates to modal after 10s |
+| Client could close shift despite local unresolved work (UI bug / direct API call / compromised client) | §3.6 shift-close is server-enforced: close request carries signed `local_unresolved` claim; server additionally checks `pos_transactions.commit_confirmed_at IS NULL` count for this shift on the server side — defense in depth |
+| Override code `X-Override-Code-Id` header is forgeable | §8.8.6 replaces the forgeable header with a device-signed `X-Override-Token` + server-side `pos_override_consumptions` ledger with PK `(grant_id, code_id)` enforcing one-time use atomically with the privileged business write |
+| Queue row missing signed envelope for replay | Implementation-phase concern (known open item): the queue row must persist `signed_at`, auth mode (`bearer` vs `offline-grant`), grant reference, and canonicalization version alongside payload; called out in §13 open items |
 | Dedupe window expires before client stops retrying | §6.4 `idempotency_ttl_hours=168` > `provisional_ttl_hours=72`; stale provisional rows become `rejected` client-side before they can be retried past server dedupe horizon |
 | Idempotency attached to wrong endpoint (draft vs commit) | §3 routes table puts `Idempotency-Key` on `POST /pos/transactions/commit` (new atomic endpoint) + `checkout` + `void` + `return` + `shift-close` + `terminal-close` — never on draft create/item-add; draft changes are reversible cart state, only the commit is irreversible |
 | Queue-state terminology drift across sections | §6.1 defines canonical five-state machine (`pending/syncing/synced/rejected/reconciled`) and unresolved predicate `status IN ('pending','syncing','rejected')`; all safety gates reference it by ID rather than redefining |
@@ -1488,7 +1677,34 @@ Local SQLite is created on first launch.
 
 ---
 
-## 13. Appendix — What's already scaffolded
+## 13. Known open items (deferred to implementation plan)
+
+These are real concerns that surfaced during adversarial review and are
+acknowledged here but not fully specified in this design. They will be
+resolved in the implementation plan (the writing-plans phase), where the
+engineering context (exact schema, exact IPC handlers) can lock them down
+precisely.
+
+1. **Full signed-envelope persistence on queue rows.** The `transactions_queue`
+   schema in §4.2 stores `client_txn_id` and `payload`. For robust replay
+   after crash/grant-refresh, the row must additionally persist:
+   - `signed_at` (ISO-8601, immutable once written)
+   - `auth_mode` (`bearer` | `offline_grant`)
+   - `grant_id` (when `auth_mode = offline_grant`)
+   - `envelope_version` (for forward compat if the digest formula changes)
+   - `device_signature` (Ed25519 of the canonical digest from §8.9.2)
+
+   The implementation plan will add an `envelope_json` column or a dedicated
+   `queue_envelope` satellite table, and will decide whether to re-sign at
+   send time (rejected in round-3 review — keep original signature) or replay
+   the stored signature verbatim (the plan will pick replay).
+
+2. **Envelope-version rollout.** When the canonical digest formula changes,
+   both client and server need to support the old and new forms during
+   overlap. The implementation plan will define the version bumping policy
+   and the server-side verifier fan-out.
+
+## 14. Appendix — What's already scaffolded
 
 Partial credit from prior work (branch `feat/pos-electron-desktop` / PR #393):
 
