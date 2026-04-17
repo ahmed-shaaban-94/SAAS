@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
@@ -40,6 +42,34 @@ class InventoryConfirmRequest(BaseModel):
     target_dir: str | None = None
 
 
+async def _iter_upload_chunks(
+    upload: UploadFile,
+    *,
+    max_size: int,
+    chunk_size: int,
+) -> AsyncIterator[bytes]:
+    """Yield upload chunks while enforcing the request size ceiling."""
+    if upload.size and upload.size > max_size:
+        raise HTTPException(413, f"File {upload.filename} exceeds 100MB limit")
+
+    total = 0
+    while True:
+        chunk = await upload.read(chunk_size)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_size:
+            raise HTTPException(413, f"File {upload.filename} exceeds 100MB limit")
+        yield chunk
+
+
+async def _close_upload_file(upload: UploadFile) -> None:
+    """Close UploadFile objects without assuming the test double is async-aware."""
+    close_result = upload.close()
+    if inspect.isawaitable(close_result):
+        await close_result
+
+
 @router.post("/files", response_model=list[UploadedFile])
 @limiter.limit("10/minute")
 async def upload_files(
@@ -52,29 +82,18 @@ async def upload_files(
     max_size = 100 * 1024 * 1024  # 100MB
     chunk_size = 64 * 1024  # 64KB — stream to cap memory per upload
     for f in files:
-        if not f.filename:
-            continue
-        # Check declared size first (cheap), then stream-read with limit
-        if f.size and f.size > max_size:
-            raise HTTPException(413, f"File {f.filename} exceeds 100MB limit")
-        # Stream in chunks to reject oversized files early without
-        # buffering the entire payload into memory first.
-        chunks: list[bytes] = []
-        total = 0
-        while True:
-            chunk = await f.read(chunk_size)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > max_size:
-                raise HTTPException(413, f"File {f.filename} exceeds 100MB limit")
-            chunks.append(chunk)
-        content = b"".join(chunks)
         try:
-            result = service.save_temp_file(f.filename, content)
+            if not f.filename:
+                continue
+            result = await service.save_temp_file_stream(
+                f.filename,
+                _iter_upload_chunks(f, max_size=max_size, chunk_size=chunk_size),
+            )
             results.append(result)
         except ValueError as e:
             raise HTTPException(422, str(e)) from e
+        finally:
+            await _close_upload_file(f)
     return results
 
 
@@ -123,26 +142,18 @@ async def upload_inventory_files(
     max_size = 100 * 1024 * 1024
     chunk_size = 64 * 1024
     for f in files:
-        if not f.filename:
-            continue
-        if f.size and f.size > max_size:
-            raise HTTPException(413, f"File {f.filename} exceeds 100MB limit")
-        chunks: list[bytes] = []
-        total = 0
-        while True:
-            chunk = await f.read(chunk_size)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > max_size:
-                raise HTTPException(413, f"File {f.filename} exceeds 100MB limit")
-            chunks.append(chunk)
-        content = b"".join(chunks)
         try:
-            result = service.save_temp_file(f.filename, content)
+            if not f.filename:
+                continue
+            result = await service.save_temp_file_stream(
+                f.filename,
+                _iter_upload_chunks(f, max_size=max_size, chunk_size=chunk_size),
+            )
             results.append(result)
         except ValueError as e:
             raise HTTPException(422, str(e)) from e
+        finally:
+            await _close_upload_file(f)
     return results
 
 

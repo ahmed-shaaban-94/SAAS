@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from datapulse.tasks.async_executor import (
+    QueryCapacityExceededError,
     _query_timeout,
     _serialise,
     get_job_result,
@@ -226,6 +227,7 @@ async def test_submit_query_returns_job_id():
 
     with (
         patch("datapulse.tasks.async_executor._get_job_client", return_value=mock_client),
+        patch("datapulse.tasks.async_executor._reserve_query_slot") as mock_reserve,
         patch("datapulse.tasks.async_executor.asyncio") as mock_asyncio,
     ):
         mock_loop = MagicMock()
@@ -237,4 +239,40 @@ async def test_submit_query_returns_job_id():
 
         assert job_id is not None
         assert len(job_id) == 36  # UUID format
+        mock_reserve.assert_called_once_with("1")
         mock_loop.run_in_executor.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_submit_query_rejects_when_capacity_is_full():
+    """Executor should reject new heavy jobs when all local slots are in use."""
+    mock_client = MagicMock()
+
+    with (
+        patch("datapulse.tasks.async_executor._get_job_client", return_value=mock_client),
+        patch(
+            "datapulse.tasks.async_executor._reserve_query_slot",
+            side_effect=QueryCapacityExceededError("busy"),
+        ),
+    ):
+        from datapulse.tasks.async_executor import submit_query
+
+        with pytest.raises(QueryCapacityExceededError, match="busy"):
+            await submit_query("SELECT 1", tenant_id="1")
+
+
+def test_run_query_job_sync_releases_reserved_slot():
+    """Reserved capacity must be released even when job execution fails."""
+    with (
+        patch(
+            "datapulse.tasks.async_executor._run_query_sync",
+            side_effect=RuntimeError("boom"),
+        ),
+        patch("datapulse.tasks.async_executor._release_query_slot") as mock_release,
+    ):
+        from datapulse.tasks.async_executor import _run_query_job_sync
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _run_query_job_sync("job-1", "SELECT 1", None, "7", 25)
+
+        mock_release.assert_called_once_with("7")
