@@ -1,14 +1,23 @@
 import { Package } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
+import {
+  LoadSampleAction,
+  UploadDataAction,
+} from "@/components/shared/empty-state-actions";
+
 export function EmptyInventory() {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <Package className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-lg font-semibold">No inventory data yet</h3>
-      <p className="text-muted-foreground mt-2 max-w-sm">
-        Upload stock receipt files or add inventory data manually to get
-        started with inventory tracking.
-      </p>
-    </div>
+    <EmptyState
+      icon={<Package className="h-10 w-10 text-accent" aria-hidden="true" />}
+      title="No inventory data yet"
+      description="Track stock levels, days-of-supply, and reorder signals once data is loaded. Start with a curated sample or bring your own files."
+      action={
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <LoadSampleAction />
+          <UploadDataAction />
+        </div>
+      }
+    />
   );
 }

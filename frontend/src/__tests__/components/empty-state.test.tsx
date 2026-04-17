@@ -25,4 +25,31 @@ describe("EmptyState", () => {
     expect(svg).toBeInTheDocument();
     expect(svg).toHaveAttribute("aria-hidden", "true");
   });
+
+  it("renders an optional primary-action slot", () => {
+    render(
+      <EmptyState
+        title="No data yet"
+        action={<button type="button">Load sample</button>}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /load sample/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render an action slot when not provided (backward compat)", () => {
+    const { container } = render(<EmptyState />);
+    expect(container.querySelector("button")).toBeNull();
+  });
+
+  it("replaces the default illustration when icon prop is provided", () => {
+    const Icon = () => (
+      <svg data-testid="custom-icon" aria-hidden="true">
+        <circle cx="10" cy="10" r="5" />
+      </svg>
+    );
+    render(<EmptyState icon={<Icon />} title="Custom" />);
+    expect(screen.getByTestId("custom-icon")).toBeInTheDocument();
+  });
 });
