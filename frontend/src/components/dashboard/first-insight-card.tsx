@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Sparkles, X, ArrowRight } from "lucide-react";
 
 import { useFirstInsight } from "@/hooks/use-first-insight";
+import { trackFirstInsightSeen } from "@/lib/analytics-events";
 
 const DISMISS_KEY = "ttfi_first_insight_dismissed";
 
@@ -30,6 +31,18 @@ export function FirstInsightCard() {
       sessionStorage.setItem(DISMISS_KEY, "1");
     }
   }, [dismissed]);
+
+  // Fire the Task 0 funnel event when the card actually renders with
+  // content — this is what "the user saw a first insight" really means.
+  // The tracker is session-idempotent so remounts do not double-fire.
+  useEffect(() => {
+    if (!dismissed && !isLoading && insight) {
+      trackFirstInsightSeen({
+        kind: insight.kind,
+        confidence: insight.confidence,
+      });
+    }
+  }, [dismissed, isLoading, insight]);
 
   if (dismissed || isLoading || !insight) return null;
 

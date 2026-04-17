@@ -11,6 +11,7 @@ import { LoadingCard } from "@/components/loading-card";
 import { CompareProvider, CompareButton, ComparePanel } from "@/components/comparison/compare-toggle";
 import { trackFirstDashboardView } from "@/lib/analytics-events";
 import { FirstInsightCard } from "@/components/dashboard/first-insight-card";
+import { OnboardingStrip } from "@/components/dashboard/onboarding-strip";
 import dynamic from "next/dynamic";
 
 // Above-fold: regular imports (seen immediately)
@@ -95,6 +96,9 @@ export default function DashboardPage() {
         </div>
         <FilterBar />
         <ComparePanel />
+
+        {/* Phase 2 #404: onboarding progress strip — self-hides when all done or stale. */}
+        <OnboardingStrip />
 
         {/* Phase 2 #402: first-insight card — self-hides when no insight or dismissed. */}
         <FirstInsightCard />
