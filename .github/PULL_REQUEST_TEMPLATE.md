@@ -2,6 +2,20 @@
 
 <!-- Brief description of what this PR does -->
 
+## Strategic Lever
+
+<!--
+Which of the four strategic levers does this PR move? Pick at least one.
+If none apply, explain why this work is still worth shipping now.
+See docs/superpowers/specs/MASTER_CONVERSATION_REPORT.md for the filter.
+-->
+
+- [ ] **Clarity** — narrows product story, sharpens positioning, reduces surface
+- [ ] **Trust** — real proof, reliability, data confidence, buyer-readable signals
+- [ ] **Activation** — upload-to-insight path, first-value moment, golden path
+- [ ] **Monetization** — pilot/demo flow, billing readiness, conversion
+- [ ] **None of the above** — explain:
+
 ## Changes
 
 -
