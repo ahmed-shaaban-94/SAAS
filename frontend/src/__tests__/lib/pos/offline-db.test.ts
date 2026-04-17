@@ -29,15 +29,17 @@ vi.mock("@/lib/api-client", async () => {
 
 import { ApiError, fetchAPI } from "@/lib/api-client";
 import * as ipc from "@/lib/pos/ipc";
-import {
-  getProductByCode,
-  getQueueStats,
-  searchProducts,
-} from "@/lib/pos/offline-db";
+import { getProductByCode, getQueueStats, searchProducts } from "@/lib/pos/offline-db";
 
-const hasElectronMock = vi.mocked(ipc.hasElectron);
-const dbMock = vi.mocked(ipc.db);
-const fetchAPIMock = vi.mocked(fetchAPI);
+// The `vi.mock` factories above return `vi.fn()` for each nested helper,
+// but the compile-time type of `ipc.db.products.search` is still the real
+// function signature. Cast once to the vi.Mock type so `.mockResolvedValue`
+// and friends type-check.
+const hasElectronMock = ipc.hasElectron as unknown as ReturnType<typeof vi.fn>;
+const searchMock = ipc.db.products.search as unknown as ReturnType<typeof vi.fn>;
+const byCodeMock = ipc.db.products.byCode as unknown as ReturnType<typeof vi.fn>;
+const statsMock = ipc.db.queue.stats as unknown as ReturnType<typeof vi.fn>;
+const fetchAPIMock = fetchAPI as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -50,7 +52,7 @@ afterEach(() => {
 describe("searchProducts", () => {
   it("uses IPC when Electron is present", async () => {
     hasElectronMock.mockReturnValue(true);
-    dbMock.products.search.mockResolvedValue([
+    searchMock.mockResolvedValue([
       {
         drug_code: "D1",
         drug_name: "Paracetamol",
@@ -64,8 +66,8 @@ describe("searchProducts", () => {
     ]);
 
     const out = await searchProducts("para", 10);
-    expect(dbMock.products.search).toHaveBeenCalledWith("para", 10);
-    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(searchMock).toHaveBeenCalledWith("para", 10);
+    expect(fetchAPIMock).not.toHaveBeenCalled();
     expect(out[0].drug_code).toBe("D1");
   });
 
@@ -80,7 +82,7 @@ describe("searchProducts", () => {
         is_controlled: false,
         requires_pharmacist: false,
       },
-    ] as never);
+    ]);
 
     const out = await searchProducts("amox");
     expect(fetchAPIMock).toHaveBeenCalledWith(
@@ -106,7 +108,7 @@ describe("getProductByCode", () => {
 
   it("returns null when IPC byCode returns null", async () => {
     hasElectronMock.mockReturnValue(true);
-    dbMock.products.byCode.mockResolvedValue(null);
+    byCodeMock.mockResolvedValue(null);
     const out = await getProductByCode("X");
     expect(out).toBeNull();
   });
@@ -115,7 +117,7 @@ describe("getProductByCode", () => {
 describe("getQueueStats", () => {
   it("returns IPC stats under Electron", async () => {
     hasElectronMock.mockReturnValue(true);
-    dbMock.queue.stats.mockResolvedValue({
+    statsMock.mockResolvedValue({
       pending: 1,
       syncing: 0,
       rejected: 2,
