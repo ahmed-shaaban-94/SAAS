@@ -856,7 +856,11 @@ from datapulse.pos.devices import (  # noqa: E402
     device_token_verifier,
     register_device,
 )
-from datapulse.pos.idempotency import idempotency_dependency, record_response  # noqa: E402
+from datapulse.pos.idempotency import (  # noqa: E402
+    IdempotencyContext,
+    idempotency_dependency,
+    record_response,
+)
 from datapulse.pos.models import (  # noqa: E402  # noqa: E402,F811
     CapabilitiesDoc,
     CommitRequest,
@@ -952,7 +956,7 @@ async def commit_transaction(
     user: CurrentUser,
     db_session: SessionDep,
     proof: Annotated[DeviceProof, Depends(device_token_verifier)],
-    idem: Annotated[object, Depends(_commit_idempotency_dep)],
+    idem: Annotated[IdempotencyContext, Depends(_commit_idempotency_dep)],
 ) -> CommitResponse:
     """Atomic POS commit — draft + items + checkout in one payload (§3).
 
