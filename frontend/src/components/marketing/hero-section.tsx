@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { TypingSubtitle } from "./typing-subtitle";
 
 const KPI_ITEMS = [
-  { label: "Revenue lift", value: "+18.6%" },
-  { label: "Refresh cadence", value: "Live" },
-  { label: "Time to insight", value: "< 5 min" },
+  { label: "Faster weekly reporting",           value: "Automated" },
+  { label: "Earlier stock & expiry visibility", value: "30+ days"  },
+  { label: "View across sales & operations",    value: "One system"},
 ];
 
 const DASHBOARD_KPIS = [
@@ -32,19 +31,18 @@ export function HeroSection() {
         <div className="max-w-3xl">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-accent shadow-[0_10px_30px_rgba(0,199,242,0.12)]">
             <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
-            Analytics designed to look as sharp as your data
+            Built for pharma sales and operations teams
           </div>
 
           <h1 className="max-w-4xl text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-            Redesign your sales cockpit into{" "}
-            <span className="gradient-text-animated">signal-rich revenue intelligence</span>
+            Turn pharma sales and operations data into{" "}
+            <span className="gradient-text-animated">daily decisions</span>
           </h1>
 
-          <p className="mt-6 max-w-2xl min-h-[60px] text-lg text-text-secondary sm:min-h-0 sm:text-xl">
-            <TypingSubtitle
-              text="Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. From Excel chaos to dashboards your team actually wants to open."
-              speed={25}
-            />
+          <p className="mt-6 max-w-2xl text-lg text-text-secondary sm:text-xl">
+            Upload spreadsheets or connect your data sources, clean them automatically,
+            monitor revenue, branch performance, inventory health, and expiry risk, and
+            give your team one dashboard they can act on every day.
           </p>
 
           <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
@@ -58,18 +56,23 @@ export function HeroSection() {
 
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-start">
             <Link
-              href="/dashboard"
-              className="cta-shimmer w-full rounded-xl bg-accent px-8 py-3 text-center text-sm font-semibold text-page transition-all hover:bg-accent/90 sm:w-auto"
+              href="#pilot-access"
+              className="rounded-full bg-accent px-8 py-3.5 text-sm font-semibold text-page shadow-[0_0_24px_rgba(0,199,242,0.35)] transition-all hover:shadow-[0_0_32px_rgba(0,199,242,0.5)] hover:scale-[1.02]"
             >
-              Start Free Trial
+              Request Pilot Access
             </Link>
-            <a
-              href="#how-it-works"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-8 py-3 text-center text-sm font-semibold text-text-primary transition-colors hover:bg-white/10 sm:w-auto"
+            <Link
+              href="/demo"
+              className="rounded-full border border-white/15 bg-white/5 px-8 py-3.5 text-sm font-semibold text-text-primary transition-colors hover:bg-white/10"
             >
-              See How It Works
-            </a>
+              See Product Demo
+            </Link>
           </div>
+
+          <p className="mt-4 text-sm text-text-secondary/70">
+            Best for commercial leaders, operations teams, and pharmacy groups that need
+            clearer decisions without rebuilding their data stack from scratch.
+          </p>
         </div>
 
         <div className="relative mx-auto w-full max-w-5xl float-card">

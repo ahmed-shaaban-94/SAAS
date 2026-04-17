@@ -1,105 +1,50 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
 import { SectionWrapper } from "./section-wrapper";
-import { STATS } from "@/lib/marketing-constants";
+import { CLAIMS } from "@/lib/marketing-constants";
+import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
+import {
+  Clock,
+  Eye,
+  AlertTriangle,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
-function useCountUp(target: number, isActive: boolean, duration = 2000) {
-  const [value, setValue] = useState(0);
-  const hasRun = useRef(false);
-
-  useEffect(() => {
-    if (!isActive || hasRun.current) return;
-    hasRun.current = true;
-
-    const start = performance.now();
-    function step(now: number) {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      setValue(eased * target);
-      if (progress < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }, [isActive, target, duration]);
-
-  return value;
-}
-
-function AnimatedStat({
-  numericValue,
-  suffix,
-  label,
-  isVisible,
-}: {
-  numericValue: number;
-  suffix: string;
-  label: string;
-  isVisible: boolean;
-}) {
-  const current = useCountUp(numericValue, isVisible);
-
-  const formatValue = useCallback(
-    (v: number) => {
-      if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-      if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-      if (suffix === "%" || suffix === "x") return v.toFixed(1);
-      return Math.floor(v).toString();
-    },
-    [suffix]
-  );
-
-  return (
-    <div className="text-center">
-      <p
-        className={`text-3xl font-bold text-accent sm:text-4xl tabular-nums transition-opacity duration-500 ${
-          isVisible ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        {formatValue(current)}
-        {suffix}
-      </p>
-      <p className="mt-1 text-sm text-text-secondary">{label}</p>
-    </div>
-  );
-}
+const ICON_MAP: Record<string, LucideIcon> = {
+  Clock,
+  Eye,
+  AlertTriangle,
+  Zap,
+};
 
 export function StatsBanner() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.3 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const { ref, isVisible } = useIntersectionObserver();
 
   return (
     <SectionWrapper variant="gradient">
       <div
         ref={ref}
-        className="viz-panel rounded-[2rem] px-6 py-12 backdrop-blur"
+        className={`viz-panel rounded-[2rem] px-6 py-12 backdrop-blur transition-opacity duration-700 ${
+          isVisible ? "opacity-100" : "opacity-0"
+        }`}
       >
         <div className="absolute inset-x-8 top-0 h-1 rounded-b-full bg-gradient-to-r from-chart-blue via-accent to-chart-purple" />
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          {STATS.map((stat) => (
-            <AnimatedStat
-              key={stat.label}
-              numericValue={stat.numericValue}
-              suffix={stat.suffix}
-              label={stat.label}
-              isVisible={isVisible}
-            />
-          ))}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {CLAIMS.map((claim) => {
+            const Icon = ICON_MAP[claim.icon];
+            return (
+              <div key={claim.headline} className="flex flex-col gap-2">
+                {Icon && <Icon className="h-5 w-5 text-accent" />}
+                <p className="text-base font-semibold text-text-primary leading-snug">
+                  {claim.headline}
+                </p>
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  {claim.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </SectionWrapper>

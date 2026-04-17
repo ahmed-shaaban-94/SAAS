@@ -59,17 +59,21 @@ export function Navbar() {
               {link.label}
             </a>
           ))}
+        </div>
+
+        {/* Desktop CTAs */}
+        <div className="hidden items-center gap-3 lg:flex">
           <Link
             href="/demo"
-            className="rounded-xl border border-accent/40 px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+            className="rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-white/10"
           >
-            Live Demo
+            See Demo
           </Link>
           <Link
-            href="/dashboard"
-            className="rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-page shadow-[0_14px_30px_rgba(0,199,242,0.22)] transition-colors hover:bg-accent/90"
+            href="#pilot-access"
+            className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-page shadow-[0_0_16px_rgba(0,199,242,0.3)] transition-all hover:shadow-[0_0_24px_rgba(0,199,242,0.45)]"
           >
-            Get Started
+            Request Pilot Access
           </Link>
         </div>
 
@@ -99,18 +103,18 @@ export function Navbar() {
               </a>
             ))}
             <Link
-              href="/demo"
+              href="#pilot-access"
               onClick={() => setIsMobileOpen(false)}
-              className="mt-2 block rounded-xl border border-accent/40 px-4 py-3 text-center text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+              className="block rounded-full bg-accent px-5 py-2.5 text-center text-sm font-semibold text-page"
             >
-              Live Demo
+              Request Pilot Access
             </Link>
             <Link
-              href="/dashboard"
+              href="/demo"
               onClick={() => setIsMobileOpen(false)}
-              className="mt-2 block rounded-xl bg-accent px-4 py-3 text-center text-sm font-semibold text-page transition-colors hover:bg-accent/90"
+              className="block rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-center text-sm font-medium text-text-primary"
             >
-              Get Started
+              See Demo
             </Link>
           </div>
         </div>
