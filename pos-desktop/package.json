@@ -1,0 +1,24 @@
+{
+  "name": "datapulse-pos",
+  "version": "1.0.0",
+  "description": "DataPulse POS — Pharmacy Point of Sale Desktop App",
+  "main": "dist/electron/main.js",
+  "author": "DataPulse <support@smartdatapulse.tech>",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "dev": "tsc -p tsconfig.json && electron .",
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron .",
+    "package": "npm run build && electron-builder --win",
+    "package:dir": "npm run build && electron-builder --win --dir"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0",
+    "typescript": "^5.6.0"
+  }
+}
