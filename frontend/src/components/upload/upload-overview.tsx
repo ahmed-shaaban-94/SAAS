@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Upload, File, Check, X, Eye, Loader2, Play } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constants";
 import { getSession } from "next-auth/react";
 import { LoadingCard } from "@/components/loading-card";
 import { PipelineProgress } from "./pipeline-progress";
 import { RecentImports } from "./recent-imports";
+import { SampleDataCta } from "./sample-data-cta";
+import { WizardProgress } from "./wizard-progress";
 import { usePipelineRun } from "@/hooks/use-pipeline-run";
 import {
   trackUploadStarted,
@@ -36,7 +39,27 @@ interface PreviewData {
   warnings: string[];
 }
 
+/**
+ * Derive the 3-step wizard position from actual flow state.
+ *
+ * Step 1 = choose source (no file yet)
+ * Step 2 = map columns (file uploaded, preview opened)
+ * Step 3 = validate & run (confirmed OR pipeline in flight/complete)
+ */
+function deriveStep(opts: {
+  hasFiles: boolean;
+  confirmed: boolean;
+  hasPreview: boolean;
+  pipelineStarted: boolean;
+}): number {
+  if (opts.confirmed || opts.pipelineStarted) return 3;
+  if (opts.hasFiles && opts.hasPreview) return 2;
+  if (opts.hasFiles) return 2;
+  return 1;
+}
+
 export function UploadOverview() {
+  const router = useRouter();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -67,6 +90,21 @@ export function UploadOverview() {
       });
     }
   }, [progress?.status, progress?.run_id, progress?.duration_seconds, progress?.rows_loaded]);
+
+  // Golden-path: a user's real pipeline run just finished — send them to
+  // the dashboard's first-insight view (Phase 2 Task 3 / #402 lands the card).
+  useEffect(() => {
+    if (progress?.status === "success") {
+      router.push("/dashboard?first_upload=1");
+    }
+  }, [progress?.status, router]);
+
+  const currentStep = deriveStep({
+    hasFiles: files.length > 0,
+    confirmed,
+    hasPreview: preview !== null,
+    pipelineStarted: progress !== null,
+  });
 
   const getAuthHeaders = async () => {
     const session = await getSession();
@@ -148,24 +186,57 @@ export function UploadOverview() {
 
   return (
     <div className="mt-6 space-y-6">
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        onClick={() => inputRef.current?.click()}
-        className="viz-panel flex cursor-pointer flex-col items-center justify-center rounded-[1.9rem] border-2 border-dashed border-border p-12 transition-colors hover:border-accent/50"
-      >
-        <Upload className="h-10 w-10 text-text-tertiary mb-3" />
-        <p className="text-sm text-text-secondary">Drop files here or click to browse</p>
-        <p className="text-xs text-text-tertiary mt-1">Supports .xlsx, .csv, .xls (max 100MB)</p>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept=".xlsx,.csv,.xls"
-          className="hidden"
-          onChange={(e) => handleUpload(e.target.files)}
-        />
-      </div>
+      <WizardProgress currentStep={currentStep} />
+
+      {currentStep === 1 && (
+        <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            onClick={() => inputRef.current?.click()}
+            className="viz-panel flex cursor-pointer flex-col items-center justify-center rounded-[1.9rem] border-2 border-dashed border-border p-12 transition-colors hover:border-accent/50"
+          >
+            <Upload className="h-10 w-10 text-text-tertiary mb-3" />
+            <p className="text-sm text-text-secondary">Drop files here or click to browse</p>
+            <p className="text-xs text-text-tertiary mt-1">Supports .xlsx, .csv, .xls (max 100MB)</p>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept=".xlsx,.csv,.xls"
+              className="hidden"
+              onChange={(e) => handleUpload(e.target.files)}
+            />
+          </div>
+
+          <div className="flex items-center justify-center text-[11px] font-semibold uppercase tracking-[0.22em] text-text-tertiary">
+            or
+          </div>
+
+          <SampleDataCta />
+        </div>
+      )}
+
+      {currentStep !== 1 && (
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onClick={() => inputRef.current?.click()}
+          className="viz-panel flex cursor-pointer flex-col items-center justify-center rounded-[1.9rem] border-2 border-dashed border-border p-12 transition-colors hover:border-accent/50"
+        >
+          <Upload className="h-10 w-10 text-text-tertiary mb-3" />
+          <p className="text-sm text-text-secondary">Drop files here or click to browse</p>
+          <p className="text-xs text-text-tertiary mt-1">Supports .xlsx, .csv, .xls (max 100MB)</p>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept=".xlsx,.csv,.xls"
+            className="hidden"
+            onChange={(e) => handleUpload(e.target.files)}
+          />
+        </div>
+      )}
 
       {errorMsg && (
         <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
