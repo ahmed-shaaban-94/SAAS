@@ -19,6 +19,7 @@ from datapulse.insights_first.models import FirstInsightResponse
 from datapulse.insights_first.repository import (
     fetch_expiry_risk_candidate,
     fetch_mom_change_candidate,
+    fetch_stock_risk_candidate,
     fetch_top_seller_candidate,
 )
 from datapulse.insights_first.service import FirstInsightService
@@ -42,14 +43,16 @@ def get_first_insight_service(
     the real order):
     - mom_change    (follow-up #2)
     - expiry_risk   (follow-up #3)
+    - stock_risk    (follow-up #4)
     - top_seller    (#402, fallback signal)
 
-    Remaining follow-ups: stock_risk.
+    All four Phase 2 fetchers shipped.
     """
     return FirstInsightService(
         fetchers=[
             lambda tid: fetch_mom_change_candidate(session, tid),
             lambda tid: fetch_expiry_risk_candidate(session, tid),
+            lambda tid: fetch_stock_risk_candidate(session, tid),
             lambda tid: fetch_top_seller_candidate(session, tid),
         ],
     )
