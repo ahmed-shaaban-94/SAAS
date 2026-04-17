@@ -16,7 +16,10 @@ from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.insights_first.models import FirstInsightResponse
-from datapulse.insights_first.repository import fetch_top_seller_candidate
+from datapulse.insights_first.repository import (
+    fetch_mom_change_candidate,
+    fetch_top_seller_candidate,
+)
 from datapulse.insights_first.service import FirstInsightService
 
 router = APIRouter(
@@ -31,12 +34,21 @@ def get_first_insight_service(
 ) -> FirstInsightService:
     """Wires the production fetchers.
 
-    Only `top_seller` is active today; mom_change / expiry_risk /
-    stock_risk will be added as separate fetchers in follow-up PRs
-    per the plan.
+    Order does not matter (the picker enforces priority), but listing them
+    by descending priority keeps the configuration readable.
+
+    Active:
+    - mom_change  (follow-up #2 / this PR)
+    - top_seller  (#402, fallback signal)
+
+    Remaining follow-ups (picker + service already accept new fetchers):
+    - expiry_risk, stock_risk.
     """
     return FirstInsightService(
-        fetchers=[lambda tid: fetch_top_seller_candidate(session, tid)],
+        fetchers=[
+            lambda tid: fetch_mom_change_candidate(session, tid),
+            lambda tid: fetch_top_seller_candidate(session, tid),
+        ],
     )
 
 
