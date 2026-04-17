@@ -849,10 +849,18 @@ from datapulse.pos.models import (  # noqa: E402
     TenantKeysResponse,
     TenantPublicKey,
 )
-from datapulse.pos.devices import register_device  # noqa: E402
+from datapulse.pos.commit import atomic_commit  # noqa: E402
+from datapulse.pos.devices import (  # noqa: E402
+    DeviceProof,
+    device_token_verifier,
+    register_device,
+)
+from datapulse.pos.idempotency import idempotency_dependency, record_response  # noqa: E402
 from datapulse.pos.models import (  # noqa: E402,F811
     ActiveForMeResponse,
     ActiveTerminalRow,
+    CommitRequest,
+    CommitResponse,
     DeviceRegisterRequest,
     DeviceRegisterResponse,
 )
@@ -921,6 +929,40 @@ def register_terminal_device(
         terminal_id=payload.terminal_id,
         registered_at=datetime.now(timezone.utc),
     )
+
+
+@router.post(
+    "/transactions/commit",
+    response_model=CommitResponse,
+    dependencies=[Depends(require_permission("pos:transaction:checkout"))],
+)
+@limiter.limit("30/minute")
+async def commit_transaction(
+    request: Request,
+    payload: CommitRequest,
+    user: CurrentUser,
+    proof: DeviceProof = Depends(device_token_verifier),
+    idem=Depends(idempotency_dependency("POST /pos/transactions/commit")),
+    db_session=Depends(get_tenant_session),
+) -> CommitResponse:
+    """Atomic POS commit — draft + items + checkout in one payload (§3).
+
+    Designed for offline queue replay: a retried push with the same
+    ``Idempotency-Key`` returns the cached response without re-executing
+    the business write. The ``X-Terminal-Token`` header is verified against
+    the registered device public key before any state is touched (§8.9).
+    """
+    if idem.replay:
+        return CommitResponse.model_validate(idem.cached_body)
+
+    if payload.terminal_id != proof.terminal_id:
+        raise HTTPException(status_code=400, detail="body/header terminal_id mismatch")
+
+    tenant_id = _tenant_id_of(user)
+    response = atomic_commit(db_session, tenant_id=tenant_id, payload=payload)
+    record_response(db_session, idem.key, 200, response.model_dump(mode="json"))
+    db_session.commit()
+    return response
 
 
 @router.get("/tenant-key", response_model=TenantKeysResponse)
