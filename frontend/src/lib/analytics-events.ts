@@ -32,6 +32,27 @@ function markFired(key: string): void {
   sessionStorage.setItem(SESSION_GUARD_PREFIX + key, "1");
 }
 
+/**
+ * Name of the window-level CustomEvent dispatched on every golden-path
+ * capture. Listeners (E2E specs, dev tooling, future observability bridges)
+ * can subscribe without depending on PostHog being configured.
+ */
+export const TTFI_WINDOW_EVENT = "ttfi:event";
+
+function dispatchWindowEvent(
+  name: GoldenPathEvent,
+  properties: Record<string, unknown>,
+): void {
+  if (typeof window === "undefined" || typeof CustomEvent !== "function") return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent(TTFI_WINDOW_EVENT, { detail: { name, properties } }),
+    );
+  } catch {
+    // Emitter is best-effort — never let a tracking failure bubble up.
+  }
+}
+
 function fireOnce(
   guardKey: string,
   event: GoldenPathEvent,
@@ -39,7 +60,11 @@ function fireOnce(
 ): void {
   if (hasFired(guardKey)) return;
   markFired(guardKey);
-  trackEvent(event, { ...props, ttfi_seam: event });
+  const stamped = { ...props, ttfi_seam: event };
+  trackEvent(event, stamped);
+  // Also emit a CustomEvent so tests + tooling can observe the funnel
+  // regardless of whether PostHog is configured (e.g., CI without a key).
+  dispatchWindowEvent(event, stamped);
 }
 
 export function trackUploadStarted(): void {

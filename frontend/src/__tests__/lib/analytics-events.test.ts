@@ -160,4 +160,54 @@ describe("analytics-events", () => {
       }
     });
   });
+
+  describe("window CustomEvent emitter", () => {
+    it("dispatches a 'ttfi:event' CustomEvent on every tracked event, regardless of PostHog config", () => {
+      const received: { name: string; properties: Record<string, unknown> }[] = [];
+      const listener = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        received.push(detail);
+      };
+      window.addEventListener("ttfi:event", listener);
+
+      try {
+        trackUploadStarted();
+        trackUploadCompleted({ run_id: "r-1", duration_seconds: 2, rows_loaded: 50 });
+        trackFirstDashboardView();
+        trackFirstInsightSeen({ kind: "expiry_risk", confidence: 0.8 });
+
+        expect(received).toHaveLength(4);
+        expect(received[0].name).toBe("upload_started");
+        expect(received[1].name).toBe("upload_completed");
+        expect(received[1].properties).toMatchObject({
+          run_id: "r-1",
+          duration_seconds: 2,
+          rows_loaded: 50,
+        });
+        expect(received[2].name).toBe("first_dashboard_view");
+        expect(received[3].name).toBe("first_insight_seen");
+        for (const e of received) {
+          expect(e.properties).toHaveProperty("ttfi_seam", e.name);
+        }
+      } finally {
+        window.removeEventListener("ttfi:event", listener);
+      }
+    });
+
+    it("CustomEvent respects idempotency guards (no duplicate dispatch)", () => {
+      let count = 0;
+      const listener = () => count++;
+      window.addEventListener("ttfi:event", listener);
+
+      try {
+        trackUploadStarted();
+        trackUploadStarted();
+        trackUploadStarted();
+
+        expect(count).toBe(1);
+      } finally {
+        window.removeEventListener("ttfi:event", listener);
+      }
+    });
+  });
 });

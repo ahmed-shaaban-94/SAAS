@@ -42,10 +42,15 @@ interface CapturedEvent {
 }
 
 /**
- * Shim window.posthog.capture + /capture POST so we can observe events
- * without a real PostHog account. Must run before the page script loads.
+ * Subscribe to the `ttfi:event` window CustomEvent that
+ * `frontend/src/lib/analytics-events.ts` dispatches on every golden-path
+ * capture. Fires regardless of whether PostHog is configured, so it works
+ * in CI where `NEXT_PUBLIC_POSTHOG_KEY` is unset.
+ *
+ * Also blocks any real posthog.com network calls just in case a key
+ * leaks into the test environment.
  */
-async function installPosthogSpy(page: Page): Promise<CapturedEvent[]> {
+async function installTtfiObserver(page: Page): Promise<CapturedEvent[]> {
   const captured: CapturedEvent[] = [];
 
   await page.exposeFunction("__ttfiRecord", (name: string, props: unknown) => {
@@ -56,21 +61,20 @@ async function installPosthogSpy(page: Page): Promise<CapturedEvent[]> {
     });
   });
 
-  // Before any app JS runs, stub posthog and intercept any /capture network hits.
   await page.addInitScript(() => {
-    const win = window as unknown as {
-      posthog?: { capture?: (n: string, p?: unknown) => void };
-      __ttfiRecord: (n: string, p?: unknown) => void;
-    };
-    win.posthog = win.posthog ?? {};
-    const originalCapture = win.posthog.capture;
-    win.posthog.capture = (name: string, props?: unknown) => {
-      win.__ttfiRecord(name, props);
-      originalCapture?.(name, props);
-    };
+    window.addEventListener("ttfi:event", (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        name: string;
+        properties: unknown;
+      };
+      (
+        window as unknown as {
+          __ttfiRecord: (n: string, p?: unknown) => void;
+        }
+      ).__ttfiRecord(detail.name, detail.properties);
+    });
   });
 
-  // Also block any real posthog.com network calls so no data leaks from a test run.
   await page.route(/posthog\.com/, (route) => route.fulfill({ status: 200, body: "{}" }));
 
   return captured;
@@ -78,7 +82,7 @@ async function installPosthogSpy(page: Page): Promise<CapturedEvent[]> {
 
 test.describe("Golden-Path baseline — events fire at the right seams", () => {
   test("upload_started fires when the user lands on /upload", async ({ page }) => {
-    const captured = await installPosthogSpy(page);
+    const captured = await installTtfiObserver(page);
 
     await page.goto("/upload");
     await expect(page.getByText("Drop files here or click to browse")).toBeVisible({
@@ -95,7 +99,7 @@ test.describe("Golden-Path baseline — events fire at the right seams", () => {
   });
 
   test("first_dashboard_view fires when the user lands on /dashboard", async ({ page }) => {
-    const captured = await installPosthogSpy(page);
+    const captured = await installTtfiObserver(page);
 
     await page.goto("/dashboard");
     // Wait for at least the header to render; dashboard-content has its own loaders.
@@ -107,7 +111,7 @@ test.describe("Golden-Path baseline — events fire at the right seams", () => {
   });
 
   test("upload_completed fires when pipeline run reaches success", async ({ page }) => {
-    const captured = await installPosthogSpy(page);
+    const captured = await installTtfiObserver(page);
 
     // Mock upload → confirm → trigger → stream(success).
     await page.route("**/api/v1/upload/files", (route) =>
@@ -183,7 +187,7 @@ test.describe("Golden-Path baseline — TTFI measurement (droplet only)", () => 
   test.skip(!RUN_BASELINE, "Set RUN_TTFI_BASELINE=1 to execute on droplet");
 
   test("records upload_started → first_insight_seen latency", async ({ page }) => {
-    const captured = await installPosthogSpy(page);
+    const captured = await installTtfiObserver(page);
 
     const t0 = Date.now();
     await page.goto("/upload");
