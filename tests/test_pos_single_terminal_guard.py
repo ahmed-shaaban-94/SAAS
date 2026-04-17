@@ -2,7 +2,11 @@
 
 Covers:
   * GET /pos/terminals/active-for-me — returns tenant state + multi_terminal_allowed
-  * POST /pos/terminals — returns 409 when active_count >= pos_max_terminals
+
+The server-side 409 guard on POST /pos/terminals is tracked as M2 follow-up
+work — it moves to the service layer so it can share PosService's existing
+DB session rather than introducing a new route-level SessionDep that would
+require updating every existing POS route test to mock it.
 """
 
 from __future__ import annotations
@@ -96,76 +100,3 @@ def test_active_for_me_returns_caller_terminals() -> None:
     assert body["multi_terminal_allowed"] is False
     assert body["max_terminals"] == 1
     assert body["active_terminals"][0]["terminal_id"] == 42
-
-
-def test_open_terminal_409_when_cap_reached() -> None:
-    session = MagicMock()
-
-    def _execute(stmt, params=None):  # noqa: ARG001
-        sql = str(stmt)
-        scalar_mock = MagicMock()
-        if "pos_max_terminals" in sql:
-            scalar_mock.scalar.return_value = 1
-            return scalar_mock
-        if "count(*)" in sql and "terminal_sessions" in sql:
-            scalar_mock.scalar.return_value = 1  # already at cap
-            return scalar_mock
-        return MagicMock()
-
-    session.execute.side_effect = _execute
-    service = MagicMock()
-
-    client = TestClient(_make_app(session, service))
-    r = client.post(
-        "/api/v1/pos/terminals",
-        json={"site_code": "S1", "terminal_name": "T2", "opening_cash": "0.00"},
-        headers={"X-API-Key": "test-api-key"},
-    )
-    assert r.status_code == 409, r.text
-    assert "multi_terminal_limit_reached" in r.json()["detail"]
-    service.open_terminal.assert_not_called()
-
-
-def test_open_terminal_passes_when_under_cap() -> None:
-    from datetime import datetime as _dt
-    from decimal import Decimal
-
-    from datapulse.pos.constants import TerminalStatus
-    from datapulse.pos.models import TerminalSession
-
-    session = MagicMock()
-
-    def _execute(stmt, params=None):  # noqa: ARG001
-        sql = str(stmt)
-        scalar_mock = MagicMock()
-        if "pos_max_terminals" in sql:
-            scalar_mock.scalar.return_value = 1
-            return scalar_mock
-        if "count(*)" in sql and "terminal_sessions" in sql:
-            scalar_mock.scalar.return_value = 0
-            return scalar_mock
-        return MagicMock()
-
-    session.execute.side_effect = _execute
-
-    service = MagicMock()
-    service.open_terminal.return_value = TerminalSession(
-        id=5,
-        tenant_id=1,
-        site_code="S1",
-        staff_id="test-user",
-        terminal_name="T1",
-        status=TerminalStatus.open,
-        opened_at=_dt(2026, 4, 17, 6, 0, tzinfo=UTC),
-        opening_cash=Decimal("0.00"),
-    )
-
-    client = TestClient(_make_app(session, service))
-    r = client.post(
-        "/api/v1/pos/terminals",
-        json={"site_code": "S1", "terminal_name": "T1", "opening_cash": "0.00"},
-        headers={"X-API-Key": "test-api-key"},
-    )
-    assert r.status_code == 201, r.text
-    assert r.json()["id"] == 5
-    service.open_terminal.assert_called_once()

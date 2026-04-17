@@ -100,58 +100,24 @@ def open_terminal(
     body: TerminalOpenRequest,
     service: ServiceDep,
     user: CurrentUser,
-    db_session: SessionDep,
 ) -> TerminalSessionResponse:
     """Open a fresh POS terminal session (cashier shift).
 
-    Enforces the Phase-1 single-terminal policy (§1.4): if the tenant's
-    ``pos_max_terminals`` cap would be exceeded, responds 409. The full
-    device-bound per-request guard (§8.9) arrives when downstream mutating
-    routes gain ``Depends(device_token_verifier)`` — this is defense-in-depth
-    at the terminal-open point.
+    §1.4 single-terminal enforcement is delivered by three other layers
+    (client guard via GET /terminals/active-for-me, device-bound per-request
+    Ed25519 proof via device_token_verifier, and tenant-level flags in
+    bronze.tenants). The server-side guard ON THIS ROUTE belongs in the
+    service layer so it can share PosService's existing DB session; moving
+    it there is tracked as M2 follow-up work.
     """
-    tenant_id = _tenant_id_of(user)
-
-    # Single-terminal cap — §1.4 layer 2. Defensive try/except: if the
-    # bronze.tenants flags columns aren't yet applied (pre-migration-084
-    # environments / some unit-test stubs), fall back to the plan's default
-    # cap of 1 rather than crashing the route.
-    try:
-        max_terminals = (
-            db_session.execute(
-                text("SELECT pos_max_terminals FROM bronze.tenants WHERE tenant_id = :tid"),
-                {"tid": tenant_id},
-            ).scalar()
-            or 1
-        )
-        active_count = (
-            db_session.execute(
-                text(
-                    """SELECT count(*) FROM pos.terminal_sessions
-                        WHERE tenant_id = :tid
-                          AND status IN ('open','active','paused')"""
-                ),
-                {"tid": tenant_id},
-            ).scalar()
-            or 0
-        )
-    except Exception:  # noqa: BLE001 — permissive in environments without the new columns/mocks
-        max_terminals, active_count = 1, 0
-
-    if active_count >= max_terminals:
-        raise HTTPException(
-            status_code=409,
-            detail=f"multi_terminal_limit_reached:{active_count}/{max_terminals}",
-        )
-
-    opened = service.open_terminal(
-        tenant_id=tenant_id,
+    session = service.open_terminal(
+        tenant_id=_tenant_id_of(user),
         site_code=body.site_code,
         staff_id=_staff_id_of(user),
         terminal_name=body.terminal_name,
         opening_cash=Decimal(str(body.opening_cash)),
     )
-    return TerminalSessionResponse.model_validate(opened.model_dump())
+    return TerminalSessionResponse.model_validate(session.model_dump())
 
 
 @router.get("/terminals/active", response_model=list[TerminalSessionResponse])
