@@ -13,9 +13,12 @@ Shipped fetchers:
                                           percentage change.
 - `fetch_expiry_risk_candidate`   (#402 follow-up #3)   single SKU most at
                                           risk of expiry within 30 days.
+- `fetch_stock_risk_candidate`    (#402 follow-up #4)   single SKU with the
+                                          biggest shortfall below its
+                                          reorder point.
 
-Tracked follow-ups (picker + service already accept new fetchers):
-- stock_risk    — SKUs below reorder point.
+All four Phase 2 fetchers active — the picker's full priority chain
+(mom_change > expiry_risk > stock_risk > top_seller) is wired.
 """
 
 from __future__ import annotations
@@ -244,6 +247,28 @@ _EXPIRY_RISK_SQL = text("""
 """)
 
 
+_STOCK_RISK_SQL = text("""
+    SELECT
+        sl.drug_name,
+        sl.drug_code,
+        sl.site_code,
+        sl.current_quantity,
+        rc.reorder_point,
+        rc.reorder_quantity
+    FROM public_marts.agg_stock_levels sl
+    INNER JOIN public.reorder_config rc
+        ON sl.drug_code = rc.drug_code
+       AND sl.site_code = rc.site_code
+       AND sl.tenant_id = rc.tenant_id
+    WHERE sl.tenant_id = :tenant_id
+      AND rc.reorder_point IS NOT NULL
+      AND sl.current_quantity <= rc.reorder_point
+    ORDER BY (rc.reorder_point - sl.current_quantity) DESC,
+             sl.current_quantity ASC
+    LIMIT 1
+""")
+
+
 def _expiry_confidence(days_to_expiry: int) -> float:
     """Already expired → 0.95 (capped). 0 days → 0.92. 30 days → ~0.50.
 
@@ -325,4 +350,82 @@ def fetch_expiry_risk_candidate(session: Session, tenant_id: int) -> InsightCand
         body=_format_expiry_body(drug_name, batch_number, site_code, quantity, days_to_expiry),
         action_href="/expiry",
         confidence=_expiry_confidence(days_to_expiry),
+    )
+
+
+def _stock_confidence(deficit_ratio: float) -> float:
+    """deficit_ratio = (reorder_point - current) / reorder_point.
+
+    0 → 0.40 (at threshold). 1 → 0.95 (fully stocked out).
+    Clamped to [0.40, 0.95].
+    """
+    return min(0.95, max(0.40, 0.40 + 0.55 * min(1.0, max(0.0, deficit_ratio))))
+
+
+def _format_stock_title(drug_name: str, current: float, reorder_point: float) -> str:
+    if current <= 0:
+        return f"{drug_name}: out of stock"
+    shortfall = round(reorder_point - current)
+    return f"{drug_name}: {shortfall} units below reorder point"
+
+
+def _format_stock_body(
+    drug_name: str,
+    site_code: str,
+    current: float,
+    reorder_point: float,
+    reorder_quantity: float,
+) -> str:
+    qty_now = f"{current:,.0f}"
+    qty_rp = f"{reorder_point:,.0f}"
+    qty_order = f"{reorder_quantity:,.0f}"
+    if current <= 0:
+        lead = f"{drug_name} is out of stock at {site_code}"
+    else:
+        lead = f"{drug_name} at {site_code} is down to {qty_now} units (reorder point {qty_rp})"
+    return f"{lead}. Open the reorder to restock {qty_order} units before it affects dispensing."
+
+
+def fetch_stock_risk_candidate(session: Session, tenant_id: int) -> InsightCandidate | None:
+    """Single SKU with the biggest shortfall below its reorder point.
+
+    Picks by descending absolute deficit ``(reorder_point - current_quantity)``,
+    tie-broken by lowest ``current_quantity``. Returns None on soft failure,
+    empty result, missing reorder config, or (defensively) if current already
+    exceeds the reorder point.
+    """
+    try:
+        row = session.execute(_STOCK_RISK_SQL, {"tenant_id": tenant_id}).mappings().fetchone()
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "first_insight_stock_query_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+        )
+        return None
+
+    if row is None:
+        return None
+
+    reorder_point_raw = row["reorder_point"]
+    if reorder_point_raw is None:
+        return None
+
+    drug_name = str(row["drug_name"] or "(unknown drug)")
+    site_code = str(row["site_code"] or "")
+    current = float(row["current_quantity"] or 0.0)
+    reorder_point = float(reorder_point_raw)
+    reorder_quantity = float(row["reorder_quantity"] or 0.0)
+
+    # Defensive: refuse rows where the deficit isn't real.
+    if reorder_point <= 0 or current > reorder_point:
+        return None
+
+    deficit_ratio = (reorder_point - current) / reorder_point
+    return InsightCandidate(
+        kind="stock_risk",
+        title=_format_stock_title(drug_name, current, reorder_point),
+        body=_format_stock_body(drug_name, site_code, current, reorder_point, reorder_quantity),
+        action_href="/inventory",
+        confidence=_stock_confidence(deficit_ratio),
     )
