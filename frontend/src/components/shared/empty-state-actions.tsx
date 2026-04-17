@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles, Upload, Loader2 } from "lucide-react";
 
 import { postAPI } from "@/lib/api-client";
+import { trackUploadCompleted } from "@/lib/analytics-events";
 
 interface SampleLoadResult {
   rows_loaded: number;
@@ -33,7 +34,14 @@ export function LoadSampleAction() {
     setLoading(true);
     setError(null);
     try {
-      await postAPI<SampleLoadResult>("/api/v1/onboarding/load-sample");
+      const result = await postAPI<SampleLoadResult>(
+        "/api/v1/onboarding/load-sample",
+      );
+      trackUploadCompleted({
+        run_id: result.pipeline_run_id,
+        duration_seconds: result.duration_seconds,
+        rows_loaded: result.rows_loaded,
+      });
       router.push("/dashboard?first_upload=1");
     } catch {
       setError("Could not load sample data. Please try again.");

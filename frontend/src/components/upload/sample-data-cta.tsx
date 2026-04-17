@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2 } from "lucide-react";
 import { postAPI } from "@/lib/api-client";
+import { trackUploadCompleted } from "@/lib/analytics-events";
 
 interface SampleLoadResult {
   rows_loaded: number;
@@ -30,7 +31,16 @@ export function SampleDataCta() {
     setLoading(true);
     setError(null);
     try {
-      await postAPI<SampleLoadResult>("/api/v1/onboarding/load-sample");
+      const result = await postAPI<SampleLoadResult>(
+        "/api/v1/onboarding/load-sample",
+      );
+      // Semantically a sample-load IS a completed upload — fire the same
+      // funnel event so the onboarding strip + TTFI baseline see it.
+      trackUploadCompleted({
+        run_id: result.pipeline_run_id,
+        duration_seconds: result.duration_seconds,
+        rows_loaded: result.rows_loaded,
+      });
       router.push("/dashboard?first_upload=1");
     } catch {
       setError("Could not load sample data. Please try again.");
