@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -469,3 +469,225 @@ class PharmacistVerifyResponse(BaseModel):
     pharmacist_id: str
     drug_code: str
     expires_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# M1 — Capabilities (§6.6)
+# ---------------------------------------------------------------------------
+
+
+class CapabilitiesDoc(BaseModel):
+    """Feature-only capability document returned by GET /pos/capabilities."""
+
+    model_config = ConfigDict(frozen=True)
+
+    server_version: str
+    min_client_version: str
+    max_client_version: str | None
+    idempotency: str
+    capabilities: dict[str, bool]
+    enforced_policies: dict[str, int]
+    tenant_key_endpoint: str
+    device_registration_endpoint: str
+
+
+# ---------------------------------------------------------------------------
+# M1 — Tenant signing keys (§8.8)
+# ---------------------------------------------------------------------------
+
+
+class TenantPublicKey(BaseModel):
+    """Public Ed25519 verification key advertised to POS clients."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key_id: str
+    public_key: str  # base64-url of raw 32-byte public key
+    valid_from: datetime
+    valid_until: datetime
+
+
+class TenantKeysResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    keys: list[TenantPublicKey]
+
+
+# ---------------------------------------------------------------------------
+# M1 — Device registration (§8.9)
+# ---------------------------------------------------------------------------
+
+
+class DeviceRegisterRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    terminal_id: int = Field(ge=1)
+    public_key: str = Field(min_length=32)  # base64-url raw 32-byte ed25519 pubkey
+    device_fingerprint: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+
+
+class DeviceRegisterResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    device_id: int
+    terminal_id: int
+    registered_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# M1 — Offline grants (§8.8)
+# ---------------------------------------------------------------------------
+
+
+class OverrideCodeEntry(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code_id: str
+    salt: str
+    hash: str
+    issued_to_staff_id: str | None = None
+
+
+class RoleSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    can_checkout: bool = True
+    can_void: bool = False
+    can_override_price: bool = False
+    can_apply_discount: bool = True
+    max_discount_pct: int = 15
+    can_process_returns: bool = False
+    can_open_drawer_no_sale: bool = False
+    can_close_shift: bool = True
+
+
+class OfflineGrantPayload(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    iss: str = "datapulse-pos"
+    grant_id: str
+    terminal_id: int
+    tenant_id: int
+    device_fingerprint: str
+    staff_id: str
+    shift_id: int
+    issued_at: datetime
+    offline_expires_at: datetime
+    role_snapshot: RoleSnapshot
+    override_codes: list[OverrideCodeEntry]
+    capabilities_version: str = "v1"
+
+
+class OfflineGrantEnvelope(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    payload: OfflineGrantPayload
+    signature_ed25519: str  # base64-url Ed25519 signature of payload JSON
+    key_id: str  # which tenant key minted the signature
+
+
+# ---------------------------------------------------------------------------
+# M1 — Override token (§8.8.6)
+# ---------------------------------------------------------------------------
+
+
+class OverrideTokenClaim(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    grant_id: str
+    code_id: str
+    tenant_id: int
+    terminal_id: int
+    shift_id: int
+    action: Literal[
+        "retry_override",
+        "void",
+        "no_sale",
+        "price_override",
+        "discount_above_limit",
+    ]
+    action_subject_id: str | None = None
+    consumed_at: datetime
+
+
+class OverrideTokenEnvelope(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    claim: OverrideTokenClaim
+    signature: str  # base64-url Ed25519 signature of claim JSON, signed by the device key
+
+
+# ---------------------------------------------------------------------------
+# M1 — Active terminals (§1.4, §6.6)
+# ---------------------------------------------------------------------------
+
+
+class ActiveTerminalRow(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    terminal_id: int
+    device_fingerprint: str | None
+    opened_at: datetime
+
+
+class ActiveForMeResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    active_terminals: list[ActiveTerminalRow]
+    multi_terminal_allowed: bool
+    max_terminals: int
+
+
+# ---------------------------------------------------------------------------
+# M1 — Atomic commit (§3)
+# ---------------------------------------------------------------------------
+
+
+class CommitRequest(BaseModel):
+    """Atomic transaction commit payload — draft + items + checkout in one body."""
+
+    model_config = ConfigDict(frozen=True)
+
+    terminal_id: int = Field(ge=1)
+    shift_id: int = Field(ge=1)
+    staff_id: str
+    customer_id: str | None = None
+    site_code: str
+    items: list[PosCartItem]
+    subtotal: JsonDecimal
+    discount_total: JsonDecimal = Decimal("0")
+    tax_total: JsonDecimal = Decimal("0")
+    grand_total: JsonDecimal
+    payment_method: PaymentMethod
+    cash_tendered: JsonDecimal | None = None
+
+
+class CommitResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    transaction_id: int
+    receipt_number: str
+    commit_confirmed_at: datetime
+    change_due: JsonDecimal = Decimal("0")
+
+
+# ---------------------------------------------------------------------------
+# M1 — Shift close v2 (§3.6)
+# ---------------------------------------------------------------------------
+
+
+class LocalUnresolvedClaim(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    count: int = Field(ge=0)
+    digest: str = Field(min_length=10, max_length=200)
+
+
+class CloseShiftRequestV2(BaseModel):
+    """Shift-close with client-reported unresolved-queue claim (§3.6)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    closing_cash: JsonDecimal
+    notes: str | None = None
+    local_unresolved: LocalUnresolvedClaim

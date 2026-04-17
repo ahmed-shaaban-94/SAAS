@@ -334,6 +334,9 @@ def create_app() -> FastAPI:
         app.include_router(inventory_routes.router, prefix="/api/v1")
         app.include_router(expiry_routes.router, prefix="/api/v1")
         app.include_router(dispensing_routes.router, prefix="/api/v1")
+        # POS M1: capabilities is a separate unauthenticated router; register
+        # it before the main router so OpenAPI groups it correctly.
+        app.include_router(pos_routes.capabilities_router, prefix="/api/v1")
         app.include_router(pos_routes.router, prefix="/api/v1")
         logger.info("feature_platform_enabled")
 

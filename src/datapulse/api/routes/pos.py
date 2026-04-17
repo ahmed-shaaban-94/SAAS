@@ -722,3 +722,47 @@ def verify_pharmacist(
         credential=body.credential,
         drug_code=body.drug_code,
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# M1 — Capabilities (§6.6) — feature-only, unauthenticated
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Registered as a separate router so it does NOT inherit the authenticated
+# router's ``get_current_user`` + ``require_pos_plan`` dependencies. The
+# capabilities endpoint must be reachable by the desktop client before it
+# has authenticated, so it can decide whether to even attempt login.
+
+from datapulse.pos.capabilities import (  # noqa: E402
+    CAPABILITIES,
+    IDEMPOTENCY_PROTOCOL_VERSION,
+    IDEMPOTENCY_TTL_HOURS,
+    OFFLINE_GRANT_MAX_AGE_HOURS,
+    POS_MAX_CLIENT_VERSION,
+    POS_MIN_CLIENT_VERSION,
+    POS_SERVER_VERSION,
+    PROVISIONAL_TTL_HOURS,
+)
+from datapulse.pos.models import CapabilitiesDoc  # noqa: E402
+
+capabilities_router = APIRouter(prefix="/pos", tags=["pos"])
+
+
+@capabilities_router.get("/capabilities", response_model=CapabilitiesDoc)
+@limiter.limit("60/minute")
+def capabilities(request: Request) -> CapabilitiesDoc:
+    """Return the server's POS capability document (feature-only, no tenant state)."""
+    return CapabilitiesDoc(
+        server_version=POS_SERVER_VERSION,
+        min_client_version=POS_MIN_CLIENT_VERSION,
+        max_client_version=POS_MAX_CLIENT_VERSION,
+        idempotency=IDEMPOTENCY_PROTOCOL_VERSION,
+        capabilities=dict(CAPABILITIES),
+        enforced_policies={
+            "idempotency_ttl_hours": IDEMPOTENCY_TTL_HOURS,
+            "provisional_ttl_hours": PROVISIONAL_TTL_HOURS,
+            "offline_grant_max_age_hours": OFFLINE_GRANT_MAX_AGE_HOURS,
+        },
+        tenant_key_endpoint="/api/v1/pos/tenant-key",
+        device_registration_endpoint="/api/v1/pos/terminals/register-device",
+    )
