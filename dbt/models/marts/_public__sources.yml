@@ -1,0 +1,33 @@
+version: 2
+
+sources:
+  - name: public
+    schema: public
+    description: "Application tables managed outside dbt (direct inserts via API)"
+    tables:
+      - name: reorder_config
+        description: >
+          Per-product, per-site reorder configuration set by pharmacy managers.
+          Defines min_stock, reorder_point, max_stock, and reorder_lead_days.
+          Not dbt-managed — written via the inventory API.
+        columns:
+          - name: tenant_id
+            description: "Tenant identifier for RLS"
+          - name: drug_code
+            description: "Product code, joins to dim_product"
+          - name: site_code
+            description: "Site code, joins to dim_site"
+          - name: min_stock
+            description: "Minimum allowable stock level"
+          - name: reorder_point
+            description: "Stock level that triggers a reorder alert"
+          - name: max_stock
+            description: "Maximum stock ceiling"
+          - name: reorder_lead_days
+            description: "Expected lead time from order to receipt (days)"
+          - name: is_active
+            description: "Whether this config entry is active"
+          - name: created_at
+            description: "When this config was created"
+          - name: updated_at
+            description: "When this config was last updated"

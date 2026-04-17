@@ -1,0 +1,115 @@
+version: 2
+
+models:
+  - name: stg_stock_receipts
+    description: >
+      Silver layer: cleaned stock receipts.
+      Deduplicates by (tenant, receipt_reference, drug_code, site_code, batch_number).
+      Trims text, strips empty strings to NULL, coalesces quantity to 0.
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: receipt_date
+        description: "Date the receipt was issued"
+        tests:
+          - not_null
+      - name: drug_code
+        description: "Product code"
+        tests:
+          - not_null
+      - name: site_code
+        description: "Site code"
+        tests:
+          - not_null
+      - name: quantity
+        description: "Quantity received (coalesced to 0)"
+        tests:
+          - not_null
+      - name: receipt_reference
+        description: "Supplier delivery note or GRN number"
+      - name: batch_number
+        description: "Batch/lot number"
+      - name: expiry_date
+        description: "Batch expiry date"
+      - name: unit_cost
+        description: "Unit cost at receipt"
+      - name: supplier_code
+        description: "Supplier identifier"
+      - name: po_reference
+        description: "Related purchase order number"
+      - name: loaded_at
+        description: "When the record was loaded into bronze"
+
+  - name: stg_stock_adjustments
+    description: >
+      Silver layer: cleaned stock adjustments.
+      Deduplicates by (tenant, drug_code, site_code, adjustment_date, adjustment_type, batch_number).
+      Includes both positive (add) and negative (remove) quantities.
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: adjustment_date
+        description: "Date the adjustment was posted"
+        tests:
+          - not_null
+      - name: drug_code
+        description: "Product code"
+        tests:
+          - not_null
+      - name: site_code
+        description: "Site code"
+        tests:
+          - not_null
+      - name: adjustment_type
+        description: "Type: damage | shrinkage | transfer_in | transfer_out | correction | write_off"
+        tests:
+          - not_null
+      - name: quantity
+        description: "Adjustment quantity (positive = add, negative = remove)"
+        tests:
+          - not_null
+      - name: batch_number
+        description: "Batch/lot number"
+      - name: reason
+        description: "Reason for the adjustment"
+      - name: authorized_by
+        description: "Authorizing staff member"
+      - name: loaded_at
+        description: "When the record was loaded into bronze"
+
+  - name: stg_inventory_counts
+    description: >
+      Silver layer: cleaned physical inventory count records.
+      Deduplicates by (tenant, drug_code, site_code, count_date, batch_number).
+      Used for reconciliation against calculated stock levels.
+    columns:
+      - name: tenant_id
+        description: "Tenant identifier for RLS"
+        tests:
+          - not_null
+      - name: count_date
+        description: "Date the physical count was performed"
+        tests:
+          - not_null
+      - name: drug_code
+        description: "Product code"
+        tests:
+          - not_null
+      - name: site_code
+        description: "Site code"
+        tests:
+          - not_null
+      - name: counted_quantity
+        description: "Physically counted quantity (coalesced to 0)"
+        tests:
+          - not_null
+      - name: batch_number
+        description: "Batch/lot number"
+      - name: counted_by
+        description: "Staff member who performed the count"
+      - name: loaded_at
+        description: "When the record was loaded into bronze"

@@ -92,7 +92,7 @@ class TestAnalyticsCacheKeyTenantIsolation:
     """Verify the manual _cache_key in analytics/service.py is tenant-scoped."""
 
     def test_analytics_cache_key_includes_tenant(self):
-        from datapulse.analytics.service import _cache_key
+        from datapulse.analytics.services.kpi import _cache_key
 
         token = current_tenant_id.set("3")
         try:
@@ -105,7 +105,7 @@ class TestAnalyticsCacheKeyTenantIsolation:
         assert key.startswith("dp:")
 
     def test_analytics_different_tenants_different_keys(self):
-        from datapulse.analytics.service import _cache_key
+        from datapulse.analytics.services.kpi import _cache_key
 
         token = current_tenant_id.set("1")
         try:

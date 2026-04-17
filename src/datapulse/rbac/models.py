@@ -9,7 +9,18 @@ from pydantic import BaseModel, EmailStr, Field
 
 # ── Roles & Permissions ──────────────────────────────────────
 
-RoleKey = Literal["owner", "admin", "editor", "viewer"]
+# Platform (analytics-only) roles
+RoleKey = Literal[
+    "owner",
+    "admin",
+    "editor",
+    "viewer",
+    # POS operational roles (B7) — seeded by migration 072 + 076
+    "pos_cashier",
+    "pos_pharmacist",
+    "pos_supervisor",
+    "pos_manager",
+]
 
 
 class RoleResponse(BaseModel):

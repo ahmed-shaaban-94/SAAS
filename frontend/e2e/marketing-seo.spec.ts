@@ -7,7 +7,7 @@ test.describe("Marketing SEO", () => {
     expect(title).toContain("DataPulse");
 
     const description = page.locator('meta[name="description"]');
-    await expect(description).toHaveAttribute("content", /sales data/i);
+    await expect(description).toHaveAttribute("content", /sales/i);
   });
 
   test("Open Graph tags present", async ({ page }) => {

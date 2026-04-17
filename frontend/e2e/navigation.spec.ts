@@ -40,7 +40,7 @@ test.describe("Navigation", () => {
 
   test("root shows landing page", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1")).toContainText(/Revenue Intelligence/i, {
+    await expect(page.locator("h1")).toContainText(/pharma sales and operations data/i, {
       timeout: 15000,
     });
   });

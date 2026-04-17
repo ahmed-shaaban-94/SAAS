@@ -27,7 +27,7 @@ export function FeaturesGrid() {
   }, []);
 
   return (
-    <SectionWrapper id="features">
+    <SectionWrapper id="product">
       <div ref={containerRef}>
         <div className={`mb-12 text-center reveal-up ${isVisible ? "is-visible" : ""}`}>
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.26em] text-accent/80">

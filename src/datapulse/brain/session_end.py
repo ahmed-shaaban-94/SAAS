@@ -460,17 +460,14 @@ def main() -> None:
             modules=modules,
         )
 
-    # Auto-stage brain files
-    _run(
-        [
-            "git",
-            "add",
-            "docs/brain/sessions/",
-            "docs/brain/_INDEX.md",
-            "docs/brain/session-log.csv",
-        ],
-        cwd=project_dir,
-    )
+    # Auto-stage brain files.
+    # session-log.csv is only staged in the fallback path — when the DB write
+    # succeeded it was not modified, so staging it would create spurious diffs
+    # that conflict when multiple worktree branches are merged.
+    files_to_stage = ["docs/brain/sessions/", "docs/brain/_INDEX.md"]
+    if not db_ok:
+        files_to_stage.append("docs/brain/session-log.csv")
+    _run(["git", "add"] + files_to_stage, cwd=project_dir)
 
 
 if __name__ == "__main__":

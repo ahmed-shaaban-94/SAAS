@@ -47,9 +47,15 @@ dev = [
     "pytest-cov>=5.0,<6",
     "pytest-asyncio>=0.23,<2",
     "ruff>=0.4,<1",
+    "langchain-core>=0.3,<1",
 ]
 graph = [
     "mcp>=1.0,<2",
+]
+ai = [
+    "langgraph>=0.2,<1",
+    "langchain-openai>=0.2,<1",
+    "langgraph-checkpoint-postgres>=2,<3",
 ]
 
 [tool.setuptools.packages.find]
@@ -110,6 +116,11 @@ module = [
     "openpyxl.*",
     "prometheus_fastapi_instrumentator.*",
     "mcp.*",
+    "google.*",
+    "googleapiclient.*",
+    "langchain_core.*",
+    "langchain_openai.*",
+    "langgraph.*",
 ]
 ignore_missing_imports = true
 

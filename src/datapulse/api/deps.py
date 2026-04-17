@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
+
+if TYPE_CHECKING:
+    from datapulse.expiry.service import ExpiryService
+    from datapulse.inventory.service import InventoryService
 
 import structlog
 from fastapi import Depends
@@ -46,7 +50,11 @@ from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
 from datapulse.pipeline.repository import PipelineRepository
 from datapulse.pipeline.service import PipelineService
+from datapulse.purchase_orders.repository import PurchaseOrderRepository
+from datapulse.purchase_orders.service import PurchaseOrderService
 from datapulse.reports.schedule_service import ScheduleService
+from datapulse.suppliers.repository import SuppliersRepository
+from datapulse.suppliers.service import SuppliersService
 
 logger = structlog.get_logger()
 
@@ -190,8 +198,16 @@ def get_forecasting_service(
 def get_ai_light_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ) -> AILightService:
-    """Factory for AI-Light service with analytics repo + OpenRouter client."""
+    """Factory for AI-Light service.
+
+    Returns AILightGraphService when AI_LIGHT_USE_LANGGRAPH=true,
+    otherwise falls back to the legacy AILightService.
+    """
     settings = get_settings()
+    if settings.ai_light_use_langgraph:
+        from datapulse.ai_light.graph_service import AILightGraphService  # lazy import
+
+        return AILightGraphService(settings=settings, session=session)  # type: ignore[return-value]
     return AILightService(settings=settings, session=session)
 
 
@@ -251,3 +267,85 @@ def get_search_service(
     from datapulse.analytics.search_repository import SearchRepository
 
     return SearchService(SearchRepository(session))
+
+
+def get_po_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> PurchaseOrderService:
+    """Factory for PurchaseOrderService — wires repository to service."""
+    return PurchaseOrderService(PurchaseOrderRepository(session))
+
+
+def get_supplier_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> SuppliersService:
+    """Factory for SuppliersService — wires repository to service."""
+    return SuppliersService(SuppliersRepository(session))
+
+
+def get_inventory_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> InventoryService:
+    from datapulse.inventory.repository import InventoryRepository
+    from datapulse.inventory.service import InventoryService
+
+    repo = InventoryRepository(session)
+    return InventoryService(repo)
+
+
+def get_expiry_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+) -> ExpiryService:
+    from datapulse.expiry.repository import ExpiryRepository
+    from datapulse.expiry.service import ExpiryService
+
+    repo = ExpiryRepository(session)
+    return ExpiryService(repo)
+
+
+def get_dispensing_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.dispensing.repository import DispensingRepository
+    from datapulse.dispensing.service import DispensingService
+
+    repo = DispensingRepository(session)
+    return DispensingService(repo)
+
+
+def get_reorder_config_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.inventory.reorder_repository import ReorderConfigRepository
+    from datapulse.inventory.reorder_service import ReorderConfigService
+
+    repo = ReorderConfigRepository(session)
+    return ReorderConfigService(repo)
+
+
+def get_pos_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    """Factory for :class:`PosService` — wires repo + inventory + pharmacist verifier.
+
+    The mock inventory service is replaced with the real Plan A
+    ``InventoryService`` adapter in B8 (POS integration session).
+    The :class:`PharmacistVerifier` uses the repo's pin-lookup closure and
+    the application secret key so the service stays dependency-free.
+    """
+    from datapulse.pos.inventory_contract import MockInventoryService
+    from datapulse.pos.pharmacist_verifier import PharmacistVerifier
+    from datapulse.pos.repository import PosRepository
+    from datapulse.pos.service import PosService
+
+    settings = get_settings()
+    repo = PosRepository(session)
+    inventory = MockInventoryService()
+    # Use pipeline_webhook_secret as the HMAC signing key for pharmacist tokens.
+    # Falls back to a non-empty dev stub so that dev mode still works.
+    signing_secret = settings.pipeline_webhook_secret or "dev-pos-pharmacist-secret"
+    verifier = PharmacistVerifier(
+        secret_key=signing_secret,
+        pin_lookup=repo.get_pharmacist_pin_hash,
+    )
+    return PosService(repo, inventory, verifier)

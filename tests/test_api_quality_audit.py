@@ -365,12 +365,11 @@ class TestAnalyticsCaching:
     """Verify top_movers has @cached decorator."""
 
     def test_top_movers_is_cached(self):
-        """get_top_movers should have the @cached decorator."""
+        """get_top_movers should have the @cached decorator (now on RankingService)."""
         import inspect
 
-        from datapulse.analytics.service import AnalyticsService
+        from datapulse.analytics.services.ranking import RankingService
 
-        # Check that the method source or decorators include cached
-        source = inspect.getsource(AnalyticsService.get_top_movers)
-        # The @cached decorator wraps the function — check for the wrapper attribute
-        assert hasattr(AnalyticsService.get_top_movers, "__wrapped__") or "cached" in source
+        # After analytics split, caching lives on the sub-service, not the facade.
+        source = inspect.getsource(RankingService.get_top_movers)
+        assert hasattr(RankingService.get_top_movers, "__wrapped__") or "cached" in source

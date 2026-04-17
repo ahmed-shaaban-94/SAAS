@@ -169,28 +169,56 @@ jobs:
             echo "Previous API: $PREV_API_IMAGE"
             echo "Previous Frontend: $PREV_FE_IMAGE"
 
-            # Pull latest production images
+            # Pull latest production images (retry up to 3 times — GHCR can drop IPv6 connections)
             echo "=== Pulling new images ==="
-            docker compose \
-              -f docker-compose.yml \
-              -f docker-compose.prod.yml \
-              -f docker-compose.monitoring.yml \
-              pull
+            PULL_OK=false
+            for attempt in 1 2 3; do
+              if docker compose \
+                -f docker-compose.yml \
+                -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
+                pull; then
+                PULL_OK=true
+                break
+              fi
+              echo "::warning::docker compose pull failed (attempt $attempt/3) — retrying in 15s..."
+              sleep 15
+            done
+            if [ "$PULL_OK" != "true" ]; then
+              echo "::error::docker compose pull failed after 3 attempts"
+              exit 1
+            fi
 
             # Deploy in two phases:
             # 1. Bring up infra (postgres, redis) normally — no recreate needed
             # 2. Force-recreate app services so nginx picks up new upstreams.
+            #    Keep going even if compose reports an unhealthy dependency so
+            #    the explicit health checks and rollback path can run.
             echo "=== Starting deployment ==="
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
               -f docker-compose.monitoring.yml \
-              up -d --remove-orphans postgres redis
+              up -d --remove-orphans postgres redis || echo "::warning::infra up exited non-zero"
             docker compose \
               -f docker-compose.yml \
               -f docker-compose.prod.yml \
               -f docker-compose.monitoring.yml \
-              up -d --remove-orphans --force-recreate api frontend nginx
+              up -d --remove-orphans --force-recreate api frontend nginx || echo "::warning::app up exited non-zero — checking health..."
+
+            # Immediate diagnostics — surface the real container state before waiting
+            echo "=== Container status after up ==="
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
+              ps || true
+            echo "=== API logs (startup) ==="
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
+              logs --tail=80 api 2>&1 || true
 
             # Health check — API liveness via nginx internal port.
             # Uses /health/live (always 200 if process is alive) not /health

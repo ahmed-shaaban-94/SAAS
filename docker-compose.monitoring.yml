@@ -8,7 +8,7 @@
 
 services:
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.28.1
     container_name: datapulse-alertmanager
     restart: unless-stopped
     ports:
@@ -19,7 +19,6 @@ services:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
       - "--storage.path=/alertmanager"
       - "--web.external-url=http://localhost:9093"
-      - "--config.expand-env=true"
     environment:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
     deploy:

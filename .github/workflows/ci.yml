@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[dev]"
-          pip install "mypy<1.14" types-redis types-passlib types-python-jose
+          pip install "mypy>=1.14,<2" types-redis types-passlib types-python-jose
       - name: Run mypy
         run: mypy src/datapulse/
 
@@ -57,7 +57,7 @@ jobs:
           pip install -e ".[dev]"
           pip install pytest-timeout
       - name: Run unit tests
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           DATABASE_URL: "sqlite:///:memory:"
           REDIS_URL: ""

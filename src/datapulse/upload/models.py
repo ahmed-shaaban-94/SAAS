@@ -32,3 +32,17 @@ class UploadedFile(BaseModel):
     filename: str
     size_bytes: int
     status: str  # "uploaded", "previewed", "confirmed"
+    detected_type: str | None = None  # "stock_receipts", "stock_adjustments", etc.
+
+
+class InventoryPreviewResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    file_id: str
+    filename: str
+    detected_type: str  # key into LOADER_REGISTRY
+    row_count: int
+    columns: list[ColumnInfo]
+    sample_rows: list[list[str]]
+    warnings: list[str]
+    matched_headers: list[str]  # headers that matched the column map

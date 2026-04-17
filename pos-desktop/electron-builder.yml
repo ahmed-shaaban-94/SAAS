@@ -1,0 +1,56 @@
+# electron-builder configuration
+# Docs: https://www.electron.build/configuration
+
+appId: tech.smartdatapulse.pos
+productName: DataPulse POS
+copyright: Copyright (c) 2026 DataPulse
+
+# Include the compiled Next.js standalone output
+extraResources:
+  - from: resources/nextjs
+    to: nextjs
+    filter:
+      - "**/*"
+  - from: assets
+    to: assets
+    filter:
+      - "**/*"
+
+# ── Windows ─────────────────────────────────────────────────
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.ico
+  artifactName: "DataPulse-POS-${version}-Setup.${ext}"
+
+nsis:
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  license: null
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DataPulse POS
+
+# ── Build output ────────────────────────────────────────────
+directories:
+  output: dist
+  buildResources: assets
+
+# ── Files to include in the app.asar ────────────────────────
+files:
+  - dist/electron/**/*
+  - package.json
+  - "!node_modules/**/*.md"
+  - "!node_modules/**/*.ts"
+  - "!node_modules/**/test/**"
+
+# ── Auto-update (Phase 2: point to GitHub Releases) ─────────
+# publish:
+#   provider: github
+#   owner: ahmed-shaaban-94
+#   repo: Data-Pulse
+#   releaseType: release

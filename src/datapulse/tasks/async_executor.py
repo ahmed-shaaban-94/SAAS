@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 import time
 import uuid
 
@@ -27,6 +28,14 @@ from datapulse.logging import get_logger
 
 log = get_logger(__name__)
 
+_QUERY_SLOT_LOCK = threading.Lock()
+_QUERY_SLOTS_IN_USE = 0
+_QUERY_SLOTS_BY_TENANT: dict[str, int] = {}
+
+
+class QueryCapacityExceededError(RuntimeError):
+    """Raised when the async query executor is already saturated."""
+
 
 def _job_ttl() -> int:
     """Job TTL in Redis — reads from settings."""
@@ -36,6 +45,54 @@ def _job_ttl() -> int:
 def _query_timeout() -> int:
     """Hard timeout for query execution — reads from settings."""
     return get_settings().query_execution_timeout
+
+
+def _effective_row_limit(row_limit: int) -> int:
+    """Clamp client row limits to the configured safety ceiling."""
+    configured_limit = max(1, get_settings().query_row_limit)
+    return min(row_limit, configured_limit)
+
+
+def _max_concurrent_jobs() -> int:
+    return max(1, get_settings().query_max_concurrent_jobs)
+
+
+def _max_concurrent_jobs_per_tenant() -> int:
+    settings = get_settings()
+    return max(
+        1,
+        min(settings.query_max_concurrent_jobs_per_tenant, _max_concurrent_jobs()),
+    )
+
+
+def _reserve_query_slot(tenant_id: str) -> None:
+    """Reserve a local worker slot before scheduling a heavy async query."""
+    global _QUERY_SLOTS_IN_USE
+
+    with _QUERY_SLOT_LOCK:
+        tenant_slots = _QUERY_SLOTS_BY_TENANT.get(tenant_id, 0)
+        if _max_concurrent_jobs() <= _QUERY_SLOTS_IN_USE:
+            raise QueryCapacityExceededError("Too many async queries are already running.")
+        if tenant_slots >= _max_concurrent_jobs_per_tenant():
+            raise QueryCapacityExceededError("Tenant async query capacity reached. Retry shortly.")
+
+        _QUERY_SLOTS_IN_USE += 1
+        _QUERY_SLOTS_BY_TENANT[tenant_id] = tenant_slots + 1
+
+
+def _release_query_slot(tenant_id: str) -> None:
+    """Release a previously reserved local worker slot."""
+    global _QUERY_SLOTS_IN_USE
+
+    with _QUERY_SLOT_LOCK:
+        tenant_slots = _QUERY_SLOTS_BY_TENANT.get(tenant_id, 0)
+        if tenant_slots <= 1:
+            _QUERY_SLOTS_BY_TENANT.pop(tenant_id, None)
+        elif tenant_slots > 1:
+            _QUERY_SLOTS_BY_TENANT[tenant_id] = tenant_slots - 1
+
+        if _QUERY_SLOTS_IN_USE > 0:
+            _QUERY_SLOTS_IN_USE -= 1
 
 
 def _get_job_client():
@@ -83,7 +140,7 @@ def _run_query_sync(
     session = get_session_factory()()
     try:
         session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-        session.execute(text("SET LOCAL statement_timeout = '270s'"))
+        session.execute(text(f"SET LOCAL statement_timeout = '{_query_timeout()}s'"))
 
         result = session.execute(text(sql), params or {})
         columns = list(result.keys())
@@ -91,7 +148,7 @@ def _run_query_sync(
         truncated = False
 
         for i, row in enumerate(result):
-            if i >= row_limit:
+            if i >= _effective_row_limit(row_limit):
                 truncated = True
                 break
             rows.append([_serialise(v) for v in row])
@@ -146,6 +203,20 @@ def _run_query_sync(
         session.close()
 
 
+def _run_query_job_sync(
+    job_id: str,
+    sql: str,
+    params: dict | None,
+    tenant_id: str,
+    row_limit: int,
+) -> None:
+    """Run a query job and always release its worker slot afterward."""
+    try:
+        _run_query_sync(job_id, sql, params, tenant_id, row_limit)
+    finally:
+        _release_query_slot(tenant_id)
+
+
 async def submit_query(
     sql: str,
     tenant_id: str = "1",
@@ -157,19 +228,27 @@ async def submit_query(
     if client is None:
         return None
 
-    job_id = str(uuid.uuid4())
-    _set_job(client, job_id, {"status": "pending"})
+    _reserve_query_slot(tenant_id)
 
-    # Fire and forget — run in background thread
-    asyncio.get_event_loop().run_in_executor(
-        None,
-        _run_query_sync,
-        job_id,
-        sql,
-        params,
-        tenant_id,
-        row_limit,
-    )
+    job_id = str(uuid.uuid4())
+    effective_row_limit = _effective_row_limit(row_limit)
+
+    try:
+        _set_job(client, job_id, {"status": "pending"})
+
+        # Fire and forget — bounded by explicit capacity reservation above.
+        asyncio.get_event_loop().run_in_executor(
+            None,
+            _run_query_job_sync,
+            job_id,
+            sql,
+            params,
+            tenant_id,
+            effective_row_limit,
+        )
+    except BaseException:
+        _release_query_slot(tenant_id)
+        raise
 
     log.info("query_submitted", job_id=job_id, tenant_id=tenant_id)
     return job_id

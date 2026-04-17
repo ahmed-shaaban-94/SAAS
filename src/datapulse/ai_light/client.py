@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 import time
 
 import httpx
@@ -14,22 +15,59 @@ log = get_logger(__name__)
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+# Circuit-breaker thresholds
+_CB_THRESHOLD = 3  # consecutive failures before opening
+_CB_OPEN_SECONDS = 60  # seconds the circuit stays open before half-open
+
 
 class OpenRouterClient:
-    """Thin wrapper around the OpenRouter chat completions API."""
+    """Thin wrapper around the OpenRouter chat completions API.
+
+    Retry strategy: exponential backoff with jitter — wait = min(2^attempt + U(0, 0.5), 8).
+    Circuit breaker: after *_CB_THRESHOLD* consecutive failures the circuit opens
+    for *_CB_OPEN_SECONDS* seconds.  After that window the circuit moves to half-open
+    (one probe request allowed through).  A successful probe resets the counter; a
+    failed probe extends the open window by another *_CB_OPEN_SECONDS*.
+    """
 
     def __init__(self, settings: Settings) -> None:
         self._api_key = settings.openrouter_api_key
         self._model = settings.openrouter_model
+        # Circuit-breaker state — per-instance so test fixtures remain isolated.
+        self._cb_failures: int = 0
+        self._cb_open_until: float = 0.0
 
     @property
     def is_configured(self) -> bool:
         return bool(self._api_key)
 
+    # ------------------------------------------------------------------
+    # Circuit-breaker helpers
+    # ------------------------------------------------------------------
+
+    def _cb_is_open(self) -> bool:
+        """Return True if the circuit is fully open (requests should be rejected)."""
+        return self._cb_failures >= _CB_THRESHOLD and time.time() < self._cb_open_until
+
+    def _cb_record_success(self) -> None:
+        """Reset failure counter after a successful request."""
+        self._cb_failures = 0
+        self._cb_open_until = 0.0
+
+    def _cb_record_failure(self) -> None:
+        """Increment failure counter and open the circuit when threshold is reached."""
+        self._cb_failures += 1
+        if self._cb_failures >= _CB_THRESHOLD:
+            self._cb_open_until = time.time() + _CB_OPEN_SECONDS
+
     def chat(self, system: str, user: str, temperature: float = 0.3) -> str:
         """Send a chat completion request and return the assistant message."""
         if not self.is_configured:
             raise RuntimeError("OpenRouter API key not configured (OPENROUTER_API_KEY)")
+
+        if self._cb_is_open():
+            remaining = self._cb_open_until - time.time()
+            raise RuntimeError(f"OpenRouter circuit breaker open — retry after {remaining:.0f}s")
 
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -49,9 +87,7 @@ class OpenRouterClient:
 
         log.info("openrouter_request", model=self._model)
 
-        # Retry with constant backoff for transient failures.
-        # time.sleep() blocks a threadpool worker; kept at 1s constant to
-        # limit stall duration. Timeout reduced from 60s to 30s.
+        # Exponential backoff with jitter: wait = min(2^attempt + U(0, 0.5), 8).
         max_retries = 3
         resp = None
         for attempt in range(max_retries):
@@ -63,15 +99,17 @@ class OpenRouterClient:
                     timeout=30,
                 )
                 resp.raise_for_status()
+                self._cb_record_success()
                 break
             except Exception as exc:
+                self._cb_record_failure()
                 if attempt == max_retries - 1:
                     raise
-                wait = 1  # constant 1s — avoid exponential stalling of threadpool
+                wait = min(2**attempt + random.uniform(0, 0.5), 8)
                 log.warning(
                     "openrouter_retry",
                     attempt=attempt + 1,
-                    wait_seconds=wait,
+                    wait_seconds=round(wait, 2),
                     error=str(exc),
                 )
                 time.sleep(wait)

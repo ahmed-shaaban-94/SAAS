@@ -15,6 +15,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from datapulse.api.backpressure import AdmissionController
 from datapulse.api.limiter import limiter
 from datapulse.api.routes import (
     ai_light,
@@ -24,6 +25,7 @@ from datapulse.api.routes import (
     audit,
     billing,
     branding,
+    control_center,
     dashboard_layouts,
     embed,
     explore,
@@ -36,12 +38,14 @@ from datapulse.api.routes import (
     notifications,
     onboarding,
     pipeline,
+    purchase_orders,
     queries,
     report_schedules,
     reports,
     reseller,
     scenarios,
     search,
+    suppliers,
     targets,
     upload,
     views,
@@ -96,6 +100,10 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    app.state.admission_controller = AdmissionController(
+        max_in_flight_requests=settings.api_max_in_flight_requests,
+        acquire_timeout_ms=settings.api_backpressure_timeout_ms,
+    )
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
@@ -111,6 +119,45 @@ def create_app() -> FastAPI:
     @app.exception_handler(TenantError)
     async def tenant_error_handler(request: Request, exc: TenantError) -> JSONResponse:
         return JSONResponse(status_code=403, content={"detail": exc.message})
+
+    # POS-specific exception handlers — must be registered BEFORE the generic
+    # DataPulseError handler so they take precedence over the catch-all 400.
+    from datapulse.pos.exceptions import (
+        InsufficientStockError,
+        PharmacistVerificationRequiredError,
+        ShiftNotOpenError,
+        TerminalNotActiveError,
+        VoidNotAllowedError,
+    )
+
+    @app.exception_handler(InsufficientStockError)
+    async def pos_insufficient_stock_handler(
+        request: Request, exc: InsufficientStockError
+    ) -> JSONResponse:
+        logger.info("pos.insufficient_stock", detail=exc.detail)
+        return JSONResponse(status_code=409, content={"detail": exc.message})
+
+    @app.exception_handler(TerminalNotActiveError)
+    async def pos_terminal_not_active_handler(
+        request: Request, exc: TerminalNotActiveError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": exc.message})
+
+    @app.exception_handler(PharmacistVerificationRequiredError)
+    async def pos_pharmacist_required_handler(
+        request: Request, exc: PharmacistVerificationRequiredError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=403, content={"detail": exc.message})
+
+    @app.exception_handler(VoidNotAllowedError)
+    async def pos_void_not_allowed_handler(
+        request: Request, exc: VoidNotAllowedError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": exc.message})
+
+    @app.exception_handler(ShiftNotOpenError)
+    async def pos_shift_not_open_handler(request: Request, exc: ShiftNotOpenError) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": exc.message})
 
     @app.exception_handler(DataPulseError)
     async def datapulse_error_handler(request: Request, exc: DataPulseError) -> JSONResponse:
@@ -174,9 +221,42 @@ def create_app() -> FastAPI:
     async def request_id_middleware(request: Request, call_next) -> Response:
         request_id = request.headers.get("X-Request-ID") or str(_uuid.uuid4())
         structlog.contextvars.bind_contextvars(request_id=request_id)
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        finally:
+            structlog.contextvars.unbind_contextvars("request_id")
         response.headers["X-Request-ID"] = request_id
-        structlog.contextvars.unbind_contextvars("request_id")
+        return response
+
+    @app.middleware("http")
+    async def overload_guard_middleware(request: Request, call_next) -> Response:
+        controller: AdmissionController = request.app.state.admission_controller
+        if controller.is_exempt(request):
+            return await call_next(request)
+
+        if not await controller.try_acquire():
+            logger.warning(
+                "request_rejected_overload",
+                method=request.method,
+                path=request.url.path,
+                in_flight=controller.in_flight,
+                limit=controller.max_in_flight_requests,
+            )
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Server is busy. Please retry shortly."},
+                headers={
+                    "Retry-After": "1",
+                    "X-DataPulse-Backpressure": "rejected",
+                },
+            )
+
+        try:
+            response = await call_next(request)
+        finally:
+            controller.release()
+
+        response.headers["X-DataPulse-Backpressure"] = "guarded"
         return response
 
     # Request logging middleware
@@ -233,6 +313,29 @@ def create_app() -> FastAPI:
     app.include_router(branding.router, prefix="/api/v1")
     app.include_router(branding.public_router, prefix="/api/v1")
     app.include_router(reseller.router, prefix="/api/v1")
+
+    # Pharma platform: Purchase Orders + Suppliers + Margin Analysis
+    app.include_router(purchase_orders.router, prefix="/api/v1")
+    app.include_router(purchase_orders.margins_router, prefix="/api/v1")
+    app.include_router(suppliers.router, prefix="/api/v1")
+
+    # Control Center — behind feature flag; mounts router only when enabled
+    if settings.feature_control_center:
+        app.include_router(control_center.router, prefix="/api/v1")
+        logger.info("control_center_enabled")
+
+    # Pharmaceutical Platform — inventory, expiry, dispensing, POS features
+    if settings.feature_platform:
+        from datapulse.api.routes import dispensing as dispensing_routes
+        from datapulse.api.routes import expiry as expiry_routes
+        from datapulse.api.routes import inventory as inventory_routes
+        from datapulse.api.routes import pos as pos_routes
+
+        app.include_router(inventory_routes.router, prefix="/api/v1")
+        app.include_router(expiry_routes.router, prefix="/api/v1")
+        app.include_router(dispensing_routes.router, prefix="/api/v1")
+        app.include_router(pos_routes.router, prefix="/api/v1")
+        logger.info("feature_platform_enabled")
 
     # Prometheus metrics — exposes /metrics endpoint with HTTP request
     # counters and duration histograms.  Nginx should block external access

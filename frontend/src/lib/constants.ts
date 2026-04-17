@@ -54,6 +54,48 @@ export interface NavGroup {
 }
 
 // ── Grouped navigation ───────────────────────────────────
+const OPERATIONS_GROUP: NavGroup = {
+  id: "operations",
+  label: "Operations",
+  icon: "Warehouse",
+  minRole: "editor",
+  items: [
+    { label: "Inventory", href: "/inventory", icon: "Package", minRole: "editor" },
+    { label: "Dispensing", href: "/dispensing", icon: "Activity", minRole: "viewer" },
+    { label: "Expiry Tracking", href: "/expiry", icon: "Calendar", minRole: "editor" },
+    { label: "Purchase Orders", href: "/purchase-orders", icon: "ClipboardList", minRole: "editor" },
+    { label: "Suppliers", href: "/suppliers", icon: "Truck", minRole: "editor" },
+  ],
+};
+
+const POS_GROUP: NavGroup = {
+  id: "pos",
+  label: "Point of Sale",
+  icon: "ShoppingCart",
+  minRole: "editor",
+  items: [
+    { label: "Terminal", href: "/terminal", icon: "Monitor", minRole: "editor" },
+    { label: "Checkout", href: "/checkout", icon: "CreditCard", minRole: "editor" },
+    { label: "Shift Management", href: "/shift", icon: "Clock", minRole: "editor" },
+    { label: "Transaction History", href: "/history", icon: "Receipt", minRole: "viewer" },
+    { label: "Returns", href: "/pos-returns", icon: "RotateCcw", minRole: "editor" },
+  ],
+};
+
+const CONTROL_CENTER_GROUP: NavGroup = {
+  id: "control-center",
+  label: "Control Center",
+  icon: "Settings2",
+  minRole: "admin",
+  items: [
+    { label: "Sources",   href: "/control-center/sources",   icon: "Plug",              minRole: "admin"  },
+    { label: "Profiles",  href: "/control-center/profiles",  icon: "SlidersHorizontal", minRole: "admin"  },
+    { label: "Mappings",  href: "/control-center/mappings",  icon: "GitBranch",         minRole: "editor" },
+    { label: "Releases",  href: "/control-center/releases",  icon: "History",           minRole: "admin"  },
+    { label: "Sync Runs", href: "/control-center/sync-runs", icon: "Activity",          minRole: "admin"  },
+  ],
+};
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: "analytics",
@@ -125,6 +167,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Billing", href: "/billing", icon: "CreditCard", minRole: "owner" },
     ],
   },
+  OPERATIONS_GROUP,
+  POS_GROUP,
+  CONTROL_CENTER_GROUP,
 ];
 
 /** Flat list derived from groups — backward compatible */

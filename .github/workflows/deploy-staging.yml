@@ -144,13 +144,25 @@ jobs:
             echo "Previous API: $PREV_API_IMAGE"
             echo "Previous Frontend: $PREV_FRONTEND_IMAGE"
 
-            # Pull latest images
+            # Pull latest images (retry up to 3 times — GHCR can drop IPv6 connections)
             echo "=== Pulling new images ==="
-            docker compose \
-              -f docker-compose.yml \
-              -f docker-compose.prod.yml \
-              -f docker-compose.monitoring.yml \
-              pull
+            PULL_OK=false
+            for attempt in 1 2 3; do
+              if docker compose \
+                -f docker-compose.yml \
+                -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
+                pull; then
+                PULL_OK=true
+                break
+              fi
+              echo "::warning::docker compose pull failed (attempt $attempt/3) — retrying in 15s..."
+              sleep 15
+            done
+            if [ "$PULL_OK" != "true" ]; then
+              echo "::error::docker compose pull failed after 3 attempts"
+              exit 1
+            fi
 
             # Deploy in two phases:
             # 1. Bring up infra (postgres, redis) normally — no recreate needed

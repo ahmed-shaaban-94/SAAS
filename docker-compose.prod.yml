@@ -59,6 +59,8 @@ services:
       API_KEY: ${API_KEY:?API_KEY is required for production}
       PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:?PIPELINE_WEBHOOK_SECRET is required for production}
       WEB_CONCURRENCY: "4"
+      FEATURE_PLATFORM: ${FEATURE_PLATFORM:-false}
+      FEATURE_CONTROL_CENTER: ${FEATURE_CONTROL_CENTER:-false}
     command: ["gunicorn", "datapulse.api.app:create_app()", "--config", "/app/gunicorn.conf.py"]
     deploy:
       resources:

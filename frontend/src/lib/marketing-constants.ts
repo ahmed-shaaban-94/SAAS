@@ -1,46 +1,16 @@
 import type { LucideIcon } from "lucide-react";
 
-export const SITE_NAME = "Data Pulse";
+export const SITE_NAME = "DataPulse";
 export const SITE_DESCRIPTION =
-  "Import, clean, analyze, and visualize your sales data with an automated medallion pipeline. AI-powered insights, real-time dashboards, and enterprise-grade quality gates.";
+  "DataPulse helps pharma and retail operations teams turn messy sales and inventory data into daily decision-ready intelligence.";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://smartdatapulse.tech";
 
 export const NAV_LINKS = [
-  { label: "Features", href: "#features" },
+  { label: "Product",      href: "#product"     },
   { label: "How It Works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
-] as const;
-
-export const FOOTER_COLUMNS = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", href: "#features" },
-      { label: "Pricing", href: "#pricing" },
-      { label: "Dashboard", href: "/dashboard" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About", href: "/#how-it-works" },
-      { label: "Contact", href: "mailto:support@smartdatapulse.tech" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Service", href: "/terms" },
-    ],
-  },
-  {
-    title: "Connect",
-    links: [
-      { label: "GitHub", href: "https://github.com/ahmed-shaaban-94/Data-Pulse" },
-    ],
-  },
+  { label: "Use Cases",    href: "#use-cases"   },
+  { label: "Pilot Access", href: "#pilot-access" },
+  { label: "FAQ",          href: "#faq"         },
 ] as const;
 
 export interface FeatureItem {
@@ -52,39 +22,39 @@ export interface FeatureItem {
 export const FEATURES: FeatureItem[] = [
   {
     icon: "FileUp",
-    title: "Upload & Import",
+    title: "Data Intake That Works With Real Spreadsheets",
     description:
-      "Import Excel and CSV files with automatic schema detection and type inference.",
-  },
-  {
-    icon: "Sparkles",
-    title: "Data Cleaning",
-    description:
-      "Automated deduplication, normalization, and validation through the silver layer.",
+      "Import Excel and CSV files or connect managed sources without forcing your team to clean everything manually first.",
   },
   {
     icon: "ShieldCheck",
-    title: "Quality Gates",
+    title: "Automated Cleaning And Validation",
     description:
-      "7 automated quality checks ensure data integrity at every pipeline stage.",
+      "Catch duplicates, schema issues, and broken inputs before they distort your dashboards.",
   },
   {
     icon: "BarChart3",
-    title: "Real-time Analytics",
+    title: "Executive Revenue Visibility",
     description:
-      "Interactive dashboards with KPIs, trends, rankings, and drill-downs.",
+      "Track revenue, trend shifts, branch performance, and product movement from one executive overview.",
   },
   {
-    icon: "Brain",
-    title: "AI Insights",
+    icon: "Package",
+    title: "Inventory And Expiry Awareness",
     description:
-      "AI-powered anomaly detection and narrative summaries of your sales data.",
+      "Surface stock and expiry risks early so teams can respond before margin and service levels are affected.",
   },
   {
-    icon: "GitBranch",
-    title: "Pipeline Automation",
+    icon: "Sparkles",
+    title: "Alerts And Explainable Insights",
     description:
-      "File watcher auto-triggers the full data pipeline from import to dashboard.",
+      "Highlight what changed, where to look next, and which problems need action now.",
+  },
+  {
+    icon: "FileBarChart",
+    title: "Operational Reporting That Travels",
+    description:
+      "Turn dashboards into reports, briefings, and shared outputs for leaders, branches, and partner teams.",
   },
 ];
 
@@ -100,45 +70,64 @@ export const PIPELINE_STEPS: PipelineStep[] = [
   {
     number: 1,
     icon: "FileUp",
-    label: "Import",
-    layer: "Bronze",
-    description: "Raw data ingestion from Excel and CSV files",
+    label: "Import your data",
+    layer: "",
+    description:
+      "Bring in spreadsheets or connected sources from sales and operations workflows.",
   },
   {
     number: 2,
-    icon: "Sparkles",
-    label: "Clean",
-    layer: "Silver",
-    description: "Deduplication, normalization, and type casting",
+    icon: "ShieldCheck",
+    label: "Clean and validate automatically",
+    layer: "",
+    description:
+      "Standardize the data, catch quality issues, and make the numbers safer to trust.",
   },
   {
     number: 3,
     icon: "BarChart3",
-    label: "Analyze",
-    layer: "Gold",
-    description: "Aggregations, KPIs, and business metrics",
+    label: "See the business clearly",
+    layer: "",
+    description:
+      "Track executive KPIs, branch trends, inventory signals, and operational risks from one system.",
   },
   {
     number: 4,
-    icon: "Monitor",
-    label: "Visualize",
-    layer: "Dashboard",
-    description: "Interactive charts, tables, and AI insights",
+    icon: "Zap",
+    label: "Act faster",
+    layer: "",
+    description:
+      "Use alerts, reports, and drill-downs to move from explanation to action.",
   },
 ];
 
-export interface Stat {
-  value: string;
-  numericValue: number;
-  suffix: string;
-  label: string;
+export interface ClaimItem {
+  icon: string;
+  headline: string;
+  description: string;
 }
 
-export const STATS: Stat[] = [
-  { value: "2.2M+", numericValue: 2200000, suffix: "+", label: "Rows Processed" },
-  { value: "99.5%", numericValue: 99.5, suffix: "%", label: "Data Quality Score" },
-  { value: "10x", numericValue: 10, suffix: "x", label: "Faster than Pandas" },
-  { value: "25+", numericValue: 25, suffix: "+", label: "API Endpoints" },
+export const CLAIMS: ClaimItem[] = [
+  {
+    icon: "Clock",
+    headline: "Reporting cycles cut from days to hours",
+    description: "Weekly sales reporting that used to take days runs automatically.",
+  },
+  {
+    icon: "Eye",
+    headline: "One trusted view across commercial and operations data",
+    description: "Revenue, inventory, expiry, and branch performance in a single system.",
+  },
+  {
+    icon: "AlertTriangle",
+    headline: "Early visibility into stock and expiry risk",
+    description: "Catch problems before they become margin or service-level failures.",
+  },
+  {
+    icon: "Zap",
+    headline: "Faster investigation from alert to action",
+    description: "From anomaly detection to fix path — without manual data digging.",
+  },
 ];
 
 export interface PricingTier {
@@ -155,52 +144,54 @@ export interface PricingTier {
 
 export const PRICING_TIERS: PricingTier[] = [
   {
-    name: "Starter",
-    price: "$0",
-    period: "/mo",
-    description: "Perfect for trying out Data Pulse",
+    name: "Explorer Pilot",
+    price: "Pilot",
+    period: "",
+    description:
+      "Best for teams validating fit with a sample workflow and a limited set of branches or data sources.",
     features: [
-      "1 data source",
-      "10,000 rows",
-      "Basic dashboard",
-      "Daily quality checks",
-      "Community support",
+      "Up to 3 data sources",
+      "Revenue and branch dashboards",
+      "Automated cleaning and validation",
+      "Pipeline health monitoring",
+      "Onboarding support",
     ],
-    cta: "Get Started Free",
+    cta: "Apply for Pilot",
     isPopular: false,
   },
   {
-    name: "Pro",
-    price: "$0",
-    originalPrice: "$49",
-    period: "/mo",
-    description: "For growing teams and businesses",
-    badge: "Launch offer — Free for early adopters",
+    name: "Operations Pilot",
+    price: "Pilot",
+    period: "",
+    description:
+      "Best for teams that need revenue visibility plus inventory, expiry, and operational monitoring in one environment.",
+    badge: "Most requested",
     features: [
-      "5 data sources",
-      "1,000,000 rows",
-      "AI-powered insights",
-      "Pipeline automation",
-      "Quality gates",
-      "Priority support",
+      "Unlimited data sources",
+      "Full analytics and operations suite",
+      "Inventory, expiry, and PO tracking",
+      "Alerts and explainable insights",
+      "Reports and briefings",
+      "Dedicated pilot support",
     ],
-    cta: "Join Beta — Free",
+    cta: "Apply for Pilot",
     isPopular: true,
   },
   {
-    name: "Enterprise",
+    name: "Enterprise Rollout",
     price: "Custom",
     period: "",
-    description: "For large-scale operations",
+    description:
+      "Best for organizations preparing for broader access, permissions, integrations, and formal onboarding.",
     features: [
-      "Unlimited data sources",
-      "Unlimited rows",
-      "SSO & RBAC",
-      "Custom integrations",
-      "Dedicated support",
-      "On-premise option",
+      "Everything in Operations Pilot",
+      "SSO and role-based access",
+      "Custom data connectors",
+      "Reseller and white-label options",
+      "SLA and dedicated support",
+      "Formal onboarding program",
     ],
-    cta: "Contact Sales",
+    cta: "Plan Rollout",
     isPopular: false,
   },
 ];
@@ -212,46 +203,71 @@ export interface FAQItem {
 
 export const FAQ_ITEMS: FAQItem[] = [
   {
-    question: "What data formats does Data Pulse support?",
+    question: "Who is DataPulse for?",
     answer:
-      "Data Pulse supports Excel (.xlsx, .xls) and CSV files. Our import engine uses Polars with PyArrow for blazing-fast processing of files up to 500 MB with automatic schema detection.",
+      "DataPulse is built for commercial, analytics, and operations teams that need one trusted view across sales, branch performance, inventory signals, and operational reporting. It is particularly well suited to pharma and retail operations groups.",
   },
   {
-    question: "How does the medallion architecture work?",
+    question: "Do we need clean data before using it?",
     answer:
-      "Data flows through three layers: Bronze (raw import), Silver (cleaned and validated via dbt), and Gold (aggregated business metrics). Each layer has quality gates to ensure data integrity.",
+      "No. DataPulse is designed to help teams start with real-world spreadsheets and operational inputs, then clean and validate them in a structured flow. You do not need to prepare your data in advance.",
   },
   {
-    question: "What quality checks are included?",
+    question: "Is this only for dashboards?",
     answer:
-      "7 automated checks run at each pipeline stage: row count validation, null rate analysis, schema drift detection, duplicate detection, value range checks, referential integrity, and freshness monitoring.",
+      "No. The product supports daily decisions through dashboards, alerts, reporting, and operational visibility. It is meant to be an active tool for teams making commercial and operational decisions.",
   },
   {
-    question: "Can I use my own AI/LLM provider?",
+    question: "Can it support branch and product-level monitoring?",
     answer:
-      "Yes. Data Pulse uses OpenRouter which gives you access to multiple AI models. You can configure your preferred provider and model in the settings.",
+      "Yes. Branch performance, product movement, and exception visibility are core to the product. You can drill from an executive summary down to branch and product detail.",
   },
   {
-    question: "Is my data secure?",
+    question: "What happens during a pilot?",
     answer:
-      "Absolutely. Data Pulse uses tenant-scoped Row Level Security (RLS) on all database tables, CORS protection, Content Security Policy headers, and all credentials are managed via environment variables.",
+      "A pilot focuses on a defined use case, a manageable data scope, and clear success criteria so your team can measure value quickly. We work with you to define what a successful pilot looks like before starting.",
   },
   {
-    question: "How long does setup take?",
+    question: "Is the platform secure?",
     answer:
-      "Under 5 minutes. Run docker compose up and your entire stack is ready: PostgreSQL, the API, dashboard, pipeline automation, and AI insights.",
+      "DataPulse is built with role-aware access, row-level data isolation, auditability, and enterprise-minded controls so teams can trust how commercial and operational data is handled.",
   },
   {
-    question: "What's included in the free tier?",
+    question: "How long does it take to see value?",
     answer:
-      "The Starter plan includes 1 data source, up to 10,000 rows, the basic analytics dashboard, daily quality checks, and community support. No credit card required.",
+      "Most teams see their first useful dashboard within hours of importing their first data file. A full pilot covering revenue visibility, inventory monitoring, and reporting typically shows value within one to two weeks.",
   },
   {
-    question: "Do you offer custom integrations?",
+    question: "Can we connect live data sources?",
     answer:
-      "Enterprise customers get custom integrations including SSO, webhook notifications, custom data connectors, and dedicated n8n workflow templates for their specific pipeline needs.",
+      "Yes. The Control Center supports managed source connections alongside manual file imports. Connected sources sync automatically on a schedule you control.",
   },
 ];
+
+export const FOOTER_COLUMNS = [
+  {
+    title: "Product",
+    links: [
+      { label: "How It Works",  href: "#how-it-works"  },
+      { label: "Use Cases",     href: "#use-cases"     },
+      { label: "Pilot Access",  href: "#pilot-access"  },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About",   href: "/#how-it-works"                    },
+      { label: "Contact", href: "mailto:info@smartdatapulse.tech" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy Policy",   href: "/privacy" },
+      { label: "Terms of Service", href: "/terms"   },
+    ],
+  },
+] as const;
 
 export const TECH_BADGES = [
   "Next.js",

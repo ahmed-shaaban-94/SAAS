@@ -76,6 +76,13 @@ class Settings(BaseSettings):
     api_key_roles: list[str] = ["api-reader"]
     default_tenant_id: str = "1"
 
+    # API overload protection
+    # Per-worker in-flight request cap. A small acquisition timeout lets the
+    # API shed excess load quickly instead of letting workers spiral into
+    # timeouts and OOMs under bursts.
+    api_max_in_flight_requests: int = 64
+    api_backpressure_timeout_ms: int = 75
+
     # RBAC — emails that auto-register with elevated roles on first login
     # Set via OWNER_EMAILS / ADMIN_EMAILS env vars (comma-separated). Empty = no auto-elevation.
     owner_emails: list[str] = []
@@ -97,6 +104,8 @@ class Settings(BaseSettings):
 
     # Async query execution (Redis db 2 for job state)
     query_row_limit: int = 10_000  # Max rows for async queries
+    query_max_concurrent_jobs: int = 4
+    query_max_concurrent_jobs_per_tenant: int = 2
 
     # Embed (iframe white-label)
     embed_allowed_origins: list[str] = []  # Domains allowed to iframe embed
@@ -112,6 +121,18 @@ class Settings(BaseSettings):
     # OpenRouter (AI-Light)
     openrouter_api_key: str = ""
     openrouter_model: str = "openrouter/free"
+
+    # AI-Light — LangGraph feature flag and runtime controls
+    # Set AI_LIGHT_USE_LANGGRAPH=true to enable; OFF by default.
+    ai_light_use_langgraph: bool = False
+    # Global daily token cap across all tenants.
+    ai_light_max_tokens_per_day: int = 100_000
+    # "memory" (Phase A-C) or "postgres" (Phase D HITL).
+    ai_light_checkpoint_backend: str = "memory"
+    # Tool-capable model, e.g. "openai/gpt-4o-mini" or "anthropic/claude-3.5-haiku".
+    openrouter_agent_model: str = ""
+    langsmith_api_key: str = ""  # Optional LangSmith observability
+    langsmith_project: str = ""  # LangSmith project name
 
     # Brain (session memory) — embedding model for semantic search
     brain_embed_model: str = "openai/text-embedding-3-small"
@@ -132,12 +153,23 @@ class Settings(BaseSettings):
     slack_webhook_url: str = ""
     notification_email: str = ""
 
+    # Control Center (data control plane) — off by default until Phase 1d lands
+    feature_control_center: bool = False
+
+    # Pharmaceutical Platform — inventory, expiry, dispensing, POS features
+    feature_platform: bool = False
+
     # Stripe billing
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_pro_monthly: str = ""  # price_xxx from Stripe Dashboard
     billing_base_url: str = "https://smartdatapulse.tech"
+
+    # Control Center — credential encryption key (pgcrypto pgp_sym_encrypt)
+    # Generate with: openssl rand -base64 48
+    # Must be set when using Postgres/SQL Server connectors with stored passwords.
+    control_center_creds_key: str = ""
 
     @model_validator(mode="after")
     def _require_auth_in_production(self) -> "Settings":

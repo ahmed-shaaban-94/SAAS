@@ -4,12 +4,14 @@ Covers:
 - Streaming upload (2.1)
 - JWT retry reduction (2.2)
 - AI client timeout reduction (2.3)
+- Overload backpressure (2.4)
 - Prometheus metrics module (3.1)
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -43,6 +45,7 @@ async def test_upload_rejects_oversized_file_mid_stream():
 
     mock_request = MagicMock()
     mock_service = MagicMock()
+    mock_service.save_temp_file_stream = AsyncMock(side_effect=_consume_upload_stream)
 
     with pytest.raises(HTTPException) as exc_info:
         await upload_files(
@@ -78,7 +81,7 @@ async def test_upload_accepts_small_file():
 
     mock_request = MagicMock()
     mock_service = MagicMock()
-    mock_service.save_temp_file.return_value = MagicMock()
+    mock_service.save_temp_file_stream = AsyncMock(return_value=MagicMock())
 
     result = await upload_files(
         request=mock_request,
@@ -87,7 +90,18 @@ async def test_upload_accepts_small_file():
     )
 
     assert len(result) == 1
-    mock_service.save_temp_file.assert_called_once_with("small.csv", content)
+    filename, chunk_iter = mock_service.save_temp_file_stream.await_args.args
+    assert filename == "small.csv"
+    collected = []
+    async for chunk in chunk_iter:
+        collected.append(chunk)
+    assert b"".join(collected) == content
+
+
+async def _consume_upload_stream(_filename, chunk_iter):
+    async for _chunk in chunk_iter:
+        pass
+    return MagicMock()
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +150,74 @@ def test_ai_client_timeout_reduced():
         # Verify timeout is 30, not 60
         _, kwargs = mock_post.call_args
         assert kwargs["timeout"] == 30
+
+
+# ---------------------------------------------------------------------------
+# 2.4 — Admission control sheds load before workers collapse
+# ---------------------------------------------------------------------------
+
+
+def test_backpressure_rejects_when_all_slots_are_busy():
+    """A saturated worker should fail fast with 503 instead of hanging."""
+    from fastapi.testclient import TestClient
+
+    from datapulse.api.app import create_app
+    from datapulse.api.auth import get_current_user
+
+    app = create_app()
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "test-user",
+        "email": "test@datapulse.local",
+        "preferred_username": "test",
+        "tenant_id": "1",
+        "roles": ["admin"],
+        "raw_claims": {},
+    }
+    controller = app.state.admission_controller
+    original_timeout = controller.acquire_timeout_ms
+    original_semaphore = controller._semaphore
+    controller.acquire_timeout_ms = 1
+    controller._semaphore = asyncio.Semaphore(0)
+
+    try:
+        with (
+            patch(
+                "datapulse.api.routes.queries.get_job_result",
+                return_value={"status": "pending"},
+            ),
+            TestClient(app, raise_server_exceptions=False) as client,
+        ):
+            resp = client.get("/api/v1/queries/job-123")
+    finally:
+        controller.acquire_timeout_ms = original_timeout
+        controller._semaphore = original_semaphore
+        app.dependency_overrides.clear()
+
+    assert resp.status_code == 503
+    assert resp.headers["x-datapulse-backpressure"] == "rejected"
+
+
+def test_backpressure_skips_health_checks():
+    """Health endpoints must stay reachable even while the admission gate is full."""
+    from fastapi.testclient import TestClient
+
+    from datapulse.api.app import create_app
+
+    app = create_app()
+    controller = app.state.admission_controller
+    original_timeout = controller.acquire_timeout_ms
+    original_semaphore = controller._semaphore
+    controller.acquire_timeout_ms = 1
+    controller._semaphore = asyncio.Semaphore(0)
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            resp = client.get("/health/live")
+    finally:
+        controller.acquire_timeout_ms = original_timeout
+        controller._semaphore = original_semaphore
+
+    assert resp.status_code == 200
 
 
 # ---------------------------------------------------------------------------
