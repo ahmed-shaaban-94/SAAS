@@ -44,29 +44,49 @@ Windows dev constraints:
 
 ---
 
-## Follow-up 1 — Record the TTFI baseline on the droplet
+## Follow-up 1 — ~~Record the TTFI baseline on the droplet~~  → CLOSED (attempted 2026-04-17)
 
-**Branch:** `claude/ttfi-baseline-droplet-run`
-**Parent:** #399 (the instrumentation that made this measurable)
-**Lever:** Trust (numbers that commit us to a curve)
-**Size:** small; ~1 hour + droplet runs.
+**Status:** Attempted, pivoted. See [`docs/brain/incidents/2026-04-17-ttfi-baseline-droplet-attempt.md`](../../brain/incidents/2026-04-17-ttfi-baseline-droplet-attempt.md) for the lessons. The droplet was deployed to latest main as part of the attempt — the sample-load endpoint and full fetcher trio are live on prod as of commit `dba2cc5`. But the spec was never run because (a) Playwright isn't installed on the droplet, and (b) the spec's `page.route()` mocks mean it wouldn't have measured the real flow anyway.
+
+Superseded by Follow-up 1b.
+
+---
+
+## Follow-up 1b — Real-backend TTFI baseline spec
+
+**Branch:** `claude/ttfi-real-backend-spec`
+**Parent:** #399 (supersedes mocked baseline spec for measurement purposes)
+**Lever:** Trust (honest numbers, not mock noise)
+**Size:** medium; ~3 hours of work + one droplet run session.
 
 ```text
 [paste shared preamble]
 
-Your task: run the `golden-path-baseline.spec.ts` spec five times on the droplet and record the numbers in `docs/brain/incidents/2026-04-17-ttfi-baseline.md`.
+Your task: write a new Playwright spec that measures TTFI against the real droplet backend (no `page.route()` mocks), and run it to populate the results table in `docs/brain/incidents/2026-04-17-ttfi-baseline.md`.
+
+Context
+-------
+The existing `frontend/e2e/golden-path-baseline.spec.ts` uses `page.route()` to intercept `/api/v1/onboarding/load-sample` and `/api/v1/insights/first`. That makes it useful as a CI regression guard but useless as a real TTFI measurement — all it times is `useEffect` mount latency inside a Chromium page. The droplet attempt on 2026-04-17 confirmed this was the wrong primitive.
 
 Scope
 -----
-1. Ensure the droplet has a clean tenant (no `bronze.sales` rows for the target tenant_id).
-2. Run `RUN_TTFI_BASELINE=1 CI=1 npx playwright test frontend/e2e/golden-path-baseline.spec.ts --project chromium --reporter=html` five times.
-3. Extract the median + p95 of each step timing from the five `playwright-report/ttfi-baseline.json` artifacts.
-4. Edit the results table in `docs/brain/incidents/2026-04-17-ttfi-baseline.md`.
-5. Open a tiny docs-only PR; lever is Trust; body includes the raw numbers for the 5 runs.
+1. Create `frontend/e2e/golden-path-real-backend.spec.ts` that:
+   - Does NOT install any `page.route()` mocks.
+   - Reads `PLAYWRIGHT_BASE_URL` env var (default: `http://localhost:3000`).
+   - Accepts `PLAYWRIGHT_API_TOKEN` env var for auth — injects it as a NextAuth session cookie via `browser.newContext({ storageState: … })` at startup.
+   - Walks /upload → "Use sample pharma data" → /dashboard?first_upload=1 → waits for first-insight card to render with non-empty title.
+   - Records `ttfi:event` timestamps (the same window emitter the mocked spec uses).
+   - Writes `playwright-report/ttfi-real.json` with per-event deltas.
+   - Is gated by `RUN_TTFI_REAL=1` so it doesn't accidentally run in normal CI.
+2. Add a runbook section to `frontend/e2e/README.md` explaining how to execute it against the droplet (including how to mint the session cookie).
+3. Tackle the "no Playwright on droplet" problem one of two ways:
+   (a) Ship a new `Dockerfile.playwright` + `docker-compose.playwright.yml` that mounts the frontend dir and runs `npx playwright test` with Chromium preinstalled. Document in the README.
+   (b) OR run from a developer workstation with the droplet URL as `PLAYWRIGHT_BASE_URL`. Acceptable short-term; document the auth-token mint step clearly.
+4. After the spec exists and is green locally (mocked path) and against a real backend (`RUN_TTFI_REAL=1`), run 5 passes and record median + p95 in `docs/brain/incidents/2026-04-17-ttfi-baseline.md`.
 
-Do NOT change the spec or the instrumentation — if something is wrong with the measurement, open a separate PR with a failing test first.
+Do NOT delete the mocked `golden-path-baseline.spec.ts` — it still earns its keep as a CI regression guard.
 
-Stop after the docs PR CI is green.
+Stop after the spec is green on the droplet × 5 runs and the brain note is updated.
 ```
 
 ---
@@ -288,13 +308,13 @@ Stop after CI green.
 
 ## Ordering recommendation
 
-If someone takes on several of these at once, ship them in this order to maximize parallel-friendliness:
+**Status after 2026-04-17 session:** #2, #3, #4, #8 all shipped to main. #1 closed as superseded by #1b. Remaining queue below.
 
-1. **Follow-up 1** (record baseline) — unblocks quantitative claims elsewhere.
-2. **Follow-up 8** (shared helper) — cleans a duplication that will otherwise multiply as other CTAs get added.
-3. **Follow-ups 2 → 3 → 4** (fetchers) — each is one PR; picker priority already favors mom > expiry > stock.
-4. **Follow-up 5** (empty-state migration) — parallel to the fetchers, one PR per domain.
-5. **Follow-up 7** (taxonomy ADR) — before backend sync in Follow-up 6 so sync is built on a decided schema.
-6. **Follow-up 6** (backend sync) — last because it depends on the taxonomy decision.
+Ship in this order to maximize parallel-friendliness:
+
+1. **Follow-up 1b** (real-backend TTFI spec) — unblocks quantitative claims elsewhere. Bigger than original #1 because it has to both author the spec and solve the "Playwright on droplet" problem.
+2. **Follow-up 5** (empty-state migration wave 2) — parallel to everything else, one PR per domain.
+3. **Follow-up 7** (taxonomy ADR) — before backend sync in Follow-up 6 so sync is built on a decided schema.
+4. **Follow-up 6** (backend sync) — last because it depends on the taxonomy decision.
 
 Do NOT bundle. Each PR stays reviewable.
