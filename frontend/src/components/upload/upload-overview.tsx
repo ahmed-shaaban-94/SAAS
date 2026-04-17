@@ -8,6 +8,10 @@ import { LoadingCard } from "@/components/loading-card";
 import { PipelineProgress } from "./pipeline-progress";
 import { RecentImports } from "./recent-imports";
 import { usePipelineRun } from "@/hooks/use-pipeline-run";
+import {
+  trackUploadStarted,
+  trackUploadCompleted,
+} from "@/lib/analytics-events";
 
 interface UploadedFile {
   file_id: string;
@@ -45,6 +49,24 @@ export function UploadOverview() {
 
   // Clean up SSE on unmount
   useEffect(() => cleanup, [cleanup]);
+
+  // Golden-Path instrumentation: fire upload_started once per session when
+  // the user lands on this page. See Phase 2 Task 0 (#399).
+  useEffect(() => {
+    trackUploadStarted();
+  }, []);
+
+  // Fire upload_completed when a pipeline run reaches success.
+  // Dedup is handled per-run_id inside the helper.
+  useEffect(() => {
+    if (progress?.status === "success" && progress.run_id) {
+      trackUploadCompleted({
+        run_id: progress.run_id,
+        duration_seconds: progress.duration_seconds ?? 0,
+        rows_loaded: progress.rows_loaded,
+      });
+    }
+  }, [progress?.status, progress?.run_id, progress?.duration_seconds, progress?.rows_loaded]);
 
   const getAuthHeaders = async () => {
     const session = await getSession();
