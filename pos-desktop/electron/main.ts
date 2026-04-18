@@ -7,6 +7,7 @@ import { applySchema } from "./db/migrate";
 import { createHardware } from "./hardware/index";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { getSetting } from "./db/settings";
+import { bootRecovery, startBackgroundSync } from "./sync/background";
 
 // ── Configuration ──────────────────────────────────────────
 const PORT = 3847;
@@ -291,6 +292,9 @@ app.whenReady().then(async () => {
   const hw = createHardware(hardwareMode === "real" ? "real" : "mock");
   console.log(`[main] Hardware mode: ${hw.mode}`);
 
+  // Reset any syncing rows orphaned by a previous crash (§6.1 boot recovery)
+  bootRecovery(db);
+
   // Register all IPC handlers before windows are created
   registerIpcHandlers(db, hw);
 
@@ -304,6 +308,10 @@ app.whenReady().then(async () => {
 
   createWindow();
   createTray();
+
+  // Start background sync loop (push queue every 10s, online detection via /health)
+  const stopSync = startBackgroundSync(db, mainWindow);
+  app.on("before-quit", stopSync);
 
   app.on("activate", () => {
     // macOS: re-create window when dock icon clicked
