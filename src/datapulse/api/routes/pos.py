@@ -33,6 +33,8 @@ from datapulse.pos.models import (
     AddItemRequest,
     CashCountRequest,
     CashDrawerEventResponse,
+    CatalogProductPage,
+    CatalogStockPage,
     CheckoutRequest,
     CheckoutResponse,
     CloseShiftRequest,
@@ -969,3 +971,54 @@ def tenant_key(
             for k in keys
         ]
     )
+
+
+# ---------------------------------------------------------------------------
+# M3b — Catalog pull (§pull-sync)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/catalog/products",
+    response_model=CatalogProductPage,
+    summary="Paginated product catalog for offline sync",
+)
+@limiter.limit("30/minute")
+def get_catalog_products(
+    request: Request,
+    user: CurrentUser,
+    _: Annotated[None, Depends(require_pos_plan())],
+    service: Annotated[PosService, Depends(get_pos_service)],
+    cursor: Annotated[str | None, Query(description="Last drug_code from previous page")] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+) -> CatalogProductPage:
+    """Return a page of products ordered by ``drug_code``.
+
+    Pass the returned ``next_cursor`` on subsequent requests to page forward.
+    When ``next_cursor`` is null the catalog is exhausted; reset to
+    ``cursor=null`` on the next sync cycle.
+    """
+    return service.get_catalog_products(cursor=cursor, limit=limit)
+
+
+@router.get(
+    "/catalog/stock",
+    response_model=CatalogStockPage,
+    summary="Paginated active-batch stock for offline sync",
+)
+@limiter.limit("30/minute")
+def get_catalog_stock(
+    request: Request,
+    user: CurrentUser,
+    _: Annotated[None, Depends(require_pos_plan())],
+    service: Annotated[PosService, Depends(get_pos_service)],
+    site: Annotated[str | None, Query(description="Filter to a specific site_code")] = None,
+    cursor: Annotated[str | None, Query(description="Last loaded_at ISO (cursor)")] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+) -> CatalogStockPage:
+    """Return a page of active batches from ``stg_batches`` ordered by ``loaded_at``.
+
+    Pass the returned ``next_cursor`` on subsequent requests.  Optionally
+    filter by ``site`` to pull stock for a single branch.
+    """
+    return service.get_catalog_stock(site=site, cursor=cursor, limit=limit)

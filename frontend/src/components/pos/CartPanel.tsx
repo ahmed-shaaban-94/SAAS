@@ -4,6 +4,7 @@ import { ShoppingCart, Trash2 } from "lucide-react";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { CartItem } from "./CartItem";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/empty-state";
 
 function fmt(n: number): string {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -46,11 +47,10 @@ export function CartPanel({ className }: CartPanelProps) {
       {/* Items list */}
       <div className="flex-1 space-y-2 overflow-y-auto pr-1">
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-text-secondary">
-            <ShoppingCart className="mb-2 h-8 w-8 opacity-30" />
-            <p className="text-sm">Cart is empty</p>
-            <p className="mt-1 text-xs opacity-60">Search and add items</p>
-          </div>
+          <EmptyState
+            title="Cart is empty"
+            description="Search for a drug and add it to the cart."
+          />
         ) : (
           items.map((item) => (
             <CartItem

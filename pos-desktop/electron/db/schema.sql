@@ -154,6 +154,8 @@ INSERT OR IGNORE INTO settings(key, value) VALUES
     ('schema_version',           '1'),
     ('min_compatible_app_version','1.0.0'),
     ('hardware_mode',            'mock'),
+    ('printer_interface',        'tcp://192.168.1.100:9100'),
+    ('printer_type',             'EPSON'),
     ('language',                 'ar-EG'),
     ('numeric_style',            'latin'),
     ('density',                  'compact');
@@ -192,4 +194,14 @@ CREATE TABLE IF NOT EXISTS secrets_dpapi (
     key         TEXT PRIMARY KEY,             -- 'device_private_key','offline_grant','jwt','refresh_token', …
     ciphertext  BLOB NOT NULL,
     updated_at  TEXT NOT NULL
+);
+
+-- ─────────────────────────────────────────────────────────────
+-- Override-code ledger (prevents double-spend of scrypt codes)
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS consumed_override_codes (
+    grant_id    TEXT NOT NULL,
+    code_id     TEXT NOT NULL,
+    PRIMARY KEY (grant_id, code_id)
 );

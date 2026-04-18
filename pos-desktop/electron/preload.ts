@@ -86,8 +86,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // ── updater ────────────────────────────────────────────────
   updater: {
-    check: () => ipcRenderer.invoke("updater.check"),
-    install: () => ipcRenderer.invoke("updater.install"),
+    isReady: () => ipcRenderer.invoke("updater.isReady"),
+    quitAndInstall: () => ipcRenderer.invoke("updater.quitAndInstall"),
+    onEvent: (cb: (event: unknown) => void): (() => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, event: unknown) => cb(event);
+      ipcRenderer.on("updater:event", listener);
+      return () => ipcRenderer.removeListener("updater:event", listener);
+    },
   },
 
   // ── app ────────────────────────────────────────────────────

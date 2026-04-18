@@ -691,3 +691,47 @@ class CloseShiftRequestV2(BaseModel):
     closing_cash: JsonDecimal
     notes: str | None = None
     local_unresolved: LocalUnresolvedClaim
+
+
+# ---------------------------------------------------------------------------
+# M3b — Catalog pull (§pull-sync)
+# ---------------------------------------------------------------------------
+
+
+class CatalogProductEntry(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    drug_code: str
+    drug_name: str
+    drug_brand: str | None = None
+    drug_cluster: str | None = None
+    drug_category: str | None = None
+    is_controlled: bool
+    requires_pharmacist: bool
+    unit_price: JsonDecimal
+    updated_at: str  # ISO timestamp (server wall-clock, not dim_product field)
+
+
+class CatalogProductPage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    items: list[CatalogProductEntry]
+    next_cursor: str | None  # last drug_code in page, or None when exhausted
+
+
+class CatalogStockEntry(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    drug_code: str
+    site_code: str
+    batch_number: str
+    quantity: JsonDecimal
+    expiry_date: date | None = None
+    updated_at: str  # loaded_at ISO timestamp used as cursor
+
+
+class CatalogStockPage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    items: list[CatalogStockEntry]
+    next_cursor: str | None  # last loaded_at ISO, or None when exhausted

@@ -8,13 +8,18 @@
 import type { BrowserWindow } from "electron";
 import type Database from "better-sqlite3";
 import { drainQueue, getBaseUrl } from "./push";
+import { pullProducts, pullStock } from "./pull";
 import { checkOnline } from "./online";
 import { getQueueStats } from "../db/queue";
 import { getSetting } from "../db/settings";
 
 const PUSH_INTERVAL_MS = 10_000;
+const STOCK_PULL_INTERVAL_MS = 300_000;    // 5 min
+const PRODUCTS_PULL_INTERVAL_MS = 1_800_000; // 30 min
 
 let _timer: ReturnType<typeof setInterval> | null = null;
+let _stockTimer: ReturnType<typeof setInterval> | null = null;
+let _productsTimer: ReturnType<typeof setInterval> | null = null;
 let _cleanup: (() => void) | null = null;
 
 /**
@@ -70,11 +75,30 @@ export function startBackgroundSync(
   // Run one tick immediately so state is fresh on startup.
   tick().catch(console.error);
 
-  _cleanup = () => {
-    if (_timer) {
-      clearInterval(_timer);
-      _timer = null;
+  const pullIfOnline = async (worker: () => Promise<number>, label: string) => {
+    const baseUrl = getBaseUrl();
+    const online = await checkOnline(baseUrl);
+    if (!online || !getSetting(db, "jwt")) return;
+    try {
+      const n = await worker();
+      if (n > 0) console.log(`[sync] ${label}: pulled ${n} rows`);
+    } catch (err) {
+      console.error(`[sync] ${label} error:`, err instanceof Error ? err.message : err);
     }
+  };
+
+  _stockTimer = setInterval(() => {
+    pullIfOnline(() => pullStock(db), "stock pull").catch(console.error);
+  }, STOCK_PULL_INTERVAL_MS);
+
+  _productsTimer = setInterval(() => {
+    pullIfOnline(() => pullProducts(db), "products pull").catch(console.error);
+  }, PRODUCTS_PULL_INTERVAL_MS);
+
+  _cleanup = () => {
+    if (_timer) { clearInterval(_timer); _timer = null; }
+    if (_stockTimer) { clearInterval(_stockTimer); _stockTimer = null; }
+    if (_productsTimer) { clearInterval(_productsTimer); _productsTimer = null; }
   };
 
   return _cleanup;

@@ -970,6 +970,83 @@ class PosRepository:
         )
         return dict(row) if row else None
 
+    def list_catalog_products(
+        self,
+        cursor: str | None,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Return up to *limit* products from ``dim_product`` ordered by drug_code.
+
+        Uses a ``DISTINCT ON`` CTE to pre-compute the latest unit_price for every
+        drug_code in a single fct_sales scan — avoids 17.8k correlated subqueries
+        that would fire when pulling the full catalog.
+        """
+        rows = (
+            self._session.execute(
+                text("""
+                    WITH latest_price AS (
+                        SELECT DISTINCT ON (drug_code)
+                            drug_code,
+                            unit_price
+                        FROM   public_marts.fct_sales
+                        ORDER  BY drug_code, invoice_date DESC
+                    )
+                    SELECT
+                        p.drug_code,
+                        p.drug_name,
+                        p.drug_brand,
+                        p.drug_cluster,
+                        p.drug_category,
+                        COALESCE(lp.unit_price, 0) AS unit_price
+                    FROM   public_marts.dim_product p
+                    LEFT   JOIN latest_price lp USING (drug_code)
+                    WHERE  (:cursor IS NULL OR p.drug_code > :cursor)
+                    ORDER  BY p.drug_code
+                    LIMIT  :limit
+                """),
+                {"cursor": cursor, "limit": limit},
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
+
+    def list_catalog_stock(
+        self,
+        site: str | None,
+        cursor: str | None,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Return active batches from ``public_staging.stg_batches`` ordered by loaded_at.
+
+        The *cursor* is an ISO timestamp string.  Only batches with
+        ``loaded_at > cursor`` are returned so the desktop can page forward
+        through the full batch ledger.
+        """
+        rows = (
+            self._session.execute(
+                text("""
+                    SELECT
+                        drug_code,
+                        site_code,
+                        batch_number,
+                        current_quantity,
+                        expiry_date,
+                        loaded_at
+                    FROM   public_staging.stg_batches
+                    WHERE  status = 'active'
+                      AND  (:site IS NULL OR site_code = :site)
+                      AND  (:cursor IS NULL OR loaded_at > :cursor::timestamptz)
+                    ORDER  BY loaded_at, drug_code, site_code, batch_number
+                    LIMIT  :limit
+                """),
+                {"site": site, "cursor": cursor, "limit": limit},
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
+
     def insert_bronze_pos_transaction(
         self,
         *,

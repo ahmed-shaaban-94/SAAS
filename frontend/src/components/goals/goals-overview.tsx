@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import { Target, Plus, TrendingUp, TrendingDown, CheckCircle2, Wallet } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 
 function ProgressRing({ pct, size = 120 }: { pct: number; size?: number }) {
   const radius = (size - 10) / 2;
@@ -143,7 +144,7 @@ function QuarterlyView({ year }: { year: number }) {
 
   if (isLoading) return <LoadingCard className="h-64" />;
   if (!data || data.quarters.length === 0) {
-    return <div className="viz-panel rounded-[1.75rem] p-8 text-center text-text-tertiary">No quarterly data for {year}</div>;
+    return <EmptyState title={`No quarterly data for ${year}`} description="Set targets and record actuals to see quarterly performance here." />;
   }
 
   const chartData = data.quarters.map((q) => ({

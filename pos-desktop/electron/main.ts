@@ -8,6 +8,7 @@ import { createHardware } from "./hardware/index";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { getSetting } from "./db/settings";
 import { bootRecovery, startBackgroundSync } from "./sync/background";
+import { setupUpdater, checkForUpdates } from "./updater/index";
 
 // ── Configuration ──────────────────────────────────────────
 const PORT = 3847;
@@ -289,7 +290,12 @@ app.whenReady().then(async () => {
 
   // Initialise hardware adapters (mock or real based on settings)
   const hardwareMode = getSetting(db, "hardware_mode");
-  const hw = createHardware(hardwareMode === "real" ? "real" : "mock");
+  const printerInterface = getSetting(db, "printer_interface") ?? undefined;
+  const printerType = getSetting(db, "printer_type") ?? undefined;
+  const hw = createHardware(
+    hardwareMode === "real" ? "real" : "mock",
+    printerInterface ? { printerInterface, printerType } : undefined,
+  );
   console.log(`[main] Hardware mode: ${hw.mode}`);
 
   // Reset any syncing rows orphaned by a previous crash (§6.1 boot recovery)
@@ -308,6 +314,13 @@ app.whenReady().then(async () => {
 
   createWindow();
   createTray();
+
+  // Wire auto-updater after window is ready (only in packaged builds)
+  if (mainWindow && app.isPackaged) {
+    setupUpdater(mainWindow);
+    // Delay the first check 30s so it doesn't compete with startup I/O
+    setTimeout(() => { checkForUpdates().catch(() => {}); }, 30_000);
+  }
 
   // Start background sync loop (push queue every 10s, online detection via /health)
   const stopSync = startBackgroundSync(db, mainWindow);

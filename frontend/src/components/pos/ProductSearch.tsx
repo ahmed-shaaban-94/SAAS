@@ -5,6 +5,7 @@ import { Search, Package } from "lucide-react";
 import { usePosProducts } from "@/hooks/use-pos-products";
 import { cn } from "@/lib/utils";
 import type { PosProductResult } from "@/types/pos";
+import { EmptyState } from "@/components/empty-state";
 
 interface ProductSearchProps {
   siteCode: string;
@@ -71,10 +72,10 @@ export function ProductSearch({ siteCode, onSelect, className }: ProductSearchPr
       {/* Results */}
       <div className="flex-1 overflow-y-auto space-y-1">
         {products.length === 0 && debouncedQuery.length >= 2 && !isLoading && (
-          <div className="flex flex-col items-center py-8 text-text-secondary">
-            <Package className="mb-2 h-6 w-6 opacity-40" />
-            <p className="text-sm">No drugs found for &quot;{debouncedQuery}&quot;</p>
-          </div>
+          <EmptyState
+            title="No drugs found"
+            description={`No results for "${debouncedQuery}". Try a different name or code.`}
+          />
         )}
         {products.map((drug) => (
           <button

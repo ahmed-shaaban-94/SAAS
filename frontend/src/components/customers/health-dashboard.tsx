@@ -4,6 +4,7 @@ import { useHealthDistribution, useAtRiskCustomers } from "@/hooks/use-customer-
 import { formatCurrency } from "@/lib/formatters";
 import { ErrorRetry } from "@/components/error-retry";
 import type { CustomerHealthScore, HealthDistribution } from "@/types/api";
+import { EmptyState } from "@/components/empty-state";
 
 const BAND_COLORS: Record<string, string> = {
   Thriving: "bg-emerald-500",
@@ -64,7 +65,12 @@ function DistributionBar({ dist }: { dist: HealthDistribution }) {
 
 function AtRiskTable({ customers }: { customers: CustomerHealthScore[] }) {
   if (!customers.length) {
-    return <p className="text-sm text-muted-foreground">No at-risk customers found.</p>;
+    return (
+      <EmptyState
+        title="No at-risk customers"
+        description="All customers are in good standing — check back after the next data refresh."
+      />
+    );
   }
 
   return (
