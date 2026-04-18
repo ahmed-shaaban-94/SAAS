@@ -1,0 +1,101 @@
+name: POS Release
+
+# Triggered by a tag push matching pos-v*.*.* (e.g. pos-v1.2.3)
+# Builds a signed NSIS installer and publishes it to GitHub Releases.
+
+on:
+  push:
+    tags:
+      - "pos-v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write   # required to create GitHub Releases
+
+jobs:
+  build-windows:
+    name: Build & Publish Windows installer
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Node ──────────────────────────────────────────────────────────────
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: pos-desktop/package-lock.json
+
+      # ── Install deps + rebuild native modules ─────────────────────────────
+      - name: Install dependencies
+        working-directory: pos-desktop
+        run: npm ci
+
+      - name: Rebuild native modules for Electron
+        working-directory: pos-desktop
+        run: npx electron-rebuild --force
+        env:
+          npm_config_msvs_version: "2019"
+
+      # ── TypeScript compile ────────────────────────────────────────────────
+      - name: Compile TypeScript
+        working-directory: pos-desktop
+        run: npm run build
+
+      # ── Tests ─────────────────────────────────────────────────────────────
+      - name: Run tests
+        working-directory: pos-desktop
+        run: npm test
+
+      # ── Build Next.js (standalone) + copy into resources/ ─────────────────
+      # The CI workflow for the main app already validates the frontend build.
+      # Here we just need the standalone output for packaging.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Next.js standalone
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_OUTPUT: standalone
+          INTERNAL_API_URL: "http://localhost:8000"
+          NEXTAUTH_SECRET: "placeholder-overridden-at-runtime"
+          NEXTAUTH_URL: "http://localhost:3847"
+          AUTH0_DOMAIN: "placeholder"
+          AUTH0_CLIENT_ID: "placeholder"
+          AUTH0_CLIENT_SECRET: "placeholder"
+
+      - name: Copy Next.js standalone into pos-desktop/resources/nextjs
+        shell: bash
+        run: |
+          mkdir -p pos-desktop/resources/nextjs
+          cp -r frontend/.next/standalone/. pos-desktop/resources/nextjs/
+          cp -r frontend/.next/static pos-desktop/resources/nextjs/.next/static
+          cp -r frontend/public pos-desktop/resources/nextjs/public
+
+      # ── Package + sign + publish ───────────────────────────────────────────
+      - name: Package, sign and publish
+        working-directory: pos-desktop
+        run: npm run package -- --publish always
+        env:
+          # Code signing — set in repository secrets.
+          # If CSC_LINK is absent, electron-builder skips signing (unsigned build).
+          CSC_LINK: ${{ secrets.POS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.POS_CSC_KEY_PASSWORD }}
+          # GitHub token so electron-builder can upload to Releases.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Upload installer as artifact (also available without a release) ────
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DataPulse-POS-Windows
+          path: pos-desktop/dist/*.exe
+          retention-days: 30

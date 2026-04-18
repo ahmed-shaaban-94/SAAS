@@ -1,11 +1,29 @@
 # electron-builder configuration
 # Docs: https://www.electron.build/configuration
+#
+# Code signing:
+#   Set CSC_LINK (path or base64 of .p12/.pfx) and CSC_KEY_PASSWORD in the
+#   build environment (GitHub Actions secret: POS_CSC_LINK, POS_CSC_KEY_PASSWORD).
+#   Leave unset for unsigned dev/test builds — electron-builder skips signing
+#   automatically when CSC_LINK is absent.
+#
+# Auto-update:
+#   Releases published to GitHub (ahmed-shaaban-94/Data-Pulse) with tag pattern
+#   pos-v*.*.* trigger the electron-updater check in packaged builds.
+#   GH_TOKEN must be set in the build environment for `electron-builder --publish always`.
 
 appId: tech.smartdatapulse.pos
 productName: DataPulse POS
-copyright: Copyright (c) 2026 DataPulse
+copyright: Copyright © 2026 DataPulse
 
-# Include the compiled Next.js standalone output
+# ── Auto-update provider ─────────────────────────────────────
+publish:
+  provider: github
+  owner: ahmed-shaaban-94
+  repo: Data-Pulse
+  releaseType: release
+
+# ── Include the compiled Next.js standalone output ───────────
 extraResources:
   - from: resources/nextjs
     to: nextjs
@@ -16,41 +34,70 @@ extraResources:
     filter:
       - "**/*"
 
-# ── Windows ─────────────────────────────────────────────────
+# ── Windows ──────────────────────────────────────────────────
 win:
   target:
     - target: nsis
       arch: [x64]
   icon: assets/icon.ico
   artifactName: "DataPulse-POS-${version}-Setup.${ext}"
+  # Signing — credentials injected via environment variables.
+  # electron-builder skips signing silently when CSC_LINK is not set.
+  signingHashAlgorithms:
+    - sha256
+  signDlls: false
+  verifyUpdateCodeSignature: true
 
+# ── NSIS installer ───────────────────────────────────────────
 nsis:
   oneClick: false
   perMachine: true
+  allowElevation: true
   allowToChangeInstallationDirectory: true
   installerIcon: assets/icon.ico
   uninstallerIcon: assets/icon.ico
-  license: null
+  installerHeaderIcon: assets/icon.ico
+  # Branding images — add assets/nsis-header.bmp (468×60) and
+  # assets/nsis-sidebar.bmp (164×314) for custom installer look.
+  # installerHeader: assets/nsis-header.bmp
+  # installerSidebar: assets/nsis-sidebar.bmp
+  license: resources/LICENSE.rtf
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: DataPulse POS
+  menuCategory: DataPulse
+  runAfterFinish: true
+  # Installer language — Arabic + English
+  installerLanguages:
+    - en_US
+    - ar
+  multiLanguageInstaller: true
+  # Custom NSIS script for prerequisite checks (VC++ Redist, .NET)
+  include: resources/installer.nsh
 
-# ── Build output ────────────────────────────────────────────
+# ── Native module rebuild ────────────────────────────────────
+# better-sqlite3 and node-thermal-printer include native addons that must be
+# compiled against the Electron ABI, not the system Node ABI.
+npmRebuild: true
+buildDependenciesFromSource: false
+
+# ── Build output ─────────────────────────────────────────────
 directories:
   output: dist
   buildResources: assets
 
-# ── Files to include in the app.asar ────────────────────────
+# ── Files to include in the app.asar ─────────────────────────
 files:
   - dist/electron/**/*
   - package.json
   - "!node_modules/**/*.md"
   - "!node_modules/**/*.ts"
   - "!node_modules/**/test/**"
+  - "!node_modules/**/tests/**"
+  - "!node_modules/**/*.map"
 
-# ── Auto-update (Phase 2: point to GitHub Releases) ─────────
-# publish:
-#   provider: github
-#   owner: ahmed-shaaban-94
-#   repo: Data-Pulse
-#   releaseType: release
+# ── asar options ─────────────────────────────────────────────
+# Unpack native .node addons so they can be loaded at runtime.
+asarUnpack:
+  - "node_modules/better-sqlite3/**"
+  - "node_modules/node-thermal-printer/**"
