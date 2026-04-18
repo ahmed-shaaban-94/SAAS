@@ -166,7 +166,9 @@ describe("OnboardingStrip", () => {
     render(<OnboardingStrip />);
     dispatchTtfi("upload_started");
     await waitFor(() => expect(updateGoldenPathProgress).toHaveBeenCalled());
-    const [progress] = updateGoldenPathProgress.mock.calls[0] as [Record<string, string | null>];
+    const calls = updateGoldenPathProgress.mock.calls as [Record<string, string | null>][];
+    // Use the last call: earlier calls (if any) may be empty-progress guards.
+    const [progress] = calls[calls.length - 1];
     expect(progress.connect_data).toMatch(/\d{4}-\d{2}-\d{2}T/);
   });
 

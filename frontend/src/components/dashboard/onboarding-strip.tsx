@@ -123,16 +123,17 @@ export function OnboardingStrip() {
   }, []);
 
   // Sync completed steps to backend whenever they change (fire-and-forget).
-  // Skips the first render (initial localStorage load) via mountedRef.
-  const mountedRef = useRef(false);
+  // Skips the initial mount (nothing completed yet) and any spurious re-runs.
+  const prevCompletedRef = useRef<Partial<Record<StepId, string>> | undefined>(undefined);
   useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      return;
-    }
+    const completed = state.completed;
+    // Skip if completed state hasn't actually changed or is still empty.
+    if (prevCompletedRef.current === completed) return;
+    prevCompletedRef.current = completed;
+    if (!completed || Object.keys(completed).length === 0) return;
     const progress: Record<string, string | null> = {};
     for (const step of STEPS) {
-      progress[step.id] = state.completed?.[step.id] ?? null;
+      progress[step.id] = completed[step.id] ?? null;
     }
     void updateGoldenPathProgress(progress).catch(() => undefined);
   }, [state.completed]); // eslint-disable-line react-hooks/exhaustive-deps
