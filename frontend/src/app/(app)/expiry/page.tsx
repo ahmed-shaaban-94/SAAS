@@ -6,6 +6,7 @@ import { FilterBar } from "@/components/filters/filter-bar";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Header } from "@/components/layout/header";
 import { PageTransition } from "@/components/layout/page-transition";
+import { OpsSuiteNav } from "@/components/shared/ops-suite-nav";
 
 const ExpiryCalendar = dynamic(
   () => import("@/components/expiry/expiry-calendar").then((module) => ({ default: module.ExpiryCalendar })),
@@ -36,6 +37,7 @@ export default function ExpiryPage() {
         description="Monitor near-expiry inventory, expired batches, and write-off exposure."
       />
       <FilterBar />
+      <OpsSuiteNav />
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <ExpiryCalendar />

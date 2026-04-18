@@ -7,6 +7,7 @@ import { InventoryOverview } from "@/components/inventory/inventory-overview";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Header } from "@/components/layout/header";
 import { PageTransition } from "@/components/layout/page-transition";
+import { OpsSuiteNav } from "@/components/shared/ops-suite-nav";
 
 const StockLevelTable = dynamic(
   () => import("@/components/inventory/stock-level-table").then((module) => ({ default: module.StockLevelTable })),
@@ -32,6 +33,7 @@ export default function InventoryPage() {
         description="Stock levels, movement activity, and reorder risk across operations."
       />
       <FilterBar />
+      <OpsSuiteNav />
       <InventoryOverview />
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <StockMovementChart />
