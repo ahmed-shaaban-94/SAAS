@@ -41,4 +41,3 @@ class LeadRepository:
                 "tier": tier,
             },
         )
-        self._session.commit()
