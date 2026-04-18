@@ -34,5 +34,6 @@ def test_capture_duplicate_does_not_insert():
 
 def test_lead_request_requires_valid_email():
     from pydantic import ValidationError
+
     with pytest.raises(ValidationError):
         LeadRequest(email="not-an-email")
