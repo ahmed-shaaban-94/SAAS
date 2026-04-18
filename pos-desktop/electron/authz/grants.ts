@@ -75,6 +75,55 @@ export function saveGrant(db: Database.Database, envelope: OfflineGrantEnvelope)
   writeSecret(db, "offline_grant", JSON.stringify(envelope));
 }
 
+/**
+ * Call POST /pos/shifts/{shift_id}/refresh-grant on the server, store the new
+ * envelope, and return it. Requires a live JWT (online).
+ *
+ * Throws if:
+ *   - No JWT is in settings (not authenticated)
+ *   - No current grant exists (nothing to refresh — initial issuance path)
+ *   - The server returns non-2xx
+ */
+export async function refreshGrant(
+  db: Database.Database,
+  opts: { baseUrl: string },
+): Promise<OfflineGrantEnvelope> {
+  const jwt = getSetting(db, "jwt");
+  if (!jwt) throw new Error("refreshGrant: not authenticated (no JWT in settings)");
+
+  const existing = currentGrant(db);
+  if (!existing) {
+    throw new Error(
+      "refreshGrant: no current grant to refresh — initial grant must be issued via shift-open flow",
+    );
+  }
+
+  const shiftId = existing.payload.shift_id;
+  const deviceFingerprint = existing.payload.device_fingerprint;
+
+  const url = `${opts.baseUrl}/api/v1/pos/shifts/${shiftId}/refresh-grant`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: JSON.stringify({
+      device_fingerprint: deviceFingerprint,
+      offline_ttl_hours: 12,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`refreshGrant: HTTP ${res.status} ${text}`);
+  }
+
+  const envelope = (await res.json()) as OfflineGrantEnvelope;
+  saveGrant(db, envelope);
+  return envelope;
+}
+
 export function clearGrant(db: Database.Database): void {
   db.prepare("DELETE FROM secrets_dpapi WHERE key='offline_grant'").run();
 }

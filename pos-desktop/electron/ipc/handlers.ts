@@ -25,7 +25,7 @@ import { drainQueue, buildEnqueueSignature, getBaseUrl } from "../sync/push";
 import { pullCatalog } from "../sync/pull";
 import { isOnline } from "../sync/online";
 import { isDeviceRegistered, registerDevice } from "../authz/device";
-import { currentGrant, grantState, consumeOverrideCode } from "../authz/grants";
+import { currentGrant, grantState, consumeOverrideCode, refreshGrant } from "../authz/grants";
 
 const COMMIT_PATH = "/api/v1/pos/transactions/commit";
 
@@ -156,8 +156,8 @@ export function registerIpcHandlers(
   ipcMain.handle("authz.grantState", () => grantState(db));
 
   ipcMain.handle("authz.refreshGrant", async () => {
-    // M3b: call POST /pos/shifts/{id}/refresh-grant
-    throw new Error("authz.refreshGrant not yet implemented — M3b");
+    const baseUrl = getBaseUrl();
+    return refreshGrant(db, { baseUrl });
   });
 
   ipcMain.handle("authz.consumeOverrideCode", (_e, code: string) =>
@@ -191,10 +191,44 @@ export function registerIpcHandlers(
     return { ready: isUpdateReady() };
   });
 
-  ipcMain.handle("updater.quitAndInstall", () => {
+  ipcMain.handle("updater.canInstall", async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { isUpdateReady, quitAndInstall } = require("../updater/index") as typeof import("../updater/index");
+    const { canInstallUpdate } = require("../updater/index") as typeof import("../updater/index");
+    const baseUrl = getBaseUrl();
+    const minCompat = getSetting(db, "min_compatible_app_version") ?? "0.0.0";
+    const schemaVer = Number(getSetting(db, "schema_version") ?? "1");
+    return canInstallUpdate({
+      baseUrl,
+      localMinCompatibleAppVersion: minCompat,
+      localSchemaVersion: schemaVer,
+    });
+  });
+
+  ipcMain.handle("updater.quitAndInstall", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { isUpdateReady, canInstallUpdate, quitAndInstall } = require("../updater/index") as typeof import("../updater/index");
     if (!isUpdateReady()) throw new Error("No update downloaded yet");
+
+    // Gate: block if the sync queue is not fully drained.
+    const stats = getQueueStats(db);
+    const unresolved = stats.pending + stats.syncing + stats.rejected;
+    if (unresolved > 0) {
+      throw new Error(`Cannot install update: ${unresolved} queue items unresolved. Drain queue first.`);
+    }
+
+    // Gate: block if the server has moved to a newer schema than the app can handle.
+    const baseUrl = getBaseUrl();
+    const minCompat = getSetting(db, "min_compatible_app_version") ?? "0.0.0";
+    const schemaVer = Number(getSetting(db, "schema_version") ?? "1");
+    const gate = await canInstallUpdate({
+      baseUrl,
+      localMinCompatibleAppVersion: minCompat,
+      localSchemaVersion: schemaVer,
+    });
+    if (!gate.canInstall) {
+      throw new Error(`Cannot install update: ${gate.reason}`);
+    }
+
     quitAndInstall();
   });
 }

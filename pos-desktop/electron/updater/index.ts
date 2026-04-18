@@ -95,9 +95,66 @@ export function isUpdateReady(): boolean {
   return updateReadyToInstall;
 }
 
+interface CapabilitiesDoc {
+  /** Server's current POS schema version (monotonic integer). */
+  schema_version?: number;
+  /** Minimum app version the server supports; below this, the server rejects requests. */
+  min_app_version?: string;
+  [k: string]: unknown;
+}
+
+/**
+ * Schema-compatibility gate (§2.4.c of the design spec).
+ *
+ * Before applying a downloaded update, verify that the server's schema state
+ * is compatible with the *local* min_compatible_app_version. If the server has
+ * moved to a newer non-downgradeable schema, block the install until the user
+ * acknowledges — otherwise the update could brick the terminal mid-shift.
+ *
+ * Returns:
+ *   - { canInstall: true } when safe
+ *   - { canInstall: false, reason } when blocked
+ */
+export async function canInstallUpdate(opts: {
+  baseUrl: string;
+  localMinCompatibleAppVersion: string;
+  localSchemaVersion: number;
+}): Promise<{ canInstall: boolean; reason?: string }> {
+  if (!updateReadyToInstall) {
+    return { canInstall: false, reason: "no_update_downloaded" };
+  }
+
+  let capabilities: CapabilitiesDoc;
+  try {
+    const res = await fetch(`${opts.baseUrl}/api/v1/pos/capabilities`);
+    if (!res.ok) {
+      return { canInstall: false, reason: `capabilities_fetch_failed_${res.status}` };
+    }
+    capabilities = (await res.json()) as CapabilitiesDoc;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { canInstall: false, reason: `capabilities_unreachable:${msg}` };
+  }
+
+  // Schema monotonicity: if server schema has advanced beyond what the local
+  // install can downgrade from, block.
+  if (
+    typeof capabilities.schema_version === "number" &&
+    capabilities.schema_version > opts.localSchemaVersion
+  ) {
+    return {
+      canInstall: false,
+      reason: `server_schema_newer:server=${capabilities.schema_version},local=${opts.localSchemaVersion}`,
+    };
+  }
+
+  return { canInstall: true };
+}
+
 /**
  * Quit the app and apply the downloaded update immediately.
- * Only call after confirming the sync queue is empty.
+ * Caller MUST have confirmed the sync queue is empty AND canInstallUpdate()
+ * returned { canInstall: true } before calling this.
  */
 export function quitAndInstall(): void {
   autoUpdater.quitAndInstall(false, true);

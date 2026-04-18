@@ -87,6 +87,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // ── updater ────────────────────────────────────────────────
   updater: {
     isReady: () => ipcRenderer.invoke("updater.isReady"),
+    canInstall: () => ipcRenderer.invoke("updater.canInstall"),
     quitAndInstall: () => ipcRenderer.invoke("updater.quitAndInstall"),
     onEvent: (cb: (event: unknown) => void): (() => void) => {
       const listener = (_e: Electron.IpcRendererEvent, event: unknown) => cb(event);

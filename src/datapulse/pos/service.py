@@ -1096,6 +1096,11 @@ class PosService:
         row = self._repo.get_current_shift(terminal_id)
         return ShiftRecord.model_validate(row) if row else None
 
+    def get_shift_by_id(self, shift_id: int) -> ShiftRecord | None:
+        """Return a shift by its primary key (None if not found)."""
+        row = self._repo.get_shift_by_id(shift_id)
+        return ShiftRecord.model_validate(row) if row else None
+
     def list_shifts(
         self,
         tenant_id: int,

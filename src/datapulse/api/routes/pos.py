@@ -20,7 +20,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,7 @@ from datapulse.pos.models import (
     CheckoutRequest,
     CheckoutResponse,
     CloseShiftRequest,
+    OfflineGrantEnvelope,
     PharmacistVerifyRequest,
     PharmacistVerifyResponse,
     PosCartItem,
@@ -713,6 +714,66 @@ def close_shift(
         shift_id=shift_id,
         closing_cash=Decimal(str(body.closing_cash)),
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Refresh offline grant (§8.8 — called by terminal when it regains network to
+# extend its offline TTL without reopening the shift).
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class RefreshGrantRequest(BaseModel):
+    """Body for POST /pos/shifts/{shift_id}/refresh-grant."""
+
+    model_config = ConfigDict(frozen=True)
+
+    device_fingerprint: Annotated[str, Field(min_length=16, max_length=200)]
+    offline_ttl_hours: Annotated[int, Field(ge=1, le=72)] = 12
+
+
+@router.post(
+    "/shifts/{shift_id}/refresh-grant",
+    response_model=OfflineGrantEnvelope,
+)
+@limiter.limit("30/minute")
+def refresh_grant(
+    request: Request,
+    shift_id: Annotated[int, Path(ge=1)],
+    body: RefreshGrantRequest,
+    service: ServiceDep,
+    db_session: SessionDep,
+    user: CurrentUser,
+) -> OfflineGrantEnvelope:
+    """Mint a fresh offline grant for an existing open shift.
+
+    The terminal calls this when it regains connectivity (e.g. after a half-day
+    offline session) so its local grant doesn't expire. Fails with 404 if the
+    shift doesn't exist or belongs to another tenant; 409 if the shift is
+    already closed.
+    """
+    from datapulse.pos.grants import issue_grant_for_shift
+
+    tenant_id = _tenant_id_of(user)
+    staff_id = _staff_id_of(user)
+    shift = service.get_shift_by_id(shift_id)
+    if shift is None or int(shift.tenant_id) != tenant_id:
+        raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found")
+    if shift.closed_at is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Shift {shift_id} is already closed — grants cannot be refreshed",
+        )
+
+    envelope = issue_grant_for_shift(
+        db_session,
+        tenant_id=tenant_id,
+        terminal_id=int(shift.terminal_id),
+        shift_id=shift_id,
+        staff_id=staff_id,
+        device_fingerprint=body.device_fingerprint,
+        offline_ttl_hours=body.offline_ttl_hours,
+    )
+    return envelope
 
 
 # ──────────────────────────────────────────────────────────────────────────────
