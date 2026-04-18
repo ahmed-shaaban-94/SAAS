@@ -28,7 +28,7 @@ describe("OnboardingStrip", () => {
 
   it("renders four step labels on first mount", () => {
     render(<OnboardingStrip />);
-    expect(screen.getByText(/connect data/i)).toBeInTheDocument();
+    expect(screen.getByText(/upload data/i)).toBeInTheDocument();
     expect(screen.getByText(/validate/i)).toBeInTheDocument();
     expect(screen.getByText(/see first insight/i)).toBeInTheDocument();
     expect(screen.getByText(/share with teammate/i)).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe("OnboardingStrip", () => {
     const { container } = render(<OnboardingStrip />);
     expect(
       container.querySelector(
-        '[data-step="connect_data"][data-step-state="complete"]',
+        '[data-step="upload_data"][data-step-state="complete"]',
       ),
     ).toBeTruthy();
   });
