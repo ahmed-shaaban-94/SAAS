@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
-from datapulse.leads.models import LeadRequest, LeadResponse
+
+import pytest
+
+from datapulse.leads.models import LeadRequest
 from datapulse.leads.service import LeadService
 
 
