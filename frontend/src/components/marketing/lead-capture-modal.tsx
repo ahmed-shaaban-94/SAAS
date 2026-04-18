@@ -52,7 +52,16 @@ export function LeadCaptureModal({ trigger, tier, triggerClassName }: Props) {
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          setFormState("idle");
+          setErrorMessage("");
+        }
+      }}
+    >
       <Dialog.Trigger asChild>
         <button
           type="button"
@@ -69,7 +78,7 @@ export function LeadCaptureModal({ trigger, tier, triggerClassName }: Props) {
             "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
             "rounded-[1.75rem] border border-border bg-card p-8 shadow-2xl focus:outline-none",
           )}
-          aria-describedby="lead-modal-desc"
+          aria-describedby={formState !== "success" ? "lead-modal-desc" : undefined}
         >
           <Dialog.Close className="absolute right-4 top-4 rounded-full p-1.5 text-text-secondary hover:bg-background/60 hover:text-text-primary">
             <X className="h-4 w-4" />
