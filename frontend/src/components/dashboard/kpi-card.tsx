@@ -6,6 +6,8 @@ import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { MetricTooltip } from "@/components/shared/metric-tooltip";
+import { WhyChangedTrigger } from "@/components/why-changed/why-changed-trigger";
+import type { WhyChangedData } from "@/components/why-changed/why-changed";
 import type { TimeSeriesPoint } from "@/types/api";
 
 interface KPICardProps {
@@ -25,6 +27,9 @@ interface KPICardProps {
   accentGradient?: string;
   sparkline?: TimeSeriesPoint[];
   tooltip?: string;
+  /** Optional Why-Changed decomposition — when present, the value becomes
+   *  clickable and opens a waterfall modal showing the drivers. */
+  whyChanged?: WhyChangedData;
   "aria-label"?: string;
 }
 
@@ -107,7 +112,7 @@ const AnimatedValue = memo(function AnimatedValue({ value, numericValue, isCurre
   );
 });
 
-export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, isDecimal, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip, "aria-label": ariaLabel }: KPICardProps) {
+export const KPICard = memo(function KPICard({ label, value, numericValue, isCurrency, isPercent, isDecimal, trend, trendLabel, subtitle, comparisonLine, hero, icon: Icon, className, accentGradient, sparkline, tooltip, whyChanged, "aria-label": ariaLabel }: KPICardProps) {
   const sparkId = useId();
   const isPositive = trend !== null && trend !== undefined && trend > 0;
   const isNegative = trend !== null && trend !== undefined && trend < 0;
@@ -171,13 +176,25 @@ export const KPICard = memo(function KPICard({ label, value, numericValue, isCur
         "relative mt-3 font-bold tracking-tight text-text-primary truncate",
         hero ? "text-[1.85rem] sm:text-[2.2rem]" : "text-xl sm:text-2xl",
       )} data-kpi-value>
-        <AnimatedValue
-          value={value}
-          numericValue={numericValue}
-          isCurrency={isCurrency}
-          isPercent={isPercent}
-          isDecimal={isDecimal}
-        />
+        {whyChanged ? (
+          <WhyChangedTrigger data={whyChanged} inline>
+            <AnimatedValue
+              value={value}
+              numericValue={numericValue}
+              isCurrency={isCurrency}
+              isPercent={isPercent}
+              isDecimal={isDecimal}
+            />
+          </WhyChangedTrigger>
+        ) : (
+          <AnimatedValue
+            value={value}
+            numericValue={numericValue}
+            isCurrency={isCurrency}
+            isPercent={isPercent}
+            isDecimal={isDecimal}
+          />
+        )}
       </p>
 
       {subtitle && (

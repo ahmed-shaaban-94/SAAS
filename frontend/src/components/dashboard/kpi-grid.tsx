@@ -6,6 +6,10 @@ import { LoadingCard } from "@/components/loading-card";
 import { useDashboardData } from "@/contexts/dashboard-data-context";
 import { useFilters } from "@/contexts/filter-context";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
+import {
+  buildMtdRevenueWhy,
+  buildAvgBasketWhy,
+} from "@/components/why-changed/why-changed-data";
 import { format, parseISO } from "date-fns";
 import {
   CalendarDays,
@@ -67,6 +71,7 @@ export const KPIGrid = memo(function KPIGrid() {
         comparisonLine: data.mom_growth_pct !== null
           ? `${formatPercent(data.mom_growth_pct)} vs previous period`
           : undefined,
+        whyChanged: buildMtdRevenueWhy(data.period_gross, data.mom_growth_pct),
       },
       {
         label: "Growth",
@@ -96,6 +101,7 @@ export const KPIGrid = memo(function KPIGrid() {
         isCurrency: true,
         icon: ShoppingCart,
         tooltip: TOOLTIPS.avgOrderValue,
+        whyChanged: buildAvgBasketWhy(data.avg_basket_size),
       },
     ];
   }, [data]);
