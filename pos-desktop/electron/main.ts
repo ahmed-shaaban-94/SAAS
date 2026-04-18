@@ -2,6 +2,11 @@ import { app, BrowserWindow, Tray, Menu, nativeImage, shell } from "electron";
 import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 import * as http from "http";
+import { openDb } from "./db/connection";
+import { applySchema } from "./db/migrate";
+import { createHardware } from "./hardware/index";
+import { registerIpcHandlers } from "./ipc/handlers";
+import { getSetting } from "./db/settings";
 
 // ── Configuration ──────────────────────────────────────────
 const PORT = 3847;
@@ -274,6 +279,20 @@ function createTray(): void {
 // ── App Lifecycle ──────────────────────────────────────────
 app.whenReady().then(async () => {
   console.log(`[main] DataPulse POS v${app.getVersion()} starting...`);
+
+  // Initialise local SQLite database
+  const dbPath = path.join(app.getPath("userData"), "pos.db");
+  const db = openDb(dbPath);
+  applySchema(db);
+  console.log(`[main] SQLite database ready at ${dbPath}`);
+
+  // Initialise hardware adapters (mock or real based on settings)
+  const hardwareMode = getSetting(db, "hardware_mode");
+  const hw = createHardware(hardwareMode === "real" ? "real" : "mock");
+  console.log(`[main] Hardware mode: ${hw.mode}`);
+
+  // Register all IPC handlers before windows are created
+  registerIpcHandlers(db, hw);
 
   try {
     await startNextServer();

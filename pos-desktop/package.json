@@ -7,12 +7,13 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "dev": "tsc -p tsconfig.json && electron .",
-    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json && node scripts/copy-assets.js && electron .",
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.js",
     "start": "npm run build && electron .",
     "package": "npm run build && electron-builder --win",
     "package:dir": "npm run build && electron-builder --win --dir",
-    "test": "echo \"tests land with M2 proper (jest + ts-jest)\" && exit 0"
+    "test": "jest --coverage",
+    "test:watch": "jest --watchAll"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
