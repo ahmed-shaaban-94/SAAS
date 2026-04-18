@@ -84,9 +84,7 @@ class TestUpsertGoldenPathProgress:
             "golden_path_progress": progress,
             "first_insight_dismissed_at": None,
         }
-        session.execute.return_value.mappings.return_value.fetchone.return_value = (
-            expected_row
-        )
+        session.execute.return_value.mappings.return_value.fetchone.return_value = expected_row
 
         repo = OnboardingRepository(session)
         result = repo.upsert_golden_path_progress(
@@ -103,9 +101,7 @@ class TestUpsertGoldenPathProgress:
 
         repo = OnboardingRepository(session)
         with pytest.raises(RuntimeError, match="UPSERT RETURNING"):
-            repo.upsert_golden_path_progress(
-                tenant_id=1, user_id="test-user", progress={}
-            )
+            repo.upsert_golden_path_progress(tenant_id=1, user_id="test-user", progress={})
 
 
 class TestDismissFirstInsight:
@@ -127,9 +123,7 @@ class TestDismissFirstInsight:
             "golden_path_progress": {},
             "first_insight_dismissed_at": now,
         }
-        session.execute.return_value.mappings.return_value.fetchone.return_value = (
-            expected_row
-        )
+        session.execute.return_value.mappings.return_value.fetchone.return_value = expected_row
 
         repo = OnboardingRepository(session)
         result = repo.dismiss_first_insight(tenant_id=1, user_id="test-user")
@@ -225,9 +219,7 @@ class TestUpdateGoldenPathProgressService:
         }
 
         svc = OnboardingService(repo)
-        result = svc.update_golden_path_progress(
-            tenant_id=1, user_id="test-user", progress={}
-        )
+        result = svc.update_golden_path_progress(tenant_id=1, user_id="test-user", progress={})
 
         assert isinstance(result, OnboardingStatus)
 
@@ -254,9 +246,7 @@ class TestDismissFirstInsightService:
         svc = OnboardingService(repo)
         result = svc.dismiss_first_insight(tenant_id=1, user_id="test-user")
 
-        repo.dismiss_first_insight.assert_called_once_with(
-            tenant_id=1, user_id="test-user"
-        )
+        repo.dismiss_first_insight.assert_called_once_with(tenant_id=1, user_id="test-user")
         assert result.first_insight_dismissed_at is not None
 
 
@@ -275,12 +265,8 @@ def mock_service_ext() -> MagicMock:
     svc.get_status.return_value = _make_status(
         golden_path_progress=progress, first_insight_dismissed_at=now
     )
-    svc.update_golden_path_progress.return_value = _make_status(
-        golden_path_progress=progress
-    )
-    svc.dismiss_first_insight.return_value = _make_status(
-        first_insight_dismissed_at=now
-    )
+    svc.update_golden_path_progress.return_value = _make_status(golden_path_progress=progress)
+    svc.dismiss_first_insight.return_value = _make_status(first_insight_dismissed_at=now)
     return svc
 
 
@@ -347,17 +333,13 @@ class TestDismissFirstInsightRoute:
 class TestGetStatusIncludesNewFields:
     """GET /api/v1/onboarding/status returns golden_path_progress + first_insight_dismissed_at."""
 
-    def test_status_contains_golden_path_progress(
-        self, client_ext, mock_service_ext
-    ) -> None:
+    def test_status_contains_golden_path_progress(self, client_ext, mock_service_ext) -> None:
         resp = client_ext.get("/api/v1/onboarding/status")
         assert resp.status_code == 200
         data = resp.json()
         assert "golden_path_progress" in data
 
-    def test_status_contains_first_insight_dismissed_at(
-        self, client_ext, mock_service_ext
-    ) -> None:
+    def test_status_contains_first_insight_dismissed_at(self, client_ext, mock_service_ext) -> None:
         resp = client_ext.get("/api/v1/onboarding/status")
         assert resp.status_code == 200
         data = resp.json()

@@ -98,7 +98,5 @@ class OnboardingService:
     def dismiss_first_insight(self, tenant_id: int, user_id: str) -> OnboardingStatus:
         """Record that the first-insight card has been dismissed."""
         log.info("service_dismiss_first_insight", user_id=user_id)
-        row = self._repo.dismiss_first_insight(
-            tenant_id=tenant_id, user_id=user_id
-        )
+        row = self._repo.dismiss_first_insight(tenant_id=tenant_id, user_id=user_id)
         return OnboardingStatus(**row)
