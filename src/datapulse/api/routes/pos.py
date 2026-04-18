@@ -1013,7 +1013,7 @@ def get_catalog_stock(
     _: Annotated[None, Depends(require_pos_plan())],
     service: Annotated[PosService, Depends(get_pos_service)],
     site: Annotated[str | None, Query(description="Filter to a specific site_code")] = None,
-    cursor: Annotated[str | None, Query(description="Last loaded_at ISO timestamp from previous page")] = None,
+    cursor: Annotated[str | None, Query(description="Last loaded_at ISO (cursor)")] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> CatalogStockPage:
     """Return a page of active batches from ``stg_batches`` ordered by ``loaded_at``.
