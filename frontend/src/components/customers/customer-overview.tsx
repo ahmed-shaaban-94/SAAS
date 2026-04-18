@@ -8,6 +8,7 @@ import { RankingTableLinked } from "@/components/shared/ranking-table-linked";
 import DistributionChart from "@/components/shared/distribution-chart";
 import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
+import { UploadDataAction } from "@/components/shared/empty-state-actions";
 import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { RankingTableSkeleton } from "@/components/ui/table-skeleton";
@@ -48,7 +49,8 @@ export function CustomerOverview() {
     return (
       <EmptyState
         title="No customer data available"
-        description="Try adjusting your filters or check back later."
+        description="Try adjusting your filters or upload sales data to see customer analytics."
+        action={<UploadDataAction />}
       />
     );
   }

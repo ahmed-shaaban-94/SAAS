@@ -8,6 +8,7 @@ import { RankingChart } from "@/components/shared/ranking-chart";
 import { RankingTableLinked } from "@/components/shared/ranking-table-linked";
 import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
+import { UploadDataAction } from "@/components/shared/empty-state-actions";
 import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { RankingTableSkeleton } from "@/components/ui/table-skeleton";
@@ -54,7 +55,8 @@ export function ProductOverview() {
     return (
       <EmptyState
         title="No product data available"
-        description="Try adjusting your filters or check back later."
+        description="Try adjusting your filters or upload sales data to see product analytics."
+        action={<UploadDataAction />}
       />
     );
   }

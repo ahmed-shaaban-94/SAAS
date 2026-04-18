@@ -3,6 +3,7 @@
 import { useVelocity } from "@/hooks/use-velocity";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
+import { UploadDataAction } from "@/components/shared/empty-state-actions";
 import { cn } from "@/lib/utils";
 import type { VelocityClassification } from "@/types/dispensing";
 
@@ -62,7 +63,7 @@ export function VelocityGrid() {
     );
   }
 
-  if (!data.length) return <EmptyState title="No velocity data" />;
+  if (!data.length) return <EmptyState title="No velocity data" action={<UploadDataAction />} />;
 
   const grouped = QUADRANT_ORDER.reduce<Record<VelocityClass, VelocityClassification[]>>(
     (acc, cls) => {
