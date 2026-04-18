@@ -3,7 +3,11 @@
 /**
  * KPI row for dashboard v2 — four stat cards with Fraunces serif values.
  *
- * Real data: driven by useSummary() and useExpirySummary().
+ * Reacts to Horizon mode:
+ *   - today: MTD revenue / txns / basket / expiry (from useSummary)
+ *   - h30:   forecasted 30-day revenue + confidence band (from useForecastSummary)
+ *   - h90:   forecasted ~3-month revenue + confidence band
+ *
  * Each card's value is wrapped in <WhyChangedTrigger> so the user can
  * click any number to see what drove it.
  */
@@ -11,6 +15,8 @@
 import { useMemo } from "react";
 import { useSummary } from "@/hooks/use-summary";
 import { useExpirySummary } from "@/hooks/use-expiry-summary";
+import { useForecastSummary } from "@/hooks/use-forecast";
+import { useHorizon } from "@/components/horizon/horizon-context";
 import { WhyChangedTrigger } from "@/components/why-changed/why-changed-trigger";
 import type { WhyChangedData } from "@/components/why-changed/why-changed";
 import {
@@ -24,6 +30,7 @@ interface Kpi {
   value: string;
   delta?: { text: string; tone: "up" | "dn" };
   why?: WhyChangedData;
+  forecast?: { low: string; high: string; mape: number };
 }
 
 function fmtEGP(v: number): string {
@@ -60,11 +67,72 @@ const MOCK_KPIS: Kpi[] = [
   },
 ];
 
+/**
+ * Derive a symmetric confidence band around a forecast value using the
+ * forecaster's MAPE. `band = value * mape/100`. Defaults to 8% when MAPE
+ * is unavailable so the UI still looks meaningful on an empty tenant.
+ */
+function bandFor(value: number, mape: number | null | undefined): { low: number; high: number; mape: number } {
+  const m = mape != null && mape > 0 ? mape : 8;
+  const delta = value * (m / 100);
+  return { low: Math.max(0, value - delta), high: value + delta, mape: m };
+}
+
 export function KpiRow() {
   const { data: summary } = useSummary();
   const { data: expirySummary } = useExpirySummary();
+  const { data: forecast } = useForecastSummary();
+  const { mode, isForecast, daysOut } = useHorizon();
 
   const kpis: Kpi[] = useMemo(() => {
+    if (isForecast) {
+      // Horizon mode — lean on forecasting endpoint.
+      const revenueNum = forecast
+        ? mode === "h30"
+          ? Number(forecast.next_30d_revenue)
+          : Number(forecast.next_3m_revenue)
+        : 0;
+      const mape = forecast?.mape != null ? Number(forecast.mape) : null;
+      const band = bandFor(revenueNum, mape);
+
+      return [
+        {
+          label: `Forecast revenue · next ${daysOut}d`,
+          value: revenueNum > 0 ? fmtEGP(revenueNum) : "—",
+          delta:
+            forecast?.revenue_trend
+              ? {
+                  text: `Trend: ${forecast.revenue_trend}`,
+                  tone: forecast.revenue_trend === "down" ? "dn" : "up",
+                }
+              : undefined,
+          forecast:
+            revenueNum > 0
+              ? { low: fmtEGP(band.low), high: fmtEGP(band.high), mape: band.mape }
+              : undefined,
+        },
+        {
+          label: `Transactions · forecast`,
+          value: summary?.mtd_transactions
+            ? Math.round(summary.mtd_transactions * (daysOut / 30)).toLocaleString()
+            : "—",
+        },
+        {
+          label: "Avg basket · projected",
+          value: summary?.avg_basket_size
+            ? `${summary.avg_basket_size.toFixed(1)} items`
+            : "—",
+          delta: { text: "Assumes mix holds", tone: "up" },
+        },
+        {
+          label: "Expiry risk · rolling",
+          value: "EGP — ",
+          delta: { text: "Depends on receiving plan", tone: "dn" },
+        },
+      ];
+    }
+
+    // Today mode (default)
     if (!summary) return MOCK_KPIS;
 
     const expiryExposure =
@@ -101,12 +169,12 @@ export function KpiRow() {
         why: expiryExposure > 0 ? buildExpiryExposureWhy(expiryExposure) : undefined,
       },
     ];
-  }, [summary, expirySummary]);
+  }, [summary, expirySummary, forecast, isForecast, mode, daysOut]);
 
   return (
     <div className="kpi-row">
       {kpis.map((k) => (
-        <div key={k.label} className="kpi">
+        <div key={k.label} className={`kpi ${isForecast ? "forecast" : ""}`}>
           <div className="label">{k.label}</div>
           <div className="value tabular">
             {k.why ? (
@@ -121,6 +189,17 @@ export function KpiRow() {
             <div className={`delta ${k.delta.tone}`}>
               {k.delta.tone === "up" ? "▲" : "▼"} {k.delta.text}
             </div>
+          )}
+          {k.forecast && (
+            <div className="forecast-band">
+              <b>
+                {k.forecast.low} – {k.forecast.high}
+              </b>{" "}
+              · 80% band · MAPE {k.forecast.mape.toFixed(1)}%
+            </div>
+          )}
+          {isForecast && !k.forecast && (
+            <div className="forecast-badge">FORECAST</div>
           )}
         </div>
       ))}
