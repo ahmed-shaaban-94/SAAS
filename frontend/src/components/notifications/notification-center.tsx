@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, CheckCheck } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import { NotificationItem } from "./notification-item";
+import { EmptyState } from "@/components/empty-state";
 
 interface NotificationCenterProps {
   open: boolean;
@@ -57,7 +58,10 @@ export function NotificationCenter({ open, onClose }: NotificationCenterProps) {
       {/* List */}
       <div className="max-h-96 overflow-y-auto">
         {notifications.length === 0 ? (
-          <p className="py-8 text-center text-sm text-text-secondary">No notifications yet</p>
+          <EmptyState
+            title="No notifications"
+            description="You're all caught up — nothing new to see."
+          />
         ) : (
           notifications.map((n) => (
             <NotificationItem

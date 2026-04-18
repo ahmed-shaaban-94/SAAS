@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import type { PurchaseOrder } from "@/types/purchase-orders";
+import { EmptyState } from "@/components/empty-state";
 
 const STATUS_CLASSES: Record<PurchaseOrder["status"], string> = {
   draft: "bg-gray-500/15 text-gray-400",
@@ -19,11 +20,7 @@ interface POListTableProps {
 
 export function POListTable({ orders }: POListTableProps) {
   if (orders.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border/70 py-12 text-center text-sm text-muted-foreground">
-        No purchase orders found.
-      </div>
-    );
+    return <EmptyState title="No purchase orders" description="Create your first PO to get started." />;
   }
 
   return (

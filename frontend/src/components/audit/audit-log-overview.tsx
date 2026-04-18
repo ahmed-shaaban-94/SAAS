@@ -5,6 +5,7 @@ import { useAuditLog, AuditLogFilters } from "@/hooks/use-audit-log";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "bg-blue-500/10 text-blue-500",
@@ -80,53 +81,53 @@ export function AuditLogOverview() {
         <span>{data.total.toLocaleString()} entries</span>
       </div>
 
-      <div className="viz-panel overflow-x-auto rounded-[1.75rem] border border-border/80">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-              <th className="px-4 py-3">Time</th>
-              <th className="px-4 py-3">Method</th>
-              <th className="px-4 py-3">Endpoint</th>
-              <th className="px-4 py-3">Action</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Duration</th>
-              <th className="px-4 py-3">User</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.items.map((entry) => (
-              <tr key={entry.id} className="border-b border-border/50 transition-colors hover:bg-background/50">
-                <td className="px-4 py-2 text-xs text-text-secondary whitespace-nowrap">
-                  {new Date(entry.created_at).toLocaleString()}
-                </td>
-                <td className="px-4 py-2">
-                  <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-mono font-medium ${METHOD_COLORS[entry.method] ?? "bg-muted text-text-secondary"}`}>
-                    {entry.method}
-                  </span>
-                </td>
-                <td className="px-4 py-2 font-mono text-xs text-text-primary max-w-[300px] truncate">
-                  {entry.endpoint}
-                </td>
-                <td className="px-4 py-2 text-xs text-text-secondary">{entry.action}</td>
-                <td className="px-4 py-2"><StatusBadge status={entry.response_status} /></td>
-                <td className="px-4 py-2 text-xs text-text-secondary">
-                  {entry.duration_ms != null ? `${entry.duration_ms.toFixed(0)}ms` : "-"}
-                </td>
-                <td className="px-4 py-2 text-xs text-text-secondary truncate max-w-[120px]">
-                  {entry.user_id || "-"}
-                </td>
+      {data.items.length === 0 ? (
+        <EmptyState
+          title="No audit log entries"
+          description="Audit events will appear here as users interact with the API."
+        />
+      ) : (
+        <div className="viz-panel overflow-x-auto rounded-[1.75rem] border border-border/80">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                <th className="px-4 py-3">Time</th>
+                <th className="px-4 py-3">Method</th>
+                <th className="px-4 py-3">Endpoint</th>
+                <th className="px-4 py-3">Action</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Duration</th>
+                <th className="px-4 py-3">User</th>
               </tr>
-            ))}
-            {data.items.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-text-tertiary">
-                  No audit log entries found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {data.items.map((entry) => (
+                <tr key={entry.id} className="border-b border-border/50 transition-colors hover:bg-background/50">
+                  <td className="px-4 py-2 text-xs text-text-secondary whitespace-nowrap">
+                    {new Date(entry.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-mono font-medium ${METHOD_COLORS[entry.method] ?? "bg-muted text-text-secondary"}`}>
+                      {entry.method}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 font-mono text-xs text-text-primary max-w-[300px] truncate">
+                    {entry.endpoint}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-text-secondary">{entry.action}</td>
+                  <td className="px-4 py-2"><StatusBadge status={entry.response_status} /></td>
+                  <td className="px-4 py-2 text-xs text-text-secondary">
+                    {entry.duration_ms != null ? `${entry.duration_ms.toFixed(0)}ms` : "-"}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-text-secondary truncate max-w-[120px]">
+                    {entry.user_id || "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
