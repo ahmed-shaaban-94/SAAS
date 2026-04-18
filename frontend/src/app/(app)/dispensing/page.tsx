@@ -4,12 +4,14 @@ import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
 import { OpsSuiteNav } from "@/components/shared/ops-suite-nav";
+import { FilterBar } from "@/components/filters/filter-bar";
 import { AnalyticsSectionHeader } from "@/components/layout/analytics-section-header";
 import { DispenseRateCards } from "@/components/dispensing/dispense-rate-cards";
 import { DaysOfStockChart } from "@/components/dispensing/days-of-stock-chart";
 import { VelocityGrid } from "@/components/dispensing/velocity-grid";
 import { StockoutRiskTable } from "@/components/dispensing/stockout-risk-table";
 import { ReconciliationSummary } from "@/components/dispensing/reconciliation-summary";
+import { DispensingOverview } from "@/components/dispensing/dispensing-overview";
 import { TrendingUp, BarChart3, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function DispensingPage() {
@@ -20,7 +22,9 @@ export default function DispensingPage() {
         title="Dispensing Analytics"
         description="Dispense velocity, stock coverage, and reconciliation"
       />
+      <FilterBar />
       <OpsSuiteNav />
+      <DispensingOverview />
 
       {/* Top movers */}
       <div className="mt-6">
