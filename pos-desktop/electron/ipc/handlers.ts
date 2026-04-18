@@ -6,6 +6,7 @@
  */
 
 import { ipcMain, app } from "electron";
+import { randomUUID } from "node:crypto";
 import type { HardwareBundle } from "../hardware/index";
 import type Database from "better-sqlite3";
 
@@ -20,6 +21,12 @@ import {
 } from "../db/queue";
 import { getCurrentShift, openShift, closeShift } from "../db/shifts";
 import { getSetting, setSetting } from "../db/settings";
+import { drainQueue, buildEnqueueSignature, getBaseUrl } from "../sync/push";
+import { isOnline } from "../sync/online";
+import { isDeviceRegistered, registerDevice } from "../authz/device";
+import { currentGrant, grantState, consumeOverrideCode } from "../authz/grants";
+
+const COMMIT_PATH = "/api/v1/pos/transactions/commit";
 
 export function registerIpcHandlers(
   db: Database.Database,
@@ -42,8 +49,37 @@ export function registerIpcHandlers(
   );
 
   // ── db.queue ───────────────────────────────────────────────
-  ipcMain.handle("db.queue.enqueue", (_e, input: Parameters<typeof enqueueTransaction>[1]) =>
-    enqueueTransaction(db, input),
+  ipcMain.handle(
+    "db.queue.enqueue",
+    (
+      _e,
+      input: {
+        endpoint: string;
+        payload: unknown;
+        auth_mode: "bearer" | "offline_grant";
+        grant_id: string | null;
+      },
+    ) => {
+      const clientTxnId = randomUUID();
+      const signedAt = new Date().toISOString();
+      const bodyJson = JSON.stringify(input.payload);
+      const signature = buildEnqueueSignature(db, {
+        path: COMMIT_PATH,
+        clientTxnId,
+        bodyJson,
+        signedAt,
+      });
+
+      return enqueueTransaction(db, {
+        endpoint: input.endpoint,
+        payload: input.payload,
+        signed_at: signedAt,
+        auth_mode: input.auth_mode,
+        grant_id: input.grant_id,
+        device_signature: signature,
+        client_txn_id: clientTxnId,
+      });
+    },
   );
 
   ipcMain.handle("db.queue.pending", () => getPendingQueue(db));
@@ -100,41 +136,55 @@ export function registerIpcHandlers(
 
   ipcMain.handle("app.logsPath", () => app.getPath("logs"));
 
-  // ── sync / authz / updater — deferred (require server coordination) ──
-  ipcMain.handle("sync.pushNow", () => {
-    throw new Error("sync.pushNow not yet implemented — M3 server wiring");
-  });
+  // ── sync ───────────────────────────────────────────────────
+  ipcMain.handle("sync.pushNow", async () => drainQueue(db));
 
   ipcMain.handle("sync.pullNow", () => {
-    throw new Error("sync.pullNow not yet implemented — M3 server wiring");
+    // M3b: catalog pull endpoints not yet implemented on server.
+    return { pulled: 0 };
   });
 
-  ipcMain.handle("sync.state", () => ({
-    online: false,
-    last_sync_at: null,
-    pending: 0,
-    syncing: 0,
-    rejected: 0,
-    unresolved: 0,
-  }));
-
-  ipcMain.handle("authz.currentGrant", () => null);
-
-  ipcMain.handle("authz.grantState", () => "offline_expired");
-
-  ipcMain.handle("authz.refreshGrant", () => {
-    throw new Error("authz.refreshGrant not yet implemented — requires online");
+  ipcMain.handle("sync.state", async () => {
+    const online = isOnline();
+    const stats = getQueueStats(db);
+    return { online, ...stats };
   });
 
-  ipcMain.handle("authz.consumeOverrideCode", () => ({
-    ok: false,
-    reason: "authz not yet implemented",
-  }));
+  // ── authz ──────────────────────────────────────────────────
+  ipcMain.handle("authz.currentGrant", () => currentGrant(db));
 
-  ipcMain.handle("authz.capabilities", () => {
-    throw new Error("authz.capabilities not yet implemented — requires online");
+  ipcMain.handle("authz.grantState", () => grantState(db));
+
+  ipcMain.handle("authz.refreshGrant", async () => {
+    // M3b: call POST /pos/shifts/{id}/refresh-grant
+    throw new Error("authz.refreshGrant not yet implemented — M3b");
   });
 
+  ipcMain.handle("authz.consumeOverrideCode", (_e, code: string) =>
+    consumeOverrideCode(db, code),
+  );
+
+  ipcMain.handle("authz.capabilities", async () => {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/v1/pos/capabilities`);
+    if (!res.ok) throw new Error(`capabilities fetch failed: HTTP ${res.status}`);
+    return res.json();
+  });
+
+  // ── device registration (called by settings UI / first-launch wizard) ──
+  ipcMain.handle(
+    "authz.registerDevice",
+    async (_e, terminalId: number) => {
+      const jwt = getSetting(db, "jwt");
+      if (!jwt) throw new Error("Not authenticated — log in before registering device");
+      const baseUrl = getBaseUrl();
+      return registerDevice(db, { baseUrl, jwt, terminalId });
+    },
+  );
+
+  ipcMain.handle("authz.isDeviceRegistered", () => isDeviceRegistered(db));
+
+  // ── updater ────────────────────────────────────────────────
   ipcMain.handle("updater.check", () => ({ available: false }));
 
   ipcMain.handle("updater.install", () => {

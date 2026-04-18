@@ -40,6 +40,8 @@ interface EnqueueInput {
   auth_mode: "bearer" | "offline_grant";
   grant_id: string | null;
   device_signature: string;
+  /** Pre-generated idempotency key. Generated internally when omitted. */
+  client_txn_id?: string;
 }
 
 /** Insert a new transaction into the queue with status=pending. */
@@ -49,7 +51,7 @@ export function enqueueTransaction(
 ): { local_id: string; client_txn_id: string } {
   const now = new Date().toISOString();
   const local_id = randomUUID();
-  const client_txn_id = randomUUID();
+  const client_txn_id = input.client_txn_id ?? randomUUID();
 
   db.prepare(
     `INSERT INTO transactions_queue
