@@ -20,11 +20,31 @@ from fastapi.testclient import TestClient
 from datapulse.api import deps
 from datapulse.api.app import create_app
 from datapulse.pipeline.quality import (
-    QualityCheckList,
     QualityCheckResponse,
     QualityCheckResult,
     QualityReport,
+    QualityRunDetail,
 )
+
+
+def _make_run_detail(
+    run_id: UUID,
+    items: list[QualityCheckResponse] | None = None,
+) -> QualityRunDetail:
+    """Build a QualityRunDetail from check items, computing aggregate counts."""
+    items = items or []
+    passed = sum(1 for c in items if c.passed)
+    failed = sum(1 for c in items if not c.passed and c.severity == "error")
+    warned = sum(1 for c in items if not c.passed and c.severity == "warn")
+    return QualityRunDetail(
+        run_id=run_id,
+        checks=items,
+        total_checks=len(items),
+        passed=passed,
+        failed=failed,
+        warned=warned,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -135,77 +155,81 @@ class TestGetQualityChecks:
         return base
 
     def test_returns_checks_200(self, quality_api_client):
-        """Happy path: service returns 2 checks → 200 with items."""
+        """Happy path: service returns 2 checks → 200 with run-detail shape."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
         item1 = _make_check_response(id=1, pipeline_run_id=run_id, check_name="row_count")
         item2 = _make_check_response(id=2, pipeline_run_id=run_id, check_name="row_delta")
-        mock_svc.get_checks.return_value = QualityCheckList(items=[item1, item2], total=2)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [item1, item2])
 
         response = client.get(self._url(run_id))
 
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 2
-        assert len(data["items"]) == 2
-        assert data["items"][0]["check_name"] == "row_count"
-        assert data["items"][1]["check_name"] == "row_delta"
+        assert data["run_id"] == str(run_id)
+        assert data["total_checks"] == 2
+        assert len(data["checks"]) == 2
+        assert data["checks"][0]["check_name"] == "row_count"
+        assert data["checks"][1]["check_name"] == "row_delta"
 
     def test_empty_list_200(self, quality_api_client):
-        """No checks persisted yet → 200 with total=0 and empty items."""
+        """No checks persisted yet → 200 with total_checks=0 and empty checks array."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
-        mock_svc.get_checks.return_value = QualityCheckList(items=[], total=0)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [])
 
         response = client.get(self._url(run_id))
 
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 0
-        assert data["items"] == []
+        assert data["total_checks"] == 0
+        assert data["checks"] == []
+        assert data["passed"] == 0
+        assert data["failed"] == 0
+        assert data["warned"] == 0
 
     def test_filter_by_stage_bronze(self, quality_api_client):
         """?stage=bronze → service called with stage='bronze'."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
-        mock_svc.get_checks.return_value = QualityCheckList(items=[], total=0)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [])
 
         response = client.get(self._url(run_id, stage="bronze"))
 
         assert response.status_code == 200
-        mock_svc.get_checks.assert_called_once_with(run_id, "bronze")
+        mock_svc.get_run_detail.assert_called_once_with(run_id, "bronze")
 
     def test_filter_by_stage_silver(self, quality_api_client):
         """?stage=silver → service called with stage='silver'."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
-        mock_svc.get_checks.return_value = QualityCheckList(items=[], total=0)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [])
 
         response = client.get(self._url(run_id, stage="silver"))
 
         assert response.status_code == 200
-        mock_svc.get_checks.assert_called_once_with(run_id, "silver")
+        mock_svc.get_run_detail.assert_called_once_with(run_id, "silver")
 
     def test_filter_by_stage_gold(self, quality_api_client):
         """?stage=gold → service called with stage='gold'."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
-        mock_svc.get_checks.return_value = QualityCheckList(items=[], total=0)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [])
 
         response = client.get(self._url(run_id, stage="gold"))
 
         assert response.status_code == 200
-        mock_svc.get_checks.assert_called_once_with(run_id, "gold")
+        mock_svc.get_run_detail.assert_called_once_with(run_id, "gold")
 
     def test_no_stage_filter_calls_service_with_none(self, quality_api_client):
         """No ?stage param → service called with stage=None."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
-        mock_svc.get_checks.return_value = QualityCheckList(items=[], total=0)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [])
 
         client.get(self._url(run_id))
 
-        mock_svc.get_checks.assert_called_once_with(run_id, None)
+        mock_svc.get_run_detail.assert_called_once_with(run_id, None)
 
     def test_invalid_stage_returns_422(self, quality_api_client):
         """?stage=invalid → 422, no service call."""
@@ -215,7 +239,7 @@ class TestGetQualityChecks:
         response = client.get(self._url(run_id, stage="invalid"))
 
         assert response.status_code == 422
-        mock_svc.get_checks.assert_not_called()
+        mock_svc.get_run_detail.assert_not_called()
 
     def test_invalid_stage_platinum_returns_422(self, quality_api_client):
         """?stage=platinum → 422."""
@@ -226,28 +250,33 @@ class TestGetQualityChecks:
 
         assert response.status_code == 422
 
-    def test_response_includes_passed_field(self, quality_api_client):
-        """Response items include the passed boolean field."""
+    def test_response_aggregate_counts_match(self, quality_api_client):
+        """Response includes accurate passed/failed/warned aggregate counts."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
-        item = _make_check_response(pipeline_run_id=run_id, passed=False, check_name="row_count")
-        mock_svc.get_checks.return_value = QualityCheckList(items=[item], total=1)
+        ok = _make_check_response(id=1, pipeline_run_id=run_id, passed=True, severity="error")
+        err = _make_check_response(id=2, pipeline_run_id=run_id, passed=False, severity="error")
+        warn = _make_check_response(id=3, pipeline_run_id=run_id, passed=False, severity="warn")
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [ok, err, warn])
 
         response = client.get(self._url(run_id))
 
         data = response.json()
-        assert data["items"][0]["passed"] is False
+        assert data["passed"] == 1
+        assert data["failed"] == 1
+        assert data["warned"] == 1
+        assert data["total_checks"] == 3
 
     def test_response_item_fields_complete(self, quality_api_client):
-        """All expected fields are present in each response item."""
+        """All expected fields are present in each response check."""
         client, mock_svc = quality_api_client
         run_id = uuid4()
         item = _make_check_response(pipeline_run_id=run_id)
-        mock_svc.get_checks.return_value = QualityCheckList(items=[item], total=1)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [item])
 
         response = client.get(self._url(run_id))
 
-        item_data = response.json()["items"][0]
+        check_data = response.json()["checks"][0]
         for field in (
             "id",
             "tenant_id",
@@ -260,7 +289,7 @@ class TestGetQualityChecks:
             "details",
             "checked_at",
         ):
-            assert field in item_data, f"Field '{field}' missing from response item"
+            assert field in check_data, f"Field '{field}' missing from response check"
 
     def test_invalid_run_id_format_returns_422(self, quality_api_client):
         """Malformed UUID in path → FastAPI returns 422."""
@@ -275,12 +304,12 @@ class TestGetQualityChecks:
         client, mock_svc = quality_api_client
         run_id = uuid4()
         item = _make_check_response(pipeline_run_id=run_id, message=None)
-        mock_svc.get_checks.return_value = QualityCheckList(items=[item], total=1)
+        mock_svc.get_run_detail.return_value = _make_run_detail(run_id, [item])
 
         response = client.get(self._url(run_id))
 
         assert response.status_code == 200
-        assert response.json()["items"][0]["message"] is None
+        assert response.json()["checks"][0]["message"] is None
 
 
 # ---------------------------------------------------------------------------

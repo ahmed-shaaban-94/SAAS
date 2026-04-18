@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Upload, ShieldX, GitBranch } from "lucide-react";
+import { Upload, ShieldX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ACTIONS = [
   { label: "Upload Files", href: "/upload", icon: Upload },
-  { label: "Data Quality", href: "/quality", icon: ShieldX },
-  { label: "Data Lineage", href: "/lineage", icon: GitBranch },
+  { label: "Pipeline Health", href: "/quality", icon: ShieldX },
 ] as const;
 
 export function DataOpsCommandBar() {

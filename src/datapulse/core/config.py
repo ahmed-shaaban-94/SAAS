@@ -76,6 +76,13 @@ class Settings(BaseSettings):
     api_key_roles: list[str] = ["api-reader"]
     default_tenant_id: str = "1"
 
+    # API overload protection
+    # Per-worker in-flight request cap. A small acquisition timeout lets the
+    # API shed excess load quickly instead of letting workers spiral into
+    # timeouts and OOMs under bursts.
+    api_max_in_flight_requests: int = 64
+    api_backpressure_timeout_ms: int = 75
+
     # RBAC — emails that auto-register with elevated roles on first login
     # Set via OWNER_EMAILS / ADMIN_EMAILS env vars (comma-separated). Empty = no auto-elevation.
     owner_emails: list[str] = []
@@ -97,6 +104,8 @@ class Settings(BaseSettings):
 
     # Async query execution (Redis db 2 for job state)
     query_row_limit: int = 10_000  # Max rows for async queries
+    query_max_concurrent_jobs: int = 4
+    query_max_concurrent_jobs_per_tenant: int = 2
 
     # Embed (iframe white-label)
     embed_allowed_origins: list[str] = []  # Domains allowed to iframe embed

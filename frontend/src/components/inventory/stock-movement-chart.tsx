@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useFilters } from "@/contexts/filter-context";
 import { EmptyState } from "@/components/empty-state";
+import { UploadDataAction } from "@/components/shared/empty-state-actions";
 import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { ChartCard } from "@/components/shared/chart-card";
@@ -59,7 +60,7 @@ export function StockMovementChart() {
     );
   }
   if (!chartData.length) {
-    return <EmptyState title="No stock movements" description="Movement activity will appear here once records are available." />;
+    return <EmptyState title="No stock movements" description="Movement activity will appear here once records are available." action={<UploadDataAction />} />;
   }
 
   return (

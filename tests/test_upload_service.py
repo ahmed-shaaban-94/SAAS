@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,11 @@ def svc(tmp_path):
     raw_dir = tmp_path / "raw"
     raw_dir.mkdir()
     return UploadService(raw_data_dir=str(raw_dir), tenant_id="test-tenant")
+
+
+async def _yield_chunks(*chunks: bytes) -> AsyncIterator[bytes]:
+    for chunk in chunks:
+        yield chunk
 
 
 # ------------------------------------------------------------------
@@ -76,6 +82,16 @@ def test_uuid_filename(svc):
     assert len(stored) == 1
     assert stored[0].name == f"{file_id}.csv"
     assert "mydata" not in stored[0].name
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_save_valid_csv_stream(svc):
+    result = await svc.save_temp_file_stream("report.csv", _yield_chunks(b"name,", b"value\n"))
+    assert result.status == "uploaded"
+    assert result.size_bytes == len(b"name,value\n")
+    stored = list(svc._tenant_dir.glob(f"{result.file_id}.*"))
+    assert len(stored) == 1
 
 
 # ------------------------------------------------------------------

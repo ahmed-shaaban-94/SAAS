@@ -1,6 +1,15 @@
+import type { ReactNode } from "react";
+
 interface EmptyStateProps {
   title?: string;
   description?: string;
+  /** Optional icon/illustration override. Defaults to the built-in chart bars. */
+  icon?: ReactNode;
+  /**
+   * Optional primary-action slot. Typically `<LoadSampleAction />` or
+   * `<UploadDataAction />` from `components/shared/empty-state-actions`.
+   */
+  action?: ReactNode;
 }
 
 function EmptyIllustration() {
@@ -47,12 +56,15 @@ function EmptyIllustration() {
 export function EmptyState({
   title = "No data available",
   description = "Try adjusting your filters or check back later.",
+  icon,
+  action,
 }: EmptyStateProps) {
   return (
     <div className="viz-panel-soft flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border/70 p-16 animate-fade-in">
-      <EmptyIllustration />
+      {icon ?? <EmptyIllustration />}
       <h3 className="mt-5 text-lg font-semibold text-text-primary">{title}</h3>
       <p className="mt-1.5 max-w-sm text-center text-sm text-text-secondary">{description}</p>
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }

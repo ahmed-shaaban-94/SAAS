@@ -80,3 +80,23 @@ class OnboardingService:
             skipped_at=datetime.now(UTC),
         )
         return OnboardingStatus(**row)
+
+    def update_golden_path_progress(
+        self, tenant_id: int, user_id: str, progress: dict
+    ) -> OnboardingStatus:
+        """Sync OnboardingStrip TTFI milestone state to the database."""
+        log.info(
+            "service_update_golden_path_progress",
+            user_id=user_id,
+            keys=list(progress.keys()),
+        )
+        row = self._repo.upsert_golden_path_progress(
+            tenant_id=tenant_id, user_id=user_id, progress=progress
+        )
+        return OnboardingStatus(**row)
+
+    def dismiss_first_insight(self, tenant_id: int, user_id: str) -> OnboardingStatus:
+        """Record that the first-insight card has been dismissed."""
+        log.info("service_dismiss_first_insight", user_id=user_id)
+        row = self._repo.dismiss_first_insight(tenant_id=tenant_id, user_id=user_id)
+        return OnboardingStatus(**row)

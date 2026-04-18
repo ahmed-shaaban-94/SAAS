@@ -69,7 +69,7 @@ src/datapulse/          # Python backend
 ├── gamification/       # Points/badges system
 ├── lineage/            # Data lineage tracking
 ├── notifications_center/ # In-app notification feed
-├── onboarding/         # New tenant onboarding flow
+├── onboarding/         # New tenant onboarding flow + sample pharma dataset seeder
 ├── rbac/               # Role-based access control
 ├── reports/            # Scheduled report generation
 ├── reseller/           # Reseller/white-label support
@@ -195,6 +195,30 @@ docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/da
 ## Future Phases
 
 Phases 1.3–2.8 + The Great Fix + Enhancements 2-3 + Phase 4 = all DONE.
+
+**Phase 2 — Golden Path Sprint** (in flight): Upload → first-insight in < 5 min.
+Tracked under epic [#398](https://github.com/ahmed-shaaban-94/Data-Pulse/issues/398); tasks #399–#405. Plan: `docs/superpowers/plans/2026-04-17-phase2-golden-path.md`.
+
+### Sample Pharma Dataset (Phase 2 Task 2 / #401)
+
+`src/datapulse/onboarding/sample_data.py` provides a deterministic 5 000-row
+synthetic dataset that looks like a small Egyptian 10-branch pharma chain.
+
+- **No PII, no real patient data, no real customer identifiers.** All
+  customer names are generic group labels; staff names are fictional;
+  product descriptions use therapeutic-class wording, not branded drugs.
+- **Deterministic**: same `seed` → byte-identical rows. Safe for snapshot
+  tests and idempotent reloads.
+- **Idempotency markers**: every row tags `source_file='sample.csv'` and
+  `source_quarter='SAMPLE'`. Reload = DELETE on markers + INSERT.
+- **Tenant-scoped**: rows carry `tenant_id`; `insert_sample_rows` refuses
+  a row/caller mismatch.
+- **API**: `POST /api/v1/onboarding/load-sample` (rate-limited 5/min) —
+  returns `{rows_loaded, pipeline_run_id, duration_seconds}`. Orchestrates
+  via `SampleLoadService`: insert + create pipeline_run + seed synthetic
+  passing quality_checks so Pipeline Health renders a healthy sample run.
+- **Attribution**: the dataset is authored in-repo under `sample_data.py`.
+  No external source; no license constraints.
 
 - **Phase 5**: Multi-tenancy & Billing — Stripe subscriptions, usage metering, admin panel [PLANNED]
 - **Phase 6**: Data Sources & Connectors — Google Sheets, MySQL/SQL Server, Shopify, schema mapping [PLANNED]

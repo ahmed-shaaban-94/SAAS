@@ -7,6 +7,7 @@ import { RankingChart } from "@/components/shared/ranking-chart";
 import { RankingTableLinked } from "@/components/shared/ranking-table-linked";
 import CsvExportButton from "@/components/shared/csv-export-button";
 import { EmptyState } from "@/components/empty-state";
+import { UploadDataAction } from "@/components/shared/empty-state-actions";
 import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { formatCurrency, formatNumber, formatCompact } from "@/lib/formatters";
@@ -86,7 +87,8 @@ export function StaffOverview() {
     return (
       <EmptyState
         title="No staff data available"
-        description="Try adjusting your filters or check back later."
+        description="Try adjusting your filters or upload sales data to see staff performance."
+        action={<UploadDataAction />}
       />
     );
   }

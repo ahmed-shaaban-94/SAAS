@@ -12,7 +12,7 @@ from datapulse.pipeline.models import (
     ExecutionResult,
     PipelineRunResponse,
 )
-from datapulse.pipeline.quality import QualityCheckList, QualityReport
+from datapulse.pipeline.quality import QualityReport, QualityRunDetail
 
 
 def _make_response(**overrides):
@@ -143,9 +143,20 @@ class TestQualityEndpoints:
         client, mock_repo, _, mock_quality_svc = _make_pipeline_client()
         run_id = uuid4()
         mock_repo.get_run.return_value = _make_response(id=run_id)
-        mock_quality_svc.get_checks.return_value = QualityCheckList(items=[], total=0)
+        mock_quality_svc.get_run_detail.return_value = QualityRunDetail(
+            run_id=run_id,
+            checks=[],
+            total_checks=0,
+            passed=0,
+            failed=0,
+            warned=0,
+        )
         resp = client.get(f"/api/v1/pipeline/runs/{run_id}/quality")
         assert resp.status_code == 200
+        data = resp.json()
+        assert data["run_id"] == str(run_id)
+        assert data["total_checks"] == 0
+        assert data["checks"] == []
 
     def test_get_quality_checks_run_not_found(self):
         client, mock_repo, _, _ = _make_pipeline_client()

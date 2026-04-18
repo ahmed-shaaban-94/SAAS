@@ -1,0 +1,41 @@
+# Docker Compose for running Playwright real-backend TTFI spec.
+#
+# Usage (from project root):
+#   RUN_TTFI_REAL=1 \
+#   PLAYWRIGHT_BASE_URL=https://your-droplet.example \
+#   PLAYWRIGHT_NEXTAUTH_SECRET=<droplet NEXTAUTH_SECRET> \
+#   PLAYWRIGHT_TEST_TENANT_ID=1 \
+#   TTFI_PASSES=5 \
+#   docker compose -f docker/docker-compose.playwright.yml run --rm playwright
+#
+# Alternatively, export PLAYWRIGHT_API_TOKEN with a pre-minted JWT:
+#   PLAYWRIGHT_API_TOKEN=<jwt> docker compose -f docker/docker-compose.playwright.yml run --rm playwright
+#
+# Reports are written to playwright-report/ttfi-real.json inside the container.
+# Mount a volume to retrieve them:
+#   docker compose -f docker/docker-compose.playwright.yml run --rm \
+#     -v "$(pwd)/playwright-report:/app/playwright-report" playwright
+
+name: datapulse-playwright
+
+services:
+  playwright:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.playwright
+    environment:
+      - RUN_TTFI_REAL=${RUN_TTFI_REAL:-1}
+      - PLAYWRIGHT_BASE_URL=${PLAYWRIGHT_BASE_URL:-http://host.docker.internal:3000}
+      # Auth: provide one of these two:
+      - PLAYWRIGHT_API_TOKEN=${PLAYWRIGHT_API_TOKEN:-}
+      - PLAYWRIGHT_NEXTAUTH_SECRET=${PLAYWRIGHT_NEXTAUTH_SECRET:-}
+      - PLAYWRIGHT_TEST_TENANT_ID=${PLAYWRIGHT_TEST_TENANT_ID:-1}
+      - TTFI_PASSES=${TTFI_PASSES:-5}
+    volumes:
+      - type: bind
+        source: ../playwright-report
+        target: /app/playwright-report
+    # Allow the container to reach the droplet or a local frontend server.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    network_mode: bridge

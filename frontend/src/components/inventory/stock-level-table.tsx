@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useFilters } from "@/contexts/filter-context";
 import { EmptyState } from "@/components/empty-state";
+import { UploadDataAction } from "@/components/shared/empty-state-actions";
 import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ export function StockLevelTable() {
       <EmptyState
         title="No stock levels available"
         description="Inventory stock levels will appear here when data is available."
+        action={<UploadDataAction />}
       />
     );
   }

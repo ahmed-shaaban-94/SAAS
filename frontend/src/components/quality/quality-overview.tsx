@@ -5,6 +5,11 @@ import { useQualityScorecard } from "@/hooks/use-quality-scorecard";
 import { RunDetailPanel } from "./run-detail-panel";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
+import { EmptyState } from "@/components/empty-state";
+import {
+  LoadSampleAction,
+  UploadDataAction,
+} from "@/components/shared/empty-state-actions";
 import { ShieldCheck, ShieldX, AlertTriangle, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,12 +58,18 @@ export function QualityOverview() {
 
   if (!isLoading && data.total_runs === 0) {
     return (
-      <div className="mt-6 rounded-xl border border-border bg-card p-12 text-center">
-        <ShieldCheck className="mx-auto h-10 w-10 text-text-tertiary mb-3" />
-        <h3 className="text-sm font-medium text-text-primary mb-1">No quality checks yet</h3>
-        <p className="text-xs text-text-secondary">
-          Quality checks will appear here after pipeline runs execute quality gates.
-        </p>
+      <div className="mt-6">
+        <EmptyState
+          icon={<ShieldCheck className="h-10 w-10 text-accent" aria-hidden="true" />}
+          title="No pipeline runs yet"
+          description="Pipeline Health populates after your first import. Load a curated sample dataset to see how a healthy run looks, or bring your own file."
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <LoadSampleAction />
+              <UploadDataAction />
+            </div>
+          }
+        />
       </div>
     );
   }

@@ -2,7 +2,7 @@
 
 import { useDispenseRate } from "@/hooks/use-dispense-rate";
 import { LoadingCard } from "@/components/loading-card";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyDispensing } from "@/components/dispensing/empty-dispensing";
 import { formatNumber } from "@/lib/formatters";
 import { TrendingUp } from "lucide-react";
 
@@ -19,7 +19,7 @@ export function DispenseRateCards() {
     );
   }
 
-  if (!data.length) return <EmptyState title="No dispense rate data" />;
+  if (!data.length) return <EmptyDispensing />;
 
   const top10 = [...data]
     .sort((a, b) => b.avg_daily_dispense - a.avg_daily_dispense)

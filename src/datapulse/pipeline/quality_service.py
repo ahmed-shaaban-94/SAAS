@@ -21,6 +21,7 @@ from datapulse.pipeline.quality import (
     QualityCheckList,
     QualityCheckResult,
     QualityReport,
+    QualityRunDetail,
     check_null_rate,
     run_dbt_tests,
 )
@@ -137,6 +138,29 @@ class QualityService:
     ) -> QualityCheckList:
         """Return persisted quality checks for a run, optionally filtered by stage."""
         return self._repo.get_checks_for_run(run_id, stage=stage)
+
+    def get_run_detail(
+        self,
+        run_id: UUID,
+        stage: str | None = None,
+    ) -> QualityRunDetail:
+        """Return run-detail payload shaped for the web frontend panel.
+
+        Includes aggregate counts (passed / failed / warned) so the UI
+        does not need to re-derive them client-side.
+        """
+        check_list = self._repo.get_checks_for_run(run_id, stage=stage)
+        passed = sum(1 for c in check_list.items if c.passed)
+        failed = sum(1 for c in check_list.items if not c.passed and c.severity == "error")
+        warned = sum(1 for c in check_list.items if not c.passed and c.severity == "warn")
+        return QualityRunDetail(
+            run_id=run_id,
+            checks=list(check_list.items),
+            total_checks=check_list.total,
+            passed=passed,
+            failed=failed,
+            warned=warned,
+        )
 
     def get_scorecard(self, limit: int = 20) -> QualityScorecard:
         """Build a quality scorecard from recent pipeline runs."""

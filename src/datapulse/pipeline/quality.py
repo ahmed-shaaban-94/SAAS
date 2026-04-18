@@ -100,6 +100,23 @@ class QualityCheckList(BaseModel):
     total: int
 
 
+class QualityRunDetail(BaseModel):
+    """Quality check detail for a single pipeline run, with aggregate counts.
+
+    Shape matches the web frontend's `useQualityRunDetail` hook contract so
+    the run-detail panel renders correctly.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    run_id: UUID
+    checks: list[QualityCheckResponse]
+    total_checks: int
+    passed: int
+    failed: int
+    warned: int
+
+
 class QualityCheckRequest(BaseModel):
     """API request body for running quality checks against a pipeline run."""
 

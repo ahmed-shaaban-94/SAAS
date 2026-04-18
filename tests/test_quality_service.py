@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
@@ -10,8 +11,10 @@ import pytest
 from datapulse.config import Settings
 from datapulse.pipeline.quality import (
     QualityCheckList,
+    QualityCheckResponse,
     QualityCheckResult,
     QualityReport,
+    QualityRunDetail,
 )
 from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.quality_service import QualityService
@@ -195,3 +198,61 @@ class TestGetChecks:
         service.get_checks(run_id)
 
         mock_repo.get_checks_for_run.assert_called_once_with(run_id, stage=None)
+
+
+def _check_response(
+    run_id, *, passed: bool, severity: str = "error", check_id: int = 1
+) -> QualityCheckResponse:
+    return QualityCheckResponse(
+        id=check_id,
+        tenant_id=1,
+        pipeline_run_id=run_id,
+        check_name=f"check_{check_id}",
+        stage="bronze",
+        severity=severity,
+        passed=passed,
+        message=None,
+        details={},
+        checked_at=datetime.now(UTC),
+    )
+
+
+class TestGetRunDetail:
+    def test_empty_run_returns_zero_counts(self, service, mock_repo):
+        run_id = uuid4()
+        mock_repo.get_checks_for_run.return_value = QualityCheckList(items=[], total=0)
+
+        result = service.get_run_detail(run_id)
+
+        assert isinstance(result, QualityRunDetail)
+        assert result.run_id == run_id
+        assert result.total_checks == 0
+        assert result.passed == 0
+        assert result.failed == 0
+        assert result.warned == 0
+
+    def test_computes_passed_failed_warned_counts(self, service, mock_repo):
+        run_id = uuid4()
+        items = [
+            _check_response(run_id, passed=True, severity="error", check_id=1),
+            _check_response(run_id, passed=True, severity="error", check_id=2),
+            _check_response(run_id, passed=False, severity="error", check_id=3),
+            _check_response(run_id, passed=False, severity="warn", check_id=4),
+        ]
+        mock_repo.get_checks_for_run.return_value = QualityCheckList(items=items, total=4)
+
+        result = service.get_run_detail(run_id)
+
+        assert result.total_checks == 4
+        assert result.passed == 2
+        assert result.failed == 1
+        assert result.warned == 1
+        assert len(result.checks) == 4
+
+    def test_passes_stage_filter_to_repo(self, service, mock_repo):
+        run_id = uuid4()
+        mock_repo.get_checks_for_run.return_value = QualityCheckList(items=[], total=0)
+
+        service.get_run_detail(run_id, stage="silver")
+
+        mock_repo.get_checks_for_run.assert_called_once_with(run_id, stage="silver")

@@ -42,9 +42,9 @@ from datapulse.pipeline.models import (
 )
 from datapulse.pipeline.quality import (
     VALID_STAGES,
-    QualityCheckList,
     QualityCheckRequest,
     QualityReport,
+    QualityRunDetail,
 )
 from datapulse.pipeline.quality_service import QualityService
 from datapulse.pipeline.service import PipelineService
@@ -450,14 +450,20 @@ async def execute_forecasting(
     )
 
 
-@router.get("/runs/{run_id}/quality", response_model=QualityCheckList)
+@router.get("/runs/{run_id}/quality", response_model=QualityRunDetail)
 def get_quality_checks(
     service: ServiceDep,
     quality_service: QualityServiceDep,
     run_id: UUID,
     stage: Annotated[str | None, Query(description="Filter by stage")] = None,
-) -> QualityCheckList:
-    """Return quality check results for a pipeline run."""
+) -> QualityRunDetail:
+    """Return quality check results for a pipeline run with aggregate counts.
+
+    Response shape is aligned with the web frontend's `useQualityRunDetail`
+    hook contract: carries `run_id`, `checks`, `total_checks`, and
+    `passed`/`failed`/`warned` counters so the UI does not have to
+    re-derive them.
+    """
     if service.get_run(run_id) is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     if stage is not None and stage not in VALID_STAGES:
@@ -465,7 +471,7 @@ def get_quality_checks(
             status_code=422,
             detail=f"Invalid stage '{stage}'. Must be one of: {', '.join(sorted(VALID_STAGES))}",
         )
-    return quality_service.get_checks(run_id, stage)
+    return quality_service.get_run_detail(run_id, stage)
 
 
 @router.post(

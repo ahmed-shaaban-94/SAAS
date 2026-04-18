@@ -6,7 +6,7 @@ All models are frozen (immutable) to prevent accidental mutation.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
@@ -31,6 +31,9 @@ class OnboardingStatus(BaseModel):
     completed_at: datetime | None = None
     skipped_at: datetime | None = None
     created_at: datetime | None = None
+    # Phase 2 Follow-up #6: cross-device sync fields
+    golden_path_progress: dict[str, Any] = {}
+    first_insight_dismissed_at: datetime | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -45,3 +48,21 @@ class CompleteStepRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     step: Literal["connect_data", "first_report", "first_goal", "configure_first_profile"]
+
+
+class GoldenPathProgressRequest(BaseModel):
+    """Request body for syncing OnboardingStrip golden-path progress."""
+
+    model_config = ConfigDict(frozen=True)
+
+    progress: dict[str, Any]
+
+
+class SampleLoadResult(BaseModel):
+    """Result of loading the curated pharma sample dataset."""
+
+    model_config = ConfigDict(frozen=True)
+
+    rows_loaded: int
+    pipeline_run_id: str
+    duration_seconds: float

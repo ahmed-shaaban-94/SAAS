@@ -1,0 +1,23 @@
+# Playwright runner for real-backend TTFI measurement.
+#
+# Build context: project root (Data-Pulse/)
+# Usage: docker compose -f docker/docker-compose.playwright.yml run --rm playwright
+#
+# Based on the official Playwright image which ships Chromium, Firefox, and
+# WebKit pre-installed so `npx playwright install` is not needed at runtime.
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy
+
+WORKDIR /app
+
+# Copy only the files needed to install npm dependencies.
+COPY frontend/package.json frontend/package-lock.json ./
+
+# Use the same npm major as CI to avoid lockfile drift.
+RUN npx npm@10.8.2 ci --ignore-scripts
+
+# Copy the rest of the frontend source (tests + config).
+COPY frontend/ ./
+
+# Default: run the real-backend TTFI spec.
+# Override CMD or pass env vars via docker compose.
+CMD ["npx", "playwright", "test", "e2e/golden-path-real-backend.spec.ts", "--reporter=list"]

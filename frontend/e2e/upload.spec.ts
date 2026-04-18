@@ -43,6 +43,40 @@ test.describe("Upload Flow", () => {
     await expect(page.getByText(/Supports .xlsx, .csv, .xls/i)).toBeVisible();
   });
 
+  test("wizard progress indicator renders with step 1 active", async ({ page }) => {
+    await expect(page.getByLabel("Upload wizard progress")).toBeVisible();
+    await expect(page.getByText(/choose source/i).first()).toBeVisible();
+    await expect(page.getByText(/map columns/i).first()).toBeVisible();
+    await expect(page.getByText(/validate & run/i).first()).toBeVisible();
+  });
+
+  test("sample data CTA is visible on step 1", async ({ page }) => {
+    await expect(
+      page.getByRole("button", { name: /use sample pharma data/i }),
+    ).toBeVisible();
+  });
+
+  test("sample data CTA triggers onboarding endpoint and redirects", async ({ page }) => {
+    // Mock the sample-load endpoint so we can run without a backend.
+    await page.route("**/api/v1/onboarding/load-sample", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rows_loaded: 5000,
+          pipeline_run_id: "ttfi-run-1",
+          duration_seconds: 4.2,
+        }),
+      }),
+    );
+
+    await page
+      .getByRole("button", { name: /use sample pharma data/i })
+      .click();
+
+    await page.waitForURL(/\/dashboard\?first_upload=1/, { timeout: 10000 });
+  });
+
   test("upload valid CSV shows file in uploaded list", async ({ page }) => {
     test.skip(needsBackend, "requires live API backend — run against staging");
 

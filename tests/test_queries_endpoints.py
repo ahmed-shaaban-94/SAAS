@@ -107,6 +107,19 @@ class TestQueryEndpoints:
         )
         assert resp.status_code == 503
 
+    @patch("datapulse.api.routes.queries.submit_query", new_callable=AsyncMock)
+    def test_submit_query_capacity_exceeded(self, mock_submit, client: TestClient):
+        from datapulse.tasks.async_executor import QueryCapacityExceededError
+
+        mock_submit.side_effect = QueryCapacityExceededError("executor busy")
+
+        resp = client.post(
+            "/api/v1/queries",
+            json={"sql": "SELECT 1"},
+        )
+        assert resp.status_code == 429
+        assert "executor busy" in resp.json()["detail"]
+
     def test_submit_query_blocked_sql(self, client: TestClient):
         resp = client.post(
             "/api/v1/queries",

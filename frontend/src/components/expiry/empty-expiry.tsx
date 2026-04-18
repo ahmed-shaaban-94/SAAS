@@ -1,14 +1,23 @@
 import { CalendarClock } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
+import {
+  LoadSampleAction,
+  UploadDataAction,
+} from "@/components/shared/empty-state-actions";
+
 export function EmptyExpiry() {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <CalendarClock className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-lg font-semibold">No batch data yet</h3>
-      <p className="text-muted-foreground mt-2 max-w-sm">
-        Import batch records with expiry dates to enable expiry tracking,
-        FEFO ordering, and near-expiry alerts.
-      </p>
-    </div>
+    <EmptyState
+      icon={<CalendarClock className="h-10 w-10 text-accent" aria-hidden="true" />}
+      title="No batch data yet"
+      description="Expiry tracking, FEFO ordering, and near-expiry alerts light up once batch records are loaded. Start with sample data to explore, or bring your own file."
+      action={
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <LoadSampleAction />
+          <UploadDataAction />
+        </div>
+      }
+    />
   );
 }

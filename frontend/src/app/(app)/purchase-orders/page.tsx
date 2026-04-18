@@ -5,6 +5,7 @@ import { Plus, ShoppingCart } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageTransition } from "@/components/layout/page-transition";
+import { OpsSuiteNav } from "@/components/shared/ops-suite-nav";
 import { AnalyticsSectionHeader } from "@/components/layout/analytics-section-header";
 import { POListTable } from "@/components/purchase-orders/po-list-table";
 import { POCreateForm } from "@/components/purchase-orders/po-create-form";
@@ -49,6 +50,7 @@ export default function PurchaseOrdersPage() {
           </button>
         }
       />
+      <OpsSuiteNav />
 
       {/* Quick stats */}
       <div className="mt-6 grid grid-cols-3 gap-4">

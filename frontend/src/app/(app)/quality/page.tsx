@@ -11,8 +11,8 @@ export default function QualityPage() {
     <PageTransition>
       <Breadcrumbs />
       <Header
-        title="Data Quality"
-        description="Monitor pipeline quality scores and drill into check results"
+        title="Pipeline Health"
+        description="Freshness, completeness, and quality checks across every pipeline run"
       />
       <DataOpsCommandBar />
       <QualityOverview />

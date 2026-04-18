@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Printer, TrendingUp, Target, Calendar } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -8,6 +9,9 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { FilterBar } from "@/components/filters/filter-bar";
 import { LoadingCard } from "@/components/loading-card";
 import { CompareProvider, CompareButton, ComparePanel } from "@/components/comparison/compare-toggle";
+import { trackFirstDashboardView } from "@/lib/analytics-events";
+import { FirstInsightCard } from "@/components/dashboard/first-insight-card";
+import { OnboardingStrip } from "@/components/dashboard/onboarding-strip";
 import dynamic from "next/dynamic";
 
 // Above-fold: regular imports (seen immediately)
@@ -62,6 +66,12 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ clas
 }
 
 export default function DashboardPage() {
+  // Golden-Path instrumentation: fire first_dashboard_view once per session.
+  // See Phase 2 Task 0 (#399).
+  useEffect(() => {
+    trackFirstDashboardView();
+  }, []);
+
   return (
     <PageTransition>
       <CompareProvider>
@@ -86,6 +96,12 @@ export default function DashboardPage() {
         </div>
         <FilterBar />
         <ComparePanel />
+
+        {/* Phase 2 #404: onboarding progress strip — self-hides when all done or stale. */}
+        <OnboardingStrip />
+
+        {/* Phase 2 #402: first-insight card — self-hides when no insight or dismissed. */}
+        <FirstInsightCard />
 
         {/* Client boundary: single API call provides data to KPI + trends + rankings */}
         <DashboardContent>

@@ -15,6 +15,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from datapulse.api.backpressure import AdmissionController
 from datapulse.api.limiter import limiter
 from datapulse.api.routes import (
     ai_light,
@@ -32,6 +33,7 @@ from datapulse.api.routes import (
     forecasting,
     gamification,
     health,
+    insights_first,
     lineage,
     members,
     notifications,
@@ -98,6 +100,10 @@ def create_app() -> FastAPI:
         description="Sales analytics API for DataPulse",
         version="0.1.0",
         lifespan=lifespan,
+    )
+    app.state.admission_controller = AdmissionController(
+        max_in_flight_requests=settings.api_max_in_flight_requests,
+        acquire_timeout_ms=settings.api_backpressure_timeout_ms,
     )
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
@@ -216,9 +222,42 @@ def create_app() -> FastAPI:
     async def request_id_middleware(request: Request, call_next) -> Response:
         request_id = request.headers.get("X-Request-ID") or str(_uuid.uuid4())
         structlog.contextvars.bind_contextvars(request_id=request_id)
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        finally:
+            structlog.contextvars.unbind_contextvars("request_id")
         response.headers["X-Request-ID"] = request_id
-        structlog.contextvars.unbind_contextvars("request_id")
+        return response
+
+    @app.middleware("http")
+    async def overload_guard_middleware(request: Request, call_next) -> Response:
+        controller: AdmissionController = request.app.state.admission_controller
+        if controller.is_exempt(request):
+            return await call_next(request)
+
+        if not await controller.try_acquire():
+            logger.warning(
+                "request_rejected_overload",
+                method=request.method,
+                path=request.url.path,
+                in_flight=controller.in_flight,
+                limit=controller.max_in_flight_requests,
+            )
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Server is busy. Please retry shortly."},
+                headers={
+                    "Retry-After": "1",
+                    "X-DataPulse-Backpressure": "rejected",
+                },
+            )
+
+        try:
+            response = await call_next(request)
+        finally:
+            controller.release()
+
+        response.headers["X-DataPulse-Backpressure"] = "guarded"
         return response
 
     # Request logging middleware
@@ -259,6 +298,7 @@ def create_app() -> FastAPI:
     app.include_router(billing.router, prefix="/api/v1")
     app.include_router(anomalies.router, prefix="/api/v1")
     app.include_router(onboarding.router, prefix="/api/v1")
+    app.include_router(insights_first.router, prefix="/api/v1")
     app.include_router(search.router, prefix="/api/v1")
     app.include_router(views.router, prefix="/api/v1")
     app.include_router(notifications.router, prefix="/api/v1")
@@ -296,6 +336,9 @@ def create_app() -> FastAPI:
         app.include_router(inventory_routes.router, prefix="/api/v1")
         app.include_router(expiry_routes.router, prefix="/api/v1")
         app.include_router(dispensing_routes.router, prefix="/api/v1")
+        # POS M1: capabilities is a separate unauthenticated router; register
+        # it before the main router so OpenAPI groups it correctly.
+        app.include_router(pos_routes.capabilities_router, prefix="/api/v1")
         app.include_router(pos_routes.router, prefix="/api/v1")
         logger.info("feature_platform_enabled")
 

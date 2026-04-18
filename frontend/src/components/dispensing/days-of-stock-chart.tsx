@@ -15,6 +15,7 @@ import { useChartTheme } from "@/hooks/use-chart-theme";
 import { useDaysOfStock } from "@/hooks/use-days-of-stock";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
+import { UploadDataAction } from "@/components/shared/empty-state-actions";
 import { truncate } from "@/lib/formatters";
 
 function riskColor(days: number | null): string {
@@ -29,7 +30,7 @@ export function DaysOfStockChart() {
   const theme = useChartTheme();
 
   if (isLoading) return <LoadingCard className="h-80" />;
-  if (!data.length) return <EmptyState title="No stock days data" />;
+  if (!data.length) return <EmptyState title="No stock days data" action={<UploadDataAction />} />;
 
   const sorted = [...data]
     .sort((a, b) => (a.days_of_stock ?? -1) - (b.days_of_stock ?? -1))

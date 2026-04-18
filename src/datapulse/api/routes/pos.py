@@ -21,9 +21,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_pos_service
+from datapulse.api.deps import get_pos_service, get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.billing.pos_guard import require_pos_plan
 from datapulse.logging import get_logger
@@ -68,6 +70,7 @@ router = APIRouter(
 
 ServiceDep = Annotated[PosService, Depends(get_pos_service)]
 CurrentUser = Annotated[dict, Depends(get_current_user)]
+SessionDep = Annotated[Session, Depends(get_tenant_session)]
 
 
 def _tenant_id_of(user: CurrentUser) -> int:
@@ -98,7 +101,15 @@ def open_terminal(
     service: ServiceDep,
     user: CurrentUser,
 ) -> TerminalSessionResponse:
-    """Open a fresh POS terminal session (cashier shift)."""
+    """Open a fresh POS terminal session (cashier shift).
+
+    §1.4 single-terminal enforcement is delivered by three other layers
+    (client guard via GET /terminals/active-for-me, device-bound per-request
+    Ed25519 proof via device_token_verifier, and tenant-level flags in
+    bronze.tenants). The server-side guard ON THIS ROUTE belongs in the
+    service layer so it can share PosService's existing DB session; moving
+    it there is tracked as M2 follow-up work.
+    """
     session = service.open_terminal(
         tenant_id=_tenant_id_of(user),
         site_code=body.site_code,
@@ -119,6 +130,65 @@ def list_active_terminals(
     """List all non-closed terminals for the tenant."""
     sessions = service.list_active_terminals(_tenant_id_of(user))
     return [TerminalSessionResponse.model_validate(s.model_dump()) for s in sessions]
+
+
+# NOTE: `/terminals/active-for-me` MUST be declared before `/terminals/{terminal_id}`
+# so FastAPI routes the literal path before the dynamic one.
+@router.get("/terminals/active-for-me")
+@limiter.limit("60/minute")
+def active_terminals_for_me(
+    request: Request,
+    user: CurrentUser,
+    db_session: SessionDep,
+):
+    """Return the caller tenant's currently-active POS terminals + multi-terminal flag.
+
+    Used by the desktop client on launch to detect "another terminal is
+    already open for this pharmacy" before attempting to open a shift (§1.4).
+    Response model is resolved at import time via the forward-declared
+    ``ActiveForMeResponse`` imported in the module-late block.
+    """
+    from datapulse.pos.models import (
+        ActiveForMeResponse,
+        ActiveTerminalRow,
+    )
+
+    tenant_id = _tenant_id_of(user)
+    rows = (
+        db_session.execute(
+            text(
+                """
+            SELECT ts.id            AS terminal_id,
+                   td.device_fingerprint,
+                   ts.opened_at
+              FROM pos.terminal_sessions ts
+         LEFT JOIN pos.terminal_devices td
+                ON td.terminal_id = ts.id AND td.revoked_at IS NULL
+             WHERE ts.tenant_id = :tid
+               AND ts.status IN ('open', 'active', 'paused')
+          ORDER BY ts.opened_at ASC
+            """
+            ),
+            {"tid": tenant_id},
+        )
+        .mappings()
+        .all()
+    )
+
+    flags = db_session.execute(
+        text(
+            """SELECT pos_multi_terminal_allowed, pos_max_terminals
+                 FROM bronze.tenants
+                WHERE tenant_id = :tid"""
+        ),
+        {"tid": tenant_id},
+    ).mappings().first() or {"pos_multi_terminal_allowed": False, "pos_max_terminals": 1}
+
+    return ActiveForMeResponse(
+        active_terminals=[ActiveTerminalRow(**r) for r in rows],
+        multi_terminal_allowed=bool(flags["pos_multi_terminal_allowed"]),
+        max_terminals=int(flags["pos_max_terminals"]),
+    )
 
 
 @router.get("/terminals/{terminal_id}", response_model=TerminalSessionResponse)
@@ -721,4 +791,181 @@ def verify_pharmacist(
         pharmacist_id=body.pharmacist_id,
         credential=body.credential,
         drug_code=body.drug_code,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# M1 — Capabilities (§6.6) — feature-only, unauthenticated
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# Registered as a separate router so it does NOT inherit the authenticated
+# router's ``get_current_user`` + ``require_pos_plan`` dependencies. The
+# capabilities endpoint must be reachable by the desktop client before it
+# has authenticated, so it can decide whether to even attempt login.
+
+from base64 import urlsafe_b64encode  # noqa: E402
+from datetime import UTC  # noqa: E402
+
+from datapulse.pos.capabilities import (  # noqa: E402
+    CAPABILITIES,
+    IDEMPOTENCY_PROTOCOL_VERSION,
+    IDEMPOTENCY_TTL_HOURS,
+    OFFLINE_GRANT_MAX_AGE_HOURS,
+    POS_MAX_CLIENT_VERSION,
+    POS_MIN_CLIENT_VERSION,
+    POS_SERVER_VERSION,
+    PROVISIONAL_TTL_HOURS,
+)
+from datapulse.pos.commit import atomic_commit  # noqa: E402
+from datapulse.pos.devices import (  # noqa: E402
+    DeviceProof,
+    device_token_verifier,
+    register_device,
+)
+from datapulse.pos.idempotency import (  # noqa: E402
+    IdempotencyContext,
+    idempotency_dependency,
+    record_response,
+)
+from datapulse.pos.models import (  # noqa: E402  # noqa: E402,F811
+    CapabilitiesDoc,
+    CommitRequest,
+    CommitResponse,
+    DeviceRegisterRequest,
+    DeviceRegisterResponse,
+    TenantKeysResponse,
+    TenantPublicKey,
+)
+from datapulse.pos.tenant_keys import list_public_keys  # noqa: E402
+
+capabilities_router = APIRouter(prefix="/pos", tags=["pos"])
+
+
+@capabilities_router.get("/capabilities", response_model=CapabilitiesDoc)
+@limiter.limit("60/minute")
+def capabilities(request: Request) -> CapabilitiesDoc:
+    """Return the server's POS capability document (feature-only, no tenant state)."""
+    return CapabilitiesDoc(
+        server_version=POS_SERVER_VERSION,
+        min_client_version=POS_MIN_CLIENT_VERSION,
+        max_client_version=POS_MAX_CLIENT_VERSION,
+        idempotency=IDEMPOTENCY_PROTOCOL_VERSION,
+        capabilities=dict(CAPABILITIES),
+        enforced_policies={
+            "idempotency_ttl_hours": IDEMPOTENCY_TTL_HOURS,
+            "provisional_ttl_hours": PROVISIONAL_TTL_HOURS,
+            "offline_grant_max_age_hours": OFFLINE_GRANT_MAX_AGE_HOURS,
+        },
+        tenant_key_endpoint="/api/v1/pos/tenant-key",
+        device_registration_endpoint="/api/v1/pos/terminals/register-device",
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# M1 — Tenant signing public keys (§8.8.2)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/terminals/register-device",
+    response_model=DeviceRegisterResponse,
+    dependencies=[Depends(require_permission("pos:device:register"))],
+)
+@limiter.limit("10/minute")
+def register_terminal_device(
+    request: Request,
+    payload: DeviceRegisterRequest,
+    user: CurrentUser,
+    session: SessionDep,
+) -> DeviceRegisterResponse:
+    """Register a physical device (Ed25519 public key + fingerprint) to a terminal.
+
+    First-launch flow: the desktop client generates a keypair locally, keeps
+    the private key in Windows DPAPI, and posts the public key here. Every
+    subsequent mutating POS request is signed with that private key and
+    verified by ``device_token_verifier`` (§8.9).
+    """
+    from datetime import datetime
+
+    tenant_id = _tenant_id_of(user)
+    device_id = register_device(
+        session,
+        tenant_id=tenant_id,
+        terminal_id=payload.terminal_id,
+        public_key_b64=payload.public_key,
+        device_fingerprint=payload.device_fingerprint,
+    )
+    session.commit()
+    return DeviceRegisterResponse(
+        device_id=device_id,
+        terminal_id=payload.terminal_id,
+        registered_at=datetime.now(UTC),
+    )
+
+
+# B008-safe: pre-construct the dependency at module load time rather than in
+# the arg default. FastAPI consumes the callable from the `Depends(...)` wrap
+# at import — creating it once here is functionally identical to creating it
+# per-call and avoids the ruff B008 false positive on factory dependencies.
+_commit_idempotency_dep = idempotency_dependency("POST /pos/transactions/commit")
+
+
+@router.post(
+    "/transactions/commit",
+    response_model=CommitResponse,
+    dependencies=[Depends(require_permission("pos:transaction:checkout"))],
+)
+@limiter.limit("30/minute")
+async def commit_transaction(
+    request: Request,
+    payload: CommitRequest,
+    user: CurrentUser,
+    db_session: SessionDep,
+    proof: Annotated[DeviceProof, Depends(device_token_verifier)],
+    idem: Annotated[IdempotencyContext, Depends(_commit_idempotency_dep)],
+) -> CommitResponse:
+    """Atomic POS commit — draft + items + checkout in one payload (§3).
+
+    Designed for offline queue replay: a retried push with the same
+    ``Idempotency-Key`` returns the cached response without re-executing
+    the business write. The ``X-Terminal-Token`` header is verified against
+    the registered device public key before any state is touched (§8.9).
+    """
+    if idem.replay:
+        return CommitResponse.model_validate(idem.cached_body)
+
+    if payload.terminal_id != proof.terminal_id:
+        raise HTTPException(status_code=400, detail="body/header terminal_id mismatch")
+
+    tenant_id = _tenant_id_of(user)
+    response = atomic_commit(db_session, tenant_id=tenant_id, payload=payload)
+    record_response(db_session, idem.key, 200, response.model_dump(mode="json"))
+    db_session.commit()
+    return response
+
+
+@router.get("/tenant-key", response_model=TenantKeysResponse)
+@limiter.limit("30/minute")
+def tenant_key(
+    request: Request,
+    user: CurrentUser,
+    session: SessionDep,
+) -> TenantKeysResponse:
+    """Return the tenant's currently-valid POS signing public keys.
+
+    Clients use these keys to verify offline grants (§8.8.2). Private keys
+    never leave the server; only public material is returned here.
+    """
+    tenant_id = _tenant_id_of(user)
+    keys = list_public_keys(session, tenant_id)
+    return TenantKeysResponse(
+        keys=[
+            TenantPublicKey(
+                key_id=k.key_id,
+                public_key=urlsafe_b64encode(k.public_key).decode().rstrip("="),
+                valid_from=k.valid_from,
+                valid_until=k.valid_until,
+            )
+            for k in keys
+        ]
     )
