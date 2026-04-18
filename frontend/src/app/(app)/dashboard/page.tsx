@@ -19,7 +19,7 @@ import { DayHeroConnected } from "@/components/dashboard/day-hero-connected";
 import { KPIGrid } from "@/components/dashboard/kpi-grid";
 import { NarrativeSummaryCard } from "@/components/dashboard/narrative-summary-card";
 import { DailyTrendChart } from "@/components/dashboard/daily-trend-chart";
-import { LastUpdated } from "@/components/dashboard/last-updated";
+import { SourceHealthBadge } from "@/components/dashboard/source-health-badge";
 import { LazySection } from "@/components/dashboard/lazy-section";
 
 // Below-fold: lazy load with loading skeleton
@@ -91,7 +91,7 @@ export default function DashboardPage() {
               <Printer className="h-4 w-4" />
               <span className="hidden sm:inline">Print Report</span>
             </Link>
-            <LastUpdated />
+            <SourceHealthBadge />
           </div>
         </div>
         <FilterBar />
