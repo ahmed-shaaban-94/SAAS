@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("@/hooks/use-first-insight", () => ({
   useFirstInsight: vi.fn(),
+}));
+
+const mockDismissFirstInsight = vi.fn().mockResolvedValue({});
+vi.mock("@/hooks/use-onboarding", () => ({
+  useOnboarding: () => ({
+    data: null,
+    dismissFirstInsight: mockDismissFirstInsight,
+    updateGoldenPathProgress: vi.fn().mockResolvedValue({}),
+  }),
 }));
 
 import { useFirstInsight } from "@/hooks/use-first-insight";
@@ -24,6 +33,7 @@ describe("FirstInsightCard", () => {
   beforeEach(() => {
     mockedHook.mockReset();
     sessionStorage.clear();
+    mockDismissFirstInsight.mockReset().mockResolvedValue({});
   });
 
   it("renders null when hook returns no insight", () => {
@@ -106,5 +116,17 @@ describe("FirstInsightCard", () => {
     render(<FirstInsightCard />);
     // Confidence stored as 0-1; shown as a percentage.
     expect(screen.getByText(/72%|confidence/i)).toBeInTheDocument();
+  });
+
+  it("calls dismissFirstInsight backend endpoint when dismissed", async () => {
+    mockedHook.mockReturnValue({
+      insight: SAMPLE,
+      isLoading: false,
+      error: null,
+    });
+    render(<FirstInsightCard />);
+    await userEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+
+    await waitFor(() => expect(mockDismissFirstInsight).toHaveBeenCalledOnce());
   });
 });

@@ -7,17 +7,19 @@
  * user hits each golden-path milestone, via the `ttfi:event` window
  * CustomEvent emitted by `lib/analytics-events.ts` (#399).
  *
- * State persistence is frontend-only for this pass (localStorage,
- * `ttfi_onboarding_strip_v1`). Backend sync against
- * `users.onboarding_state` is a scoped follow-up when we know what
- * the cross-device UX should look like.
+ * State: localStorage primary (`ttfi_onboarding_strip_v1`) for instant
+ * reads, backend secondary for cross-device sync (follow-up #6).
+ * On mount, backend `golden_path_progress` is merged in (backend wins
+ * for steps not yet in localStorage). On each step completion, the full
+ * progress dict is synced back fire-and-forget.
  *
  * Hides itself when either:
  *   - All 4 steps are complete, OR
  *   - More than 14 days have passed since the strip first mounted.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { Check, Copy, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +75,8 @@ function daysBetween(iso: string): number {
 }
 
 export function OnboardingStrip() {
+  const { data: onboardingData, updateGoldenPathProgress } = useOnboarding();
+
   const [state, setState] = useState<StripState>(() => {
     const loaded = loadState();
     // Stamp first_seen_at on the very first mount.
@@ -83,6 +87,27 @@ export function OnboardingStrip() {
     }
     return loaded;
   });
+
+  // Merge backend golden_path_progress once it loads — backend wins for
+  // steps not yet recorded in localStorage (cross-device catch-up).
+  const mergedRef = useRef(false);
+  useEffect(() => {
+    if (mergedRef.current) return;
+    const backendProgress = onboardingData?.golden_path_progress;
+    if (!backendProgress || Object.keys(backendProgress).length === 0) return;
+    mergedRef.current = true;
+    setState((prev) => {
+      const merged = { ...(prev.completed ?? {}) };
+      for (const [k, v] of Object.entries(backendProgress)) {
+        if (v && !merged[k as StepId]) {
+          merged[k as StepId] = v;
+        }
+      }
+      const next: StripState = { ...prev, completed: merged };
+      saveState(next);
+      return next;
+    });
+  }, [onboardingData?.golden_path_progress]);
 
   const markComplete = useCallback((id: StepId) => {
     setState((prev) => {
@@ -98,6 +123,22 @@ export function OnboardingStrip() {
       return next;
     });
   }, []);
+
+  // Sync completed steps to backend whenever they change (fire-and-forget).
+  // Skips the initial mount (nothing completed yet) and any spurious re-runs.
+  const prevCompletedRef = useRef<Partial<Record<StepId, string>> | undefined>(undefined);
+  useEffect(() => {
+    const completed = state.completed;
+    // Skip if completed state hasn't actually changed or is still empty.
+    if (prevCompletedRef.current === completed) return;
+    prevCompletedRef.current = completed;
+    if (!completed || Object.keys(completed).length === 0) return;
+    const progress: Record<string, string | null> = {};
+    for (const step of STEPS) {
+      progress[step.id] = completed[step.id] ?? null;
+    }
+    void updateGoldenPathProgress(progress).catch(() => undefined);
+  }, [state.completed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Subscribe to TTFI events to auto-complete steps.
   useEffect(() => {

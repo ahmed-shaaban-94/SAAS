@@ -15,12 +15,14 @@ import Link from "next/link";
 import { Sparkles, X, ArrowRight } from "lucide-react";
 
 import { useFirstInsight } from "@/hooks/use-first-insight";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { trackFirstInsightSeen } from "@/lib/analytics-events";
 
 const DISMISS_KEY = "ttfi_first_insight_dismissed";
 
 export function FirstInsightCard() {
   const { insight, isLoading } = useFirstInsight();
+  const { dismissFirstInsight } = useOnboarding();
   const [dismissed, setDismissed] = useState<boolean>(() => {
     if (typeof sessionStorage === "undefined") return false;
     return sessionStorage.getItem(DISMISS_KEY) === "1";
@@ -57,7 +59,10 @@ export function FirstInsightCard() {
       <button
         type="button"
         aria-label="Dismiss first insight"
-        onClick={() => setDismissed(true)}
+        onClick={() => {
+          setDismissed(true);
+          void dismissFirstInsight().catch(() => undefined);
+        }}
         className="absolute right-3 top-3 rounded-full p-1.5 text-text-secondary transition-colors hover:bg-background/60 hover:text-text-primary"
       >
         <X className="h-4 w-4" />
