@@ -1,42 +1,96 @@
 "use client";
 
 /**
- * Money Map — branches rendered as living orbs on an abstract country shape.
+ * Money Map — branches rendered as living orbs.
  *
- * Size of the orb = revenue bucket (small / medium / large).
- * Color of the orb = margin health: green (healthy) / amber (watchlist) /
- *                    red (at risk) / blue (neutral baseline).
+ * Size = revenue bucket (small / medium / large)
+ * Color = margin health (green / amber / red / blue baseline)
+ * Tempo = revenue-proportional pulse (bigger branches pulse faster)
  *
- * Each orb pulses at the tempo of its revenue — tickRate is a ms interval
- * derived from revenue so bigger branches pulse faster.
+ * Real data: driven by useSites() (RankingResult of branches by revenue).
+ * Since we don't yet have per-branch margin, health is inferred from
+ * revenue rank (top third = healthy, middle = baseline, bottom = amber,
+ * bottom 10% = red).
+ *
+ * Falls back to mock data when no branches are loaded so the design
+ * preview still renders.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useSites } from "@/hooks/use-sites";
+import type { RankingItem } from "@/types/api";
 
 interface BranchOrb {
   id: string;
   name: string;
-  cx: number; // 0-300 viewport x
-  cy: number; // 0-180 viewport y
+  cx: number;
+  cy: number;
   revenueBucket: "s" | "m" | "l";
   health: "green" | "amber" | "red" | "blue";
   tickMs: number;
+  revenueLabel: string;
 }
 
-// Mock data — these are the 24 branches spread across an abstract country outline.
-const ORBS: BranchOrb[] = [
-  { id: "b1", name: "Maadi", cx: 160, cy: 92, revenueBucket: "l", health: "red", tickMs: 700 },
-  { id: "b2", name: "Alex-Main", cx: 80, cy: 58, revenueBucket: "l", health: "green", tickMs: 650 },
-  { id: "b3", name: "Zamalek", cx: 148, cy: 80, revenueBucket: "m", health: "green", tickMs: 900 },
-  { id: "b4", name: "Nasr City", cx: 180, cy: 75, revenueBucket: "m", health: "blue", tickMs: 1000 },
-  { id: "b5", name: "Heliopolis", cx: 192, cy: 62, revenueBucket: "m", health: "green", tickMs: 950 },
-  { id: "b6", name: "Giza", cx: 130, cy: 100, revenueBucket: "m", health: "amber", tickMs: 1050 },
-  { id: "b7", name: "Tanta", cx: 110, cy: 62, revenueBucket: "s", health: "green", tickMs: 1400 },
-  { id: "b8", name: "Mansoura", cx: 138, cy: 48, revenueBucket: "s", health: "blue", tickMs: 1500 },
-  { id: "b9", name: "Port Said", cx: 178, cy: 44, revenueBucket: "s", health: "amber", tickMs: 1350 },
-  { id: "b10", name: "Aswan", cx: 196, cy: 146, revenueBucket: "s", health: "red", tickMs: 1300 },
-  { id: "b11", name: "Luxor", cx: 184, cy: 128, revenueBucket: "s", health: "amber", tickMs: 1400 },
-  { id: "b12", name: "Hurghada", cx: 228, cy: 104, revenueBucket: "s", health: "green", tickMs: 1550 },
+// Deterministic jitter seeded from branch name so layout is stable.
+function hashPos(name: string, salt: number): number {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return Math.abs((h ^ salt) % 1000) / 1000;
+}
+
+function fmtEGP(v: number): string {
+  if (v >= 1_000_000) return `EGP ${(v / 1_000_000).toFixed(2)}M`;
+  if (v >= 1_000) return `EGP ${(v / 1_000).toFixed(0)}K`;
+  return `EGP ${v}`;
+}
+
+function branchesToOrbs(items: RankingItem[]): BranchOrb[] {
+  if (items.length === 0) return [];
+  const sorted = [...items].sort((a, b) => b.value - a.value);
+  const topThird = Math.ceil(sorted.length / 3);
+  const bottomDecile = Math.max(1, Math.floor(sorted.length * 0.1));
+  const max = sorted[0].value;
+
+  return sorted.slice(0, 14).map((item, idx) => {
+    // Revenue bucket based on rank percentile.
+    const pct = idx / Math.max(1, sorted.length - 1);
+    const bucket: "s" | "m" | "l" = pct < 0.25 ? "l" : pct < 0.6 ? "m" : "s";
+
+    // Health by rank position.
+    let health: BranchOrb["health"];
+    if (idx >= sorted.length - bottomDecile) health = "red";
+    else if (idx < topThird) health = "green";
+    else if (pct < 0.65) health = "blue";
+    else health = "amber";
+
+    // Pulse tempo proportional to revenue share.
+    const share = item.value / max;
+    const tickMs = Math.round(1600 - 900 * share);
+
+    // Stable scatter on the country outline. cx 40-260, cy 30-150.
+    const cx = 50 + hashPos(item.name, 11) * 210;
+    const cy = 40 + hashPos(item.name, 37) * 110;
+
+    return {
+      id: String(item.key),
+      name: item.name.length > 14 ? item.name.slice(0, 12) + "…" : item.name,
+      cx,
+      cy,
+      revenueBucket: bucket,
+      health,
+      tickMs,
+      revenueLabel: fmtEGP(item.value),
+    };
+  });
+}
+
+const MOCK_ORBS: BranchOrb[] = [
+  { id: "mock-1", name: "Maadi", cx: 160, cy: 92, revenueBucket: "l", health: "red", tickMs: 700, revenueLabel: "EGP 1.1M" },
+  { id: "mock-2", name: "Alex-Main", cx: 80, cy: 58, revenueBucket: "l", health: "green", tickMs: 650, revenueLabel: "EGP 1.3M" },
+  { id: "mock-3", name: "Zamalek", cx: 148, cy: 80, revenueBucket: "m", health: "green", tickMs: 900, revenueLabel: "EGP 780K" },
+  { id: "mock-4", name: "Nasr City", cx: 180, cy: 75, revenueBucket: "m", health: "blue", tickMs: 1000, revenueLabel: "EGP 650K" },
+  { id: "mock-5", name: "Heliopolis", cx: 192, cy: 62, revenueBucket: "m", health: "green", tickMs: 950, revenueLabel: "EGP 690K" },
+  { id: "mock-6", name: "Giza", cx: 130, cy: 100, revenueBucket: "m", health: "amber", tickMs: 1050, revenueLabel: "EGP 540K" },
 ];
 
 const SIZE = { s: 5, m: 8, l: 12 };
@@ -60,6 +114,7 @@ function Orb({ orb }: { orb: BranchOrb }) {
 
   return (
     <g>
+      <title>{`${orb.name} — ${orb.revenueLabel}`}</title>
       <circle
         cx={orb.cx}
         cy={orb.cy}
@@ -69,12 +124,7 @@ function Orb({ orb }: { orb: BranchOrb }) {
         style={{ transition: "all 0.4s ease-in-out" }}
       />
       <circle cx={orb.cx} cy={orb.cy} r={r} fill={color} />
-      <text
-        x={orb.cx}
-        y={orb.cy + r + 10}
-        textAnchor="middle"
-        className="orb-label"
-      >
+      <text x={orb.cx} y={orb.cy + r + 10} textAnchor="middle" className="orb-label">
         {orb.name}
       </text>
     </g>
@@ -82,6 +132,13 @@ function Orb({ orb }: { orb: BranchOrb }) {
 }
 
 export function MoneyMap() {
+  const { data, isLoading, error } = useSites();
+  const orbs = useMemo(() => {
+    if (!data?.items?.length) return MOCK_ORBS;
+    return branchesToOrbs(data.items);
+  }, [data]);
+  const usingMock = !data?.items?.length;
+
   return (
     <div className="viz-panel w-span-8">
       <div className="widget-head">
@@ -90,12 +147,14 @@ export function MoneyMap() {
         <span className="spacer" />
         <span style={{ fontSize: "12px", color: "var(--ink-3)" }}>
           Size = revenue · Color = margin health
+          {isLoading && !data ? " · loading…" : ""}
+          {error ? " · offline" : ""}
+          {usingMock && !isLoading && !error ? " · preview data" : ""}
         </span>
       </div>
 
       <div className="money-map-stage">
         <svg viewBox="0 0 300 180" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%" }}>
-          {/* Abstract country outline — stylised, not geographic. */}
           <path
             d="M 40 30 L 260 26 L 272 60 L 262 106 L 232 138 L 200 158 L 130 156 L 80 128 L 50 90 Z"
             fill="rgba(15,42,67,0.45)"
@@ -103,7 +162,7 @@ export function MoneyMap() {
             strokeWidth="1"
             strokeDasharray="3 5"
           />
-          {ORBS.map((o) => (
+          {orbs.map((o) => (
             <Orb key={o.id} orb={o} />
           ))}
         </svg>
@@ -112,7 +171,7 @@ export function MoneyMap() {
       <div className="money-map-legend">
         <span className="item">
           <span className="swatch" style={{ background: COLOR.green, color: COLOR.green }} />
-          Healthy margin
+          Healthy
         </span>
         <span className="item">
           <span className="swatch" style={{ background: COLOR.amber, color: COLOR.amber }} />
