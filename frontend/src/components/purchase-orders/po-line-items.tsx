@@ -2,7 +2,6 @@
 
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import type { POLine } from "@/types/purchase-orders";
-import { EmptyState } from "@/components/empty-state";
 
 interface POLineItemsProps {
   lines: POLine[];
@@ -10,7 +9,11 @@ interface POLineItemsProps {
 
 export function POLineItems({ lines }: POLineItemsProps) {
   if (lines.length === 0) {
-    return <EmptyState title="No line items" description="Add drugs to this purchase order." />;
+    return (
+      <div className="rounded-xl border border-dashed border-border/70 py-8 text-center text-sm text-muted-foreground">
+        No line items found.
+      </div>
+    );
   }
 
   return (

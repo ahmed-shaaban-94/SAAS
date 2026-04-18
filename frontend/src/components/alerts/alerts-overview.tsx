@@ -5,7 +5,6 @@ import { formatCurrency } from "@/lib/formatters";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { Bell, BellOff, Check, AlertTriangle, Info, XCircle } from "lucide-react";
-import { EmptyState } from "@/components/empty-state";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -94,10 +93,11 @@ export function AlertsOverview() {
           Alert History
         </h3>
         {(!allAlerts || allAlerts.length === 0) ? (
-          <EmptyState
-            title="No alerts yet"
-            description="Alerts will appear here when metric thresholds are breached."
-          />
+          <div className="text-center py-8">
+            <Bell className="h-10 w-10 text-text-secondary mx-auto mb-2 opacity-30" />
+            <p className="text-sm text-text-secondary">No alerts yet</p>
+            <p className="text-xs text-text-secondary mt-1">Alerts will appear here when metric thresholds are breached</p>
+          </div>
         ) : (
           <div className="space-y-1.5">
             {allAlerts.map((alert) => (
