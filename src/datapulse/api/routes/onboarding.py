@@ -16,6 +16,7 @@ from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.onboarding.models import (
     CompleteStepRequest,
+    GoldenPathProgressRequest,
     OnboardingStatus,
     SampleLoadResult,
 )
@@ -108,6 +109,46 @@ def skip_onboarding(
     tenant_id = user.get("tenant_id", 1)
     user_id = user.get("sub", user.get("user_id", "anonymous"))
     return service.skip(tenant_id=tenant_id, user_id=user_id)
+
+
+@router.put("/golden-path-progress", response_model=OnboardingStatus)
+@limiter.limit("30/minute")
+def update_golden_path_progress(
+    request: Request,
+    data: GoldenPathProgressRequest,
+    service: ServiceDep,
+    user: Annotated[dict, Depends(get_current_user)],
+) -> OnboardingStatus:
+    """Sync OnboardingStrip TTFI milestone state to the database.
+
+    Accepts the full ``progress`` dict (step ID → ISO timestamp or null)
+    and upserts only the ``golden_path_progress`` column, leaving all
+    wizard step columns untouched.
+    """
+    tenant_id = user.get("tenant_id", 1)
+    user_id = user.get("sub", user.get("user_id", "anonymous"))
+    return service.update_golden_path_progress(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        progress=data.progress,
+    )
+
+
+@router.post("/dismiss-first-insight", response_model=OnboardingStatus)
+@limiter.limit("10/minute")
+def dismiss_first_insight(
+    request: Request,
+    service: ServiceDep,
+    user: Annotated[dict, Depends(get_current_user)],
+) -> OnboardingStatus:
+    """Record that the FirstInsightCard was dismissed by the authenticated user.
+
+    Sets ``first_insight_dismissed_at`` to the current timestamp on the
+    onboarding row, enabling cross-device dismissal persistence.
+    """
+    tenant_id = user.get("tenant_id", 1)
+    user_id = user.get("sub", user.get("user_id", "anonymous"))
+    return service.dismiss_first_insight(tenant_id=tenant_id, user_id=user_id)
 
 
 @router.post("/load-sample", response_model=SampleLoadResult)
