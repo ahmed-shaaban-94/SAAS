@@ -2,6 +2,7 @@
 
 import { SectionWrapper } from "./section-wrapper";
 import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
+import { LeadCaptureModal } from "./lead-capture-modal";
 
 export function CTASection() {
   const { ref, isVisible } = useIntersectionObserver();
@@ -31,13 +32,7 @@ export function CTASection() {
               operating view.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              {/* PHASE 4: Replace with <LeadCaptureModal trigger="Request Pilot Access" /> */}
-              <a
-                href="#pilot-access"
-                className="rounded-full bg-accent px-8 py-3.5 text-sm font-semibold text-page shadow-[0_0_24px_rgba(0,199,242,0.35)] transition-all hover:shadow-[0_0_32px_rgba(0,199,242,0.5)] hover:scale-[1.02]"
-              >
-                Request Pilot Access
-              </a>
+              <LeadCaptureModal trigger="Request Pilot Access" />
               <a
                 href="/demo"
                 className="rounded-full border border-white/15 bg-white/5 px-8 py-3.5 text-sm font-semibold text-text-primary transition-colors hover:bg-white/10"

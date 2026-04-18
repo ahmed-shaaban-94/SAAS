@@ -59,6 +59,28 @@ from datapulse.suppliers.service import SuppliersService
 logger = structlog.get_logger()
 
 
+def get_plain_session() -> Generator[Session, None, None]:
+    """Create a plain DB session with no tenant scoping.
+
+    Intended for public endpoints that do not require authentication or
+    row-level security (e.g. lead capture).  Does NOT set app.tenant_id.
+    """
+    session = get_session_factory()()
+    try:
+        session.execute(text("SET LOCAL statement_timeout = '30s'"))
+        yield session
+        session.commit()
+    except SQLAlchemyError:
+        logger.exception("db_session_error", session_type="plain")
+        session.rollback()
+        raise
+    except BaseException:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 def get_db_session() -> Generator[Session, None, None]:
     """Create a DB session with tenant_id='1' (legacy, for non-authenticated use).
 

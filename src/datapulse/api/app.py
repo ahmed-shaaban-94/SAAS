@@ -34,6 +34,7 @@ from datapulse.api.routes import (
     gamification,
     health,
     insights_first,
+    leads,
     lineage,
     members,
     notifications,
@@ -298,6 +299,7 @@ def create_app() -> FastAPI:
     app.include_router(billing.router, prefix="/api/v1")
     app.include_router(anomalies.router, prefix="/api/v1")
     app.include_router(onboarding.router, prefix="/api/v1")
+    app.include_router(leads.router, prefix="/api/v1")
     app.include_router(insights_first.router, prefix="/api/v1")
     app.include_router(search.router, prefix="/api/v1")
     app.include_router(views.router, prefix="/api/v1")

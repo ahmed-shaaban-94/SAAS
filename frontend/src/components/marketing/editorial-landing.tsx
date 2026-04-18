@@ -19,6 +19,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { LeadCaptureModal } from "@/components/marketing/lead-capture-modal";
 import "./editorial-landing.css";
 
 // ─── Static data ────────────────────────────────────────────────
@@ -463,7 +464,7 @@ function Pricing() {
               <li><Check />Egypt-hosted · bilingual (AR/EN)</li>
             </ul>
 
-            <button className="cta secondary">Start the 14-day pilot</button>
+            <LeadCaptureModal trigger="Start the 14-day pilot" tier="Sahl" triggerClassName="cta secondary" />
 
             <div className="margin-note bot-left">
               <span className="arrow">↘</span> We keep this plan cheap on purpose. Nobody should pay EGP 50K/mo to see yesterday&apos;s revenue.
@@ -493,10 +494,7 @@ function Pricing() {
               <li><Check />Slack &amp; WhatsApp support · 4h SLA</li>
             </ul>
 
-            <button className="cta primary">
-              Start the 14-day pilot
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-            </button>
+            <LeadCaptureModal trigger="Start the 14-day pilot →" tier="Nabḍ" triggerClassName="cta primary" />
 
             <div className="margin-note top-right">
               <span className="arrow">↙</span> Most operators pay for this one. It pays for itself in the first stockout you catch before 8am.
@@ -525,7 +523,7 @@ function Pricing() {
               <li><Check />On-prem deployment available</li>
             </ul>
 
-            <button className="cta secondary">Book a 30-min call</button>
+            <a href="mailto:info@rahmaqanater.org?subject=Kubrā%20Enterprise%20Enquiry" className="cta secondary">Book a 30-min call</a>
           </div>
         </div>
       </div>

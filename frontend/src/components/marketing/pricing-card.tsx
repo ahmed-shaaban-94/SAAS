@@ -1,18 +1,8 @@
-import { Check } from "lucide-react";
-import Link from "next/link";
-import type { PricingTier } from "@/lib/marketing-constants";
+"use client";
 
-function getCtaHref(name: string): string {
-  switch (name) {
-    case "Explorer Pilot":
-    case "Operations Pilot":
-      return "#pilot-access";
-    case "Enterprise Rollout":
-      return "mailto:support@smartdatapulse.tech?subject=Enterprise%20Rollout";
-    default:
-      return "#pilot-access";
-  }
-}
+import { Check } from "lucide-react";
+import type { PricingTier } from "@/lib/marketing-constants";
+import { LeadCaptureModal } from "./lead-capture-modal";
 
 export function PricingCard({
   name,
@@ -25,8 +15,27 @@ export function PricingCard({
   cta,
   isPopular,
 }: PricingTier) {
-  const href = getCtaHref(name);
-  const isExternal = href.startsWith("mailto:");
+  const isPilotTier = name === "Explorer Pilot" || name === "Operations Pilot";
+  const enterpriseHref = "mailto:support@smartdatapulse.tech?subject=Enterprise%20Rollout";
+
+  const ctaButton = isPilotTier ? (
+    <LeadCaptureModal
+      trigger={cta}
+      tier={name}
+      triggerClassName={`mt-8 block w-full rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
+        isPopular
+          ? "cta-shimmer bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
+          : "viz-panel-soft text-text-primary hover:bg-white/10"
+      }`}
+    />
+  ) : (
+    <a
+      href={enterpriseHref}
+      className="mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors viz-panel-soft text-text-primary hover:bg-white/10"
+    >
+      {cta}
+    </a>
+  );
 
   const cardContent = (
     <>
@@ -61,29 +70,7 @@ export function PricingCard({
         ))}
       </ul>
 
-      {isExternal ? (
-        <a
-          href={href}
-          className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
-            isPopular
-              ? "cta-shimmer bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
-              : "viz-panel-soft text-text-primary hover:bg-white/10"
-          }`}
-        >
-          {cta}
-        </a>
-      ) : (
-        <Link
-          href={href}
-          className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
-            isPopular
-              ? "cta-shimmer bg-accent text-page shadow-lg shadow-accent/20 hover:bg-accent/90"
-              : "viz-panel-soft text-text-primary hover:bg-white/10"
-          }`}
-        >
-          {cta}
-        </Link>
-      )}
+      {ctaButton}
     </>
   );
 
