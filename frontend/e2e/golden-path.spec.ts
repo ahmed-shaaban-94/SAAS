@@ -1,5 +1,6 @@
 /**
  * Golden-Path End-to-End + CI TTFI Gate (Phase 2 Task 6 / #405).
+ * Updated by Follow-up 1b to hit the real backend — no page.route() mocks.
  *
  * Walks a brand-new tenant through the full golden path:
  *   /upload  →  "Use sample pharma data" CTA
@@ -8,9 +9,9 @@
  *   …and asserts that TTFI (upload_started → first_insight_seen) is
  *   strictly less than 5 minutes.
  *
- * Backend is mocked via `page.route`:
- *   POST /api/v1/onboarding/load-sample  → synthetic 5 k row result
- *   GET  /api/v1/insights/first          → synthetic pharma insight
+ * All requests reach the real backend (POST /api/v1/onboarding/load-sample
+ * and GET /api/v1/insights/first are NOT mocked) so the numbers reflect
+ * true pipeline latency.
  *
  * TTFI is captured from the `ttfi:event` CustomEvent emitted by
  * `frontend/src/lib/analytics-events.ts` so the measurement is
@@ -21,24 +22,8 @@
 
 import { test, expect, type Page } from "@playwright/test";
 
-/** Hard CI gate: TTFI must stay under this threshold. */
+/** Hard CI gate: TTFI must stay under this threshold (real backend — allow up to 5 min). */
 const TTFI_LIMIT_MS = 5 * 60 * 1000;
-
-const MOCK_SAMPLE_LOAD = {
-  rows_loaded: 5000,
-  pipeline_run_id: "golden-path-run-1",
-  duration_seconds: 4.2,
-};
-
-const MOCK_FIRST_INSIGHT = {
-  insight: {
-    kind: "top_seller" as const,
-    title: "Your top seller: Paracetamol 500mg Tab",
-    body: "drove $12,450 in the last 30 days",
-    action_href: "/products",
-    confidence: 0.72,
-  },
-};
 
 interface CapturedEvent {
   name: string;
@@ -80,22 +65,6 @@ test.describe("Golden Path — upload to first-insight in < 5 min", () => {
   }) => {
     const captured = await installTtfiObserver(page);
 
-    // Mock the two endpoints the golden path actually depends on.
-    await page.route("**/api/v1/onboarding/load-sample", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(MOCK_SAMPLE_LOAD),
-      }),
-    );
-    await page.route("**/api/v1/insights/first", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(MOCK_FIRST_INSIGHT),
-      }),
-    );
-
     // 1. Land on /upload — this fires upload_started.
     await page.goto("/upload");
     await expect(
@@ -109,13 +78,16 @@ test.describe("Golden Path — upload to first-insight in < 5 min", () => {
       .click();
 
     // 3. Wait for the dashboard redirect with the first_upload flag.
-    await page.waitForURL(/\/dashboard\?first_upload=1/, { timeout: 15000 });
+    //    Real pipeline may take several seconds — use a generous timeout.
+    await page.waitForURL(/\/dashboard\?first_upload=1/, { timeout: 90000 });
 
-    // 4. First-insight card must render with the mocked title — this is
-    //    what fires first_insight_seen.
-    await expect(
-      page.getByText(MOCK_FIRST_INSIGHT.insight.title),
-    ).toBeVisible({ timeout: 15000 });
+    // 4. First-insight card must be visible and contain a non-empty title.
+    //    Use data-testid locators (same pattern as golden-path-real-backend.spec.ts)
+    //    rather than the mocked title string — this fires first_insight_seen.
+    const insightCard = page.locator("[data-testid='first-insight-card']");
+    await expect(insightCard).toBeVisible({ timeout: 120000 });
+    const cardTitle = insightCard.locator("[data-testid='insight-title']");
+    await expect(cardTitle).not.toBeEmpty({ timeout: 10000 });
 
     // Give the event loop a tick so the listener has definitely recorded.
     await page.waitForTimeout(200);
