@@ -1,8 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+vi.mock("@/hooks/use-onboarding", () => ({
+  useOnboarding: vi.fn(),
+}));
+
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { OnboardingStrip } from "@/components/dashboard/onboarding-strip";
+
+const mockedHook = useOnboarding as unknown as Mock;
+const updateGoldenPathProgress = vi.fn().mockResolvedValue({});
+
+function mockOnboarding(golden_path_progress: Record<string, string | null> = {}) {
+  mockedHook.mockReturnValue({
+    data: { golden_path_progress },
+    updateGoldenPathProgress,
+    dismissFirstInsight: vi.fn(),
+  });
+}
 
 const STATE_KEY = "ttfi_onboarding_strip_v1";
 
@@ -20,6 +36,8 @@ describe("OnboardingStrip", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.useRealTimers();
+    updateGoldenPathProgress.mockReset().mockResolvedValue({});
+    mockOnboarding();
   });
 
   afterEach(() => {
@@ -54,7 +72,6 @@ describe("OnboardingStrip", () => {
     dispatchTtfi("upload_completed");
     const complete = container.querySelectorAll('[data-step-state="complete"]');
     expect(complete.length).toBe(1);
-    // Step 2 label text is active.
     expect(
       container.querySelector('[data-step="validate"][data-step-state="complete"]'),
     ).toBeTruthy();
@@ -71,11 +88,9 @@ describe("OnboardingStrip", () => {
   });
 
   it("auto-marks completed steps across remounts via localStorage", () => {
-    // First mount completes step 1.
     const first = render(<OnboardingStrip />);
     dispatchTtfi("upload_started");
     first.unmount();
-    // Second mount should remember it.
     const { container } = render(<OnboardingStrip />);
     expect(
       container.querySelector(
@@ -108,7 +123,6 @@ describe("OnboardingStrip", () => {
     dispatchTtfi("upload_started");
     dispatchTtfi("upload_completed");
     dispatchTtfi("first_insight_seen");
-    // Simulate the share step completing via manual storage.
     act(() => {
       const raw = localStorage.getItem(STATE_KEY);
       const state = raw ? JSON.parse(raw) : {};
@@ -119,8 +133,6 @@ describe("OnboardingStrip", () => {
       localStorage.setItem(STATE_KEY, JSON.stringify(state));
       window.dispatchEvent(new Event("storage"));
     });
-
-    // Strip should self-hide: nothing rendered.
     expect(container.firstChild).toBeNull();
   });
 
@@ -144,5 +156,52 @@ describe("OnboardingStrip", () => {
     expect(raw).not.toBeNull();
     const state = JSON.parse(raw!);
     expect(state.first_seen_at).toMatch(/\d{4}-\d{2}-\d{2}T/);
+  });
+
+  // ------------------------------------------------------------------
+  // Backend sync tests (follow-up #6b)
+  // ------------------------------------------------------------------
+
+  it("syncs completed steps to backend when a step completes", async () => {
+    render(<OnboardingStrip />);
+    dispatchTtfi("upload_started");
+    await waitFor(() => expect(updateGoldenPathProgress).toHaveBeenCalled());
+    const [progress] = updateGoldenPathProgress.mock.calls[0] as [Record<string, string | null>];
+    expect(progress.connect_data).toMatch(/\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("merges backend golden_path_progress into local state on mount", async () => {
+    const backendTs = "2026-04-18T08:00:00.000Z";
+    mockOnboarding({ connect_data: backendTs });
+
+    const { container } = render(<OnboardingStrip />);
+
+    await waitFor(() =>
+      expect(
+        container.querySelector(
+          '[data-step="connect_data"][data-step-state="complete"]',
+        ),
+      ).toBeTruthy(),
+    );
+  });
+
+  it("does not overwrite locally-completed steps with null from backend", async () => {
+    // Step 1 already completed locally.
+    const localTs = new Date().toISOString();
+    localStorage.setItem(
+      STATE_KEY,
+      JSON.stringify({ completed: { connect_data: localTs } }),
+    );
+    // Backend has connect_data as null (not yet synced).
+    mockOnboarding({ connect_data: null });
+
+    const { container } = render(<OnboardingStrip />);
+
+    // Local value should be preserved.
+    expect(
+      container.querySelector(
+        '[data-step="connect_data"][data-step-state="complete"]',
+      ),
+    ).toBeTruthy();
   });
 });

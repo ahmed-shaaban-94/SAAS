@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { fetchAPI, postAPI, swrKey } from "@/lib/api-client";
+import { fetchAPI, postAPI, putAPI, swrKey } from "@/lib/api-client";
 
 interface OnboardingStatus {
   steps_completed: string[];
@@ -9,6 +9,8 @@ interface OnboardingStatus {
   is_complete: boolean;
   skipped_at: string | null;
   completed_at: string | null;
+  golden_path_progress: Record<string, string | null>;
+  first_insight_dismissed_at: string | null;
 }
 
 export function useOnboarding() {
@@ -29,5 +31,33 @@ export function useOnboarding() {
     return result;
   };
 
-  return { data, error, isLoading, mutate, completeStep, skip };
+  const updateGoldenPathProgress = async (
+    progress: Record<string, string | null>,
+  ) => {
+    const result = await putAPI<OnboardingStatus>(
+      "/api/v1/onboarding/golden-path-progress",
+      { progress },
+    );
+    mutate(result, false);
+    return result;
+  };
+
+  const dismissFirstInsight = async () => {
+    const result = await postAPI<OnboardingStatus>(
+      "/api/v1/onboarding/dismiss-first-insight",
+    );
+    mutate(result, false);
+    return result;
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    mutate,
+    completeStep,
+    skip,
+    updateGoldenPathProgress,
+    dismissFirstInsight,
+  };
 }
