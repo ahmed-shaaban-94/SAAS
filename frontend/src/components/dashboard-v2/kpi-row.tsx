@@ -4,17 +4,26 @@
  * KPI row for dashboard v2 — four stat cards with Fraunces serif values.
  *
  * Real data: driven by useSummary() and useExpirySummary().
- * Falls back to preview copy when data hasn't loaded.
+ * Each card's value is wrapped in <WhyChangedTrigger> so the user can
+ * click any number to see what drove it.
  */
 
 import { useMemo } from "react";
 import { useSummary } from "@/hooks/use-summary";
 import { useExpirySummary } from "@/hooks/use-expiry-summary";
+import { WhyChangedTrigger } from "@/components/why-changed/why-changed-trigger";
+import type { WhyChangedData } from "@/components/why-changed/why-changed";
+import {
+  buildMtdRevenueWhy,
+  buildExpiryExposureWhy,
+  buildAvgBasketWhy,
+} from "@/components/why-changed/why-changed-data";
 
 interface Kpi {
   label: string;
   value: string;
   delta?: { text: string; tone: "up" | "dn" };
+  why?: WhyChangedData;
 }
 
 function fmtEGP(v: number): string {
@@ -30,10 +39,25 @@ function fmtPct(v: number | null | undefined, suffix = "%"): string {
 }
 
 const MOCK_KPIS: Kpi[] = [
-  { label: "Revenue · month-to-date", value: "EGP 4.72M", delta: { text: "+5% vs plan", tone: "up" } },
+  {
+    label: "Revenue · month-to-date",
+    value: "EGP 4.72M",
+    delta: { text: "+5% vs plan", tone: "up" },
+    why: buildMtdRevenueWhy(4_720_000, 5.0),
+  },
   { label: "Transactions · MTD", value: "12,347", delta: { text: "+8% MoM", tone: "up" } },
-  { label: "Avg basket size", value: "3.2 items", delta: { text: "−0.1 vs last 30d", tone: "dn" } },
-  { label: "Expiry exposure · 30d", value: "EGP 142K", delta: { text: "+EGP 38K WoW", tone: "dn" } },
+  {
+    label: "Avg basket size",
+    value: "3.2 items",
+    delta: { text: "−0.1 vs last 30d", tone: "dn" },
+    why: buildAvgBasketWhy(3.2),
+  },
+  {
+    label: "Expiry exposure · 30d",
+    value: "EGP 142K",
+    delta: { text: "+EGP 38K WoW", tone: "dn" },
+    why: buildExpiryExposureWhy(142_000),
+  },
 ];
 
 export function KpiRow() {
@@ -56,6 +80,7 @@ export function KpiRow() {
           summary.mom_growth_pct != null
             ? { text: `${fmtPct(summary.mom_growth_pct)} MoM`, tone: momTone }
             : undefined,
+        why: buildMtdRevenueWhy(summary.mtd_gross, summary.mom_growth_pct),
       },
       {
         label: "Transactions · MTD",
@@ -64,6 +89,7 @@ export function KpiRow() {
       {
         label: "Avg basket size",
         value: `${summary.avg_basket_size.toFixed(1)} items`,
+        why: buildAvgBasketWhy(summary.avg_basket_size),
       },
       {
         label: "Expiry exposure",
@@ -72,6 +98,7 @@ export function KpiRow() {
           expiryExposure > 0
             ? { text: `across ${expirySummary?.length ?? 0} sites`, tone: "dn" }
             : undefined,
+        why: expiryExposure > 0 ? buildExpiryExposureWhy(expiryExposure) : undefined,
       },
     ];
   }, [summary, expirySummary]);
@@ -81,7 +108,15 @@ export function KpiRow() {
       {kpis.map((k) => (
         <div key={k.label} className="kpi">
           <div className="label">{k.label}</div>
-          <div className="value tabular">{k.value}</div>
+          <div className="value tabular">
+            {k.why ? (
+              <WhyChangedTrigger data={k.why} inline>
+                {k.value}
+              </WhyChangedTrigger>
+            ) : (
+              k.value
+            )}
+          </div>
           {k.delta && (
             <div className={`delta ${k.delta.tone}`}>
               {k.delta.tone === "up" ? "▲" : "▼"} {k.delta.text}
