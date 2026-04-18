@@ -190,6 +190,49 @@
 .dashboard-v2 .kpi .delta.up { color: var(--green); }
 .dashboard-v2 .kpi .delta.dn { color: var(--red); }
 
+/* Horizon mode — forecast tint on KPI cards */
+.dashboard-v2 .kpi.forecast {
+  border-color: rgba(116, 103, 248, 0.35);
+  background: linear-gradient(180deg, rgba(116, 103, 248, 0.08), rgba(8, 24, 38, 0.3));
+  box-shadow: 0 0 0 1px rgba(116, 103, 248, 0.1), 0 10px 30px rgba(116, 103, 248, 0.08);
+}
+.dashboard-v2 .kpi.forecast .value { color: var(--accent-hi); }
+.dashboard-v2 .kpi .forecast-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  font-weight: 700;
+  color: var(--purple);
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(116, 103, 248, 0.12);
+  border: 1px solid rgba(116, 103, 248, 0.3);
+  margin-top: 4px;
+}
+.dashboard-v2 .kpi .forecast-band {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-v2 .kpi .forecast-band b { color: var(--ink-2); font-weight: 600; }
+
+/* Toggle positioning in the page header row */
+.dashboard-v2 .page-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  justify-content: space-between;
+}
+.dashboard-v2 .page-header .title-group { min-width: 0; }
+@media (max-width: 800px) {
+  .dashboard-v2 .page-header { flex-direction: column; align-items: flex-start; }
+}
+
 /* Money Map */
 .dashboard-v2 .money-map-stage {
   height: 360px; position: relative; border-radius: 14px;
