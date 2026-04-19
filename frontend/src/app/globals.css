@@ -985,6 +985,130 @@ html {
 }
 
 /* ═══════════════════════════════════════════════
+   POS Terminal — Design Tokens
+   Scoped to .pos-root so marketing/dashboard surfaces
+   keep their existing tokens. Applied on the (pos)
+   route group layout.
+   ═══════════════════════════════════════════════ */
+.pos-root {
+  /* Surface */
+  --pos-bg: #050e17;
+  --pos-surface: #081826;
+  --pos-surface-top: #163452;
+
+  /* Ink */
+  --pos-ink-1: #e8ecf2;
+  --pos-ink-2: #b8c0cc;
+  --pos-ink-3: #7a8494;
+  --pos-ink-4: #3f4a5a;
+
+  /* Lines */
+  --pos-line: rgba(255, 255, 255, 0.06);
+  --pos-line-strong: rgba(255, 255, 255, 0.12);
+
+  /* Accent — Cyan */
+  --pos-accent: #00c7f2;
+  --pos-accent-hi: #5cdfff;
+
+  /* Status */
+  --pos-green: #1dd48b;
+  --pos-amber: #ffab3d;
+  --pos-red: #ff7b7b;
+  --pos-purple: #7467f8;
+
+  /* Paper (print) */
+  --pos-paper: #fbfaf7;
+  --pos-paper-ink: #0b1a29;
+  --pos-paper-totals: #f1ede4;
+  --pos-paper-zebra: #f4f4f4;
+
+  /* Spacing */
+  --pos-pad-container: 14px;
+  --pos-pad-card: 14px;
+  --pos-pad-row-y: 12px;
+
+  /* Radii */
+  --pos-radius-pill: 6px;
+  --pos-radius-btn: 8px;
+  --pos-radius-card: 12px;
+  --pos-radius-panel: 14px;
+  --pos-radius-chip: 999px;
+
+  /* Effects */
+  --pos-glow-cyan: 0 0 24px rgba(0, 199, 242, 0.35);
+  --pos-shadow-card:
+    0 0 0 1px rgba(0, 199, 242, 0.12),
+    0 0 28px rgba(0, 199, 242, 0.1);
+
+  /* Typography */
+  font-family: var(--font-inter), "Inter Variable", Inter, system-ui, sans-serif;
+  color: var(--pos-ink-1);
+  background: var(--pos-bg);
+}
+
+.pos-root [lang="ar"],
+.pos-root:lang(ar) {
+  font-family:
+    var(--font-arabic),
+    var(--font-inter),
+    "Inter Variable",
+    Inter,
+    system-ui,
+    sans-serif;
+}
+
+.pos-root .pos-display {
+  font-family: var(--font-fraunces), "Fraunces", serif;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+
+.pos-root .pos-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+}
+
+/* POS keyframes */
+@keyframes dpFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dpSlideUp {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes dpScan {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px var(--pos-line),
+      0 0 0 rgba(0, 199, 242, 0);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px var(--pos-accent),
+      0 0 18px rgba(0, 199, 242, 0.35);
+  }
+}
+
+@keyframes dpRowEnter {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════
    Reduced motion
    ═══════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
