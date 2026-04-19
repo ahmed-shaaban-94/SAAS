@@ -603,11 +603,7 @@ class PosService:
                 txn_id=transaction_id,
                 now=now_utc,
             )
-        if (
-            promotion_applied
-            and self._promotion_repo is not None
-            and promotion_id is not None
-        ):
+        if promotion_applied and self._promotion_repo is not None and promotion_id is not None:
             self._promotion_repo.lock_for_application(tenant_id, promotion_id, now_utc)
             self._promotion_repo.record_application(
                 tenant_id=tenant_id,

@@ -64,7 +64,7 @@ class PromotionService:
     def get(self, tenant_id: int, promotion_id: int) -> PromotionResponse | None:
         return self._repo.get(tenant_id, promotion_id)
 
-    def list(
+    def list_all(
         self,
         tenant_id: int,
         *,

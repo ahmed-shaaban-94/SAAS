@@ -205,7 +205,7 @@ def test_list_passes_status_filter_to_repository() -> None:
     repo = MagicMock()
     repo.list_for_tenant.return_value = []
     service = PromotionService(repo)
-    service.list(1, status=PromotionStatus.active)
+    service.list_all(1, status=PromotionStatus.active)
     repo.list_for_tenant.assert_called_once_with(1, status=PromotionStatus.active)
 
 

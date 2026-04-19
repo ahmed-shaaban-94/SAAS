@@ -166,9 +166,7 @@ def test_list_promotions_returns_payload(client: TestClient, mock_service: Magic
     assert len(resp.json()) == 2
 
 
-def test_list_promotions_passes_status_filter(
-    client: TestClient, mock_service: MagicMock
-) -> None:
+def test_list_promotions_passes_status_filter(client: TestClient, mock_service: MagicMock) -> None:
     mock_service.list.return_value = []
     client.get("/api/v1/pos/promotions?status=active")
     _, kwargs = mock_service.list.call_args

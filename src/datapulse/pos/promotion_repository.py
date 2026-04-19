@@ -452,9 +452,7 @@ class PromotionRepository:
         ]
         return items, cats
 
-    def _load_usage_stats(
-        self, tenant_id: int, promotion_id: int
-    ) -> tuple[int, Decimal]:
+    def _load_usage_stats(self, tenant_id: int, promotion_id: int) -> tuple[int, Decimal]:
         row = (
             self._session.execute(
                 text(

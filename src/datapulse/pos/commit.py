@@ -191,9 +191,7 @@ def atomic_commit(
             try:
                 promotion_id = int(discount_source.ref)
             except ValueError as exc:
-                raise HTTPException(
-                    status_code=400, detail="promotion_ref_invalid"
-                ) from exc
+                raise HTTPException(status_code=400, detail="promotion_ref_invalid") from exc
             promotion_repo = PromotionRepository(session)
             _, discount_amount = _preview_promotion_discount(
                 promotion_repo,

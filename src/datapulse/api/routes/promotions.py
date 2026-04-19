@@ -83,7 +83,7 @@ def list_promotions(
     status: Annotated[PromotionStatus | None, Query()] = None,
 ) -> list[PromotionResponse]:
     """List tenant promotions, newest first. Optional status filter."""
-    return service.list(_tenant_id_of(user), status=status)
+    return service.list_all(_tenant_id_of(user), status=status)
 
 
 @router.get(

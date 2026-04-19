@@ -505,9 +505,7 @@ def test_commit_with_promotion_amount_applies_discount_and_records_application()
     from datapulse.pos.commit import atomic_commit
     from datapulse.pos.models import AppliedDiscount
 
-    session = _stub_session_with_promotion(
-        promotion_row=_promotion_row(value=Decimal("5"))
-    )
+    session = _stub_session_with_promotion(promotion_row=_promotion_row(value=Decimal("5")))
     payload = _payload(
         subtotal="20.00",
         total="20.00",

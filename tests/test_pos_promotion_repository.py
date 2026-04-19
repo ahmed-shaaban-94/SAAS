@@ -121,8 +121,7 @@ def test_create_items_scope_writes_join_rows() -> None:
     assert promo.scope_items == ["A", "B"]
     # Two scope_items INSERTs happened after the promotion INSERT
     item_inserts = [
-        c for c in session.execute.call_args_list[1:]
-        if "promotion_items" in str(c.args[0])
+        c for c in session.execute.call_args_list[1:] if "promotion_items" in str(c.args[0])
     ]
     assert len(item_inserts) == 2
 
