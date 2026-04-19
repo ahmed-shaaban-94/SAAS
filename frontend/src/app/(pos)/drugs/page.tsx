@@ -10,6 +10,7 @@ import { DrugsTable } from "@/components/pos/drugs/DrugsTable";
 import { InventorySummary } from "@/components/pos/drugs/InventorySummary";
 import { FocusedDrug } from "@/components/pos/drugs/FocusedDrug";
 import { CartGoTo } from "@/components/pos/drugs/CartGoTo";
+import { StocktakingModal } from "@/components/pos/StocktakingModal";
 import { toDrugRow, type RxFilter, type SortKey, type SortState, type StockFilter } from "@/components/pos/drugs/types";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { useDrugSearch } from "@/hooks/use-drug-search";
@@ -43,6 +44,7 @@ export default function PosDrugsPage() {
   const [sort, setSort] = useState<SortState>({ key: "drug_name", dir: "asc" });
   const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
   const [activeIdx, setActiveIdx] = useState(0);
+  const [stocktakingOpen, setStocktakingOpen] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -117,8 +119,8 @@ export default function PosDrugsPage() {
   }, []);
 
   const handleStocktaking = useCallback(() => {
-    toast.info("Stocktaking sheet coming in PR 4");
-  }, [toast]);
+    setStocktakingOpen(true);
+  }, []);
 
   // ---- Keyboard nav (scoped to this page) ----
   useEffect(() => {
@@ -247,6 +249,19 @@ export default function PosDrugsPage() {
           <CartGoTo itemCount={itemCount} grandTotal={grandTotal} />
         </aside>
       </main>
+
+      <StocktakingModal
+        open={stocktakingOpen}
+        onClose={() => setStocktakingOpen(false)}
+        rows={allRows.map((r) => ({
+          drug_code: r.drug_code,
+          drug_name: r.drug_name,
+          drug_brand: r.drug_brand,
+          stock_available: r.stock_available,
+          unit_price: r.unit_price,
+        }))}
+        branchName={terminal ? `DataPulse Pharmacy — ${terminal.site_code}` : null}
+      />
     </div>
   );
 }
