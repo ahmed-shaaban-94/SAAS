@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Clock } from "lucide-react";
+import { X, Clock, Sparkles } from "lucide-react";
 import { ProductSearch } from "@/components/pos/ProductSearch";
 import { CartPanel } from "@/components/pos/CartPanel";
 import { PaymentPanel } from "@/components/pos/PaymentPanel";
 import { NumPad } from "@/components/pos/NumPad";
 import { PharmacistVerification } from "@/components/pos/PharmacistVerification";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
+import { PromotionsModal } from "@/components/pos/PromotionsModal";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ export default function PosTerminalPage() {
 
   const [numpadValue, setNumpadValue] = useState("");
   const [pharmacistOpen, setPharmacistOpen] = useState(false);
+  const [promotionsOpen, setPromotionsOpen] = useState(false);
   const [pendingDrug, setPendingDrug] = useState<PosProductResult | null>(null);
   const [activeTransactionId, setActiveTransactionId] = useState<number | null>(null);
 
@@ -174,6 +176,18 @@ export default function PosTerminalPage() {
         {/* Right panel: cart + totals + payment (40%) */}
         <div className="flex w-[40%] flex-col gap-3 overflow-hidden p-4">
           <CartPanel className="flex-1 overflow-hidden" />
+          <button
+            type="button"
+            onClick={() => setPromotionsOpen(true)}
+            disabled={items.length === 0}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm font-medium text-accent transition",
+              "hover:bg-accent/20 disabled:pointer-events-none disabled:opacity-40",
+            )}
+          >
+            <Sparkles className="h-4 w-4" />
+            Apply promotion
+          </button>
           <PaymentPanel
             grandTotal={grandTotal}
             disabled={checkout.isLoading || items.length === 0}
@@ -181,6 +195,12 @@ export default function PosTerminalPage() {
           />
         </div>
       </main>
+
+      {/* Promotions modal */}
+      <PromotionsModal
+        open={promotionsOpen}
+        onClose={() => setPromotionsOpen(false)}
+      />
 
       {/* Pharmacist verification modal */}
       <PharmacistVerification

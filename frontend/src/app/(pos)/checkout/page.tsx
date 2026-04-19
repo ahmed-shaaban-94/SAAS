@@ -23,7 +23,7 @@ interface PendingCheckout {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { grandTotal, clearCart } = usePosCart();
+  const { grandTotal, appliedDiscount, clearCart } = usePosCart();
   const checkout = usePosCheckout();
 
   const [pending, setPending] = useState<PendingCheckout | null>(null);
@@ -59,6 +59,9 @@ export default function CheckoutPage() {
     try {
       const checkoutResult = await checkout.checkout(pending.transactionId, {
         payment_method: method,
+        applied_discount: appliedDiscount
+          ? { source: appliedDiscount.source, ref: appliedDiscount.ref }
+          : undefined,
       });
 
       // Fetch full transaction with items for receipt

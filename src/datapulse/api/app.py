@@ -339,6 +339,7 @@ def create_app() -> FastAPI:
         from datapulse.api.routes import expiry as expiry_routes
         from datapulse.api.routes import inventory as inventory_routes
         from datapulse.api.routes import pos as pos_routes
+        from datapulse.api.routes import promotions as promotion_routes
         from datapulse.api.routes import vouchers as voucher_routes
 
         app.include_router(inventory_routes.router, prefix="/api/v1")
@@ -349,6 +350,7 @@ def create_app() -> FastAPI:
         app.include_router(pos_routes.capabilities_router, prefix="/api/v1")
         app.include_router(pos_routes.router, prefix="/api/v1")
         app.include_router(voucher_routes.router, prefix="/api/v1")
+        app.include_router(promotion_routes.router, prefix="/api/v1")
         logger.info("feature_platform_enabled")
 
     # Prometheus metrics — exposes /metrics endpoint with HTTP request

@@ -425,3 +425,194 @@ def test_commit_cash_insufficient_after_voucher_still_raises_400() -> None:
     with pytest.raises(HTTPException) as exc:
         atomic_commit(session, tenant_id=1, payload=payload)
     assert exc.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Promotion integration (Phase 2)
+# ---------------------------------------------------------------------------
+
+
+def _promotion_row(
+    *,
+    status: str = "active",
+    scope: str = "all",
+    discount_type: str = "amount",
+    value: Decimal = Decimal("5"),
+    max_discount: Decimal | None = None,
+) -> dict:
+    return {
+        "id": 10,
+        "tenant_id": 1,
+        "name": "Ramadan",
+        "description": None,
+        "discount_type": discount_type,
+        "value": value,
+        "scope": scope,
+        "starts_at": datetime(2026, 1, 1, tzinfo=UTC),
+        "ends_at": datetime(2099, 1, 1, tzinfo=UTC),
+        "min_purchase": None,
+        "max_discount": max_discount,
+        "status": status,
+        "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+    }
+
+
+def _stub_session_with_promotion(
+    *,
+    returning_id: int = 42,
+    promotion_row: dict,
+) -> MagicMock:
+    """Stub that answers the promotion preview + lock_for_application + usage queries."""
+    session = MagicMock()
+
+    def _execute(stmt, params=None):  # noqa: ARG001
+        sql = str(stmt)
+        m = MagicMock()
+        if "RETURNING id" in sql and "pos.transactions" in sql:
+            m.first.return_value = (returning_id,)
+        elif "FROM pos.promotions" in sql:
+            mappings = MagicMock()
+            mappings.first.return_value = promotion_row
+            mappings.all.return_value = [promotion_row]
+            m.mappings.return_value = mappings
+        elif "FROM pos.promotion_items" in sql or "FROM pos.promotion_categories" in sql:
+            mappings = MagicMock()
+            mappings.all.return_value = []
+            m.mappings.return_value = mappings
+        elif "FROM pos.promotion_applications" in sql and "COUNT" in sql:
+            mappings = MagicMock()
+            mappings.first.return_value = {"n": 0, "total": Decimal("0")}
+            m.mappings.return_value = mappings
+        elif "INSERT INTO pos.promotion_applications" in sql:
+            mappings = MagicMock()
+            mappings.first.return_value = {
+                "id": 999,
+                "promotion_id": 10,
+                "transaction_id": returning_id,
+                "cashier_staff_id": "s-1",
+                "discount_applied": Decimal("5"),
+                "applied_at": datetime(2026, 4, 19, tzinfo=UTC),
+            }
+            m.mappings.return_value = mappings
+        return m
+
+    session.execute.side_effect = _execute
+    return session
+
+
+def test_commit_with_promotion_amount_applies_discount_and_records_application() -> None:
+    """A scope='all' amount promotion reduces grand_total and inserts an audit row."""
+    from datapulse.pos.commit import atomic_commit
+    from datapulse.pos.models import AppliedDiscount
+
+    session = _stub_session_with_promotion(
+        promotion_row=_promotion_row(value=Decimal("5"))
+    )
+    payload = _payload(
+        subtotal="20.00",
+        total="20.00",
+        tendered="20.00",
+    )
+    # Replace voucher_code with applied_discount
+    payload = payload.model_copy(
+        update={"applied_discount": AppliedDiscount(source="promotion", ref="10")}
+    )
+
+    resp = atomic_commit(session, tenant_id=1, payload=payload)
+
+    assert resp.voucher_discount == Decimal("5.0000")
+    assert resp.applied_promotion_id == 10
+    assert resp.change_due == Decimal("5.0000")
+
+    # Audit row INSERT must have happened
+    app_inserts = [
+        call
+        for call in session.execute.call_args_list
+        if "INSERT INTO pos.promotion_applications" in str(call.args[0])
+    ]
+    assert len(app_inserts) == 1
+    params = app_inserts[0].args[1]
+    assert params["pid"] == 10
+    assert params["txn"] == 42
+
+
+def test_commit_with_promotion_percent_caps_at_max_discount() -> None:
+    from datapulse.pos.commit import atomic_commit
+    from datapulse.pos.models import AppliedDiscount
+
+    # 20% of 100 = 20 but max_discount caps at 7
+    session = _stub_session_with_promotion(
+        promotion_row=_promotion_row(
+            discount_type="percent",
+            value=Decimal("20"),
+            max_discount=Decimal("7"),
+        )
+    )
+    payload = _payload(subtotal="100.00", total="100.00", tendered="100.00").model_copy(
+        update={"applied_discount": AppliedDiscount(source="promotion", ref="10")}
+    )
+    resp = atomic_commit(session, tenant_id=1, payload=payload)
+    assert resp.voucher_discount == Decimal("7.0000")
+
+
+def test_commit_with_paused_promotion_raises_400() -> None:
+    from datapulse.pos.commit import atomic_commit
+    from datapulse.pos.models import AppliedDiscount
+
+    session = _stub_session_with_promotion(
+        promotion_row=_promotion_row(status="paused", value=Decimal("5"))
+    )
+    payload = _payload(subtotal="20.00", total="20.00", tendered="20.00").model_copy(
+        update={"applied_discount": AppliedDiscount(source="promotion", ref="10")}
+    )
+    with pytest.raises(HTTPException) as exc:
+        atomic_commit(session, tenant_id=1, payload=payload)
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "promotion_inactive"
+
+
+def test_commit_rejects_both_voucher_and_applied_discount() -> None:
+    """Model validator rejects mutually exclusive discount inputs before commit."""
+    from datapulse.pos.models import AppliedDiscount, CommitRequest
+
+    with pytest.raises(ValueError):  # pydantic ValidationError extends ValueError
+        CommitRequest(
+            terminal_id=1,
+            shift_id=1,
+            staff_id="s-1",
+            site_code="S1",
+            items=[
+                PosCartItem(
+                    drug_code="D",
+                    drug_name="Drug",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("20"),
+                    line_total=Decimal("20"),
+                )
+            ],
+            subtotal=Decimal("20"),
+            grand_total=Decimal("20"),
+            payment_method=PaymentMethod.cash,
+            cash_tendered=Decimal("20"),
+            voucher_code="OLD",
+            applied_discount=AppliedDiscount(source="voucher", ref="NEW"),
+        )
+
+
+def test_commit_applied_discount_voucher_source_equivalent_to_legacy_voucher_code() -> None:
+    """AppliedDiscount(source='voucher', ref=X) must redeem the same way voucher_code=X does."""
+    from datapulse.pos.commit import atomic_commit
+    from datapulse.pos.models import AppliedDiscount
+
+    voucher = _voucher_response(discount_type=VoucherType.amount, value=Decimal("5"))
+    session = _stub_session_with_voucher(voucher=voucher)
+
+    payload = _payload(subtotal="20.00", total="20.00", tendered="20.00").model_copy(
+        update={
+            "voucher_code": None,
+            "applied_discount": AppliedDiscount(source="voucher", ref="SAVE5"),
+        }
+    )
+    resp = atomic_commit(session, tenant_id=1, payload=payload)
+    assert resp.voucher_discount == Decimal("5.0000")
+    assert resp.applied_promotion_id is None

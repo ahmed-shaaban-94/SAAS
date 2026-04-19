@@ -15,19 +15,23 @@ Security hardening (H2):
   ``count(*) + 1``; migration 088 adds a unique partial index so duplicates
   are rejected by the DB as a defence-in-depth backstop.
 
-Voucher redemption:
-* When ``payload.voucher_code`` is provided, the voucher is atomically
-  redeemed inside the same transaction via ``SELECT ... FOR UPDATE``.
-* The voucher discount is added on top of the (already-validated) client
-  discount before the effective grand_total is computed, so cash
-  sufficiency is checked against the post-voucher total.
-* ``lock_and_redeem`` sets ``redeemed_txn_id`` to the new transaction id
-  and increments ``uses``; if that was the last allowed use the voucher
-  moves to ``status='redeemed'``.
-* Any voucher validation failure raises ``HTTPException(400)`` with a
-  ``voucher_*`` detail string, rolling back the entire commit.
+Discount redemption — the ``applied_discount`` union carries one of:
+* ``source='voucher'`` — the legacy Phase 1 path. Redeemed via
+  :meth:`VoucherRepository.lock_and_redeem` inside the same transaction.
+* ``source='promotion'`` — Phase 2. The promotion row is locked via
+  ``SELECT ... FOR UPDATE``, eligibility is re-validated at commit time,
+  and an audit row is inserted into ``pos.promotion_applications``.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §3.
+A single transaction may carry at most one discount. The legacy
+``voucher_code`` field on :class:`CommitRequest` is still accepted from
+offline clients that haven't migrated; if both ``applied_discount`` and
+``voucher_code`` are set the model validator rejects the payload.
+
+Any discount-validation failure raises ``HTTPException(400)`` with a
+``voucher_*`` or ``promotion_*`` detail string, rolling back the commit.
+
+Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §3
+and docs/superpowers/plans/2026-04-19-pos-promotions-phase-2-admin-managed.md.
 """
 
 from __future__ import annotations
@@ -39,7 +43,16 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from datapulse.pos.models import CommitRequest, CommitResponse
+from datapulse.pos.models import (
+    AppliedDiscount,
+    CommitRequest,
+    CommitResponse,
+    EligibleCartItem,
+    PromotionResponse,
+    VoucherResponse,
+)
+from datapulse.pos.promotion_repository import PromotionRepository
+from datapulse.pos.promotion_service import PromotionService
 from datapulse.pos.voucher_repository import VoucherRepository
 from datapulse.pos.voucher_service import VoucherService
 
@@ -64,6 +77,84 @@ def _recompute_line_total(unit_price: Decimal, quantity: Decimal, discount: Deci
     return (unit_price * quantity - discount).quantize(Decimal("0.0001"))
 
 
+def _normalize_discount_source(payload: CommitRequest) -> AppliedDiscount | None:
+    """Coerce the two legacy-compatible input shapes into one ``AppliedDiscount``.
+
+    ``applied_discount`` takes precedence (Phase 2 clients). Falling back to
+    ``voucher_code`` keeps offline Phase 1 clients working without a
+    contract change. ``_one_discount_only`` on the model guarantees only
+    one of the two fields is set.
+    """
+    if payload.applied_discount is not None:
+        return payload.applied_discount
+    if payload.voucher_code is not None:
+        return AppliedDiscount(source="voucher", ref=payload.voucher_code)
+    return None
+
+
+def _preview_voucher_discount(
+    voucher_repo: VoucherRepository,
+    *,
+    tenant_id: int,
+    code: str,
+    subtotal: Decimal,
+) -> tuple[VoucherResponse, Decimal]:
+    """Read the voucher (no lock) + compute the would-be discount for total-check."""
+    preview = voucher_repo.get_by_code(tenant_id, code)
+    if preview is None:
+        raise HTTPException(status_code=400, detail="voucher_not_found")
+    discount = VoucherService.compute_discount(
+        preview.discount_type,
+        preview.value,
+        subtotal,
+    )
+    return preview, discount
+
+
+def _preview_promotion_discount(
+    promotion_repo: PromotionRepository,
+    *,
+    tenant_id: int,
+    promotion_id: int,
+    payload: CommitRequest,
+    subtotal: Decimal,
+) -> tuple[PromotionResponse, Decimal]:
+    """Read the promotion + compute the discount against the eligible slice."""
+    promo = promotion_repo.get(tenant_id, promotion_id)
+    if promo is None:
+        raise HTTPException(status_code=400, detail="promotion_not_found")
+    eligible_base = PromotionService.eligible_base(
+        promo,
+        [
+            EligibleCartItem(
+                drug_code=item.drug_code,
+                # drug_cluster is not on CommitRequest items — so scope='category'
+                # promotions can only be previewed when the client has already
+                # filtered. Be conservative and treat unknown clusters as
+                # non-matching; the cashier UI only surfaces promotions that
+                # matched at /eligible time.
+                drug_cluster=None,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+            )
+            for item in payload.items
+        ],
+    )
+    # For category promotions we don't have drug_cluster on the commit path,
+    # so fall back to the full subtotal. The /eligible endpoint already
+    # vetted that the cart has matching items; commit-time recomputation
+    # is a safety net, not the canonical eligibility check.
+    if promo.scope.value == "category" and eligible_base <= 0:
+        eligible_base = subtotal
+    discount = PromotionService.compute_discount(
+        promo.discount_type,
+        promo.value,
+        eligible_base,
+        max_discount=promo.max_discount,
+    )
+    return promo, discount
+
+
 def atomic_commit(
     session: Session,
     *,
@@ -73,28 +164,47 @@ def atomic_commit(
     """Insert the transaction + items + set ``commit_confirmed_at`` atomically.
 
     Raises ``HTTPException(400)`` when:
-    - the declared grand_total (pre-voucher) disagrees with server-
+    - the declared grand_total (pre-discount) disagrees with server-
       recomputed totals beyond ``_TOTAL_EPSILON``
-    - a cash payment tenders less than the effective (post-voucher)
+    - a cash payment tenders less than the effective (post-discount)
       grand total
-    - a supplied voucher code cannot be found or redeemed
+    - a supplied voucher / promotion cannot be found, applied, or has expired
     """
-    # ── Voucher pre-flight — read without locking. We re-select with ──────
-    # FOR UPDATE inside lock_and_redeem once we have a transaction_id.
-    voucher_repo = VoucherRepository(session) if payload.voucher_code else None
-    voucher_discount = Decimal("0")
-    if payload.voucher_code:
-        assert voucher_repo is not None  # for type checkers
-        preview = voucher_repo.get_by_code(tenant_id, payload.voucher_code)
-        if preview is None:
-            raise HTTPException(status_code=400, detail="voucher_not_found")
-        voucher_discount = VoucherService.compute_discount(
-            preview.discount_type,
-            preview.value,
-            Decimal(str(payload.subtotal)),
-        )
+    discount_source = _normalize_discount_source(payload)
 
-    # ── Server-side total recomputation (pre-voucher) ─────────────────────
+    voucher_repo: VoucherRepository | None = None
+    promotion_repo: PromotionRepository | None = None
+    discount_amount = Decimal("0")
+    applied_promotion_id: int | None = None
+
+    if discount_source is not None:
+        subtotal_decimal = Decimal(str(payload.subtotal))
+        if discount_source.source == "voucher":
+            voucher_repo = VoucherRepository(session)
+            _, discount_amount = _preview_voucher_discount(
+                voucher_repo,
+                tenant_id=tenant_id,
+                code=discount_source.ref,
+                subtotal=subtotal_decimal,
+            )
+        else:
+            try:
+                promotion_id = int(discount_source.ref)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400, detail="promotion_ref_invalid"
+                ) from exc
+            promotion_repo = PromotionRepository(session)
+            _, discount_amount = _preview_promotion_discount(
+                promotion_repo,
+                tenant_id=tenant_id,
+                promotion_id=promotion_id,
+                payload=payload,
+                subtotal=subtotal_decimal,
+            )
+            applied_promotion_id = promotion_id
+
+    # ── Server-side total recomputation (pre-discount) ────────────────────
     # Recompute subtotal from item unit_price × qty - discount so a client
     # sending fake line_totals or a fake subtotal can not corrupt the books.
     computed_subtotal = Decimal("0")
@@ -105,30 +215,31 @@ def atomic_commit(
     base_discount = Decimal(str(payload.discount_total))
     tax_total = Decimal(str(payload.tax_total))
 
-    # Pre-voucher grand_total — this is what the client sees before any voucher
-    # is applied. We compare against the client's declared grand_total here.
-    computed_pre_voucher_grand = (computed_subtotal - base_discount + tax_total).quantize(
+    # Pre-discount grand_total — this is what the client sees before any
+    # voucher / promotion is applied. We compare against the client's
+    # declared grand_total here.
+    computed_pre_discount_grand = (computed_subtotal - base_discount + tax_total).quantize(
         Decimal("0.0001")
     )
 
-    if abs(computed_pre_voucher_grand - Decimal(str(payload.grand_total))) > _TOTAL_EPSILON:
+    if abs(computed_pre_discount_grand - Decimal(str(payload.grand_total))) > _TOTAL_EPSILON:
         raise HTTPException(
             status_code=400,
             detail=(
                 f"grand_total mismatch: client={payload.grand_total} "
-                f"server={computed_pre_voucher_grand}"
+                f"server={computed_pre_discount_grand}"
             ),
         )
 
-    # ── Apply voucher discount → effective grand_total ────────────────────
-    effective_discount = base_discount + voucher_discount
+    # ── Apply voucher / promotion discount → effective grand_total ────────
+    effective_discount = base_discount + discount_amount
     effective_grand = (computed_subtotal - effective_discount + tax_total).quantize(
         Decimal("0.0001")
     )
     if effective_grand < Decimal("0"):
         effective_grand = Decimal("0")
 
-    # ── Cash tender validation against the effective (post-voucher) total ──
+    # ── Cash tender validation against the effective (post-discount) total
     if payload.payment_method.value == "cash":
         tendered = payload.cash_tendered or Decimal("0")
         if tendered < effective_grand:
@@ -210,22 +321,35 @@ def atomic_commit(
             },
         )
 
-    # ── Redeem voucher now that we have a transaction_id. Any failure ──────
-    # here raises HTTPException(400) which rolls back the entire commit.
-    if payload.voucher_code:
-        assert voucher_repo is not None
-        voucher_repo.lock_and_redeem(
-            tenant_id,
-            payload.voucher_code,
-            transaction_id,
-            now,
-            cart_subtotal=Decimal(str(payload.subtotal)),
-        )
+    # ── Redeem voucher / record promotion now that we have a transaction_id.
+    # Any failure raises HTTPException(400) which rolls back the entire commit.
+    if discount_source is not None:
+        if discount_source.source == "voucher":
+            assert voucher_repo is not None
+            voucher_repo.lock_and_redeem(
+                tenant_id,
+                discount_source.ref,
+                transaction_id,
+                now,
+                cart_subtotal=Decimal(str(payload.subtotal)),
+            )
+        else:
+            assert promotion_repo is not None and applied_promotion_id is not None
+            promotion_repo.lock_for_application(tenant_id, applied_promotion_id, now)
+            promotion_repo.record_application(
+                tenant_id=tenant_id,
+                promotion_id=applied_promotion_id,
+                transaction_id=transaction_id,
+                cashier_staff_id=payload.staff_id,
+                discount_applied=discount_amount,
+                applied_at=now,
+            )
 
     return CommitResponse(
         transaction_id=transaction_id,
         receipt_number=receipt,
         commit_confirmed_at=now,
         change_due=change_due,
-        voucher_discount=voucher_discount,
+        voucher_discount=discount_amount,
+        applied_promotion_id=applied_promotion_id,
     )
