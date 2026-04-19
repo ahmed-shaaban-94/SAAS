@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="96" fill="#0D1117"/>
-  <rect x="16" y="16" width="480" height="480" rx="80" fill="#161B22" stroke="#30363D" stroke-width="2"/>
-  <!-- Pulse line -->
-  <path d="M80 300 L160 300 L200 180 L240 380 L280 220 L320 320 L360 260 L432 260" stroke="#D97706" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Activity dot -->
-  <circle cx="432" cy="260" r="16" fill="#D97706"/>
-  <circle cx="432" cy="260" r="24" fill="#D97706" opacity="0.3"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0D1117" rx="96"/><rect width="480" height="480" x="16" y="16" fill="#161B22" stroke="#30363D" stroke-width="2" rx="80"/><path stroke="#D97706" stroke-linecap="round" stroke-linejoin="round" stroke-width="24" d="M80 300 L160 300 L200 180 L240 380 L280 220 L320 320 L360 260 L432 260"/><circle cx="432" cy="260" r="16" fill="#D97706"/><circle cx="432" cy="260" r="24" fill="#D97706" opacity=".3"/></svg>

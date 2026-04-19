@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <!-- Full background for maskable safe zone -->
-  <rect width="512" height="512" fill="#0D1117"/>
-  <!-- Pulse line (slightly smaller to fit in safe zone) -->
-  <path d="M120 280 L180 280 L210 190 L245 350 L280 230 L310 300 L340 255 L392 255" stroke="#D97706" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Activity dot -->
-  <circle cx="392" cy="255" r="14" fill="#D97706"/>
-  <circle cx="392" cy="255" r="22" fill="#D97706" opacity="0.3"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0D1117"/><path stroke="#D97706" stroke-linecap="round" stroke-linejoin="round" stroke-width="22" d="M120 280 L180 280 L210 190 L245 350 L280 230 L310 300 L340 255 L392 255"/><circle cx="392" cy="255" r="14" fill="#D97706"/><circle cx="392" cy="255" r="22" fill="#D97706" opacity=".3"/></svg>
