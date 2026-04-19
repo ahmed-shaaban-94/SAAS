@@ -17,7 +17,14 @@ import type Database from "better-sqlite3";
 import { nextAttemptAt } from "./queue-state";
 import { markSyncing, markSynced, markRejected } from "../db/queue";
 import { getSetting } from "../db/settings";
-import { computeDeviceFingerprint, loadPrivateKey, signCanonical } from "../authz/keys";
+import {
+  computeDeviceFingerprint,
+  computeDeviceFingerprintV2,
+  FingerprintMismatchError,
+  getFingerprintV2Components,
+  loadPrivateKey,
+  signCanonical,
+} from "../authz/keys";
 
 const PROVISIONAL_TTL_HOURS = 72;
 const MAX_ROWS_PER_CYCLE = 20;
@@ -96,6 +103,26 @@ async function pushRow(
   const terminalId = getSetting(db, "terminal_id");
   const fingerprint = computeDeviceFingerprint(db);
 
+  // Best-effort v2 fingerprint. Hardware-change mismatch rejects pushes
+  // immediately (rather than silently submitting with the old digest) so
+  // the admin sees a Sync Issue they can triage.
+  let fingerprintV2: string | null = null;
+  try {
+    if (getFingerprintV2Components().reliable) {
+      fingerprintV2 = computeDeviceFingerprintV2(db);
+    }
+  } catch (err) {
+    if (err instanceof FingerprintMismatchError) {
+      markRejected(
+        db,
+        row.local_id,
+        `fingerprint_v2_mismatch: ${err.stored.slice(0, 16)} -> ${err.current.slice(0, 16)}`,
+      );
+      return "rejected";
+    }
+    throw err;
+  }
+
   if (!jwt || !terminalId) return "backoff";
 
   // Derive the URL path from the stored endpoint ("POST /api/v1/...")
@@ -110,6 +137,7 @@ async function pushRow(
     "X-Device-Fingerprint": fingerprint,
     "X-Signed-At": row.signed_at,
     "X-Terminal-Token": row.device_signature,
+    ...(fingerprintV2 ? { "X-Device-Fingerprint-V2": fingerprintV2 } : {}),
   };
 
   let res: Response;

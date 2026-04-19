@@ -543,6 +543,11 @@ class DeviceRegisterRequest(BaseModel):
     terminal_id: int = Field(ge=1)
     public_key: str = Field(min_length=32)  # base64-url raw 32-byte ed25519 pubkey
     device_fingerprint: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    # v2 fingerprint is optional: old clients predate #480. New desktop
+    # builds always include it when the host is reliably fingerprintable.
+    device_fingerprint_v2: str | None = Field(
+        default=None, pattern=r"^sha256v2:[0-9a-f]{64}$"
+    )
 
 
 class DeviceRegisterResponse(BaseModel):

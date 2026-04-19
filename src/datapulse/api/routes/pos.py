@@ -965,6 +965,7 @@ def register_terminal_device(
         terminal_id=payload.terminal_id,
         public_key_b64=payload.public_key,
         device_fingerprint=payload.device_fingerprint,
+        device_fingerprint_v2=payload.device_fingerprint_v2,
     )
     session.commit()
     return DeviceRegisterResponse(

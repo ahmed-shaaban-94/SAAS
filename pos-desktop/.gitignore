@@ -5,3 +5,4 @@ resources/nextjs/
 *.exe
 *.msi
 *.nsis
+coverage/

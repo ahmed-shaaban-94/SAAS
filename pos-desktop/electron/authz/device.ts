@@ -10,7 +10,12 @@
 
 import type Database from "better-sqlite3";
 import { getSetting, setSetting } from "../db/settings";
-import { computeDeviceFingerprint, getOrCreateKeypair } from "./keys";
+import {
+  computeDeviceFingerprintV1,
+  computeDeviceFingerprintV2,
+  getFingerprintV2Components,
+  getOrCreateKeypair,
+} from "./keys";
 
 export function isDeviceRegistered(db: Database.Database): boolean {
   return getSetting(db, "device_registered") === "true";
@@ -32,7 +37,14 @@ export async function registerDevice(
   opts: RegisterDeviceOpts,
 ): Promise<RegisterDeviceResult> {
   const kp = getOrCreateKeypair(db);
-  const fingerprint = computeDeviceFingerprint(db);
+  const fingerprint = computeDeviceFingerprintV1(db);
+
+  // v2 is best-effort here — if the host is un-fingerprintable (e.g. CI
+  // sandbox with no registry / machine-id / usable MAC) we still register
+  // but omit the v2 field. The server treats absent v2 as "v1-only
+  // device" and skips the deprecation migration path for this row.
+  const v2Components = getFingerprintV2Components();
+  const fingerprintV2 = v2Components.reliable ? computeDeviceFingerprintV2(db) : null;
 
   const res = await fetch(`${opts.baseUrl}/api/v1/pos/terminals/register-device`, {
     method: "POST",
@@ -44,6 +56,7 @@ export async function registerDevice(
       terminal_id: opts.terminalId,
       public_key: kp.publicKey,
       device_fingerprint: fingerprint,
+      ...(fingerprintV2 ? { device_fingerprint_v2: fingerprintV2 } : {}),
     }),
   });
 

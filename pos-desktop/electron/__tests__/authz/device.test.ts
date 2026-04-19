@@ -8,6 +8,13 @@ import { isDeviceRegistered, registerDevice } from "../../authz/device";
 jest.mock("../../authz/keys", () => ({
   getOrCreateKeypair: jest.fn().mockReturnValue({ publicKey: "pub_b64url", privateKey: "priv_b64url" }),
   computeDeviceFingerprint: jest.fn().mockReturnValue("sha256:aabbccdd"),
+  computeDeviceFingerprintV1: jest.fn().mockReturnValue("sha256:aabbccdd"),
+  computeDeviceFingerprintV2: jest.fn().mockReturnValue("sha256v2:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"),
+  getFingerprintV2Components: jest.fn().mockReturnValue({
+    digest: "sha256v2:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    components: { machineId: "mid", primaryMac: "aa:bb:cc:dd:ee:01", hostname: "host" },
+    reliable: true,
+  }),
 }));
 
 jest.mock("../../db/settings", () => ({
@@ -22,9 +29,16 @@ const { getSetting, setSetting } = jest.requireMock("../../db/settings") as {
   setSetting: jest.Mock;
 };
 
-const { getOrCreateKeypair, computeDeviceFingerprint } = jest.requireMock("../../authz/keys") as {
+const {
+  getOrCreateKeypair,
+  computeDeviceFingerprintV1,
+  computeDeviceFingerprintV2,
+  getFingerprintV2Components,
+} = jest.requireMock("../../authz/keys") as {
   getOrCreateKeypair: jest.Mock;
-  computeDeviceFingerprint: jest.Mock;
+  computeDeviceFingerprintV1: jest.Mock;
+  computeDeviceFingerprintV2: jest.Mock;
+  getFingerprintV2Components: jest.Mock;
 };
 
 const SCHEMA_PATH = path.join(__dirname, "../../db/schema.sql");
@@ -112,9 +126,33 @@ describe("registerDevice", () => {
     expect(body.terminal_id).toBe(42);
     expect(body.public_key).toBe("pub_b64url");
     expect(body.device_fingerprint).toBe("sha256:aabbccdd");
+    expect(body.device_fingerprint_v2).toBe(
+      "sha256v2:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    );
   });
 
-  it("uses getOrCreateKeypair and computeDeviceFingerprint", async () => {
+  it("omits device_fingerprint_v2 when the host is not reliably fingerprintable", async () => {
+    getFingerprintV2Components.mockReturnValueOnce({
+      digest: "sha256v2:should-not-be-sent",
+      components: { machineId: "", primaryMac: "", hostname: "host" },
+      reliable: false,
+    });
+    (global as Record<string, unknown>).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ device_id: 1, terminal_id: 42 }),
+    });
+
+    await registerDevice(db, opts);
+
+    const callArgs = (fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(callArgs[1].body as string);
+    expect(body.device_fingerprint).toBe("sha256:aabbccdd");
+    expect(body).not.toHaveProperty("device_fingerprint_v2");
+    // v2 computation is skipped entirely on unreliable hosts
+    expect(computeDeviceFingerprintV2).not.toHaveBeenCalled();
+  });
+
+  it("uses getOrCreateKeypair, computeDeviceFingerprintV1 and computeDeviceFingerprintV2", async () => {
     (global as Record<string, unknown>).fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ device_id: 1, terminal_id: 42 }),
@@ -123,7 +161,8 @@ describe("registerDevice", () => {
     await registerDevice(db, opts);
 
     expect(getOrCreateKeypair).toHaveBeenCalledWith(db);
-    expect(computeDeviceFingerprint).toHaveBeenCalledWith(db);
+    expect(computeDeviceFingerprintV1).toHaveBeenCalledWith(db);
+    expect(computeDeviceFingerprintV2).toHaveBeenCalledWith(db);
   });
 
   it("calls setSetting('device_registered','true') and setSetting('device_id', ...) on success", async () => {

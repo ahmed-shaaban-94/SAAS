@@ -34,8 +34,13 @@ import {
   loadPublicKey,
   saveKeypair,
   computeDeviceFingerprint,
+  computeDeviceFingerprintV1,
+  computeDeviceFingerprintV2,
+  getFingerprintV2Components,
+  FingerprintMismatchError,
   buildCanonicalString,
 } from "../../authz/keys";
+import { getSetting, setSetting } from "../../db/settings";
 
 const SCHEMA_PATH = path.join(__dirname, "../../db/schema.sql");
 const SPKI_ED25519_HEADER = Buffer.from("302a300506032b6570032100", "hex");
@@ -161,7 +166,7 @@ describe("getOrCreateKeypair", () => {
   });
 });
 
-describe("computeDeviceFingerprint", () => {
+describe("computeDeviceFingerprint / computeDeviceFingerprintV1 (wire-compat alias)", () => {
   let db: Database.Database;
 
   beforeEach(() => { db = openTestDb(); });
@@ -170,6 +175,10 @@ describe("computeDeviceFingerprint", () => {
   it("returns sha256:<64 hex chars> format", () => {
     const fp = computeDeviceFingerprint(db);
     expect(fp).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it("computeDeviceFingerprint is an alias for V1", () => {
+    expect(computeDeviceFingerprint).toBe(computeDeviceFingerprintV1);
   });
 
   it("is stable across calls on the same db", () => {
@@ -185,5 +194,123 @@ describe("computeDeviceFingerprint", () => {
     db2.close();
     // Different dbs = different install UUIDs = different fingerprints
     expect(fp1).not.toBe(fp2);
+  });
+});
+
+describe("computeDeviceFingerprintV2", () => {
+  let db: Database.Database;
+
+  const reliableDeps = {
+    hostname: () => "pos-host",
+    platform: () => "linux" as const,
+    networkInterfaces: () => ({
+      eth0: [{ address: "10.0.0.1", mac: "aa:bb:cc:dd:ee:01", internal: false, family: "IPv4" }],
+    }),
+    readFile: () => "machineid-abcdef0123456789abcdef0123456789\n",
+    execSync: () => "",
+  };
+
+  beforeEach(() => { db = openTestDb(); });
+  afterEach(() => { db.close(); });
+
+  it("returns sha256v2:<64 hex> digest", () => {
+    const fp = computeDeviceFingerprintV2(db, reliableDeps);
+    expect(fp).toMatch(/^sha256v2:[0-9a-f]{64}$/);
+  });
+
+  it("persists the digest on first call", () => {
+    expect(getSetting(db, "device_fingerprint_v2")).toBeNull();
+    const fp = computeDeviceFingerprintV2(db, reliableDeps);
+    expect(getSetting(db, "device_fingerprint_v2")).toBe(fp);
+  });
+
+  it("is idempotent across subsequent calls when hardware unchanged", () => {
+    const fp1 = computeDeviceFingerprintV2(db, reliableDeps);
+    const fp2 = computeDeviceFingerprintV2(db, reliableDeps);
+    expect(fp1).toBe(fp2);
+  });
+
+  it("throws FingerprintMismatchError when hardware changes after persistence", () => {
+    // First boot — persist the v2 digest.
+    const stored = computeDeviceFingerprintV2(db, reliableDeps);
+
+    // Subsequent boot on different hardware (MAC changed = NIC swap).
+    const changedDeps = {
+      ...reliableDeps,
+      networkInterfaces: () => ({
+        eth0: [
+          { address: "10.0.0.1", mac: "ff:ff:ff:ff:ff:ff", internal: false, family: "IPv4" },
+        ],
+      }),
+    };
+
+    try {
+      computeDeviceFingerprintV2(db, changedDeps);
+      throw new Error("expected FingerprintMismatchError");
+    } catch (err) {
+      expect(err).toBeInstanceOf(FingerprintMismatchError);
+      const mismatch = err as FingerprintMismatchError;
+      expect(mismatch.stored).toBe(stored);
+      expect(mismatch.current).not.toBe(stored);
+      expect(mismatch.current).toMatch(/^sha256v2:[0-9a-f]{64}$/);
+    }
+  });
+
+  it("does not overwrite the stored digest when a mismatch is thrown", () => {
+    const stored = computeDeviceFingerprintV2(db, reliableDeps);
+    const changedDeps = {
+      ...reliableDeps,
+      hostname: () => "different-host",
+    };
+    expect(() => computeDeviceFingerprintV2(db, changedDeps)).toThrow(FingerprintMismatchError);
+    // Stored value must still be the original — mismatch does not self-heal.
+    expect(getSetting(db, "device_fingerprint_v2")).toBe(stored);
+  });
+
+  it("returns the persisted value even if caller supplies different deps on re-entry", () => {
+    // Simulate: admin pre-seeds the row manually (or it was written by a prior boot).
+    setSetting(db, "device_fingerprint_v2", "sha256v2:deadbeef");
+    // Same call should throw, because "deadbeef" does not match what the host
+    // actually reports now. This protects against registry tampering.
+    expect(() => computeDeviceFingerprintV2(db, reliableDeps)).toThrow(FingerprintMismatchError);
+  });
+});
+
+describe("getFingerprintV2Components", () => {
+  it("exposes hostname / machineId / primaryMac without persisting", () => {
+    const r = getFingerprintV2Components({
+      hostname: () => "diag-host",
+      platform: () => "linux",
+      networkInterfaces: () => ({
+        eth0: [{ address: "1.2.3.4", mac: "aa:bb:cc:dd:ee:01", internal: false, family: "IPv4" }],
+      }),
+      readFile: () => "diag-machine-id-0000000000000000\n",
+    });
+    expect(r.components.hostname).toBe("diag-host");
+    expect(r.components.primaryMac).toBe("aa:bb:cc:dd:ee:01");
+    expect(r.components.machineId).toBe("diag-machine-id-0000000000000000");
+    expect(r.reliable).toBe(true);
+    expect(r.digest).toMatch(/^sha256v2:[0-9a-f]{64}$/);
+  });
+
+  it("reliable=false on a bare sandbox (no machineId + no MAC)", () => {
+    const r = getFingerprintV2Components({
+      hostname: () => "sandbox",
+      platform: () => "linux",
+      networkInterfaces: () => ({}),
+      readFile: () => { throw new Error("ENOENT"); },
+      execSync: () => { throw new Error("no reg"); },
+    });
+    expect(r.reliable).toBe(false);
+  });
+});
+
+describe("FingerprintMismatchError", () => {
+  it("has name and message with tamper wording", () => {
+    const err = new FingerprintMismatchError("sha256v2:aaaa", "sha256v2:bbbb");
+    expect(err.name).toBe("FingerprintMismatchError");
+    expect(err.message).toMatch(/hardware has changed or been tampered with/);
+    expect(err.stored).toBe("sha256v2:aaaa");
+    expect(err.current).toBe("sha256v2:bbbb");
   });
 });

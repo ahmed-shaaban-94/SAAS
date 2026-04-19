@@ -25,6 +25,7 @@ import { hostname } from "node:os";
 import type Database from "better-sqlite3";
 import { getSetting, setSetting } from "../db/settings";
 import { readSecret, writeSecret } from "./secure-store";
+import { computeFingerprintV2, type FingerprintResult } from "./fingerprint";
 
 export interface Keypair {
   publicKey: string;  // base64url, raw 32-byte Ed25519
@@ -140,11 +141,16 @@ export function getOrCreateKeypair(db: Database.Database): Keypair {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Returns a stable `sha256:<hex>` fingerprint for this device install.
- * Combines hostname + a persisted install UUID (created once in settings).
- * Full MAC/machineGuid/OS-serial is the M3b hardening task.
+ * Legacy v1 fingerprint (install-specific): `sha256:<hex>` of
+ * hostname + persisted UUID. Kept for existing registered devices during
+ * the v2 deprecation window; will be removed once all pilots migrate.
+ *
+ * Still used by `registerDevice` for backward compatibility — new rows
+ * carry both v1 and v2. The server stores both and accepts either header
+ * during the window (see `migrations/093_add_pos_device_fingerprint_v2.sql`
+ * and `src/datapulse/pos/devices.py`).
  */
-export function computeDeviceFingerprint(db: Database.Database): string {
+export function computeDeviceFingerprintV1(db: Database.Database): string {
   let deviceUuid = getSetting(db, "device_uuid");
   if (!deviceUuid) {
     deviceUuid = randomUUID();
@@ -154,3 +160,65 @@ export function computeDeviceFingerprint(db: Database.Database): string {
   const hash = createHash("sha256").update(raw, "utf8").digest("hex");
   return `sha256:${hash}`;
 }
+
+/**
+ * v2 fingerprint: OS-level identifiers (machineId + MAC + hostname).
+ * Delegates the actual hashing to `./fingerprint.ts::computeFingerprintV2`
+ * — this wrapper just persists the result on first call and detects
+ * hardware-change mismatches on subsequent calls.
+ *
+ * Returns the `sha256v2:<hex>` digest. Use `getFingerprintV2Components()`
+ * if you need the unhashed components for diagnostics.
+ *
+ * Throws `FingerprintMismatchError` if the persisted v2 doesn't match the
+ * current hardware — caller should refuse to use the device key and
+ * prompt the admin to re-register, per #480 acceptance criteria.
+ */
+export class FingerprintMismatchError extends Error {
+  constructor(
+    public readonly stored: string,
+    public readonly current: string,
+  ) {
+    super("device fingerprint v2 changed — hardware has changed or been tampered with");
+    this.name = "FingerprintMismatchError";
+  }
+}
+
+export function computeDeviceFingerprintV2(
+  db: Database.Database,
+  deps?: Parameters<typeof computeFingerprintV2>[0],
+): string {
+  const result = computeFingerprintV2(deps);
+  const stored = getSetting(db, "device_fingerprint_v2");
+
+  if (!stored) {
+    // First boot on v2 — persist so subsequent boots can detect changes.
+    setSetting(db, "device_fingerprint_v2", result.digest);
+    return result.digest;
+  }
+
+  if (stored !== result.digest) {
+    throw new FingerprintMismatchError(stored, result.digest);
+  }
+  return result.digest;
+}
+
+/**
+ * Expose the raw fingerprint components (hostname, machineId, primaryMac,
+ * reliable flag). Does NOT persist — use `computeDeviceFingerprintV2` for
+ * the persistent flow. Callers should only read components for diagnostic
+ * logging; never serialise them verbatim to disk or the wire.
+ */
+export function getFingerprintV2Components(
+  deps?: Parameters<typeof computeFingerprintV2>[0],
+): FingerprintResult {
+  return computeFingerprintV2(deps);
+}
+
+/**
+ * Default fingerprint used by `sync/push.ts` for the `X-Device-Fingerprint`
+ * header. Kept as an alias for v1 to preserve wire compatibility with the
+ * current server until the deprecation window closes. New requests also
+ * include an `X-Device-Fingerprint-V2` header (see `push.ts`).
+ */
+export const computeDeviceFingerprint = computeDeviceFingerprintV1;

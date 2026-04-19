@@ -67,9 +67,20 @@ def _make_app(register_stub) -> FastAPI:
 
 
 def test_register_device_route_returns_device_id() -> None:
-    def _register(session, *, tenant_id, terminal_id, public_key_b64, device_fingerprint):
-        assert terminal_id == 11
-        assert tenant_id == 1
+    seen: dict[str, Any] = {}
+
+    def _register(
+        session,
+        *,
+        tenant_id,
+        terminal_id,
+        public_key_b64,
+        device_fingerprint,
+        device_fingerprint_v2=None,
+    ):
+        seen["tenant_id"] = tenant_id
+        seen["terminal_id"] = terminal_id
+        seen["device_fingerprint_v2"] = device_fingerprint_v2
         return 99
 
     client = TestClient(_make_app(_register))
@@ -87,6 +98,40 @@ def test_register_device_route_returns_device_id() -> None:
     assert body["device_id"] == 99
     assert body["terminal_id"] == 11
     assert "registered_at" in body
+    assert seen["terminal_id"] == 11
+    assert seen["tenant_id"] == 1
+    assert seen["device_fingerprint_v2"] is None
+
+
+def test_register_device_route_forwards_v2_fingerprint() -> None:
+    captured: dict[str, Any] = {}
+
+    def _register(
+        session,
+        *,
+        tenant_id,
+        terminal_id,
+        public_key_b64,
+        device_fingerprint,
+        device_fingerprint_v2=None,
+    ):
+        captured["v2"] = device_fingerprint_v2
+        return 77
+
+    client = TestClient(_make_app(_register))
+    v2_digest = "sha256v2:" + "b" * 64
+    r = client.post(
+        "/api/v1/pos/terminals/register-device",
+        json={
+            "terminal_id": 11,
+            "public_key": _fresh_public_key(),
+            "device_fingerprint": "sha256:" + "a" * 64,
+            "device_fingerprint_v2": v2_digest,
+        },
+        headers={"X-API-Key": "test-api-key"},
+    )
+    assert r.status_code == 200, r.text
+    assert captured["v2"] == v2_digest
 
 
 def test_register_device_route_rejects_malformed_fingerprint() -> None:
@@ -100,6 +145,24 @@ def test_register_device_route_rejects_malformed_fingerprint() -> None:
             "terminal_id": 11,
             "public_key": _fresh_public_key(),
             "device_fingerprint": "not-a-sha256",
+        },
+        headers={"X-API-Key": "test-api-key"},
+    )
+    assert r.status_code == 422
+
+
+def test_register_device_route_rejects_malformed_v2_fingerprint() -> None:
+    def _register(*_a, **_k):  # pragma: no cover — should not be reached
+        raise AssertionError("register_device should not be called with bad input")
+
+    client = TestClient(_make_app(_register))
+    r = client.post(
+        "/api/v1/pos/terminals/register-device",
+        json={
+            "terminal_id": 11,
+            "public_key": _fresh_public_key(),
+            "device_fingerprint": "sha256:" + "a" * 64,
+            "device_fingerprint_v2": "sha256v2:not-hex",
         },
         headers={"X-API-Key": "test-api-key"},
     )
