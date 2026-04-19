@@ -350,19 +350,29 @@ def get_pos_service(
 ):
     """Factory for :class:`PosService` — wires repo + inventory + pharmacist verifier.
 
-    The mock inventory service is replaced with the real Plan A
-    ``InventoryService`` adapter in B8 (POS integration session).
+    Uses :class:`InventoryAdapter` to bridge the real :class:`InventoryService`
+    and :class:`ExpiryService` (Plan A) to the async POS protocol, so stock
+    checks, FEFO batch selection and movement persistence are real — no
+    longer ``MockInventoryService``.
+
     The :class:`PharmacistVerifier` uses the repo's pin-lookup closure and
     the application secret key so the service stays dependency-free.
     """
-    from datapulse.pos.inventory_contract import MockInventoryService
+    from datapulse.expiry.repository import ExpiryRepository
+    from datapulse.expiry.service import ExpiryService
+    from datapulse.inventory.repository import InventoryRepository
+    from datapulse.inventory.service import InventoryService
+    from datapulse.pos.inventory_adapter import InventoryAdapter
     from datapulse.pos.pharmacist_verifier import PharmacistVerifier
     from datapulse.pos.repository import PosRepository
     from datapulse.pos.service import PosService
 
     settings = get_settings()
     repo = PosRepository(session)
-    inventory = MockInventoryService()
+    inventory = InventoryAdapter(
+        inventory_service=InventoryService(InventoryRepository(session)),
+        expiry_service=ExpiryService(ExpiryRepository(session)),
+    )
     # Use pipeline_webhook_secret as the HMAC signing key for pharmacist tokens.
     # Falls back to a non-empty dev stub so that dev mode still works.
     signing_secret = settings.pipeline_webhook_secret or "dev-pos-pharmacist-secret"
