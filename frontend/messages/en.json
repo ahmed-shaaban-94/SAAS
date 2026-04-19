@@ -328,6 +328,22 @@
       "showShortcuts": "Show shortcuts",
       "navigation": "Navigation"
     },
+    "pos": {
+      "brandSuffix": "POS",
+      "tabs": {
+        "terminal": "Terminal",
+        "sync": "Sync",
+        "shift": "Shift",
+        "drugs": "Drugs"
+      },
+      "connection": {
+        "online": "Online",
+        "provisional": "Provisional",
+        "provisionalQueued": "Provisional — {count} queued"
+      },
+      "cashier": "Cashier",
+      "settings": "Settings"
+    },
     "comparison": {
       "title": "Compare Periods",
       "currentPeriod": "Current Period",

@@ -328,6 +328,22 @@
       "showShortcuts": "عرض الاختصارات",
       "navigation": "التنقل"
     },
+    "pos": {
+      "brandSuffix": "نقطة البيع",
+      "tabs": {
+        "terminal": "المحطة",
+        "sync": "المزامنة",
+        "shift": "الوردية",
+        "drugs": "الأدوية"
+      },
+      "connection": {
+        "online": "متصل",
+        "provisional": "مؤقت",
+        "provisionalQueued": "مؤقت — {count} في الانتظار"
+      },
+      "cashier": "الكاشير",
+      "settings": "الإعدادات"
+    },
     "comparison": {
       "title": "مقارنة الفترات",
       "currentPeriod": "الفترة الحالية",

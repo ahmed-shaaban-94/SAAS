@@ -9,6 +9,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
 import { PosCartProvider } from "@/contexts/pos-cart-context";
+import { PosShellTopBar } from "@/components/pos/shell/PosShellTopBar";
 
 /** Block children until session is resolved; redirect on refresh failure. */
 function SessionGuard({ children }: { children: ReactNode }) {
@@ -77,8 +78,9 @@ export default function PosLayout({ children }: { children: ReactNode }) {
               <SessionGuard>
                 <PosCartProvider>
                   <PosKeyboardHandler>
-                    <div className="flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
-                      {children}
+                    <div className="pos-root flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
+                      <PosShellTopBar />
+                      <main className="flex-1 overflow-auto">{children}</main>
                     </div>
                   </PosKeyboardHandler>
                 </PosCartProvider>
