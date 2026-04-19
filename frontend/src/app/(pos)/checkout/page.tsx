@@ -149,6 +149,11 @@ export default function CheckoutPage() {
           <ReceiptPreview
             transaction={txnDetail}
             checkoutResult={result}
+            voucher={
+              voucher
+                ? { code: voucher.code, discount_amount: voucher.discount_amount }
+                : null
+            }
             onEmail={handleEmail}
             onClose={handleNewSale}
           />

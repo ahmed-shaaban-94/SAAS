@@ -4,9 +4,18 @@ import { Printer, Mail, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TransactionDetailResponse, CheckoutResponse } from "@/types/pos";
 
+interface AppliedVoucherInfo {
+  code: string;
+  discount_amount: number;
+}
+
 interface ReceiptPreviewProps {
   transaction: TransactionDetailResponse;
   checkoutResult: CheckoutResponse;
+  /** When present, renders an explicit "Voucher <CODE>" line under
+   * the discount row. Passed in from the checkout page so the receipt
+   * can show the redeemed code even after the cart has been cleared. */
+  voucher?: AppliedVoucherInfo | null;
   onPrint?: () => void;
   onEmail?: () => void;
   onClose: () => void;
@@ -19,6 +28,7 @@ function fmt(n: number): string {
 export function ReceiptPreview({
   transaction,
   checkoutResult,
+  voucher,
   onPrint,
   onEmail,
   onClose,
@@ -72,6 +82,12 @@ export function ReceiptPreview({
             <div className="flex justify-between text-green-400">
               <span>Discount</span>
               <span className="tabular-nums">-EGP {fmt(transaction.discount_total)}</span>
+            </div>
+          )}
+          {voucher && (
+            <div className="flex justify-between text-amber-400">
+              <span>Voucher {voucher.code}</span>
+              <span className="tabular-nums">-EGP {fmt(voucher.discount_amount)}</span>
             </div>
           )}
           <div className="flex justify-between font-semibold">

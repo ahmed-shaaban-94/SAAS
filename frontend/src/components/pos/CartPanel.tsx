@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { ShoppingCart, Trash2, Ticket, X } from "lucide-react";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { CartItem } from "./CartItem";
 import { cn } from "@/lib/utils";
@@ -15,8 +15,19 @@ interface CartPanelProps {
 }
 
 export function CartPanel({ className }: CartPanelProps) {
-  const { items, subtotal, discountTotal, taxTotal, grandTotal, updateQuantity, removeItem, clearCart } =
-    usePosCart();
+  const {
+    items,
+    subtotal,
+    itemDiscountTotal,
+    voucher,
+    voucherDiscountTotal,
+    taxTotal,
+    grandTotal,
+    updateQuantity,
+    removeItem,
+    clearCart,
+    clearVoucher,
+  } = usePosCart();
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -70,10 +81,30 @@ export function CartPanel({ className }: CartPanelProps) {
             <span>Subtotal</span>
             <span className="tabular-nums">EGP {fmt(subtotal)}</span>
           </div>
-          {discountTotal > 0 && (
+          {itemDiscountTotal > 0 && (
             <div className="flex justify-between text-sm text-green-400">
               <span>Discount</span>
-              <span className="tabular-nums">-EGP {fmt(discountTotal)}</span>
+              <span className="tabular-nums">-EGP {fmt(itemDiscountTotal)}</span>
+            </div>
+          )}
+          {voucher && (
+            <div className="flex items-center justify-between text-sm text-amber-400">
+              <span className="flex items-center gap-1.5">
+                <Ticket className="h-3.5 w-3.5" />
+                <span>Voucher</span>
+                <code className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-mono tracking-wider">
+                  {voucher.code}
+                </code>
+                <button
+                  type="button"
+                  onClick={clearVoucher}
+                  aria-label="Remove voucher"
+                  className="rounded p-0.5 text-amber-300/70 hover:bg-amber-500/10 hover:text-amber-200"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+              <span className="tabular-nums">-EGP {fmt(voucherDiscountTotal)}</span>
             </div>
           )}
           {taxTotal > 0 && (
