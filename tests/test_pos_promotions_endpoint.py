@@ -160,16 +160,16 @@ def test_create_promotion_rejects_inverted_dates(client: TestClient) -> None:
 
 
 def test_list_promotions_returns_payload(client: TestClient, mock_service: MagicMock) -> None:
-    mock_service.list.return_value = [_promo(id=1), _promo(id=2)]
+    mock_service.list_all.return_value = [_promo(id=1), _promo(id=2)]
     resp = client.get("/api/v1/pos/promotions")
     assert resp.status_code == 200
     assert len(resp.json()) == 2
 
 
 def test_list_promotions_passes_status_filter(client: TestClient, mock_service: MagicMock) -> None:
-    mock_service.list.return_value = []
+    mock_service.list_all.return_value = []
     client.get("/api/v1/pos/promotions?status=active")
-    _, kwargs = mock_service.list.call_args
+    _, kwargs = mock_service.list_all.call_args
     assert kwargs["status"] == PromotionStatus.active
 
 
