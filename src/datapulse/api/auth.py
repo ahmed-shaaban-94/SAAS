@@ -206,3 +206,27 @@ def get_optional_user(
         if exc.status_code not in (401, 403):
             raise
         return None
+
+
+def get_optional_user_for_health(
+    credentials: HTTPAuthorizationCredentials | None = Security(  # noqa: B008
+        _bearer_scheme
+    ),
+    api_key: str | None = Security(_api_key_header),  # noqa: B008
+    settings: Settings = Depends(get_settings),  # noqa: B008
+) -> UserClaims | None:
+    """Optional-user resolver for ``/health`` only — silences ALL exceptions.
+
+    The regular :func:`get_optional_user` re-raises Auth0 outages (503) so
+    normal routes surface a truthful error. For ``/health`` we want the
+    opposite: DB / Redis health must be reportable even when Auth0 is down,
+    otherwise an Auth0 blip masks the real state of the API and misleads
+    K8s probes / ops dashboards.
+    """
+    try:
+        return get_current_user(credentials, api_key, settings)
+    except Exception:
+        # Any failure (401/403/503/unexpected) → treat as anonymous. No logging
+        # here because this path fires on every K8s probe during an Auth0
+        # outage and would flood the logs.
+        return None

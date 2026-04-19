@@ -14,8 +14,9 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from datapulse.api.auth import get_optional_user
+from datapulse.api.auth import get_optional_user_for_health
 from datapulse.api.deps import get_engine
+from datapulse.api.limiter import limiter
 from datapulse.checks import check_db, check_redis
 
 router = APIRouter(tags=["health"])
@@ -84,20 +85,6 @@ def _check_pool() -> dict:
         return {"status": "error", "error": "internal_error"}
 
 
-def _check_schema_version() -> dict:
-    """Return the latest applied Alembic migration revision."""
-    try:
-        with get_engine().connect() as conn:
-            row = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).fetchone()
-        if row is None:
-            return {"status": "unknown", "version": None}
-        version = row[0]
-        return {"status": "ok", "version": version}
-    except Exception:
-        logger.exception("Schema version health check failed")
-        return {"status": "error", "error": "internal_error"}
-
-
 def _check_dbt_freshness() -> dict:
     """Check when dbt models were last refreshed."""
     try:
@@ -161,28 +148,33 @@ def _check_data_freshness() -> dict:
 
 
 @router.get("/health")
+@limiter.limit("10/minute")
 def health_check(
     request: Request,
-    user: dict[str, Any] | None = Depends(get_optional_user),  # noqa: B008
+    user: dict[str, Any] | None = Depends(get_optional_user_for_health),  # noqa: B008
 ) -> JSONResponse:
     """Full health check — database, Redis, query executor, connection pool.
 
     Returns detailed component status for authenticated callers (API key or JWT).
     Unauthenticated callers get only the overall status (no infrastructure details).
+
+    Rate-limited to 10/minute per remote address because each call fires ~6
+    database queries; leaving it uncapped is a trivial DoS vector. The
+    lightweight ``/health/live`` and ``/health/ready`` stay rate-free so
+    kubelet probes can still run at their normal cadence.
     """
     checks = {
         "database": _check_db(),
         "redis": _check_redis(),
         "query_executor": _check_query_executor(),
         "connection_pool": _check_pool(),
-        "schema_version": _check_schema_version(),
         "dbt_freshness": _check_dbt_freshness(),
         "data_freshness": _check_data_freshness(),
     }
 
     # Determine overall status
     # Core checks: database must be up. Redis/pool/executor degrade gracefully.
-    # Informational checks (schema_version, dbt_freshness, data_freshness) are
+    # Informational checks (dbt_freshness, data_freshness) are
     # non-critical — missing tables on fresh deploy shouldn't block health.
     db_ok = checks["database"]["status"] == "ok"
     critical_keys = ("database", "redis", "query_executor", "connection_pool")

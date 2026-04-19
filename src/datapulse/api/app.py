@@ -218,18 +218,6 @@ def create_app() -> FastAPI:
             content={"detail": "Internal server error"},
         )
 
-    # Request ID middleware — propagates correlation ID across logs
-    @app.middleware("http")
-    async def request_id_middleware(request: Request, call_next) -> Response:
-        request_id = request.headers.get("X-Request-ID") or str(_uuid.uuid4())
-        structlog.contextvars.bind_contextvars(request_id=request_id)
-        try:
-            response = await call_next(request)
-        finally:
-            structlog.contextvars.unbind_contextvars("request_id")
-        response.headers["X-Request-ID"] = request_id
-        return response
-
     @app.middleware("http")
     async def overload_guard_middleware(request: Request, call_next) -> Response:
         controller: AdmissionController = request.app.state.admission_controller
@@ -261,26 +249,43 @@ def create_app() -> FastAPI:
         response.headers["X-DataPulse-Backpressure"] = "guarded"
         return response
 
-    # Request logging middleware
+    # Request logging + correlation ID.
+    #
+    # The request_id must be bound BEFORE any lifecycle log line is emitted and
+    # unbound only AFTER the "request_completed" log, otherwise the start/end
+    # log entries lack the correlation id. Previously request_id was bound in a
+    # separate middleware that lived INSIDE this one (registration order put
+    # log_requests outermost), so neither "request_started" nor
+    # "request_completed" carried the id. The two concerns are now merged into
+    # a single outermost middleware to guarantee the happy-path and error-path
+    # lifecycle logs are correlatable.
     @app.middleware("http")
     async def log_requests(request: Request, call_next) -> Response:
+        request_id = request.headers.get("X-Request-ID") or str(_uuid.uuid4())
+        structlog.contextvars.bind_contextvars(request_id=request_id)
         start = time.perf_counter()
         logger.info(
             "request_started",
             method=request.method,
             path=request.url.path,
         )
-        response = await call_next(request)
-        duration_ms = round((time.perf_counter() - start) * 1000, 1)
-        logger.info(
-            "request_completed",
-            method=request.method,
-            path=request.url.path,
-            status=response.status_code,
-            duration_ms=duration_ms,
-            user_agent=request.headers.get("user-agent", ""),
-        )
-        return response
+        response: Response | None = None
+        try:
+            response = await call_next(request)
+            return response
+        finally:
+            duration_ms = round((time.perf_counter() - start) * 1000, 1)
+            logger.info(
+                "request_completed",
+                method=request.method,
+                path=request.url.path,
+                status=response.status_code if response is not None else 500,
+                duration_ms=duration_ms,
+                user_agent=request.headers.get("user-agent", ""),
+            )
+            if response is not None:
+                response.headers["X-Request-ID"] = request_id
+            structlog.contextvars.unbind_contextvars("request_id")
 
     # Register routers
     app.include_router(health.router)
