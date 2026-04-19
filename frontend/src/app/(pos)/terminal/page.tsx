@@ -9,10 +9,12 @@ import { PaymentPanel } from "@/components/pos/PaymentPanel";
 import { NumPad } from "@/components/pos/NumPad";
 import { PharmacistVerification } from "@/components/pos/PharmacistVerification";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
+import { VoucherCodeModal } from "@/components/pos/VoucherCodeModal";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
 import { cn } from "@/lib/utils";
 import type { PosProductResult, PaymentMethod, TerminalSessionResponse } from "@/types/pos";
+import type { VoucherValidateResponse } from "@/types/vouchers";
 
 // ---- Terminal guard ----
 // In a full implementation this reads from localStorage / session.
@@ -35,13 +37,14 @@ function useActiveTerminal(): TerminalSessionResponse | null {
 export default function PosTerminalPage() {
   const router = useRouter();
   const terminal = useActiveTerminal();
-  const { items, grandTotal, hasControlledSubstance, addItem } = usePosCart();
+  const { items, subtotal, grandTotal, addItem, applyVoucher } = usePosCart();
   const checkout = usePosCheckout();
 
   const [numpadValue, setNumpadValue] = useState("");
   const [pharmacistOpen, setPharmacistOpen] = useState(false);
   const [pendingDrug, setPendingDrug] = useState<PosProductResult | null>(null);
   const [activeTransactionId, setActiveTransactionId] = useState<number | null>(null);
+  const [voucherOpen, setVoucherOpen] = useState(false);
 
   // If no terminal open, redirect to shift page
   useEffect(() => {
@@ -91,6 +94,14 @@ export default function PosTerminalPage() {
   async function handleCheckout(method: PaymentMethod) {
     if (!terminal || items.length === 0) return;
 
+    // Voucher is not itself a tender — it's a discount. Intercept the click
+    // and open the code modal instead. The cashier then picks a real payment
+    // method (cash/card/insurance) after the discount is applied.
+    if (method === "voucher") {
+      setVoucherOpen(true);
+      return;
+    }
+
     try {
       // Create a new server transaction if we don't have one yet
       let txnId = activeTransactionId;
@@ -109,6 +120,11 @@ export default function PosTerminalPage() {
     } catch {
       // Error shown via checkout.error state
     }
+  }
+
+  function handleVoucherConfirm(voucher: VoucherValidateResponse, discount: number) {
+    applyVoucher(voucher, discount);
+    setVoucherOpen(false);
   }
 
   if (!terminal) {
@@ -181,6 +197,15 @@ export default function PosTerminalPage() {
           />
         </div>
       </main>
+
+      {/* Voucher code modal — intercepts the VOUCHER payment button */}
+      {voucherOpen && (
+        <VoucherCodeModal
+          cartSubtotal={subtotal}
+          onConfirm={handleVoucherConfirm}
+          onCancel={() => setVoucherOpen(false)}
+        />
+      )}
 
       {/* Pharmacist verification modal */}
       <PharmacistVerification
