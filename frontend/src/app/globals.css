@@ -1026,3 +1026,107 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   POS Terminal v2 — design tokens + keyframes
+   Scoped to .pos-root to avoid bleeding into dashboard.
+   Source: docs/design/pos-terminal/README.md §Design Tokens
+   ═══════════════════════════════════════════════ */
+.pos-root {
+  --pos-bg: #050e17;
+  --pos-card: #081826;
+  --pos-gradient-top: #163452;
+  --pos-ink: #e8ecf2;
+  --pos-ink-2: #b8c0cc;
+  --pos-ink-3: #7a8494;
+  --pos-ink-4: #3f4a5a;
+  --pos-line: rgba(255, 255, 255, 0.06);
+  --pos-line-strong: rgba(255, 255, 255, 0.12);
+  --pos-accent: #00c7f2;
+  --pos-accent-hi: #5cdfff;
+  --pos-green: #1dd48b;
+  --pos-amber: #ffab3d;
+  --pos-red: #ff7b7b;
+  --pos-purple: #7467f8;
+}
+
+/* Giant italic display total — Terminal v2 Totals Hero */
+.pos-display {
+  font-family: 'Fraunces', ui-serif, Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(0, 199, 242, 0.35);
+}
+
+/* Scan-bar pulse — cyan sweep across the scanner input */
+@keyframes dpScan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Cart row fade-up — newly scanned item enters */
+@keyframes dpRowEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scan toast slide-up — bottom-left confirmation pill */
+@keyframes dpSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Last-key indicator fade (keypad) */
+@keyframes dpKeyFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+/* Diagonal amber rail — provisional / offline indicator down the left edge */
+.pos-provisional-rail {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 171, 61, 0.18) 0,
+    rgba(255, 171, 61, 0.18) 6px,
+    transparent 6px,
+    transparent 14px
+  );
+}
+
+/* Reduced motion — kill scan pulse + row enter */
+@media (prefers-reduced-motion: reduce) {
+  .pos-root .pos-animate-scan,
+  .pos-root .pos-animate-row-enter,
+  .pos-root .pos-animate-slide-up,
+  .pos-root .pos-animate-key-fade {
+    animation: none !important;
+  }
+}

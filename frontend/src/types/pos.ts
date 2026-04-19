@@ -102,6 +102,8 @@ export interface CheckoutRequest {
   insurance_no?: string;
   split_cash?: number;
   split_insurance?: number;
+  /** Voucher code applied at the terminal; server redeems it atomically (Phase 1b). */
+  voucher_code?: string;
 }
 
 export interface CheckoutResponse {
