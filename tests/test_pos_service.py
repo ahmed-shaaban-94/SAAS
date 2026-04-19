@@ -1136,3 +1136,255 @@ class TestQueries:
     ):
         mock_repo.get_terminal_session.return_value = None
         assert service.get_terminal(99) is None
+
+
+class TestCheckoutWithVoucher:
+    """Voucher redemption on the legacy 3-step checkout flow (#472).
+
+    Mirrors the atomic-commit path covered in test_pos_commit.py. Preview
+    discount is folded into totals BEFORE payment validation; redemption
+    (lock_and_redeem) fires AFTER status CAS succeeds so a lost race never
+    leaves a ghost-redeemed voucher.
+    """
+
+    @pytest.fixture()
+    def mock_voucher_repo(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture()
+    def service_with_voucher(
+        self,
+        mock_repo: MagicMock,
+        mock_inventory: AsyncMock,
+        mock_voucher_repo: MagicMock,
+    ) -> PosService:
+        return PosService(
+            mock_repo,
+            mock_inventory,
+            voucher_repo=mock_voucher_repo,
+        )
+
+    @pytest.fixture()
+    def three_item_setup(self, mock_repo: MagicMock) -> dict:
+        """Subtotal 75 across 3 items — shared with TestCheckout."""
+        mock_repo.get_transaction.return_value = _txn_row("draft")
+        items = [
+            {
+                "id": 1,
+                "transaction_id": 100,
+                "drug_code": "DRUG001",
+                "drug_name": "A",
+                "quantity": Decimal("2"),
+                "unit_price": Decimal("10"),
+                "line_total": Decimal("20"),
+                "discount": Decimal("0"),
+                "batch_number": "B1",
+                "is_controlled": False,
+                "pharmacist_id": None,
+            },
+            {
+                "id": 2,
+                "transaction_id": 100,
+                "drug_code": "DRUG002",
+                "drug_name": "B",
+                "quantity": Decimal("3"),
+                "unit_price": Decimal("5"),
+                "line_total": Decimal("15"),
+                "discount": Decimal("0"),
+                "batch_number": "B2",
+                "is_controlled": False,
+                "pharmacist_id": None,
+            },
+            {
+                "id": 3,
+                "transaction_id": 100,
+                "drug_code": "DRUG003",
+                "drug_name": "C",
+                "quantity": Decimal("4"),
+                "unit_price": Decimal("10"),
+                "line_total": Decimal("40"),
+                "discount": Decimal("0"),
+                "batch_number": "B3",
+                "is_controlled": False,
+                "pharmacist_id": None,
+            },
+        ]
+        mock_repo.get_transaction_items.return_value = items
+        mock_repo.update_transaction_status.return_value = {
+            **_txn_row("completed"),
+            "grand_total": Decimal("75.0000"),
+            "subtotal": Decimal("75.0000"),
+        }
+        mock_repo.insert_bronze_pos_transaction.return_value = {
+            "id": 1,
+            "transaction_id": "POS-R1-1-100",
+            "drug_code": "X",
+            "net_amount": Decimal("0"),
+            "loaded_at": datetime.now(tz=UTC),
+        }
+        return {"items": items}
+
+    def _make_voucher(self, *, discount_type: str, value: Decimal):
+        from datapulse.pos.models import VoucherResponse
+
+        return VoucherResponse(
+            id=1,
+            tenant_id=1,
+            code="SAVE10",
+            discount_type=discount_type,
+            value=value,
+            max_uses=1,
+            uses=0,
+            status="active",
+            starts_at=None,
+            ends_at=None,
+            min_purchase=None,
+            redeemed_txn_id=None,
+            created_at=datetime.now(tz=UTC),
+        )
+
+    @pytest.mark.asyncio
+    async def test_amount_voucher_reduces_grand_total(
+        self,
+        service_with_voucher: PosService,
+        mock_voucher_repo: MagicMock,
+        three_item_setup: dict,
+    ):
+        mock_voucher_repo.get_by_code.return_value = self._make_voucher(
+            discount_type="amount", value=Decimal("10")
+        )
+        mock_voucher_repo.lock_and_redeem.return_value = self._make_voucher(
+            discount_type="amount", value=Decimal("10")
+        )
+
+        result = await service_with_voucher.checkout(
+            transaction_id=100,
+            tenant_id=1,
+            request=CheckoutRequest(
+                payment_method=PaymentMethod.cash,
+                cash_tendered=Decimal("100"),
+                voucher_code="SAVE10",
+            ),
+        )
+
+        assert result.grand_total == Decimal("65.0000")
+        assert result.voucher_discount == Decimal("10")
+        assert result.change_due == Decimal("35.0000")
+        mock_voucher_repo.lock_and_redeem.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_percent_voucher_reduces_grand_total(
+        self,
+        service_with_voucher: PosService,
+        mock_voucher_repo: MagicMock,
+        three_item_setup: dict,
+    ):
+        mock_voucher_repo.get_by_code.return_value = self._make_voucher(
+            discount_type="percent", value=Decimal("20")
+        )
+        mock_voucher_repo.lock_and_redeem.return_value = self._make_voucher(
+            discount_type="percent", value=Decimal("20")
+        )
+
+        result = await service_with_voucher.checkout(
+            transaction_id=100,
+            tenant_id=1,
+            request=CheckoutRequest(
+                payment_method=PaymentMethod.cash,
+                cash_tendered=Decimal("100"),
+                voucher_code="PCT20",
+            ),
+        )
+
+        assert result.grand_total == Decimal("60.0000")
+        assert result.voucher_discount == Decimal("15.00")
+
+    @pytest.mark.asyncio
+    async def test_unknown_voucher_raises(
+        self,
+        service_with_voucher: PosService,
+        mock_voucher_repo: MagicMock,
+        three_item_setup: dict,
+    ):
+        mock_voucher_repo.get_by_code.return_value = None
+        with pytest.raises(PosError, match=r"[Vv]oucher"):
+            await service_with_voucher.checkout(
+                transaction_id=100,
+                tenant_id=1,
+                request=CheckoutRequest(
+                    payment_method=PaymentMethod.cash,
+                    cash_tendered=Decimal("100"),
+                    voucher_code="NONEXISTENT",
+                ),
+            )
+        mock_voucher_repo.lock_and_redeem.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_voucher_code_skips_voucher_repo(
+        self,
+        service_with_voucher: PosService,
+        mock_voucher_repo: MagicMock,
+        three_item_setup: dict,
+    ):
+        result = await service_with_voucher.checkout(
+            transaction_id=100,
+            tenant_id=1,
+            request=CheckoutRequest(
+                payment_method=PaymentMethod.cash,
+                cash_tendered=Decimal("100"),
+            ),
+        )
+
+        assert result.grand_total == Decimal("75.0000")
+        assert result.voucher_discount == Decimal("0")
+        mock_voucher_repo.get_by_code.assert_not_called()
+        mock_voucher_repo.lock_and_redeem.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_voucher_repo_bypasses_voucher_code(
+        self,
+        mock_repo: MagicMock,
+        mock_inventory: AsyncMock,
+        three_item_setup: dict,
+    ):
+        """Backward compat: PosService constructed WITHOUT voucher_repo
+        (existing call sites) silently ignores voucher_code."""
+        service_no_voucher = PosService(mock_repo, mock_inventory)
+
+        result = await service_no_voucher.checkout(
+            transaction_id=100,
+            tenant_id=1,
+            request=CheckoutRequest(
+                payment_method=PaymentMethod.cash,
+                cash_tendered=Decimal("100"),
+                voucher_code="SAVE10",
+            ),
+        )
+
+        assert result.grand_total == Decimal("75.0000")
+        assert result.voucher_discount == Decimal("0")
+
+    @pytest.mark.asyncio
+    async def test_voucher_cas_fails_redemption_not_called(
+        self,
+        service_with_voucher: PosService,
+        mock_repo: MagicMock,
+        mock_voucher_repo: MagicMock,
+        three_item_setup: dict,
+    ):
+        mock_voucher_repo.get_by_code.return_value = self._make_voucher(
+            discount_type="amount", value=Decimal("10")
+        )
+        mock_repo.update_transaction_status.return_value = None  # CAS lost
+
+        with pytest.raises(PosError, match="another request"):
+            await service_with_voucher.checkout(
+                transaction_id=100,
+                tenant_id=1,
+                request=CheckoutRequest(
+                    payment_method=PaymentMethod.cash,
+                    cash_tendered=Decimal("100"),
+                    voucher_code="SAVE10",
+                ),
+            )
+        mock_voucher_repo.lock_and_redeem.assert_not_called()

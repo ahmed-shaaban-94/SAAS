@@ -230,6 +230,8 @@ class CheckoutResponse(BaseModel):
     # Cash change owed to customer (cash payments only)
     change_due: JsonDecimal = Decimal("0")
     status: TransactionStatus
+    # Discount amount applied from a redeemed voucher (0 if none)
+    voucher_discount: JsonDecimal = Decimal("0")
 
 
 # ---------------------------------------------------------------------------

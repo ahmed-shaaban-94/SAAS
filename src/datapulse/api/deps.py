@@ -366,6 +366,7 @@ def get_pos_service(
     from datapulse.pos.pharmacist_verifier import PharmacistVerifier
     from datapulse.pos.repository import PosRepository
     from datapulse.pos.service import PosService
+    from datapulse.pos.voucher_repository import VoucherRepository
 
     settings = get_settings()
     repo = PosRepository(session)
@@ -380,7 +381,8 @@ def get_pos_service(
         secret_key=signing_secret,
         pin_lookup=repo.get_pharmacist_pin_hash,
     )
-    return PosService(repo, inventory, verifier)
+    voucher_repo = VoucherRepository(session)
+    return PosService(repo, inventory, verifier, voucher_repo=voucher_repo)
 
 
 def get_voucher_service(

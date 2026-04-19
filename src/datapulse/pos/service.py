@@ -69,6 +69,8 @@ from datapulse.pos.terminal import (
     assert_can_transition,
     assert_transactable,
 )
+from datapulse.pos.voucher_repository import VoucherRepository
+from datapulse.pos.voucher_service import VoucherService
 
 log = get_logger(__name__)
 
@@ -140,10 +142,15 @@ class PosService:
         repo: PosRepository,
         inventory: InventoryServiceProtocol,
         verifier: PharmacistVerifier | None = None,
+        voucher_repo: VoucherRepository | None = None,
     ) -> None:
         self._repo = repo
         self._inventory = inventory
         self._verifier = verifier
+        # Optional to preserve backward compat with existing call sites.
+        # When None, vouchers silently bypass the legacy checkout path
+        # (canonical redemption still happens on POST /pos/transactions/commit).
+        self._voucher_repo = voucher_repo
 
     # ──────────────────────────────────────────────────────────────
     # Terminal lifecycle
@@ -459,6 +466,27 @@ class PosService:
         )
         tax_total = Decimal("0")  # Tax engine added in a later session
         grand_total = subtotal - _to_decimal(request.transaction_discount) + tax_total
+
+        # ── Voucher preview (applied to grand_total before payment) ─
+        # Validation-only preview here; actual redemption (UPDATE + lock)
+        # fires after the status CAS succeeds to avoid "redeemed but CAS
+        # failed" ghosts.
+        voucher_discount = Decimal("0")
+        voucher_applied = False
+        if request.voucher_code and self._voucher_repo is not None:
+            voucher = self._voucher_repo.get_by_code(tenant_id, request.voucher_code)
+            if voucher is None:
+                raise PosError(
+                    message=f"Voucher '{request.voucher_code}' not found",
+                    detail="voucher_not_found",
+                )
+            voucher_discount = VoucherService.compute_discount(
+                voucher.discount_type, _to_decimal(voucher.value), subtotal
+            )
+            discount_total += voucher_discount
+            grand_total -= voucher_discount
+            voucher_applied = True
+
         grand_total = grand_total.quantize(Decimal("0.0001"))
 
         # ── Payment (B4: gateway delegation) ───────────────────────
@@ -497,6 +525,19 @@ class PosService:
                     "another request may have completed it first."
                 ),
                 detail=f"transaction_id={transaction_id} cas_failed=true",
+            )
+
+        # ── Voucher redemption (atomic, post-CAS) ──────────────────
+        # Race note: between preview and this call another commit path
+        # could have taken the last use; lock_and_redeem catches that
+        # via SELECT FOR UPDATE and raises HTTPException. Session rollback
+        # on an unhandled raise will also revert the status CAS.
+        if voucher_applied and self._voucher_repo is not None:
+            self._voucher_repo.lock_and_redeem(
+                tenant_id=tenant_id,
+                code=request.voucher_code or "",
+                txn_id=transaction_id,
+                now=datetime.now(tz=UTC),
             )
 
         # ── Inventory movements + bronze write ──────────────────────
@@ -576,6 +617,7 @@ class PosService:
             payment_method=request.payment_method,
             change_due=change_due,
             status=TransactionStatus.completed,
+            voucher_discount=voucher_discount,
         )
 
     # ──────────────────────────────────────────────────────────────
