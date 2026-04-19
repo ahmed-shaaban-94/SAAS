@@ -6,3 +6,4 @@ resources/nextjs/
 *.msi
 *.nsis
 coverage/
+pos-desktop.log*
