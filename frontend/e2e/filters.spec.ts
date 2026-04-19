@@ -13,12 +13,15 @@ test.describe("Filters", () => {
     await expect(presetButton).toBeVisible({ timeout: 10000 });
     await presetButton.click();
     // After clicking, the page should still be functional (no crash)
-    await expect(page.locator("h1")).toContainText("Executive Overview");
+    // Post-v2 cutover: /dashboard h1 is "Good morning." (see dashboard.spec.ts).
+    await expect(page.locator("h1.page-title")).toContainText("Good morning");
   });
 
   test("clicking a date preset updates URL search params", async ({ page }) => {
-    // Wait for filter bar to be visible
-    const last30 = page.getByText("Last 30 days");
+    // Target the preset BUTTON specifically — post-Why-Changed, tooltip
+    // descriptions contain substrings like "over the last 30 days" which
+    // would make getByText ambiguous and trigger strict-mode violations.
+    const last30 = page.getByRole("button", { name: "Last 30 days" });
     await expect(last30).toBeVisible({ timeout: 10000 });
 
     // Click "Last 30 days" preset
@@ -38,7 +41,7 @@ test.describe("Filters", () => {
   });
 
   test("clicking a different preset changes the URL params", async ({ page }) => {
-    const last7 = page.getByText("Last 7 days");
+    const last7 = page.getByRole("button", { name: "Last 7 days" });
     await expect(last7).toBeVisible({ timeout: 10000 });
 
     // Click "Last 7 days"
@@ -48,7 +51,7 @@ test.describe("Filters", () => {
     const firstStart = firstUrl.searchParams.get("start_date")!;
 
     // Now click "Last 90 days" — start_date should change
-    const last90 = page.getByText("Last 90 days");
+    const last90 = page.getByRole("button", { name: "Last 90 days" });
     await last90.click();
     await page.waitForFunction(
       (prevStart) => {
@@ -65,13 +68,14 @@ test.describe("Filters", () => {
 
   test("Clear button removes URL search params", async ({ page }) => {
     // First apply a filter
-    const last30 = page.getByText("Last 30 days");
+    const last30 = page.getByRole("button", { name: "Last 30 days" });
     await expect(last30).toBeVisible({ timeout: 10000 });
     await last30.click();
     await page.waitForURL(/start_date=/, { timeout: 5000 });
 
-    // Click Clear
-    const clearButton = page.getByText("Clear");
+    // Click Clear — must target the button (Why-Changed modals have other
+    // occurrences of "Clear" in body copy).
+    const clearButton = page.getByRole("button", { name: "Clear" });
     await expect(clearButton).toBeVisible({ timeout: 5000 });
     await clearButton.click();
 

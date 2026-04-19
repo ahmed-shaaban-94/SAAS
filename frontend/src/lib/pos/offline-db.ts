@@ -17,6 +17,15 @@
 
 import { ApiError, fetchAPI } from "../api-client";
 import { db, hasElectron } from "./ipc";
+import type { Confirmation, QueueRow, QueueStatus } from "./ipc";
+
+export type ReconcileKind = "retry_override" | "record_loss" | "corrective_void";
+
+export interface ReconcileResult {
+  status: QueueStatus;
+  confirmation: Confirmation;
+  reconciled_at: string;
+}
 
 export interface PosProductResult {
   drug_code: string;
@@ -90,4 +99,36 @@ export async function getQueueStats(): Promise<PosQueueStats> {
     return db.queue.stats();
   }
   return { pending: 0, syncing: 0, rejected: 0, unresolved: 0, last_sync_at: null };
+}
+
+/**
+ * Returns rejected queue rows awaiting reconciliation when running in
+ * Electron; in the browser returns an empty array — the web POS has no
+ * local queue and therefore nothing to reconcile.
+ */
+export async function getRejectedQueue(): Promise<QueueRow[]> {
+  if (hasElectron()) {
+    return db.queue.rejected();
+  }
+  return [];
+}
+
+/**
+ * Resolves a rejected queue row via one of the three reconciliation kinds:
+ * `retry_override` (retry with a scrypt-verified manager override code),
+ * `record_loss` (abandon as a loss), or `corrective_void` (issue a
+ * compensating void for a later-rejected already-synced txn).
+ *
+ * Only valid inside Electron — callers must guard with `hasElectron()`.
+ */
+export async function reconcileQueue(
+  localId: string,
+  kind: ReconcileKind,
+  note: string,
+  overrideCode: string | null,
+): Promise<ReconcileResult> {
+  if (!hasElectron()) {
+    throw new Error("Not available in browser");
+  }
+  return db.queue.reconcile(localId, kind, note, overrideCode);
 }

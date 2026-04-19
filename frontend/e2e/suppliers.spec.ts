@@ -26,7 +26,7 @@ const MOCK_SUPPLIERS = [
 test.describe("Suppliers", () => {
   test("navigates to suppliers page", async ({ page }) => {
     test.skip(needsBackend, "requires live API backend");
-    await page.goto("/dashboard/suppliers");
+    await page.goto("/suppliers");
     await expect(page).toHaveURL(/\/suppliers/);
     await expect(
       page.getByRole("heading", { name: /Suppliers/i })
@@ -44,7 +44,7 @@ test.describe("Suppliers", () => {
       });
     });
 
-    await page.goto("/dashboard/suppliers");
+    await page.goto("/suppliers");
     await expect(page.getByText("PharmaCorp International")).toBeVisible();
     await expect(page.getByText("MediSupply Ltd")).toBeVisible();
   });
@@ -60,7 +60,7 @@ test.describe("Suppliers", () => {
       });
     });
 
-    await page.goto("/dashboard/suppliers");
+    await page.goto("/suppliers");
     await expect(page.getByText("Ahmed Hassan")).toBeVisible();
   });
 
@@ -75,7 +75,7 @@ test.describe("Suppliers", () => {
       });
     });
 
-    await page.goto("/dashboard/suppliers");
+    await page.goto("/suppliers");
     // Look for lead time or payment terms data
     await expect(
       page.getByText(/30/).or(page.getByText(/7 days/i))

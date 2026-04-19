@@ -448,6 +448,7 @@ class TestEnumValues:
         assert PaymentMethod.cash == "cash"
         assert PaymentMethod.card == "card"
         assert PaymentMethod.insurance == "insurance"
+        assert PaymentMethod.voucher == "voucher"
         assert PaymentMethod.mixed == "mixed"
 
     def test_return_reason_values(self):

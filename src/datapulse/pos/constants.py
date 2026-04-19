@@ -33,6 +33,7 @@ class PaymentMethod(StrEnum):
     cash = "cash"
     card = "card"
     insurance = "insurance"
+    voucher = "voucher"
     mixed = "mixed"
 
 

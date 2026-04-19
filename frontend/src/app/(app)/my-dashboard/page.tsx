@@ -21,7 +21,7 @@ import {
   type WidgetDef,
 } from "@/components/dashboard-builder/widget-catalog";
 import { useToast } from "@/components/ui/toast";
-import { DashboardContent } from "../dashboard/dashboard-content";
+import { DashboardContent } from "@/components/dashboard/dashboard-content";
 
 import "react-grid-layout/css/styles.css";
 

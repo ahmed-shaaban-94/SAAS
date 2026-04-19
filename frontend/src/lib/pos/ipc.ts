@@ -33,10 +33,10 @@ interface Product {
   updated_at: string;
 }
 
-type QueueStatus = "pending" | "syncing" | "synced" | "rejected" | "reconciled";
-type Confirmation = "provisional" | "confirmed" | "reconciled";
+export type QueueStatus = "pending" | "syncing" | "synced" | "rejected" | "reconciled";
+export type Confirmation = "provisional" | "confirmed" | "reconciled";
 
-interface QueueRow {
+export interface QueueRow {
   local_id: string;
   client_txn_id: string;
   endpoint: string;

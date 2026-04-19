@@ -26,7 +26,7 @@ const MOCK_PO_LIST = [
 test.describe("Purchase Orders", () => {
   test("navigates to purchase orders page", async ({ page }) => {
     test.skip(needsBackend, "requires live API backend");
-    await page.goto("/dashboard/purchase-orders");
+    await page.goto("/purchase-orders");
     await expect(page).toHaveURL(/\/purchase-orders/);
     await expect(
       page.getByRole("heading", { name: /Purchase Orders/i })
@@ -44,7 +44,7 @@ test.describe("Purchase Orders", () => {
       });
     });
 
-    await page.goto("/dashboard/purchase-orders");
+    await page.goto("/purchase-orders");
     await expect(page.getByText("PO-2025-001")).toBeVisible();
     await expect(page.getByText("PharmaCorp")).toBeVisible();
   });
@@ -60,7 +60,7 @@ test.describe("Purchase Orders", () => {
       });
     });
 
-    await page.goto("/dashboard/purchase-orders");
+    await page.goto("/purchase-orders");
     await expect(page.getByText(/partial/i)).toBeVisible();
     await expect(page.getByText(/draft/i)).toBeVisible();
   });
@@ -76,7 +76,7 @@ test.describe("Purchase Orders", () => {
       });
     });
 
-    await page.goto("/dashboard/purchase-orders");
+    await page.goto("/purchase-orders");
     await expect(
       page
         .getByText(/No purchase orders/i)

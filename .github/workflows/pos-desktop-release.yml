@@ -1,0 +1,143 @@
+name: POS Desktop Release
+
+# Builds the DataPulse POS Electron app into a Windows NSIS installer and
+# (when triggered by a tag) publishes it to a GitHub Release via
+# electron-builder's built-in GitHub provider.
+#
+# Local Windows dev machines CANNOT produce the NSIS installer reliably
+# because electron-builder's winCodeSign cache contains darwin symlinks
+# that non-admin Windows users cannot extract. The hosted runner does not
+# hit this restriction. This workflow is the canonical path to installer
+# artifacts.
+
+on:
+  # Full release: push a tag like pos-desktop-v1.0.0
+  push:
+    tags:
+      - "pos-desktop-v*.*.*"
+
+  # Smoke-build: PR touches POS desktop code. Produces artifact but does
+  # NOT publish. Lets us catch build regressions before tagging a release.
+  pull_request:
+    paths:
+      - "pos-desktop/**"
+      - "frontend/**"
+      - ".github/workflows/pos-desktop-release.yml"
+
+  # Manual trigger for ad-hoc builds (e.g. testing installer locally).
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to GitHub Releases (requires tag-like behavior)?"
+        type: boolean
+        default: false
+
+concurrency:
+  group: pos-desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build NSIS installer
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write # needed for publishing release assets on tag push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          # Two separate lockfiles — use the frontend one as the cache key
+          # and re-resolve the pos-desktop one manually below.
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Install pos-desktop dependencies
+        working-directory: pos-desktop
+        run: npm ci --no-audit --no-fund
+
+      # Native module rebuild (better-sqlite3) against Electron's Node ABI.
+      # electron-builder runs this automatically during package, but doing
+      # it explicitly up front gives a clearer failure signal if the toolchain
+      # is missing on the runner.
+      - name: Rebuild native modules for Electron
+        working-directory: pos-desktop
+        run: npx electron-builder install-app-deps
+
+      # Run the canonical build script. Uses Git Bash (pre-installed on
+      # windows-latest). Produces:
+      #   pos-desktop/resources/nextjs/*  (standalone Next.js server)
+      #   pos-desktop/dist/*-Setup.exe    (NSIS installer)
+      - name: Build installer
+        shell: bash
+        working-directory: pos-desktop
+        env:
+          # electron-builder picks this up to publish to GH Releases when
+          # triggered by a tag push. For PRs / workflow_dispatch (without
+          # publish=true) we explicitly set PUBLISH=never below.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/pos-desktop-v* ]]; then
+            echo "Tag build — electron-builder will publish to GitHub Releases."
+            export PUBLISH_FLAG="--publish=always"
+          elif [[ "${{ github.event.inputs.publish }}" == "true" ]]; then
+            echo "Manual publish requested."
+            export PUBLISH_FLAG="--publish=always"
+          else
+            echo "PR or manual build — installer produced but not published."
+            export PUBLISH_FLAG="--publish=never"
+          fi
+
+          # Run the standard build (compiles Next.js + Electron TS + assets)
+          # then invoke electron-builder with the appropriate publish flag.
+          bash scripts/build.sh --dev
+          npx electron-builder --win $PUBLISH_FLAG
+
+      - name: Verify installer exists
+        shell: bash
+        working-directory: pos-desktop
+        run: |
+          ls -lah dist/*.exe
+          # Confirm at least one NSIS installer was produced
+          count=$(ls dist/*-Setup.exe 2>/dev/null | wc -l)
+          if [ "$count" -lt 1 ]; then
+            echo "::error::No NSIS installer produced in dist/"
+            exit 1
+          fi
+
+      # Keep the artifact around for manual download even on non-release
+      # runs. Retention is limited to save storage; tag builds also get
+      # the file attached to the Release.
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: datapulse-pos-installer-${{ github.run_number }}
+          path: pos-desktop/dist/*-Setup.exe
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Print installer info
+        shell: bash
+        working-directory: pos-desktop
+        run: |
+          echo "=== Installer(s) produced ==="
+          ls -lah dist/*.exe
+          echo ""
+          echo "=== Download ==="
+          if [[ "${{ github.ref }}" == refs/tags/pos-desktop-v* ]]; then
+            echo "Attached to the release for tag ${{ github.ref_name }}."
+          else
+            echo "Available as artifact 'datapulse-pos-installer-${{ github.run_number }}' for 14 days."
+          fi

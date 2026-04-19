@@ -15,6 +15,18 @@ Security hardening (H2):
   ``count(*) + 1``; migration 088 adds a unique partial index so duplicates
   are rejected by the DB as a defence-in-depth backstop.
 
+Voucher redemption:
+* When ``payload.voucher_code`` is provided, the voucher is atomically
+  redeemed inside the same transaction via ``SELECT ... FOR UPDATE``.
+* The voucher discount is added on top of the (already-validated) client
+  discount before the effective grand_total is computed, so cash
+  sufficiency is checked against the post-voucher total.
+* ``lock_and_redeem`` sets ``redeemed_txn_id`` to the new transaction id
+  and increments ``uses``; if that was the last allowed use the voucher
+  moves to ``status='redeemed'``.
+* Any voucher validation failure raises ``HTTPException(400)`` with a
+  ``voucher_*`` detail string, rolling back the entire commit.
+
 Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §3.
 """
 
@@ -28,6 +40,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from datapulse.pos.models import CommitRequest, CommitResponse
+from datapulse.pos.voucher_repository import VoucherRepository
+from datapulse.pos.voucher_service import VoucherService
 
 # Rounding tolerance when comparing client-declared totals to server recomputed
 # totals. Gives the desktop client ~0.01 EGP of rounding headroom.
@@ -59,36 +73,67 @@ def atomic_commit(
     """Insert the transaction + items + set ``commit_confirmed_at`` atomically.
 
     Raises ``HTTPException(400)`` when:
-    - the declared grand_total disagrees with server-recomputed totals beyond
-      ``_TOTAL_EPSILON``
-    - a cash payment tenders less than the server-recomputed grand total
+    - the declared grand_total (pre-voucher) disagrees with server-
+      recomputed totals beyond ``_TOTAL_EPSILON``
+    - a cash payment tenders less than the effective (post-voucher)
+      grand total
+    - a supplied voucher code cannot be found or redeemed
     """
-    # ── Server-side total recomputation ───────────────────────────────────────
+    # ── Voucher pre-flight — read without locking. We re-select with ──────
+    # FOR UPDATE inside lock_and_redeem once we have a transaction_id.
+    voucher_repo = VoucherRepository(session) if payload.voucher_code else None
+    voucher_discount = Decimal("0")
+    if payload.voucher_code:
+        assert voucher_repo is not None  # for type checkers
+        preview = voucher_repo.get_by_code(tenant_id, payload.voucher_code)
+        if preview is None:
+            raise HTTPException(status_code=400, detail="voucher_not_found")
+        voucher_discount = VoucherService.compute_discount(
+            preview.discount_type,
+            preview.value,
+            Decimal(str(payload.subtotal)),
+        )
+
+    # ── Server-side total recomputation (pre-voucher) ─────────────────────
+    # Recompute subtotal from item unit_price × qty - discount so a client
+    # sending fake line_totals or a fake subtotal can not corrupt the books.
     computed_subtotal = Decimal("0")
     for item in payload.items:
         computed_subtotal += _recompute_line_total(item.unit_price, item.quantity, item.discount)
     computed_subtotal = computed_subtotal.quantize(Decimal("0.0001"))
-    computed_grand_total = (
-        computed_subtotal - payload.discount_total + payload.tax_total
-    ).quantize(Decimal("0.0001"))
 
-    # Reject client-declared totals that drift beyond rounding. The DB will
-    # store the server-recomputed numbers regardless, but surfacing the mismatch
-    # lets the desktop client catch display bugs before the books drift.
-    if abs(computed_grand_total - payload.grand_total) > _TOTAL_EPSILON:
+    base_discount = Decimal(str(payload.discount_total))
+    tax_total = Decimal(str(payload.tax_total))
+
+    # Pre-voucher grand_total — this is what the client sees before any voucher
+    # is applied. We compare against the client's declared grand_total here.
+    computed_pre_voucher_grand = (computed_subtotal - base_discount + tax_total).quantize(
+        Decimal("0.0001")
+    )
+
+    if abs(computed_pre_voucher_grand - Decimal(str(payload.grand_total))) > _TOTAL_EPSILON:
         raise HTTPException(
             status_code=400,
             detail=(
-                f"grand_total mismatch: client={payload.grand_total} server={computed_grand_total}"
+                f"grand_total mismatch: client={payload.grand_total} "
+                f"server={computed_pre_voucher_grand}"
             ),
         )
 
-    # ── Cash tender validation against the server-recomputed total ─────────
+    # ── Apply voucher discount → effective grand_total ────────────────────
+    effective_discount = base_discount + voucher_discount
+    effective_grand = (computed_subtotal - effective_discount + tax_total).quantize(
+        Decimal("0.0001")
+    )
+    if effective_grand < Decimal("0"):
+        effective_grand = Decimal("0")
+
+    # ── Cash tender validation against the effective (post-voucher) total ──
     if payload.payment_method.value == "cash":
         tendered = payload.cash_tendered or Decimal("0")
-        if tendered < computed_grand_total:
+        if tendered < effective_grand:
             raise HTTPException(status_code=400, detail="cash_tendered < grand_total")
-        change_due = tendered - computed_grand_total
+        change_due = tendered - effective_grand
     else:
         change_due = Decimal("0")
 
@@ -117,9 +162,9 @@ def atomic_commit(
             "cust": payload.customer_id,
             "site": payload.site_code,
             "sub": computed_subtotal,
-            "disc": payload.discount_total,
-            "tax": payload.tax_total,
-            "grand": computed_grand_total,
+            "disc": effective_discount,
+            "tax": tax_total,
+            "grand": effective_grand,
             "pm": payload.payment_method.value,
             "shift": payload.shift_id,
             "now": now,
@@ -165,9 +210,22 @@ def atomic_commit(
             },
         )
 
+    # ── Redeem voucher now that we have a transaction_id. Any failure ──────
+    # here raises HTTPException(400) which rolls back the entire commit.
+    if payload.voucher_code:
+        assert voucher_repo is not None
+        voucher_repo.lock_and_redeem(
+            tenant_id,
+            payload.voucher_code,
+            transaction_id,
+            now,
+            cart_subtotal=Decimal(str(payload.subtotal)),
+        )
+
     return CommitResponse(
         transaction_id=transaction_id,
         receipt_number=receipt,
         commit_confirmed_at=now,
         change_due=change_due,
+        voucher_discount=voucher_discount,
     )

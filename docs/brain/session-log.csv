@@ -52,3 +52,4 @@ timestamp,branch,user,layers,modules
 2026-04-17T19:35,main,Ahmed Shaaban,[api;frontend;test],[api;frontend;insights_first;onboarding]
 2026-04-17T19:36,main,Ahmed Shaaban,[api;frontend;test],[api;frontend;insights_first;onboarding]
 2026-04-17T20:07,claude/insight-fetcher-expiry-risk,Ahmed Shaaban,[api;frontend;test],[api;frontend;insights_first]
+2026-04-19T09:16,test/rewrite-marketing-specs-editorial-v2,Ahmed Shaaban,[frontend;test],[frontend]

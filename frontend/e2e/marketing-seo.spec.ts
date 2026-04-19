@@ -6,8 +6,15 @@ test.describe("Marketing SEO", () => {
     const title = await page.title();
     expect(title).toContain("DataPulse");
 
+    // Loosened: editorial landing v2 metadata focuses on "pharmacy /
+    // transactions / heartbeat" copy rather than "sales". Keep the
+    // assertion about presence + brand-relevant substring rather than a
+    // single fragile keyword.
     const description = page.locator('meta[name="description"]');
-    await expect(description).toHaveAttribute("content", /sales/i);
+    await expect(description).toHaveAttribute(
+      "content",
+      /pharmacy|transactions|sales|business/i,
+    );
   });
 
   test("Open Graph tags present", async ({ page }) => {

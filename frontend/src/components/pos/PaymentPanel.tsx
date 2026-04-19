@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, CreditCard, Shield } from "lucide-react";
+import { Banknote, CreditCard, Shield, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PaymentMethod } from "@/types/pos";
 
@@ -36,6 +36,13 @@ const PAYMENT_METHODS = [
     icon: Shield,
     className: "bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30",
   },
+  {
+    method: "voucher" as PaymentMethod,
+    label: "VOUCHER",
+    shortcut: "",
+    icon: Ticket,
+    className: "bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30",
+  },
 ] as const;
 
 export function PaymentPanel({ grandTotal, disabled, onCheckout }: PaymentPanelProps) {
@@ -50,7 +57,7 @@ export function PaymentPanel({ grandTotal, disabled, onCheckout }: PaymentPanelP
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {PAYMENT_METHODS.map(({ method, label, shortcut, icon: Icon, className }) => (
           <button
             key={method}

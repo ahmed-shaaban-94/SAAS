@@ -1,5 +1,11 @@
 "use client";
 
+// NOTE: `/dashboard` itself lives at `src/app/dashboard/page.tsx` (outside
+// the (app) route group) after the v2 cutover. Do NOT add a sibling
+// `src/app/(app)/dashboard/page.tsx` — it would collide with the root-level
+// one and break the build. This print report is intentionally kept inside
+// the (app) layout because it needs the legacy chrome and filters.
+
 import { useSummary } from "@/hooks/use-summary";
 import { useTopProducts } from "@/hooks/use-top-products";
 import { useTopCustomers } from "@/hooks/use-top-customers";

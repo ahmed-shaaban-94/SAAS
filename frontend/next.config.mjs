@@ -41,6 +41,13 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // v2 cutover: preview URLs now point to the production routes.
+      { source: "/dashboard-v2", destination: "/dashboard", permanent: true },
+      { source: "/inventory-v2", destination: "/inventory", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

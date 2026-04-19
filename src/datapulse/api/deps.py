@@ -371,3 +371,13 @@ def get_pos_service(
         pin_lookup=repo.get_pharmacist_pin_hash,
     )
     return PosService(repo, inventory, verifier)
+
+
+def get_voucher_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    """Factory for :class:`VoucherService` — wires a repository bound to the RLS session."""
+    from datapulse.pos.voucher_repository import VoucherRepository
+    from datapulse.pos.voucher_service import VoucherService
+
+    return VoucherService(VoucherRepository(session))

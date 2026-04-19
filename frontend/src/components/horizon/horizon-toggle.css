@@ -1,0 +1,53 @@
+/* Horizon Mode toggle — pill group with active indicator. */
+
+.horizon-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(5, 14, 23, 0.55);
+  border: 1px solid rgba(51, 80, 107, 0.55);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.horizon-toggle button {
+  background: transparent;
+  border: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(184, 192, 204, 0.75);
+  cursor: pointer;
+  transition: all 0.18s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.horizon-toggle button:hover:not([aria-pressed="true"]) {
+  color: #f7fbff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.horizon-toggle button[aria-pressed="true"] {
+  color: #051520;
+  background: linear-gradient(135deg, #00c7f2, #1de9ff);
+  box-shadow: 0 6px 14px rgba(0, 199, 242, 0.25);
+}
+
+.horizon-toggle button[aria-pressed="true"].forecast {
+  background: linear-gradient(135deg, #7467f8, #9a8dff);
+  color: #f7fbff;
+  box-shadow: 0 6px 14px rgba(116, 103, 248, 0.3);
+}
+
+.horizon-toggle .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}

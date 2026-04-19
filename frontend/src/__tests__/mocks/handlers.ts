@@ -169,6 +169,39 @@ export const mockLineageGraph = {
   edges: [{ source: "sales", target: "stg_sales" }],
 };
 
+export const mockVouchers = [
+  {
+    id: 1,
+    tenant_id: 1,
+    code: "SUMMER25",
+    discount_type: "percent",
+    value: 25,
+    max_uses: 10,
+    uses: 2,
+    status: "active",
+    starts_at: null,
+    ends_at: null,
+    min_purchase: null,
+    redeemed_txn_id: null,
+    created_at: "2026-01-01T00:00:00Z",
+  },
+  {
+    id: 2,
+    tenant_id: 1,
+    code: "FLAT50",
+    discount_type: "amount",
+    value: 50,
+    max_uses: 1,
+    uses: 1,
+    status: "redeemed",
+    starts_at: null,
+    ends_at: null,
+    min_purchase: null,
+    redeemed_txn_id: 1234,
+    created_at: "2026-01-02T00:00:00Z",
+  },
+];
+
 export const handlers = [
   http.get(`${API}/health`, () => HttpResponse.json(mockHealthy)),
 
@@ -257,4 +290,35 @@ export const handlers = [
   http.get(`${API}/api/v1/targets/summary/quarterly`, () =>
     HttpResponse.json({ year: 2024, quarters: [] }),
   ),
+
+  // POS vouchers (Phase 1 discount engine)
+  http.get(`${API}/api/v1/pos/vouchers`, ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get("status");
+    if (status) {
+      return HttpResponse.json(mockVouchers.filter((v) => v.status === status));
+    }
+    return HttpResponse.json(mockVouchers);
+  }),
+  http.post(`${API}/api/v1/pos/vouchers`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      {
+        id: 99,
+        tenant_id: 1,
+        code: body.code,
+        discount_type: body.discount_type,
+        value: body.value,
+        max_uses: body.max_uses ?? 1,
+        uses: 0,
+        status: "active",
+        starts_at: body.starts_at ?? null,
+        ends_at: body.ends_at ?? null,
+        min_purchase: body.min_purchase ?? null,
+        redeemed_txn_id: null,
+        created_at: "2026-04-19T00:00:00Z",
+      },
+      { status: 201 },
+    );
+  }),
 ];

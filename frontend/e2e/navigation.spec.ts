@@ -34,14 +34,20 @@ test.describe("Navigation", () => {
 
   test("active nav item is highlighted", async ({ page }) => {
     await page.goto("/dashboard");
+    // v2 shell marks the current nav link with class "active" (see
+    // src/components/dashboard-v2/shell.tsx `.nav-link.active`).
     const overviewLink = page.getByRole("link", { name: "Overview" });
-    await expect(overviewLink).toHaveClass(/text-accent/);
+    await expect(overviewLink).toHaveClass(/active/);
   });
 
   test("root shows landing page", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1")).toContainText(/pharma sales and operations data/i, {
-      timeout: 15000,
-    });
+    // Editorial landing v2 (PR #436) renamed the hero. Keep this test
+    // about "does the landing page load (not login / error)" rather than
+    // about specific hero wording — that belongs in marketing.spec.ts
+    // once it is rewritten against the new copy.
+    await expect(page.locator("h1")).toBeVisible({ timeout: 15000 });
+    // And the route should not have redirected us to /login.
+    await expect(page).toHaveURL("/");
   });
 });
