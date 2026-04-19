@@ -48,9 +48,9 @@ files:
   - "!node_modules/**/*.ts"
   - "!node_modules/**/test/**"
 
-# ── Auto-update (Phase 2: point to GitHub Releases) ─────────
-# publish:
-#   provider: github
-#   owner: ahmed-shaaban-94
-#   repo: Data-Pulse
-#   releaseType: release
+# ── Auto-update ─────────────────────────────────────────────
+publish:
+  provider: github
+  owner: ahmed-shaaban-94
+  repo: Data-Pulse
+  releaseType: release
