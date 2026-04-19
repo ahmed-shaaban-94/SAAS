@@ -16,11 +16,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard v2 — DataPulse",
-  description: "Preview of the hybrid operations dashboard design.",
+  title: "Inventory v2 — DataPulse",
+  description: "Preview of the hybrid operations inventory page using the v2 shell.",
 };
 
-export default function DashboardV2Layout({
+export default function InventoryV2Layout({
   children,
 }: {
   children: React.ReactNode;

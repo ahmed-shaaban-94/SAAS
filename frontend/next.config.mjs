@@ -41,6 +41,12 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // v2 cutover: preview URL now points to the production dashboard.
+      { source: "/dashboard-v2", destination: "/dashboard", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
