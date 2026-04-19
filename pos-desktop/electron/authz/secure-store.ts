@@ -32,6 +32,7 @@
 
 import { safeStorage as electronSafeStorage } from "electron";
 import type Database from "better-sqlite3";
+import { getLogger } from "../logging/index";
 
 export const SECURE_STORE_VERSION_V1 = 0x01 as const;
 export const SECURE_STORE_VERSION_V0 = 0x00 as const;
@@ -49,7 +50,7 @@ export interface SafeStorageLike {
 export interface SecureStoreDeps {
   /** Injected for testability — defaults to the real Electron safeStorage. */
   safeStorage?: SafeStorageLike;
-  /** Injected for testability — defaults to console.warn. */
+  /** Injected for testability — defaults to the pino logger's `warn`. */
   log?: (msg: string) => void;
 }
 
@@ -58,7 +59,7 @@ function resolveSafeStorage(deps: SecureStoreDeps): SafeStorageLike {
 }
 
 function resolveLogger(deps: SecureStoreDeps): (msg: string) => void {
-  return deps.log ?? ((msg: string) => console.warn(msg));
+  return deps.log ?? ((msg: string) => getLogger().warn({ module: "secure-store" }, msg));
 }
 
 /**

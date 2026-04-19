@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { ShoppingCart, Trash2, X } from "lucide-react";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { CartItem } from "./CartItem";
 import { cn } from "@/lib/utils";
@@ -15,8 +15,19 @@ interface CartPanelProps {
 }
 
 export function CartPanel({ className }: CartPanelProps) {
-  const { items, subtotal, discountTotal, taxTotal, grandTotal, updateQuantity, removeItem, clearCart } =
-    usePosCart();
+  const {
+    items,
+    subtotal,
+    itemDiscountTotal,
+    cartDiscountTotal,
+    taxTotal,
+    grandTotal,
+    appliedDiscount,
+    updateQuantity,
+    removeItem,
+    clearDiscount,
+    clearCart,
+  } = usePosCart();
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -70,10 +81,29 @@ export function CartPanel({ className }: CartPanelProps) {
             <span>Subtotal</span>
             <span className="tabular-nums">EGP {fmt(subtotal)}</span>
           </div>
-          {discountTotal > 0 && (
+          {itemDiscountTotal > 0 && (
             <div className="flex justify-between text-sm text-green-400">
-              <span>Discount</span>
-              <span className="tabular-nums">-EGP {fmt(discountTotal)}</span>
+              <span>Item discount</span>
+              <span className="tabular-nums">-EGP {fmt(itemDiscountTotal)}</span>
+            </div>
+          )}
+          {appliedDiscount && (
+            <div className="flex items-center justify-between text-sm text-green-400">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">
+                  {appliedDiscount.source}
+                </span>
+                <span className="truncate">{appliedDiscount.label}</span>
+                <button
+                  type="button"
+                  onClick={clearDiscount}
+                  aria-label={`Remove ${appliedDiscount.source} ${appliedDiscount.label}`}
+                  className="rounded p-0.5 text-text-secondary hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+              <span className="tabular-nums">-EGP {fmt(cartDiscountTotal)}</span>
             </div>
           )}
           {taxTotal > 0 && (

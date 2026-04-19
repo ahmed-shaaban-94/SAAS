@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Image tag to deploy'
+        description: 'Image tag to deploy (pushed alongside :production)'
         required: false
-        default: 'staging'
+        default: 'production'
         type: string
   push:
     tags:

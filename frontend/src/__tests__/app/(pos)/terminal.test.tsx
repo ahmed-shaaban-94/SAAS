@@ -162,7 +162,7 @@ describe("Terminal v2 integration", () => {
     );
   });
 
-  it("preserves the voucher flow: applying a code threads voucher_code into pending checkout", async () => {
+  it("applies a voucher via the unified applied_discount slot and hands off a pending checkout", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -195,12 +195,14 @@ describe("Terminal v2 integration", () => {
     // Click charge
     await user.click(screen.getByTestId("charge-button"));
 
-    // pending checkout in localStorage includes the voucher_code
+    // pending checkout in localStorage carries only the transaction + method.
+    // The applied discount (voucher OR promotion) lives in the cart context
+    // and is read from there by the /checkout page's applied_discount body.
     await waitFor(() => {
       const stored = localStorage.getItem("pos:pending_checkout");
       expect(stored).toBeTruthy();
       const parsed = JSON.parse(stored as string);
-      expect(parsed.voucher_code).toBe("SAVE10");
+      expect(parsed.voucher_code).toBeUndefined();
       expect(parsed.transactionId).toBe(1001);
       expect(parsed.method).toBe("cash");
     });

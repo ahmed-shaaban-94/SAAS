@@ -63,6 +63,8 @@ from datapulse.pos.models import (
 )
 from datapulse.pos.payment import get_gateway
 from datapulse.pos.pharmacist_verifier import TOKEN_TTL_SECONDS, PharmacistVerifier
+from datapulse.pos.promotion_repository import PromotionRepository
+from datapulse.pos.promotion_service import PromotionService
 from datapulse.pos.receipt import generate_pdf_receipt, generate_thermal_receipt
 from datapulse.pos.repository import PosRepository
 from datapulse.pos.terminal import (
@@ -143,6 +145,7 @@ class PosService:
         inventory: InventoryServiceProtocol,
         verifier: PharmacistVerifier | None = None,
         voucher_repo: VoucherRepository | None = None,
+        promotion_repo: PromotionRepository | None = None,
     ) -> None:
         self._repo = repo
         self._inventory = inventory
@@ -151,6 +154,8 @@ class PosService:
         # When None, vouchers silently bypass the legacy checkout path
         # (canonical redemption still happens on POST /pos/transactions/commit).
         self._voucher_repo = voucher_repo
+        # Promotions follow the same optional-wiring pattern as vouchers.
+        self._promotion_repo = promotion_repo
 
     # ──────────────────────────────────────────────────────────────
     # Terminal lifecycle
@@ -467,17 +472,31 @@ class PosService:
         tax_total = Decimal("0")  # Tax engine added in a later session
         grand_total = subtotal - _to_decimal(request.transaction_discount) + tax_total
 
-        # ── Voucher preview (applied to grand_total before payment) ─
-        # Validation-only preview here; actual redemption (UPDATE + lock)
-        # fires after the status CAS succeeds to avoid "redeemed but CAS
-        # failed" ghosts.
+        # ── Cart-level discount preview (voucher OR promotion) ──────
+        # Validation-only preview here; actual redemption fires after the
+        # status CAS succeeds to avoid "redeemed but CAS failed" ghosts.
         voucher_discount = Decimal("0")
+        voucher_code: str | None = None
+        promotion_id: int | None = None
+        promotion_applied = False
         voucher_applied = False
-        if request.voucher_code and self._voucher_repo is not None:
-            voucher = self._voucher_repo.get_by_code(tenant_id, request.voucher_code)
+
+        # Normalise legacy voucher_code into the applied_discount shape.
+        discount_source: str | None = None
+        discount_ref: str | None = None
+        if request.applied_discount is not None:
+            discount_source = request.applied_discount.source
+            discount_ref = request.applied_discount.ref
+        elif request.voucher_code:
+            discount_source = "voucher"
+            discount_ref = request.voucher_code
+
+        if discount_source == "voucher" and discount_ref and self._voucher_repo is not None:
+            voucher_code = discount_ref
+            voucher = self._voucher_repo.get_by_code(tenant_id, voucher_code)
             if voucher is None:
                 raise PosError(
-                    message=f"Voucher '{request.voucher_code}' not found",
+                    message=f"Voucher '{voucher_code}' not found",
                     detail="voucher_not_found",
                 )
             voucher_discount = VoucherService.compute_discount(
@@ -486,6 +505,50 @@ class PosService:
             discount_total += voucher_discount
             grand_total -= voucher_discount
             voucher_applied = True
+        elif discount_source == "promotion" and discount_ref and self._promotion_repo is not None:
+            try:
+                promotion_id = int(discount_ref)
+            except ValueError as e:
+                raise PosError(
+                    message=f"Invalid promotion ref: {discount_ref!r}",
+                    detail="promotion_ref_invalid",
+                ) from e
+            promo = self._promotion_repo.get(tenant_id, promotion_id)
+            if promo is None:
+                raise PosError(
+                    message=f"Promotion {promotion_id} not found",
+                    detail="promotion_not_found",
+                )
+            # Preview discount — scope='category' isn't resolvable here
+            # because cart items lack drug_cluster on the draft rows; the
+            # /eligible endpoint (which does have cluster) gates this UI,
+            # so we fall back to subtotal as the eligible base. Items-scope
+            # matches on drug_code.
+            if promo.scope.value == "items":
+                base = sum(
+                    (
+                        _to_decimal(i["line_total"])
+                        for i in items
+                        if i["drug_code"] in promo.scope_items
+                    ),
+                    start=Decimal("0"),
+                )
+            else:
+                base = subtotal
+            if promo.min_purchase is not None and base < _to_decimal(promo.min_purchase):
+                raise PosError(
+                    message="Cart does not meet the minimum purchase for this promotion",
+                    detail="promotion_min_purchase_not_met",
+                )
+            voucher_discount = PromotionService.compute_discount(
+                promo.discount_type,
+                _to_decimal(promo.value),
+                base,
+                max_discount=_to_decimal(promo.max_discount) if promo.max_discount else None,
+            )
+            discount_total += voucher_discount
+            grand_total -= voucher_discount
+            promotion_applied = True
 
         grand_total = grand_total.quantize(Decimal("0.0001"))
 
@@ -527,17 +590,28 @@ class PosService:
                 detail=f"transaction_id={transaction_id} cas_failed=true",
             )
 
-        # ── Voucher redemption (atomic, post-CAS) ──────────────────
+        # ── Voucher / promotion redemption (atomic, post-CAS) ───────
         # Race note: between preview and this call another commit path
         # could have taken the last use; lock_and_redeem catches that
         # via SELECT FOR UPDATE and raises HTTPException. Session rollback
         # on an unhandled raise will also revert the status CAS.
-        if voucher_applied and self._voucher_repo is not None:
+        now_utc = datetime.now(tz=UTC)
+        if voucher_applied and self._voucher_repo is not None and voucher_code is not None:
             self._voucher_repo.lock_and_redeem(
                 tenant_id=tenant_id,
-                code=request.voucher_code or "",
+                code=voucher_code,
                 txn_id=transaction_id,
-                now=datetime.now(tz=UTC),
+                now=now_utc,
+            )
+        if promotion_applied and self._promotion_repo is not None and promotion_id is not None:
+            self._promotion_repo.lock_for_application(tenant_id, promotion_id, now_utc)
+            self._promotion_repo.record_application(
+                tenant_id=tenant_id,
+                promotion_id=promotion_id,
+                transaction_id=transaction_id,
+                cashier_staff_id=str(header["staff_id"]),
+                discount_applied=voucher_discount,
+                applied_at=now_utc,
             )
 
         # ── Inventory movements + bronze write ──────────────────────
@@ -618,6 +692,7 @@ class PosService:
             change_due=change_due,
             status=TransactionStatus.completed,
             voucher_discount=voucher_discount,
+            applied_promotion_id=promotion_id if promotion_applied else None,
         )
 
     # ──────────────────────────────────────────────────────────────

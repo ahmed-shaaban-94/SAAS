@@ -364,6 +364,7 @@ def get_pos_service(
     from datapulse.inventory.service import InventoryService
     from datapulse.pos.inventory_adapter import InventoryAdapter
     from datapulse.pos.pharmacist_verifier import PharmacistVerifier
+    from datapulse.pos.promotion_repository import PromotionRepository
     from datapulse.pos.repository import PosRepository
     from datapulse.pos.service import PosService
     from datapulse.pos.voucher_repository import VoucherRepository
@@ -382,7 +383,24 @@ def get_pos_service(
         pin_lookup=repo.get_pharmacist_pin_hash,
     )
     voucher_repo = VoucherRepository(session)
-    return PosService(repo, inventory, verifier, voucher_repo=voucher_repo)
+    promotion_repo = PromotionRepository(session)
+    return PosService(
+        repo,
+        inventory,
+        verifier,
+        voucher_repo=voucher_repo,
+        promotion_repo=promotion_repo,
+    )
+
+
+def get_promotion_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    """Factory for :class:`PromotionService` — wires the repo to the RLS session."""
+    from datapulse.pos.promotion_repository import PromotionRepository
+    from datapulse.pos.promotion_service import PromotionService
+
+    return PromotionService(PromotionRepository(session))
 
 
 def get_voucher_service(

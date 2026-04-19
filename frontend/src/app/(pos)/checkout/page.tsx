@@ -19,13 +19,11 @@ import type {
 interface PendingCheckout {
   transactionId: number;
   method: PaymentMethod;
-  /** Voucher code attached at the terminal (Phase 1b). */
-  voucher_code?: string;
 }
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { grandTotal, clearCart } = usePosCart();
+  const { grandTotal, appliedDiscount, clearCart } = usePosCart();
   const checkout = usePosCheckout();
 
   const [pending, setPending] = useState<PendingCheckout | null>(null);
@@ -61,7 +59,9 @@ export default function CheckoutPage() {
     try {
       const checkoutResult = await checkout.checkout(pending.transactionId, {
         payment_method: method,
-        ...(pending.voucher_code ? { voucher_code: pending.voucher_code } : {}),
+        applied_discount: appliedDiscount
+          ? { source: appliedDiscount.source, ref: appliedDiscount.ref }
+          : undefined,
       });
 
       // Fetch full transaction with items for receipt

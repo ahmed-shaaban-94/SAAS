@@ -102,7 +102,14 @@ export interface CheckoutRequest {
   insurance_no?: string;
   split_cash?: number;
   split_insurance?: number;
-  /** Voucher code applied at the terminal; server redeems it atomically (Phase 1b). */
+  customer_id?: string;
+  transaction_discount?: number;
+  /** Unified cart-level discount (voucher OR promotion). Preferred over voucher_code. */
+  applied_discount?: {
+    source: "voucher" | "promotion";
+    ref: string;
+  };
+  /** Legacy — prefer applied_discount for new clients. */
   voucher_code?: string;
 }
 

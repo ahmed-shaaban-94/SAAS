@@ -50,7 +50,7 @@ export default function PosTerminalPage() {
   const terminal = useActiveTerminal();
   const {
     items,
-    voucher,
+    appliedDiscount,
     subtotal,
     discountTotal,
     voucherDiscount,
@@ -60,10 +60,16 @@ export default function PosTerminalPage() {
     addItem,
     removeItem,
     updateQuantity,
-    applyVoucher,
+    applyDiscount,
   } = usePosCart();
   const checkout = usePosCheckout();
   const offline = useOfflineState();
+
+  // Voucher presentation derived from the unified cart-discount slot. Promotions
+  // live in the same slot but render through a different UI (PromotionsModal +
+  // CartPanel pill) — these two vars only light up for voucher-sourced discounts.
+  const voucherCode =
+    appliedDiscount?.source === "voucher" ? appliedDiscount.ref : null;
 
   // Browse catalog for Quick Pick (top 9). usePosProducts only fires when
   // query.length >= 2, so we use a broad two-letter seed ("ab") so the
@@ -198,13 +204,19 @@ export default function PosTerminalPage() {
 
   const handleVoucherApply = useCallback(
     (v: CartVoucher) => {
-      applyVoucher({
-        ...v,
-        discount: computeVoucherDiscount(v.discount_type, v.value, subtotal),
+      // Recompute the resolved EGP discount against the current subtotal —
+      // the modal's preview amount may be stale if items were added after
+      // validation. Backend re-validates canonically at commit.
+      const resolved = computeVoucherDiscount(v.discount_type, v.value, subtotal);
+      applyDiscount({
+        source: "voucher",
+        ref: v.code,
+        label: v.code,
+        discountAmount: resolved,
       });
       setVoucherOpen(false);
     },
-    [applyVoucher, subtotal],
+    [applyDiscount, subtotal],
   );
 
   // ----- Checkout -----
@@ -221,22 +233,19 @@ export default function PosTerminalPage() {
         txnId = txn.id;
         setActiveTransactionId(txnId);
       }
-      // Phase 1b voucher flow: thread code into localStorage for /checkout.
-      const pending: {
-        transactionId: number;
-        method: TilePaymentMethod;
-        voucher_code?: string;
-      } = {
-        transactionId: txnId,
-        method: activePayment,
-      };
-      if (voucher) pending.voucher_code = voucher.code;
-      localStorage.setItem("pos:pending_checkout", JSON.stringify(pending));
+      // Hand off the active transaction + selected payment method to
+      // /checkout. The applied cart discount (voucher OR promotion) is
+      // already persisted in the cart context and is read from there by
+      // the checkout page, so no need to duplicate it in localStorage.
+      localStorage.setItem(
+        "pos:pending_checkout",
+        JSON.stringify({ transactionId: txnId, method: activePayment }),
+      );
       router.push("/checkout");
     } catch {
       // Error surfaced via checkout.error
     }
-  }, [terminal, items.length, grandTotal, activeTransactionId, checkout, activePayment, voucher, router]);
+  }, [terminal, items.length, grandTotal, activeTransactionId, checkout, activePayment, router]);
 
   // ----- Keyboard shortcuts -----
 
@@ -419,7 +428,7 @@ export default function PosTerminalPage() {
             voucherDiscount={voucherDiscount}
             taxTotal={taxTotal}
             itemCount={itemCount}
-            voucherCode={voucher?.code ?? null}
+            voucherCode={voucherCode}
             insuranceCoveragePct={insurance?.coveragePct ?? null}
           />
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-3">
@@ -435,9 +444,9 @@ export default function PosTerminalPage() {
             active={activePayment}
             onSelect={(m) => {
               setActivePayment(m);
-              if (m === "voucher" && !voucher) setVoucherOpen(true);
+              if (m === "voucher" && !voucherCode) setVoucherOpen(true);
             }}
-            voucherCode={voucher?.code ?? null}
+            voucherCode={voucherCode}
             voucherDiscount={voucherDiscount}
             insuranceCoveragePct={insurance?.coveragePct ?? null}
           />
@@ -450,7 +459,7 @@ export default function PosTerminalPage() {
             onCardLast4Change={setCardLast4}
             insurance={insurance}
             onInsuranceChange={setInsurance}
-            voucherCode={voucher?.code ?? null}
+            voucherCode={voucherCode}
             voucherDiscount={voucherDiscount}
             onOpenVoucherModal={() => setVoucherOpen(true)}
           />
