@@ -29,7 +29,7 @@ const MOCK_EXPIRY_ALERTS = [
 test.describe("Expiry & Batch Management", () => {
   test("navigates to expiry page", async ({ page }) => {
     test.skip(needsBackend, "requires live API backend");
-    await page.goto("/dashboard/expiry");
+    await page.goto("/expiry");
     await expect(page).toHaveURL(/\/expiry/);
     await expect(
       page.getByRole("heading", { name: /Expiry/i })
@@ -47,7 +47,7 @@ test.describe("Expiry & Batch Management", () => {
       });
     });
 
-    await page.goto("/dashboard/expiry");
+    await page.goto("/expiry");
     await expect(page.getByText("B2025-001")).toBeVisible();
     await expect(page.getByText(/critical/i)).toBeVisible();
   });
@@ -63,7 +63,7 @@ test.describe("Expiry & Batch Management", () => {
       });
     });
 
-    await page.goto("/dashboard/expiry");
+    await page.goto("/expiry");
     // Look for time range tabs/filters (30d, 60d, 90d)
     await expect(
       page
@@ -84,7 +84,7 @@ test.describe("Expiry & Batch Management", () => {
       });
     });
 
-    await page.goto("/dashboard/expiry");
+    await page.goto("/expiry");
     await expect(
       page.getByText(/No batch data/i).or(page.getByText(/No data/i))
     ).toBeVisible();

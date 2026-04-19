@@ -41,7 +41,7 @@ const MOCK_STOCKOUT_RISKS = [
 test.describe("Dispensing Analytics", () => {
   test("navigates to dispensing page", async ({ page }) => {
     test.skip(needsBackend, "requires live API backend");
-    await page.goto("/dashboard/dispensing");
+    await page.goto("/dispensing");
     await expect(page).toHaveURL(/\/dispensing/);
     await expect(
       page.getByRole("heading", { name: /Dispensing/i })
@@ -59,7 +59,7 @@ test.describe("Dispensing Analytics", () => {
       });
     });
 
-    await page.goto("/dashboard/dispensing");
+    await page.goto("/dispensing");
     await expect(page.getByText("Paracetamol 500mg")).toBeVisible();
   });
 
@@ -81,7 +81,7 @@ test.describe("Dispensing Analytics", () => {
       });
     });
 
-    await page.goto("/dashboard/dispensing");
+    await page.goto("/dispensing");
     await expect(
       page.getByText(/critical/i).or(page.getByText(/warning/i))
     ).toBeVisible();
@@ -98,7 +98,7 @@ test.describe("Dispensing Analytics", () => {
       });
     });
 
-    await page.goto("/dashboard/dispensing");
+    await page.goto("/dispensing");
     await expect(
       page.getByText(/fast/i).or(page.getByText(/medium/i))
     ).toBeVisible();
