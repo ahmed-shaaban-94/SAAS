@@ -60,7 +60,7 @@ const NAV_SECTIONS: NavSectionDef[] = [
   {
     label: "Dashboards",
     items: [
-      { href: "/dashboard-v2", label: "Overview", icon: LayoutDashboard },
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
       { href: "/briefing", label: "Morning briefing", icon: LayoutDashboard },
       {
         href: "/insights",
@@ -101,7 +101,7 @@ const NAV_SECTIONS: NavSectionDef[] = [
 function Sidebar({ activeHref }: { activeHref?: string }) {
   return (
     <aside className="side">
-      <Link href="/dashboard-v2" className="brand">
+      <Link href="/dashboard" className="brand">
         <LogoMark />
         DataPulse
       </Link>
@@ -223,7 +223,7 @@ const DEFAULT_STATS: PulseStat[] = [
 ];
 
 export function DashboardShell({
-  activeHref = "/dashboard-v2",
+  activeHref = "/dashboard",
   pulseStats = DEFAULT_STATS,
   breadcrumbs,
   children,

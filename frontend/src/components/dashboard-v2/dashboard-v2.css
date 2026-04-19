@@ -27,6 +27,22 @@
   --silver: #60a5fa;
   --gold: #d4af37;
 
+  /* Map app-theme tokens to v2 palette so tailwind utilities like
+     `bg-page`, `text-text-primary`, `viz-panel` inherit the dark v2
+     surface when a widget is rendered inside the v2 shell. Prevents
+     the "bright island" effect on migrated ops pages. */
+  --bg-page: var(--bg-0);
+  --bg-card: var(--bg-1);
+  --bg-elevated: var(--bg-2);
+  --panel-soft: rgba(255, 255, 255, 0.04);
+  --surface-strong: rgba(255, 255, 255, 0.06);
+  --border-color: var(--line);
+  --divider: var(--line);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --accent-color: var(--accent);
+  --accent-strong: var(--accent-hi);
+
   min-height: 100vh;
   color: var(--ink);
   font-family: Inter, system-ui, sans-serif;
