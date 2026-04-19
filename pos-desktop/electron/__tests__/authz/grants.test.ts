@@ -1,3 +1,27 @@
+// Mock the secure-store so these tests don't need Electron's safeStorage.
+// We route reads/writes through plain UTF-8 in the real secrets_dpapi table —
+// enough to exercise the grants.ts logic without duplicating secure-store coverage.
+jest.mock("../../authz/secure-store", () => {
+  return {
+    readSecret: (db: import("better-sqlite3").Database, key: string): string | null => {
+      const row = db
+        .prepare("SELECT ciphertext FROM secrets_dpapi WHERE key=?")
+        .get(key) as { ciphertext: Buffer } | undefined;
+      return row ? row.ciphertext.toString("utf8") : null;
+    },
+    writeSecret: (db: import("better-sqlite3").Database, key: string, value: string): void => {
+      const now = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO secrets_dpapi(key, ciphertext, updated_at) VALUES(?,?,?)
+         ON CONFLICT(key) DO UPDATE SET ciphertext=excluded.ciphertext, updated_at=excluded.updated_at`,
+      ).run(key, Buffer.from(value, "utf8"), now);
+    },
+    deleteSecret: (db: import("better-sqlite3").Database, key: string): void => {
+      db.prepare("DELETE FROM secrets_dpapi WHERE key=?").run(key);
+    },
+  };
+});
+
 import { scryptSync } from "node:crypto";
 import Database from "better-sqlite3";
 import * as path from "path";

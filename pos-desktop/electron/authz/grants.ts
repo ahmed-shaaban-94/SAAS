@@ -12,6 +12,7 @@
 import { scryptSync, timingSafeEqual } from "node:crypto";
 import type Database from "better-sqlite3";
 import { getSetting } from "../db/settings";
+import { deleteSecret, readSecret, writeSecret } from "./secure-store";
 
 export type GrantState = "online" | "offline_valid" | "offline_expired" | "revoked";
 
@@ -39,26 +40,7 @@ export interface OfflineGrantEnvelope {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Storage helpers
-// ─────────────────────────────────────────────────────────────
-
-function readSecret(db: Database.Database, key: string): string | null {
-  const row = db
-    .prepare("SELECT ciphertext FROM secrets_dpapi WHERE key=?")
-    .get(key) as { ciphertext: Buffer } | undefined;
-  return row ? row.ciphertext.toString("utf8") : null;
-}
-
-function writeSecret(db: Database.Database, key: string, value: string): void {
-  const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO secrets_dpapi(key, ciphertext, updated_at) VALUES(?,?,?)
-     ON CONFLICT(key) DO UPDATE SET ciphertext=excluded.ciphertext, updated_at=excluded.updated_at`,
-  ).run(key, Buffer.from(value, "utf8"), now);
-}
-
-// ─────────────────────────────────────────────────────────────
-// Grant access
+// Grant access (storage via ./secure-store — DPAPI/Keychain/libsecret)
 // ─────────────────────────────────────────────────────────────
 
 export function currentGrant(db: Database.Database): OfflineGrantEnvelope | null {
@@ -125,7 +107,7 @@ export async function refreshGrant(
 }
 
 export function clearGrant(db: Database.Database): void {
-  db.prepare("DELETE FROM secrets_dpapi WHERE key='offline_grant'").run();
+  deleteSecret(db, "offline_grant");
 }
 
 export function grantState(db: Database.Database): GrantState {

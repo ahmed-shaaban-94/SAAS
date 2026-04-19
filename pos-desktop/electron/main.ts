@@ -9,6 +9,7 @@ import { registerIpcHandlers } from "./ipc/handlers";
 import { getSetting } from "./db/settings";
 import { bootRecovery, startBackgroundSync } from "./sync/background";
 import { setupUpdater, checkForUpdates } from "./updater/index";
+import { upgradeSecretsToEncrypted } from "./authz/secure-store";
 
 // ── Configuration ──────────────────────────────────────────
 const PORT = 3847;
@@ -287,6 +288,17 @@ app.whenReady().then(async () => {
   const db = openDb(dbPath);
   applySchema(db);
   console.log(`[main] SQLite database ready at ${dbPath}`);
+
+  // M3b hardening: upgrade any plaintext (v0 / legacy) secrets to DPAPI-wrapped
+  // storage in-place. Idempotent — already-encrypted rows are skipped.
+  try {
+    const upgraded = upgradeSecretsToEncrypted(db);
+    if (upgraded > 0) {
+      console.log(`[boot] upgraded ${upgraded} secret(s) from plain to encrypted storage`);
+    }
+  } catch (err) {
+    console.error("[boot] secure-store upgrade failed (continuing boot):", err);
+  }
 
   // Initialise hardware adapters (mock or real based on settings)
   const hardwareMode = getSetting(db, "hardware_mode");

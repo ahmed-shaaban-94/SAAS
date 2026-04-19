@@ -2,8 +2,9 @@
  * Ed25519 device keypair management.
  *
  * The device private key is stored in `secrets_dpapi` under "device_private_key".
- * For M3a, blobs are stored as plain base64url strings (no OS-level encryption).
- * Windows DPAPI wrapping is the M3b hardening task.
+ * Storage goes through `./secure-store`, which wraps Electron `safeStorage`
+ * (DPAPI on Windows, Keychain on macOS, libsecret on Linux) so the SQLite
+ * file can't be lifted and read offline — M3b hardening (§8.9).
  *
  * All raw keys are 32 bytes, transmitted as base64url (no padding) to match
  * the server's `_pad_b64url` helper in `pos/devices.py`.
@@ -23,6 +24,7 @@ import {
 import { hostname } from "node:os";
 import type Database from "better-sqlite3";
 import { getSetting, setSetting } from "../db/settings";
+import { readSecret, writeSecret } from "./secure-store";
 
 export interface Keypair {
   publicKey: string;  // base64url, raw 32-byte Ed25519
@@ -107,24 +109,9 @@ export function buildCanonicalString(opts: {
 }
 
 // ─────────────────────────────────────────────────────────────
-// secrets_dpapi table helpers (M3a: plain base64url, no OS encryption)
+// Persistence (via secure-store: OS-encrypted where available, plain fallback
+// otherwise — see ./secure-store for the envelope format)
 // ─────────────────────────────────────────────────────────────
-
-function readSecret(db: Database.Database, key: string): string | null {
-  const row = db
-    .prepare("SELECT ciphertext FROM secrets_dpapi WHERE key=?")
-    .get(key) as { ciphertext: Buffer } | undefined;
-  if (!row) return null;
-  return row.ciphertext.toString("utf8");
-}
-
-function writeSecret(db: Database.Database, key: string, value: string): void {
-  const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO secrets_dpapi(key, ciphertext, updated_at) VALUES(?,?,?)
-     ON CONFLICT(key) DO UPDATE SET ciphertext=excluded.ciphertext, updated_at=excluded.updated_at`,
-  ).run(key, Buffer.from(value, "utf8"), now);
-}
 
 export function loadPrivateKey(db: Database.Database): string | null {
   return readSecret(db, "device_private_key");
