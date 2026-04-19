@@ -11,6 +11,22 @@ import {
 import type { AppliedDiscount } from "@/types/promotions";
 import type { PosCartItem } from "@/types/pos";
 
+// ---- Voucher preview shape ----
+//
+// Retained as an exported preview/DTO type for `VoucherCodeModal` — the cart
+// no longer stores voucher-specific state. Vouchers are applied through the
+// unified `applyDiscount` pathway with `source: "voucher"`.
+export interface CartVoucher {
+  /** Server voucher code — exactly as entered by the cashier (uppercased). */
+  code: string;
+  /** 'amount' = flat EGP off, 'percent' = % of subtotal (after item discounts). */
+  discount_type: "amount" | "percent";
+  /** Raw server value: EGP when 'amount', percentage when 'percent'. */
+  value: number;
+  /** Resolved discount in EGP — computed at apply time against the then-current cart. */
+  discount: number;
+}
+
 // ---- Applied cart-level discount ----
 //
 // A cart-level discount is EITHER a voucher (by code) or a promotion (by id),
@@ -121,6 +137,10 @@ interface PosCartContextValue {
   itemDiscountTotal: number;
   cartDiscountTotal: number;
   discountTotal: number;
+  /** Voucher-only projection of `cartDiscountTotal`; 0 when the applied
+   * discount is a promotion or nothing is applied. Kept for the Terminal v2
+   * payment tiles which still render vouchers distinctly from promotions. */
+  voucherDiscount: number;
   taxTotal: number;
   grandTotal: number;
   itemCount: number;
@@ -164,6 +184,9 @@ export function PosCartProvider({ children }: { children: ReactNode }) {
 
   const cartDiscountTotal = state.appliedDiscount?.discountAmount ?? 0;
 
+  const voucherDiscount =
+    state.appliedDiscount?.source === "voucher" ? state.appliedDiscount.discountAmount : 0;
+
   const discountTotal = itemDiscountTotal + cartDiscountTotal;
 
   const taxTotal = 0; // Pharmacy items: typically zero-rated; extend if needed
@@ -197,6 +220,7 @@ export function PosCartProvider({ children }: { children: ReactNode }) {
       itemDiscountTotal,
       cartDiscountTotal,
       discountTotal,
+      voucherDiscount,
       taxTotal,
       grandTotal,
       itemCount,
@@ -215,6 +239,7 @@ export function PosCartProvider({ children }: { children: ReactNode }) {
       itemDiscountTotal,
       cartDiscountTotal,
       discountTotal,
+      voucherDiscount,
       grandTotal,
       itemCount,
       hasControlledSubstance,
@@ -228,4 +253,20 @@ export function usePosCart(): PosCartContextValue {
   const ctx = useContext(PosCartContext);
   if (!ctx) throw new Error("usePosCart must be used within PosCartProvider");
   return ctx;
+}
+
+/**
+ * Compute the resolved EGP discount for a voucher against a given subtotal.
+ * - 'amount' vouchers: cap at subtotal (never go negative)
+ * - 'percent' vouchers: subtotal × value / 100, rounded to 2dp
+ */
+export function computeVoucherDiscount(
+  discount_type: "amount" | "percent",
+  value: number,
+  subtotal: number,
+): number {
+  if (subtotal <= 0) return 0;
+  if (discount_type === "amount") return Math.min(value, subtotal);
+  const pct = (subtotal * value) / 100;
+  return Math.round(pct * 100) / 100;
 }
