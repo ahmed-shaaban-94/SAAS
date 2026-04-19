@@ -321,11 +321,24 @@ class PosService:
             )
 
         is_controlled = _is_controlled(product.get("drug_category"))
-        if is_controlled and not pharmacist_id:
-            raise PharmacistVerificationRequiredError(
-                drug_code=drug_code,
-                drug_category=product.get("drug_category"),
-            )
+        resolved_pharmacist_id: str | None = None
+        if is_controlled:
+            if not pharmacist_id:
+                raise PharmacistVerificationRequiredError(
+                    drug_code=drug_code,
+                    drug_category=product.get("drug_category"),
+                )
+            if self._verifier is None:
+                # Defense in depth: a controlled item must never be dispensed
+                # without a server-side verifier to validate the token signature.
+                raise PharmacistVerificationRequiredError(
+                    drug_code=drug_code,
+                    message="Pharmacist verification is not configured on this server.",
+                )
+            # The ``pharmacist_id`` parameter carries the signed token issued by
+            # POST /pos/controlled/verify, not a raw user id. Validate signature,
+            # drug-code binding, and TTL; returns the real pharmacist user id.
+            resolved_pharmacist_id = self._verifier.validate_token(pharmacist_id, drug_code)
 
         # Inventory: stock check
         stock = await self._inventory.get_stock_level(drug_code, site_code)
@@ -362,7 +375,7 @@ class PosService:
             batch_number=batch_number,
             expiry_date=expiry_date,
             is_controlled=is_controlled,
-            pharmacist_id=pharmacist_id if is_controlled else None,
+            pharmacist_id=resolved_pharmacist_id,
         )
         return PosCartItem.model_validate(row)
 

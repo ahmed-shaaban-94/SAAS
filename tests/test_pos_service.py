@@ -35,6 +35,7 @@ from datapulse.pos.inventory_contract import (
     StockMovement,
 )
 from datapulse.pos.models import CheckoutRequest
+from datapulse.pos.pharmacist_verifier import PharmacistVerifier, hash_pin
 from datapulse.pos.service import (
     PosService,
     _build_receipt_number,
@@ -92,6 +93,25 @@ def mock_inventory() -> AsyncMock:
 @pytest.fixture()
 def service(mock_repo: MagicMock, mock_inventory: AsyncMock) -> PosService:
     return PosService(mock_repo, mock_inventory)
+
+
+@pytest.fixture()
+def verifier() -> PharmacistVerifier:
+    """A real :class:`PharmacistVerifier` so controlled-substance tests issue
+    and validate signed tokens end-to-end (no mocking of the crypto path)."""
+    return PharmacistVerifier(
+        secret_key="test-secret",
+        pin_lookup=lambda _uid: hash_pin("1234"),
+    )
+
+
+@pytest.fixture()
+def service_with_verifier(
+    mock_repo: MagicMock,
+    mock_inventory: AsyncMock,
+    verifier: PharmacistVerifier,
+) -> PosService:
+    return PosService(mock_repo, mock_inventory, verifier)
 
 
 def _terminal_row(status: str = "open") -> dict:
@@ -486,11 +506,12 @@ class TestAddItem:
             )
 
     @pytest.mark.asyncio
-    async def test_controlled_substance_with_pharmacist_passes(
+    async def test_controlled_substance_with_valid_token_passes(
         self,
-        service: PosService,
+        service_with_verifier: PosService,
         mock_repo: MagicMock,
         mock_inventory: AsyncMock,
+        verifier: PharmacistVerifier,
     ):
         mock_repo.get_product_by_code.return_value = {
             "drug_code": "MORPHINE",
@@ -515,16 +536,102 @@ class TestAddItem:
             "is_controlled": True,
             "pharmacist_id": "pharm-7",
         }
-        item = await service.add_item(
+        # Issue a real signed token for this pharmacist + drug pair.
+        token = verifier.verify_and_issue("pharm-7", "1234", "MORPHINE")
+
+        item = await service_with_verifier.add_item(
             transaction_id=100,
             tenant_id=1,
             site_code="SITE01",
             drug_code="MORPHINE",
             quantity=Decimal("1"),
-            pharmacist_id="pharm-7",
+            pharmacist_id=token,
         )
         assert item.is_controlled is True
         assert item.pharmacist_id == "pharm-7"
+        # The repository must receive the *resolved* pharmacist id, not the
+        # opaque token — this is what guarantees the audit trail is usable.
+        call_kwargs = mock_repo.add_transaction_item.call_args.kwargs
+        assert call_kwargs["pharmacist_id"] == "pharm-7"
+
+    @pytest.mark.asyncio
+    async def test_controlled_substance_bare_string_is_rejected(
+        self,
+        service_with_verifier: PosService,
+        mock_repo: MagicMock,
+    ):
+        """Regression: passing any non-empty string as pharmacist_id used to
+        satisfy the controlled-substance gate. It must now raise."""
+        mock_repo.get_product_by_code.return_value = {
+            "drug_code": "MORPHINE",
+            "drug_name": "Morphine",
+            "drug_brand": None,
+            "drug_cluster": None,
+            "drug_category": "narcotic",
+            "unit_price": Decimal("50"),
+        }
+        with pytest.raises(PharmacistVerificationRequiredError):
+            await service_with_verifier.add_item(
+                transaction_id=100,
+                tenant_id=1,
+                site_code="SITE01",
+                drug_code="MORPHINE",
+                quantity=Decimal("1"),
+                pharmacist_id="pharm-7",  # raw id, not a signed token
+            )
+
+    @pytest.mark.asyncio
+    async def test_controlled_substance_without_verifier_configured(
+        self,
+        service: PosService,
+        mock_repo: MagicMock,
+    ):
+        """When no verifier is wired, controlled substances must refuse to
+        dispense rather than silently accept the caller's pharmacist_id."""
+        mock_repo.get_product_by_code.return_value = {
+            "drug_code": "MORPHINE",
+            "drug_name": "Morphine",
+            "drug_brand": None,
+            "drug_cluster": None,
+            "drug_category": "narcotic",
+            "unit_price": Decimal("50"),
+        }
+        with pytest.raises(PharmacistVerificationRequiredError):
+            await service.add_item(
+                transaction_id=100,
+                tenant_id=1,
+                site_code="SITE01",
+                drug_code="MORPHINE",
+                quantity=Decimal("1"),
+                pharmacist_id="any-token-value",
+            )
+
+    @pytest.mark.asyncio
+    async def test_controlled_substance_token_for_other_drug_rejected(
+        self,
+        service_with_verifier: PosService,
+        mock_repo: MagicMock,
+        verifier: PharmacistVerifier,
+    ):
+        """A token issued for drug A cannot be replayed against drug B."""
+        mock_repo.get_product_by_code.return_value = {
+            "drug_code": "MORPHINE",
+            "drug_name": "Morphine",
+            "drug_brand": None,
+            "drug_cluster": None,
+            "drug_category": "narcotic",
+            "unit_price": Decimal("50"),
+        }
+        wrong_token = verifier.verify_and_issue("pharm-7", "1234", "OXY-OTHER")
+        with pytest.raises(PharmacistVerificationRequiredError):
+            await service_with_verifier.add_item(
+                transaction_id=100,
+                tenant_id=1,
+                site_code="SITE01",
+                drug_code="MORPHINE",
+                quantity=Decimal("1"),
+                pharmacist_id=wrong_token,
+            )
 
     @pytest.mark.asyncio
     async def test_unknown_drug_raises(

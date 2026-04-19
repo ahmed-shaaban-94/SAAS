@@ -77,8 +77,16 @@ SessionDep = Annotated[Session, Depends(get_tenant_session)]
 
 
 def _tenant_id_of(user: CurrentUser) -> int:
-    """Coerce the JWT ``tenant_id`` claim to int; defaults to 1 in dev."""
-    return int(user.get("tenant_id") or 1)
+    """Coerce the JWT ``tenant_id`` claim to int.
+
+    Auth already rejects missing tenant claims when ``default_tenant_id`` is
+    unset; this is a defence-in-depth guard so a misconfigured dev-mode token
+    can never silently serve tenant 1 data to a cross-tenant caller.
+    """
+    tid = user.get("tenant_id")
+    if not tid:
+        raise HTTPException(status_code=401, detail="Missing tenant context")
+    return int(tid)
 
 
 def _staff_id_of(user: CurrentUser) -> str:
