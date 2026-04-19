@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DataPulse POS v2 — Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-0: #050e17;
+    --bg-1: #081826;
+    --bg-2: #102a43;
+    --bg-3: #163452;
+    --line: rgba(51,80,107,0.45);
+    --line-strong: rgba(70,98,124,0.8);
+    --ink: #f7fbff;
+    --ink-2: #b8c0cc;
+    --ink-3: #8597a8;
+    --ink-4: #5a6b7c;
+    --accent: #00c7f2;
+    --accent-hi: #5cdfff;
+    --purple: #7467f8;
+    --amber: #ffab3d;
+    --amber-hi: #ffd27a;
+    --green: #1dd48b;
+    --red: #ff7b7b;
+    --gold: #d4af37;
+  }
+  *,*::before,*::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
+  body {
+    font-family: 'Inter', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(0,199,242,0.06), transparent 50%),
+      radial-gradient(1000px 500px at 100% 110%, rgba(116,103,248,0.05), transparent 55%),
+      linear-gradient(180deg, #050e17 0%, #081826 60%, #050e17 100%);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02","cv03","cv11";
+    overflow: hidden;
+  }
+  [dir="rtl"] body { font-family: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif; }
+  .tab { font-variant-numeric: tabular-nums; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .serif { font-family: 'Fraunces', Georgia, serif; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; padding: 0; }
+  input, textarea { font-family: inherit; color: inherit; background: transparent; border: none; outline: none; }
+  ::selection { background: rgba(0,199,242,0.3); }
+
+  /* keyboard focus rings visible on every interactive */
+  :focus-visible {
+    outline: 2px solid var(--accent-hi);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  #root { height: 100vh; width: 100vw; }
+  
+  /* Reusable */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(184,192,204,0.08);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+    display: inline-flex; align-items: center; gap: 2px;
+    vertical-align: middle;
+  }
+  .kbd-lg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    padding: 3px 7px; border-radius: 5px;
+    background: rgba(0,199,242,0.1);
+    border: 1px solid rgba(0,199,242,0.3);
+    color: var(--accent-hi);
+    letter-spacing: 0.04em;
+  }
+  /* Tabular numbers MUST go LTR even in RTL */
+  .ltr-nums { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
+  /* Diagonal provisional stripes (unsynced) */
+  .stripe-provisional {
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255,171,61,0.12) 0,
+      rgba(255,171,61,0.12) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+
+  /* Animations */
+  @keyframes heartbeat {
+    0%, 30%, 100% { box-shadow: 0 0 0 0 rgba(29,212,139,0.55); transform: scale(1); }
+    15% { box-shadow: 0 0 0 6px rgba(29,212,139,0); transform: scale(1.2); }
+  }
+  @keyframes heartbeat-amber {
+    0%, 30%, 100% { box-shadow: 0 0 0 0 rgba(255,171,61,0.6); transform: scale(1); }
+    15% { box-shadow: 0 0 0 6px rgba(255,171,61,0); transform: scale(1.25); }
+  }
+  @keyframes dpFade {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes dpSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes dpPop {
+    0% { transform: scale(0.8); opacity: 0; }
+    70% { transform: scale(1.06); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes dpKeyPulse {
+    0% { background: rgba(0,199,242,0.35); }
+    100% { background: rgba(0,199,242,0); }
+  }
+  @keyframes dpBounce {
+    0%, 100% { transform: scaleY(0.4); }
+    50% { transform: scaleY(1); }
+  }
+  @keyframes dpScan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  @keyframes dpRowEnter {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Global tweak panel */
+  .tweak-panel {
+    position: fixed; bottom: 18px; left: 18px; z-index: 100;
+    width: 272px;
+    background: rgba(8,24,38,0.94);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    font-family: 'Inter', sans-serif;
+    direction: ltr;
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="frames/pos/i18n.jsx"></script>
+  <script type="text/babel" src="frames/pos/data.jsx"></script>
+  <script type="text/babel" src="frames/pos/shell.jsx"></script>
+  <script type="text/babel" src="frames/pos/terminal_v2.jsx"></script>
+  <script type="text/babel" src="frames/pos/drugs.jsx"></script>
+  <script type="text/babel" src="frames/pos/stocktaking.jsx"></script>
+  <script type="text/babel" src="frames/pos/invoice.jsx"></script>
+  <script type="text/babel" src="frames/pos/modals.jsx"></script>
+  <script type="text/babel" src="frames/pos/sync.jsx"></script>
+  <script type="text/babel" src="frames/pos/shift.jsx"></script>
+  <script type="text/babel" src="frames/pos/tweaks.jsx"></script>
+  <script type="text/babel" src="frames/pos/app_v2.jsx"></script>
+</body>
+</html>
