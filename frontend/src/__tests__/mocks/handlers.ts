@@ -300,6 +300,40 @@ export const handlers = [
     }
     return HttpResponse.json(mockVouchers);
   }),
+  http.post(`${API}/api/v1/pos/vouchers/validate`, async ({ request }) => {
+    const body = (await request.json()) as { code?: string; cart_subtotal?: number };
+    const code = (body.code ?? "").toUpperCase();
+    if (code === "SUMMER25") {
+      return HttpResponse.json({
+        code: "SUMMER25",
+        discount_type: "percent",
+        value: 25,
+        remaining_uses: 8,
+        expires_at: null,
+        min_purchase: null,
+      });
+    }
+    if (code === "FLAT50") {
+      return HttpResponse.json({
+        code: "FLAT50",
+        discount_type: "amount",
+        value: 50,
+        remaining_uses: 1,
+        expires_at: null,
+        min_purchase: 200,
+      });
+    }
+    if (code === "EXPIRED") {
+      return HttpResponse.json({ detail: "voucher_expired" }, { status: 400 });
+    }
+    if (code === "SMALLCART") {
+      return HttpResponse.json(
+        { detail: "voucher_min_purchase_unmet" },
+        { status: 400 },
+      );
+    }
+    return HttpResponse.json({ detail: "voucher_not_found" }, { status: 404 });
+  }),
   http.post(`${API}/api/v1/pos/vouchers`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(

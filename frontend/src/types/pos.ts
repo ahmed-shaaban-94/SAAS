@@ -102,6 +102,8 @@ export interface CheckoutRequest {
   insurance_no?: string;
   split_cash?: number;
   split_insurance?: number;
+  // Optional voucher code to redeem atomically at checkout
+  voucher_code?: string;
 }
 
 export interface CheckoutResponse {
