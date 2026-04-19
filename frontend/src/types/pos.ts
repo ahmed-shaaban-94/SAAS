@@ -2,7 +2,7 @@
 
 export type TransactionStatus = "draft" | "completed" | "voided" | "returned";
 export type TerminalStatus = "open" | "active" | "paused" | "closed";
-export type PaymentMethod = "cash" | "card" | "insurance" | "mixed";
+export type PaymentMethod = "cash" | "card" | "insurance" | "voucher" | "mixed";
 export type ReturnReason = "defective" | "wrong_drug" | "expired" | "customer_request";
 export type ReceiptFormat = "thermal" | "pdf" | "email";
 export type RefundMethod = "cash" | "credit_note";
