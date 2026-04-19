@@ -16,7 +16,6 @@ from datapulse.api.routes.health import (
     _check_dbt_freshness,
     _check_query_executor,
     _check_redis,
-    _check_schema_version,
 )
 
 
@@ -82,37 +81,6 @@ class TestCheckQueryExecutor:
         mock_get.side_effect = redis.ConnectionError("connection refused")
         result = _check_query_executor()
         assert result["status"] == "error"
-
-
-class TestCheckSchemaVersion:
-    @patch("datapulse.api.routes.health.get_engine")
-    def test_ok(self, mock_engine):
-        mock_conn = MagicMock()
-        mock_conn.execute.return_value.fetchone.return_value = ("abc1234",)
-        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
-        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
-        result = _check_schema_version()
-        assert result["status"] == "ok"
-        assert result["version"] == "abc1234"
-
-    @patch("datapulse.api.routes.health.get_engine")
-    def test_unknown_when_empty(self, mock_engine):
-        mock_conn = MagicMock()
-        mock_conn.execute.return_value.fetchone.return_value = None
-        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
-        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
-        result = _check_schema_version()
-        assert result["status"] == "unknown"
-        assert result["version"] is None
-
-    @patch("datapulse.api.routes.health.get_engine")
-    def test_error(self, mock_engine):
-        mock_engine.return_value.connect.side_effect = sqlalchemy.exc.OperationalError(
-            "SELECT version_num FROM alembic_version LIMIT 1", {}, Exception("timeout")
-        )
-        result = _check_schema_version()
-        assert result["status"] == "error"
-        assert result["error"] == "internal_error"
 
 
 class TestCheckDbtFreshness:

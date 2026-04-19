@@ -13,7 +13,7 @@ from datapulse.analytics.models import (
     TimeSeriesPoint,
     TrendResult,
 )
-from datapulse.api.auth import get_optional_user
+from datapulse.api.auth import get_optional_user_for_health
 
 _AUTHED_USER = {
     "sub": "test-user",
@@ -66,17 +66,13 @@ def _make_kpi_summary() -> KPISummary:
 def test_health_endpoint(api_client):
     """GET /health returns 200 with status and component checks."""
     client, mock_repo, mock_detail_repo = api_client
-    client.app.dependency_overrides[get_optional_user] = lambda: _AUTHED_USER
+    client.app.dependency_overrides[get_optional_user_for_health] = lambda: _AUTHED_USER
     with (
         patch("datapulse.api.routes.health.get_engine") as mock_engine,
         patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),
         patch(
             "datapulse.api.routes.health._check_query_executor",
             return_value={"status": "ok", "latency_ms": 1},
-        ),
-        patch(
-            "datapulse.api.routes.health._check_schema_version",
-            return_value={"status": "ok", "version": "abc1234"},
         ),
         patch(
             "datapulse.api.routes.health._check_dbt_freshness",
@@ -107,17 +103,13 @@ def test_health_endpoint(api_client):
 def test_health_endpoint_unauthenticated(api_client):
     """GET /health without auth returns only overall status — no component details."""
     client, mock_repo, mock_detail_repo = api_client
-    client.app.dependency_overrides[get_optional_user] = lambda: None
+    client.app.dependency_overrides[get_optional_user_for_health] = lambda: None
     with (
         patch("datapulse.api.routes.health.get_engine") as mock_engine,
         patch("datapulse.api.routes.health._check_redis", return_value={"status": "disabled"}),
         patch(
             "datapulse.api.routes.health._check_query_executor",
             return_value={"status": "ok", "latency_ms": 1},
-        ),
-        patch(
-            "datapulse.api.routes.health._check_schema_version",
-            return_value={"status": "ok", "version": "abc1234"},
         ),
         patch(
             "datapulse.api.routes.health._check_dbt_freshness",
@@ -147,7 +139,7 @@ def test_health_endpoint_unauthenticated(api_client):
 def test_health_endpoint_degraded(api_client):
     """GET /health returns 503 when database is unreachable."""
     client, mock_repo, mock_detail_repo = api_client
-    client.app.dependency_overrides[get_optional_user] = lambda: _AUTHED_USER
+    client.app.dependency_overrides[get_optional_user_for_health] = lambda: _AUTHED_USER
     with (
         patch("datapulse.checks.get_engine") as mock_checks_engine,
         patch("datapulse.api.routes.health.get_engine") as mock_engine,
