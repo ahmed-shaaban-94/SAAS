@@ -5,3 +5,5 @@ resources/nextjs/
 *.exe
 *.msi
 *.nsis
+coverage/
+pos-desktop.log*

@@ -12,6 +12,9 @@ import { pullProducts, pullStock } from "./pull";
 import { checkOnline } from "./online";
 import { getQueueStats } from "../db/queue";
 import { getSetting } from "../db/settings";
+import { getLogger } from "../logging/index";
+
+const log = () => getLogger().child({ module: "sync" });
 
 const PUSH_INTERVAL_MS = 10_000;
 const STOCK_PULL_INTERVAL_MS = 300_000;    // 5 min
@@ -35,7 +38,7 @@ export function bootRecovery(db: Database.Database): void {
     )
     .run(now);
   if (changed.changes > 0) {
-    console.log(`[sync] boot recovery: reset ${changed.changes} orphaned syncing row(s) to pending`);
+    log().info({ reset: changed.changes }, "boot recovery: reset orphaned syncing rows to pending");
   }
 }
 
@@ -55,7 +58,7 @@ export function startBackgroundSync(
       try {
         await drainQueue(db);
       } catch (err) {
-        console.error("[sync] drainQueue error:", err instanceof Error ? err.message : err);
+        log().error({ err: err instanceof Error ? err.message : String(err) }, "drainQueue error");
       }
     }
 
@@ -68,12 +71,12 @@ export function startBackgroundSync(
 
   _timer = setInterval(() => {
     tick().catch((err) => {
-      console.error("[sync] tick error:", err instanceof Error ? err.message : err);
+      log().error({ err: err instanceof Error ? err.message : String(err) }, "tick error");
     });
   }, PUSH_INTERVAL_MS);
 
   // Run one tick immediately so state is fresh on startup.
-  tick().catch(console.error);
+  tick().catch((err) => log().error({ err }, "initial tick error"));
 
   const pullIfOnline = async (worker: () => Promise<number>, label: string) => {
     const baseUrl = getBaseUrl();
@@ -81,18 +84,22 @@ export function startBackgroundSync(
     if (!online || !getSetting(db, "jwt")) return;
     try {
       const n = await worker();
-      if (n > 0) console.log(`[sync] ${label}: pulled ${n} rows`);
+      if (n > 0) log().info({ label, rows: n }, "pull completed");
     } catch (err) {
-      console.error(`[sync] ${label} error:`, err instanceof Error ? err.message : err);
+      log().error({ label, err: err instanceof Error ? err.message : String(err) }, "pull error");
     }
   };
 
   _stockTimer = setInterval(() => {
-    pullIfOnline(() => pullStock(db), "stock pull").catch(console.error);
+    pullIfOnline(() => pullStock(db), "stock pull").catch((err) =>
+      log().error({ err }, "stock pull error"),
+    );
   }, STOCK_PULL_INTERVAL_MS);
 
   _productsTimer = setInterval(() => {
-    pullIfOnline(() => pullProducts(db), "products pull").catch(console.error);
+    pullIfOnline(() => pullProducts(db), "products pull").catch((err) =>
+      log().error({ err }, "products pull error"),
+    );
   }, PRODUCTS_PULL_INTERVAL_MS);
 
   _cleanup = () => {

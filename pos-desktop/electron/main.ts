@@ -10,6 +10,7 @@ import { getSetting } from "./db/settings";
 import { bootRecovery, startBackgroundSync } from "./sync/background";
 import { setupUpdater, checkForUpdates } from "./updater/index";
 import { upgradeSecretsToEncrypted } from "./authz/secure-store";
+import { createLogger } from "./logging/index";
 
 // ── Configuration ──────────────────────────────────────────
 const PORT = 3847;
@@ -22,6 +23,10 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let nextServer: ChildProcess | null = null;
 let isQuitting = false;
+
+// Logger is created lazily — `app.getPath('logs')` requires Electron
+// to be fully initialised, so we defer until after `app.whenReady()`.
+let log = createLogger({ pretty: !app.isPackaged });
 
 // ── Paths ──────────────────────────────────────────────────
 function getNextJsDir(): string {
@@ -55,7 +60,7 @@ function startNextServer(): Promise<void> {
     const nextDir = getNextJsDir();
     const serverScript = path.join(nextDir, "server.js");
 
-    console.log(`[main] Starting Next.js server from: ${serverScript}`);
+    log.info({ serverScript }, "starting Next.js server");
 
     // Set env vars for the Next.js server.
     // All Auth0 + API vars are passed through from the Electron process env
@@ -82,21 +87,21 @@ function startNextServer(): Promise<void> {
 
     nextServer.stdout?.on("data", (data: Buffer) => {
       const msg = data.toString().trim();
-      if (msg) console.log(`[next] ${msg}`);
+      if (msg) log.info({ source: "next" }, msg);
     });
 
     nextServer.stderr?.on("data", (data: Buffer) => {
       const msg = data.toString().trim();
-      if (msg) console.error(`[next:err] ${msg}`);
+      if (msg) log.error({ source: "next" }, msg);
     });
 
     nextServer.on("error", (err) => {
-      console.error("[main] Failed to start Next.js server:", err);
+      log.error({ err }, "failed to start Next.js server");
       reject(err);
     });
 
     nextServer.on("exit", (code) => {
-      console.log(`[main] Next.js server exited with code ${code}`);
+      log.info({ code }, "Next.js server exited");
       nextServer = null;
       if (!isQuitting) {
         // Server crashed — show error and quit
@@ -123,7 +128,7 @@ function waitForServer(
     http
       .get(`${NEXTJS_URL}/api/auth/session`, (res) => {
         if (res.statusCode && res.statusCode < 500) {
-          console.log(`[main] Next.js server ready (HTTP ${res.statusCode})`);
+          log.info({ status: res.statusCode }, "Next.js server ready");
           resolve();
         } else {
           setTimeout(check, 500);
@@ -139,7 +144,7 @@ function waitForServer(
 
 function stopNextServer(): void {
   if (nextServer) {
-    console.log("[main] Stopping Next.js server...");
+    log.info("stopping Next.js server");
     nextServer.kill("SIGTERM");
     nextServer = null;
   }
@@ -182,7 +187,7 @@ function createWindow(): void {
       const path = parsed.pathname;
       const isPosRoute = POS_ROUTES.some((r) => path.startsWith(r));
       if (!isPosRoute && parsed.hostname === "localhost") {
-        console.log(`[main] Redirecting from ${path} back to POS terminal`);
+        log.info({ from: path }, "redirecting back to POS terminal");
         mainWindow?.loadURL(`${NEXTJS_URL}${POS_PATH}`);
       }
     } catch { /* ignore parse errors */ }
@@ -281,23 +286,26 @@ function createTray(): void {
 
 // ── App Lifecycle ──────────────────────────────────────────
 app.whenReady().then(async () => {
-  console.log(`[main] DataPulse POS v${app.getVersion()} starting...`);
+  // Re-create the logger now that Electron's `app` is ready, so file output
+  // goes to the platform-correct logs path instead of cwd.
+  log = createLogger({ logsDir: app.getPath("logs"), pretty: !app.isPackaged });
+  log.info({ version: app.getVersion() }, "DataPulse POS starting");
 
   // Initialise local SQLite database
   const dbPath = path.join(app.getPath("userData"), "pos.db");
   const db = openDb(dbPath);
   applySchema(db);
-  console.log(`[main] SQLite database ready at ${dbPath}`);
+  log.info({ dbPath }, "SQLite database ready");
 
   // M3b hardening: upgrade any plaintext (v0 / legacy) secrets to DPAPI-wrapped
   // storage in-place. Idempotent — already-encrypted rows are skipped.
   try {
     const upgraded = upgradeSecretsToEncrypted(db);
     if (upgraded > 0) {
-      console.log(`[boot] upgraded ${upgraded} secret(s) from plain to encrypted storage`);
+      log.info({ upgraded }, "upgraded secrets from plain to encrypted storage");
     }
   } catch (err) {
-    console.error("[boot] secure-store upgrade failed (continuing boot):", err);
+    log.error({ err }, "secure-store upgrade failed (continuing boot)");
   }
 
   // Initialise hardware adapters (mock or real based on settings)
@@ -308,7 +316,7 @@ app.whenReady().then(async () => {
     hardwareMode === "real" ? "real" : "mock",
     printerInterface ? { printerInterface, printerType } : undefined,
   );
-  console.log(`[main] Hardware mode: ${hw.mode}`);
+  log.info({ mode: hw.mode }, "hardware mode resolved");
 
   // Reset any syncing rows orphaned by a previous crash (§6.1 boot recovery)
   bootRecovery(db);
@@ -319,7 +327,7 @@ app.whenReady().then(async () => {
   try {
     await startNextServer();
   } catch (err) {
-    console.error("[main] Cannot start Next.js server:", err);
+    log.fatal({ err }, "cannot start Next.js server");
     app.quit();
     return;
   }
