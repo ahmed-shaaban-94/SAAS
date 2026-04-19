@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { PaymentPanel } from "@/components/pos/PaymentPanel";
 import { ReceiptPreview } from "@/components/pos/ReceiptPreview";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
+import { InvoiceModal } from "@/components/pos/InvoiceModal";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
 import { fetchAPI, postAPI } from "@/lib/api-client";
@@ -30,6 +31,7 @@ export default function CheckoutPage() {
   const [result, setResult] = useState<CheckoutResponse | null>(null);
   const [txnDetail, setTxnDetail] = useState<TransactionDetailResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
 
   // Read pending checkout info set by terminal page
   useEffect(() => {
@@ -71,6 +73,7 @@ export default function CheckoutPage() {
 
       setResult(checkoutResult);
       setTxnDetail(detail);
+      setInvoiceOpen(true);
       localStorage.removeItem("pos:pending_checkout");
     } catch {
       // Error shown in UI
@@ -148,10 +151,23 @@ export default function CheckoutPage() {
           <ReceiptPreview
             transaction={txnDetail}
             checkoutResult={result}
+            onPrint={() => setInvoiceOpen(true)}
             onEmail={handleEmail}
             onClose={handleNewSale}
           />
         </main>
+        <InvoiceModal
+          open={invoiceOpen}
+          onClose={() => setInvoiceOpen(false)}
+          items={txnDetail.items}
+          grandTotal={txnDetail.grand_total}
+          discountTotal={txnDetail.discount_total}
+          discountSource={appliedDiscount?.source ?? null}
+          discountLabel={appliedDiscount?.label ?? null}
+          paymentMethod={txnDetail.payment_method ?? pending?.method ?? "cash"}
+          receiptNumber={result.receipt_number}
+          createdAt={txnDetail.created_at}
+        />
       </div>
     );
   }

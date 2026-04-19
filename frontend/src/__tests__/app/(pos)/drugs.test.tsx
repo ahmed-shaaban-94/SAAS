@@ -171,7 +171,7 @@ describe("Drugs tab (#467)", () => {
     });
   });
 
-  it("F6 surfaces the stocktaking-placeholder toast", async () => {
+  it("F6 opens the stocktaking worksheet modal", async () => {
     renderPage();
 
     await waitFor(() =>
@@ -183,8 +183,9 @@ describe("Drugs tab (#467)", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/stocktaking sheet coming in pr 4/i)).toBeInTheDocument();
+      expect(screen.getByTestId("stocktaking-modal")).toBeInTheDocument();
     });
+    expect(screen.getByTestId("stocktaking-doc-number").textContent).toMatch(/^STK-\d{6}-\d{2}$/);
   });
 
   it("'/' focuses the search input from outside an input", async () => {
