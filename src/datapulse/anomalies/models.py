@@ -65,3 +65,20 @@ class AnomalyRunResult(BaseModel):
     anomalies_found: int
     suppressed: int
     alerts_saved: int
+
+
+class AnomalyCard(BaseModel):
+    """Design-aligned display projection of an anomaly for the dashboard feed.
+
+    Derived from :class:`AnomalyAlertResponse` via :mod:`datapulse.anomalies.cards`.
+    Shape matches the handoff anomaly card on ``/dashboard/v3``.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    kind: str  # "up" | "down" | "info"
+    title: str
+    body: str
+    time_ago: str  # "today" | "1d ago" | "3d ago" | ...
+    confidence: str  # "high" | "medium" | "low" | "info"

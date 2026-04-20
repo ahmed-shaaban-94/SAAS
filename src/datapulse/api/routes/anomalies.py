@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 
-from datapulse.anomalies.models import AnomalyAlertResponse
+from datapulse.anomalies.models import AnomalyAlertResponse, AnomalyCard
 from datapulse.anomalies.repository import AnomalyRepository
 from datapulse.anomalies.service import AnomalyService
 from datapulse.api.auth import get_current_user
@@ -41,6 +41,24 @@ def get_active_alerts(
     """Return unacknowledged, unsuppressed anomaly alerts."""
     set_cache_headers(response, 60)
     return service.get_active_alerts(limit=limit)
+
+
+@router.get("/cards", response_model=list[AnomalyCard])
+@limiter.limit("60/minute")
+def get_anomaly_cards(
+    request: Request,
+    response: Response,
+    service: _ServiceDep,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> list[AnomalyCard]:
+    """Return active anomalies projected to the dashboard card shape (issue #508).
+
+    Layout fields — ``kind`` (up/down/info), ``title``, ``body``, ``time_ago``,
+    ``confidence`` — come from an adapter over :class:`AnomalyAlertResponse`.
+    Existing ``/anomalies/active`` is unchanged for backward-compat callers.
+    """
+    set_cache_headers(response, 60)
+    return service.get_cards(limit=limit)
 
 
 @router.get("/history", response_model=list[AnomalyAlertResponse])

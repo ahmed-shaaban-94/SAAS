@@ -325,6 +325,17 @@ def get_expiry_service(
     return ExpiryService(repo)
 
 
+def get_anomaly_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    """Wire AnomalyRepository -> AnomalyService for route injection."""
+    from datapulse.anomalies.repository import AnomalyRepository
+    from datapulse.anomalies.service import AnomalyService
+
+    repo = AnomalyRepository(session)
+    return AnomalyService(session=session, repo=repo)
+
+
 def get_dispensing_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ):

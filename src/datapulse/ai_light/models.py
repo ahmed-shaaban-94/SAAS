@@ -74,3 +74,21 @@ class ChangeNarrative(BaseModel):
     deltas: list[ChangeDelta]
     current_period: str
     previous_period: str
+
+
+class TopInsight(BaseModel):
+    """Single headline insight for the dashboard AI alert banner (issue #510).
+
+    Derived from the most severe active anomaly. When no active anomalies
+    exist the route returns 204 rather than fabricating an insight — the
+    banner simply hides.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    title: str
+    body: str
+    action_label: str = "Investigate"
+    action_target: str | None = None  # deep-link to anomaly/branch/etc.
+    confidence: str  # "high" | "medium" | "low" | "info"
+    generated_at: date

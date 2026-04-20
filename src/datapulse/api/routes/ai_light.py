@@ -1,10 +1,11 @@
 """AI-Light API endpoints.
 
-Provides 4 endpoints under ``/ai-light/`` for AI-powered insights:
+Provides 5 endpoints under ``/ai-light/`` for AI-powered insights:
 - GET /status — check if OpenRouter is configured
 - GET /summary — executive narrative summary
 - GET /anomalies — anomaly detection report
 - GET /changes — change narrative between two periods
+- GET /top-insight — single headline insight for the dashboard banner (issue #510)
 """
 
 from __future__ import annotations
@@ -12,11 +13,14 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
-from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative
+from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative, TopInsight
 from datapulse.ai_light.service import AILightService
-from datapulse.api.deps import get_ai_light_service
+from datapulse.ai_light.top_insight import build_top_insight
+from datapulse.anomalies.service import AnomalyService
+from datapulse.api.cache_helpers import set_cache_headers
+from datapulse.api.deps import get_ai_light_service, get_anomaly_service
 from datapulse.api.limiter import limiter
 from datapulse.logging import get_logger
 from datapulse.rbac.dependencies import require_permission
@@ -29,6 +33,7 @@ router = APIRouter(
 log = get_logger(__name__)
 
 ServiceDep = Annotated[AILightService, Depends(get_ai_light_service)]
+AnomalyServiceDep = Annotated[AnomalyService, Depends(get_anomaly_service)]
 
 
 @router.get("/status")
@@ -69,6 +74,31 @@ def get_anomalies(
     except Exception as exc:
         log.error("ai_anomalies_failed", error=str(exc), exc_info=True)
         raise HTTPException(status_code=502, detail="AI service temporarily unavailable") from exc
+
+
+@router.get(
+    "/top-insight",
+    response_model=TopInsight,
+    responses={204: {"description": "No active insight"}},
+)
+@limiter.limit("30/minute")
+def get_top_insight(
+    request: Request,
+    response: Response,
+    anomaly_service: AnomalyServiceDep,
+) -> TopInsight | Response:
+    """Return the single most important active insight for the dashboard banner.
+
+    Picks the most severe active anomaly and projects it to :class:`TopInsight`
+    (issue #510). Returns ``204 No Content`` when there are no active anomalies
+    so the banner can hide cleanly.
+    """
+    alerts = anomaly_service.get_active_alerts(limit=10)
+    insight = build_top_insight(alerts)
+    if insight is None:
+        return Response(status_code=204)
+    set_cache_headers(response, 300)
+    return insight
 
 
 @router.get("/changes", response_model=ChangeNarrative)
