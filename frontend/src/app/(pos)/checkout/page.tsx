@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { PaymentPanel } from "@/components/pos/PaymentPanel";
 import { ReceiptPreview } from "@/components/pos/ReceiptPreview";
+import { InvoiceModal } from "@/components/pos/InvoiceModal";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
@@ -16,6 +18,13 @@ import type {
   TransactionDetailResponse,
 } from "@/types/pos";
 
+// Branch metadata for the A4 invoice header. These are display-only and
+// come from the design handoff; wire to a real tenant-settings endpoint
+// once the branding surface exposes them.
+const INVOICE_BRANCH_NAME = "Maadi branch · POS-03";
+const INVOICE_BRANCH_ADDRESS = "12 Sobhi Saleh St · Cairo";
+const INVOICE_TAX_NUMBER = "428-893-011";
+
 interface PendingCheckout {
   transactionId: number;
   method: PaymentMethod;
@@ -23,6 +32,7 @@ interface PendingCheckout {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { grandTotal, appliedDiscount, clearCart } = usePosCart();
   const checkout = usePosCheckout();
 
@@ -30,6 +40,7 @@ export default function CheckoutPage() {
   const [result, setResult] = useState<CheckoutResponse | null>(null);
   const [txnDetail, setTxnDetail] = useState<TransactionDetailResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
 
   // Read pending checkout info set by terminal page
   useEffect(() => {
@@ -71,6 +82,9 @@ export default function CheckoutPage() {
 
       setResult(checkoutResult);
       setTxnDetail(detail);
+      // Auto-open the A4 invoice on successful commit (per design handoff).
+      // Cashier can Esc/close to return to the thermal receipt view.
+      setInvoiceOpen(true);
       localStorage.removeItem("pos:pending_checkout");
     } catch {
       // Error shown in UI
@@ -137,12 +151,26 @@ export default function CheckoutPage() {
 
   // Success state
   if (result && txnDetail) {
+    const cashierName =
+      (session?.user?.name as string | undefined) ?? "Cashier";
+    const discountSource = appliedDiscount?.source;
     return (
       <div className="flex min-h-screen flex-col">
         <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
           <OfflineBadge />
           <span className="text-sm font-semibold text-text-primary">Checkout Complete</span>
-          <div className="w-24" />
+          <button
+            type="button"
+            onClick={() => setInvoiceOpen(true)}
+            data-testid="pos-checkout-view-invoice"
+            className={cn(
+              "flex items-center gap-2 rounded-lg border border-border px-3 py-1.5",
+              "text-xs font-medium text-text-secondary hover:bg-surface-raised",
+            )}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            A4 invoice
+          </button>
         </header>
         <main className="flex flex-1 items-center justify-center p-4">
           <ReceiptPreview
@@ -152,6 +180,18 @@ export default function CheckoutPage() {
             onClose={handleNewSale}
           />
         </main>
+        <InvoiceModal
+          open={invoiceOpen}
+          onClose={() => setInvoiceOpen(false)}
+          transaction={txnDetail}
+          checkoutResult={result}
+          branchName={INVOICE_BRANCH_NAME}
+          branchAddress={INVOICE_BRANCH_ADDRESS}
+          taxNumber={INVOICE_TAX_NUMBER}
+          cashierName={cashierName}
+          voucher={discountSource === "voucher" ? appliedDiscount?.ref : null}
+          promotion={discountSource === "promotion" ? appliedDiscount?.label : null}
+        />
       </div>
     );
   }

@@ -4,17 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Clock } from "lucide-react";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
-import { useToast } from "@/components/ui/toast";
 import { DrugsSearchBar } from "@/components/pos/drugs/DrugsSearchBar";
 import { DrugsTable } from "@/components/pos/drugs/DrugsTable";
 import { InventorySummary } from "@/components/pos/drugs/InventorySummary";
 import { FocusedDrug } from "@/components/pos/drugs/FocusedDrug";
 import { CartGoTo } from "@/components/pos/drugs/CartGoTo";
+import { StocktakingModal } from "@/components/pos/StocktakingModal";
 import { toDrugRow, type RxFilter, type SortKey, type SortState, type StockFilter } from "@/components/pos/drugs/types";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { useDrugSearch } from "@/hooks/use-drug-search";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TerminalSessionResponse } from "@/types/pos";
+
+// Stocktaking worksheet letterhead (display-only; source from tenant
+// settings once the branding surface exposes CR + address).
+const STOCKTAKING_BRANCH_NAME = "DataPulse Pharmacy — Maadi";
+const STOCKTAKING_BRANCH_ADDRESS = "12 Sobhi Saleh St · Maadi · Cairo";
+const STOCKTAKING_CR_NUMBER = "428893";
 
 function useActiveTerminal(): TerminalSessionResponse | null {
   const [terminal, setTerminal] = useState<TerminalSessionResponse | null>(null);
@@ -43,6 +50,7 @@ export default function PosDrugsPage() {
   const [sort, setSort] = useState<SortState>({ key: "drug_name", dir: "asc" });
   const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
   const [activeIdx, setActiveIdx] = useState(0);
+  const [stocktakingOpen, setStocktakingOpen] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -117,8 +125,8 @@ export default function PosDrugsPage() {
   }, []);
 
   const handleStocktaking = useCallback(() => {
-    toast.info("Stocktaking sheet coming in PR 4");
-  }, [toast]);
+    setStocktakingOpen(true);
+  }, []);
 
   // ---- Keyboard nav (scoped to this page) ----
   useEffect(() => {
@@ -247,6 +255,14 @@ export default function PosDrugsPage() {
           <CartGoTo itemCount={itemCount} grandTotal={grandTotal} />
         </aside>
       </main>
+      <StocktakingModal
+        open={stocktakingOpen}
+        onClose={() => setStocktakingOpen(false)}
+        rows={allRows}
+        branchName={STOCKTAKING_BRANCH_NAME}
+        branchAddress={STOCKTAKING_BRANCH_ADDRESS}
+        crNumber={STOCKTAKING_CR_NUMBER}
+      />
     </div>
   );
 }

@@ -171,20 +171,23 @@ describe("Drugs tab (#467)", () => {
     });
   });
 
-  it("F6 surfaces the stocktaking-placeholder toast", async () => {
+  it("F6 opens the stocktaking worksheet modal", async () => {
     renderPage();
 
     await waitFor(() =>
       expect(screen.getByTestId("drug-row-AMOX-500")).toBeInTheDocument(),
     );
 
+    expect(screen.queryByTestId("pos-stocktaking-modal")).not.toBeInTheDocument();
+
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "F6" }));
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/stocktaking sheet coming in pr 4/i)).toBeInTheDocument();
+      expect(screen.getByTestId("pos-stocktaking-modal")).toBeInTheDocument();
     });
+    expect(screen.getByText("Stocktaking Worksheet")).toBeInTheDocument();
   });
 
   it("'/' focuses the search input from outside an input", async () => {

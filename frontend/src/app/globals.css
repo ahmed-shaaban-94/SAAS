@@ -558,6 +558,48 @@ html {
 }
 
 /* ═══════════════════════════════════════════════
+   POS printable A4 modals — Invoice + Stocktaking
+   (strip dark chrome, force B&W, keep ribbon + zebra + totals box readable)
+   ═══════════════════════════════════════════════ */
+@media print {
+  .pos-print-root {
+    position: static !important;
+    inset: auto !important;
+    background: #fff !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+    display: block !important;
+  }
+  body:has(.pos-print-root) > *:not(:has(.pos-print-root)) { display: none !important; }
+  .pos-print-chrome { display: none !important; }
+  .pos-print-paper {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .pos-print-paper * {
+    color: #000 !important;
+    border-color: #000 !important;
+  }
+  .pos-print-paper .pos-print-muted { color: #555 !important; }
+  .pos-print-paper .pos-print-ribbon {
+    background: #0b1a29 !important;
+    color: #fff !important;
+  }
+  .pos-print-paper .pos-print-ribbon * { color: #fff !important; }
+  .pos-print-paper .pos-print-zebra:nth-child(even) { background: #f4f4f4 !important; }
+  .pos-print-paper .pos-print-totals-box { background: #f1ede4 !important; }
+  .pos-print-paper .pos-print-totals-box .pos-print-grand { color: #0b1a29 !important; }
+  .pos-print-paper .pos-print-field-cell { background: #fff !important; }
+  @page { size: A4; margin: 12mm; }
+}
+
+/* ═══════════════════════════════════════════════
    Loading card pulse glow overlay
    ═══════════════════════════════════════════════ */
 @keyframes loadingPulseGlow {
@@ -1048,6 +1090,16 @@ html {
   --pos-amber: #ffab3d;
   --pos-red: #ff7b7b;
   --pos-purple: #7467f8;
+
+  /* Paper tokens — printable A4 modals (invoice, stocktaking). Source: design handoff §Paper. */
+  --pos-paper: #fbfaf7;
+  --pos-paper-ink: #0b1a29;
+  --pos-paper-ink-muted: #555555;
+  --pos-paper-totals: #f1ede4;
+  --pos-paper-zebra: #f4f4f4;
+  --pos-paper-rule: #bbbbbb;
+  --pos-paper-ribbon-from: #0b1a29;
+  --pos-paper-ribbon-to: #163452;
 }
 
 /* Giant italic display total — Terminal v2 Totals Hero */
