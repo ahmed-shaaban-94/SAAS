@@ -13,6 +13,7 @@
   --color-divider: var(--divider);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
   --color-accent: var(--accent-color);
   --color-accent-strong: var(--accent-strong);
   --color-chart-blue: var(--chart-blue);
@@ -43,6 +44,7 @@
   --divider: #d9e5f0;
   --text-primary: #102a43;
   --text-secondary: #627d98;
+  --text-tertiary: #829ab1;
   --accent-color: #00c7f2;
   --accent-strong: #0b7da1;
   --chart-blue: #1cb9e7;
@@ -102,6 +104,7 @@
   --divider: #46627c;
   --text-primary: #f7fbff;
   --text-secondary: #b8c0cc;
+  --text-tertiary: #8597a8;
   --accent-color: #00c7f2;
   --accent-strong: #5cdfff;
   --chart-blue: #20bce5;
@@ -939,6 +942,7 @@ html {
   --divider: #46627c;
   --text-primary: #f7fbff;
   --text-secondary: #b8c0cc;
+  --text-tertiary: #8597a8;
   --accent-color: #00c7f2;
   --accent-strong: #5cdfff;
   --chart-blue: #20bce5;
