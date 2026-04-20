@@ -127,9 +127,7 @@ class FileWatcherService:
     def _health_snapshot(self) -> dict[str, object]:
         """Lock-safe dict for the health endpoint. Combines service-level
         state with the handler's own snapshot."""
-        handler_snap: dict[str, object] = (
-            self._handler.health_snapshot() if self._handler else {}
-        )
+        handler_snap: dict[str, object] = self._handler.health_snapshot() if self._handler else {}
         return {
             "status": "ok" if self.is_running else "stopped",
             "watch_dir": self.watch_path,
