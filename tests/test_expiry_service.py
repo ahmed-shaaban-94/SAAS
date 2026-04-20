@@ -108,6 +108,39 @@ def test_get_expiry_summary_calls_repo(service: ExpiryService, mock_repo: MagicM
 
 
 # ------------------------------------------------------------------
+# get_exposure_tiers (issue #506)
+# ------------------------------------------------------------------
+
+
+def test_get_exposure_tiers_calls_repo(service: ExpiryService, mock_repo: MagicMock):
+    mock_repo.get_exposure_tiers.return_value = []
+    with (
+        patch("datapulse.expiry.service.cache_get", return_value=None),
+        patch("datapulse.expiry.service.cache_set"),
+    ):
+        service.get_exposure_tiers(ExpiryFilter())
+    mock_repo.get_exposure_tiers.assert_called_once()
+
+
+def test_get_exposure_tiers_returns_cached(service: ExpiryService, mock_repo: MagicMock):
+    sentinel = [object()]
+    with patch("datapulse.expiry.service.cache_get", return_value=sentinel):
+        result = service.get_exposure_tiers(ExpiryFilter())
+    mock_repo.get_exposure_tiers.assert_not_called()
+    assert result is sentinel
+
+
+def test_get_exposure_tiers_caches_result(service: ExpiryService, mock_repo: MagicMock):
+    mock_repo.get_exposure_tiers.return_value = []
+    with (
+        patch("datapulse.expiry.service.cache_get", return_value=None),
+        patch("datapulse.expiry.service.cache_set") as mock_set,
+    ):
+        service.get_exposure_tiers(ExpiryFilter(site_code="S1"))
+    mock_set.assert_called_once()
+
+
+# ------------------------------------------------------------------
 # get_expiry_calendar
 # ------------------------------------------------------------------
 

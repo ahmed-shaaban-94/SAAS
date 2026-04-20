@@ -17,6 +17,7 @@ from datapulse.expiry.models import (
     BatchInfo,
     ExpiryAlert,
     ExpiryCalendarDay,
+    ExpiryExposureTier,
     ExpirySummary,
     FefoResponse,
 )
@@ -234,6 +235,58 @@ class TestGetExpirySummary:
 
     def test_starter_plan_returns_403(self, starter_client: TestClient):
         resp = starter_client.get("/api/v1/expiry/summary")
+        assert resp.status_code == 403
+
+
+# ------------------------------------------------------------------
+# GET /expiry/exposure-summary (issue #506)
+# ------------------------------------------------------------------
+
+
+class TestGetExpiryExposureSummary:
+    def _tiers(self) -> list[ExpiryExposureTier]:
+        return [
+            ExpiryExposureTier(
+                tier="30d",
+                label="Within 30 days",
+                tone="red",
+                batch_count=4,
+                total_egp=Decimal("48000"),
+            ),
+            ExpiryExposureTier(
+                tier="60d",
+                label="31-60 days",
+                tone="amber",
+                batch_count=5,
+                total_egp=Decimal("62000"),
+            ),
+            ExpiryExposureTier(
+                tier="90d",
+                label="61-90 days",
+                tone="green",
+                batch_count=3,
+                total_egp=Decimal("32000"),
+            ),
+        ]
+
+    def test_returns_200_with_three_tiers(self, client: TestClient, mock_service: MagicMock):
+        mock_service.get_exposure_tiers.return_value = self._tiers()
+        resp = client.get("/api/v1/expiry/exposure-summary")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert [row["tier"] for row in data] == ["30d", "60d", "90d"]
+        assert data[0]["tone"] == "red"
+        assert data[0]["batch_count"] == 4
+
+    def test_accepts_site_code_filter(self, client: TestClient, mock_service: MagicMock):
+        mock_service.get_exposure_tiers.return_value = self._tiers()
+        resp = client.get("/api/v1/expiry/exposure-summary?site_code=S01")
+        assert resp.status_code == 200
+        call = mock_service.get_exposure_tiers.call_args
+        assert call.args[0].site_code == "S01"
+
+    def test_starter_plan_returns_403(self, starter_client: TestClient):
+        resp = starter_client.get("/api/v1/expiry/exposure-summary")
         assert resp.status_code == 403
 
 

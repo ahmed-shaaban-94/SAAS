@@ -90,6 +90,60 @@ def test_get_expiry_summary_with_site_filter(repo: ExpiryRepository, mock_sessio
 
 
 # ------------------------------------------------------------------
+# get_exposure_tiers (issue #506)
+# ------------------------------------------------------------------
+
+
+def test_get_exposure_tiers_always_returns_three_rows(
+    repo: ExpiryRepository, mock_session: MagicMock
+):
+    """Empty warehouse still produces three tier rows with zero totals."""
+    mock_session.execute.return_value.mappings.return_value.all.return_value = []
+    rows = repo.get_exposure_tiers(ExpiryFilter())
+    assert [r.tier for r in rows] == ["30d", "60d", "90d"]
+    assert all(r.batch_count == 0 and r.total_egp == 0 for r in rows)
+
+
+def test_get_exposure_tiers_maps_buckets_to_tiers(repo: ExpiryRepository, mock_session: MagicMock):
+    """critical -> 30d red, warning -> 60d amber, caution -> 90d green."""
+    mock_session.execute.return_value.mappings.return_value.all.return_value = [
+        {"expiry_bucket": "critical", "batch_count": 4, "total_egp": Decimal("48000")},
+        {"expiry_bucket": "warning", "batch_count": 5, "total_egp": Decimal("62000")},
+        {"expiry_bucket": "caution", "batch_count": 3, "total_egp": Decimal("32000")},
+    ]
+    rows = repo.get_exposure_tiers(ExpiryFilter())
+    by_tier = {r.tier: r for r in rows}
+    assert by_tier["30d"].tone == "red"
+    assert by_tier["30d"].batch_count == 4
+    assert by_tier["30d"].total_egp == Decimal("48000")
+    assert by_tier["60d"].tone == "amber"
+    assert by_tier["60d"].label == "31-60 days"
+    assert by_tier["90d"].tone == "green"
+    assert by_tier["90d"].batch_count == 3
+
+
+def test_get_exposure_tiers_passes_site_filter(repo: ExpiryRepository, mock_session: MagicMock):
+    repo.get_exposure_tiers(ExpiryFilter(site_code="S01"))
+    params = mock_session.execute.call_args[0][1]
+    assert params.get("site_code") == "S01"
+
+
+def test_get_exposure_tiers_partial_data_pads_missing_tiers(
+    repo: ExpiryRepository, mock_session: MagicMock
+):
+    """Only critical bucket present -> still return all three tiers."""
+    mock_session.execute.return_value.mappings.return_value.all.return_value = [
+        {"expiry_bucket": "critical", "batch_count": 1, "total_egp": Decimal("500")},
+    ]
+    rows = repo.get_exposure_tiers(ExpiryFilter())
+    by_tier = {r.tier: r for r in rows}
+    assert by_tier["30d"].batch_count == 1
+    assert by_tier["60d"].batch_count == 0
+    assert by_tier["60d"].total_egp == 0
+    assert by_tier["90d"].batch_count == 0
+
+
+# ------------------------------------------------------------------
 # get_expiry_calendar
 # ------------------------------------------------------------------
 

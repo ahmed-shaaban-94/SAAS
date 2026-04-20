@@ -14,6 +14,7 @@ from datapulse.expiry.models import (
     BatchInfo,
     ExpiryAlert,
     ExpiryCalendarDay,
+    ExpiryExposureTier,
     ExpiryFilter,
     ExpirySummary,
     FefoRequest,
@@ -101,6 +102,22 @@ class ExpiryService:
         if cached is not None:
             return cached
         result = self._repo.get_expiry_summary(filters)
+        cache_set(key, result, ttl=_TTL)
+        return result
+
+    # ── Exposure tiers (tenant-aggregate EGP per 30/60/90 bucket) ──────────
+
+    def get_exposure_tiers(self, filters: ExpiryFilter) -> list[ExpiryExposureTier]:
+        """Return EGP exposure aggregated to the three design-handoff tiers.
+
+        Always returns exactly three rows (30d / 60d / 90d) so the UI can
+        render deterministic summary chips.
+        """
+        key = _cache_key("exposure_tiers", filters.model_dump())
+        cached = cache_get(key)
+        if cached is not None:
+            return cached
+        result = self._repo.get_exposure_tiers(filters)
         cache_set(key, result, ttl=_TTL)
         return result
 

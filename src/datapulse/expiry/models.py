@@ -68,6 +68,22 @@ class ExpiryCalendarDay(BaseModel):
     alert_level: str  # expired|critical|warning|caution|safe
 
 
+class ExpiryExposureTier(BaseModel):
+    """Tenant-wide EGP exposure aggregated to one of three expiry tiers.
+
+    Design-handoff view expects always-present 30d/60d/90d rows so the
+    UI can render three coloured summary chips even when a tier is empty.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    tier: str  # "30d" | "60d" | "90d"
+    label: str  # "Within 30 days" | "31-60 days" | "61-90 days"
+    tone: str  # "red" | "amber" | "green"
+    batch_count: int
+    total_egp: JsonDecimal
+
+
 class ExpiryFilter(BaseModel):
     """Common query filters for expiry endpoints."""
 

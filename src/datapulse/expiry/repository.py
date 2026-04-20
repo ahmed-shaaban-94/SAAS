@@ -11,6 +11,7 @@ from datapulse.expiry.models import (
     BatchInfo,
     ExpiryAlert,
     ExpiryCalendarDay,
+    ExpiryExposureTier,
     ExpiryFilter,
     ExpirySummary,
     QuarantineRequest,
@@ -194,6 +195,58 @@ class ExpiryRepository:
 
         rows = self._session.execute(stmt, params).mappings().all()
         return [ExpirySummary(**dict(r)) for r in rows]
+
+    # ── Exposure tiers (tenant-aggregate EGP per 30/60/90 bucket) ──────────
+
+    _BUCKET_TO_TIER: dict[str, tuple[str, str, str]] = {
+        "critical": ("30d", "Within 30 days", "red"),
+        "warning": ("60d", "31-60 days", "amber"),
+        "caution": ("90d", "61-90 days", "green"),
+    }
+
+    def get_exposure_tiers(self, filters: ExpiryFilter) -> list[ExpiryExposureTier]:
+        """Return EGP exposure aggregated across all sites, one row per 30/60/90 tier.
+
+        Always returns exactly three rows — empty tiers come back with zero
+        totals so the UI can render deterministic summary chips.
+        """
+        params: dict = {}
+        wheres: list[str] = [
+            "expiry_bucket IN ('critical', 'warning', 'caution')",
+        ]
+
+        if filters.site_code is not None:
+            wheres.append("site_code = :site_code")
+            params["site_code"] = filters.site_code
+
+        where_clause = "WHERE " + " AND ".join(wheres)
+
+        stmt = text(f"""
+            SELECT
+                expiry_bucket,
+                SUM(batch_count)  AS batch_count,
+                SUM(total_value)  AS total_egp
+            FROM {_SCHEMA}.agg_expiry_summary
+            {where_clause}
+            GROUP BY expiry_bucket
+        """)  # noqa: S608
+
+        rows = self._session.execute(stmt, params).mappings().all()
+        by_bucket = {row["expiry_bucket"]: row for row in rows}
+
+        result: list[ExpiryExposureTier] = []
+        for bucket, (tier, label, tone) in self._BUCKET_TO_TIER.items():
+            row = by_bucket.get(bucket)
+            result.append(
+                ExpiryExposureTier(
+                    tier=tier,
+                    label=label,
+                    tone=tone,
+                    batch_count=int(row["batch_count"]) if row else 0,
+                    total_egp=row["total_egp"] if row else 0,
+                )
+            )
+        return result
 
     # ── Calendar ───────────────────────────────────────────────────────────
 
