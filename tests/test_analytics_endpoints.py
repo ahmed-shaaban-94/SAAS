@@ -25,7 +25,14 @@ from datapulse.analytics.models import (
 from datapulse.analytics.service import AnalyticsService
 from datapulse.api.app import create_app
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_analytics_service, get_tenant_session
+from datapulse.api.deps import (
+    get_analytics_service,
+    get_expiry_service,
+    get_inventory_service,
+    get_tenant_plan_limits,
+    get_tenant_session,
+)
+from datapulse.billing.plans import PlanLimits
 
 MOCK_USER = {
     "sub": "test-user",
@@ -47,11 +54,33 @@ def mock_service() -> MagicMock:
     return create_autospec(AnalyticsService, instance=True)
 
 
+def _free_plan() -> PlanLimits:
+    """Minimal plan object — zeros out the optional KPI-row enrichment
+    in ``get_summary`` so the endpoint tests don't require inventory /
+    expiry service fixtures to also be wired up."""
+    return PlanLimits(
+        data_sources=1,
+        max_rows=1_000,
+        ai_insights=False,
+        pipeline_automation=False,
+        quality_gates=False,
+        name="test",
+        price_display="$0/mo",
+        inventory_management=False,
+        expiry_tracking=False,
+    )
+
+
 @pytest.fixture()
 def client(mock_service: MagicMock) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_analytics_service] = lambda: mock_service
+    # /summary enriches with inventory + expiry data when the plan allows —
+    # override all three so TestClient never touches the real DB/Redis.
+    app.dependency_overrides[get_tenant_plan_limits] = _free_plan
+    app.dependency_overrides[get_inventory_service] = lambda: MagicMock()
+    app.dependency_overrides[get_expiry_service] = lambda: MagicMock()
     return TestClient(app)
 
 
