@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -15,9 +15,8 @@ vi.mock("@/lib/pos/ipc", async () => {
   };
 });
 
-// Simple stand-in for the modal — lets us assert on the kind prop without
-// exercising reconcileQueue a second time (that's already covered by
-// ReconcileModal.test.tsx).
+// Stand-in for the modal — lets us assert on `kind` without exercising
+// reconcileQueue a second time (covered by ReconcileModal.test.tsx).
 vi.mock("@/components/pos/ReconcileModal", () => ({
   ReconcileModal: ({
     kind,
@@ -95,40 +94,89 @@ describe("PosSyncIssuesPage", () => {
     expect(screen.getByTestId("sync-issues-skeleton")).toBeInTheDocument();
   });
 
-  it("renders the empty-state 'shift can be closed' message", () => {
+  it("renders the empty-state 'all transactions synced' message", () => {
     setHook({ isLoading: false, items: [] });
     render(<PosSyncIssuesPage />);
-    expect(screen.getByText(/no unresolved sync issues/i)).toBeInTheDocument();
+    expect(screen.getByTestId("sync-issues-empty")).toBeInTheDocument();
+    expect(screen.getByText(/all transactions synced/i)).toBeInTheDocument();
     expect(screen.getByText(/shift can be closed/i)).toBeInTheDocument();
   });
 
-  it("renders one card per rejected row", () => {
-    setHook({ items: [row("a"), row("b"), row("c")] });
+  it("renders one card per rejected row with a reason tag", () => {
+    setHook({
+      items: [
+        row("a", { last_error: "price mismatch on line 2" }),
+        row("b", { last_error: "insurance authorization denied" }),
+        row("c", { last_error: "duplicate barcode" }),
+      ],
+    });
     render(<PosSyncIssuesPage />);
-    expect(screen.getAllByText(/^rejected$/i)).toHaveLength(3);
+    expect(screen.getByTestId("issue-card-a")).toHaveAttribute(
+      "data-reason",
+      "PRICE_MISMATCH",
+    );
+    expect(screen.getByTestId("issue-card-b")).toHaveAttribute(
+      "data-reason",
+      "INSURANCE_REJECT",
+    );
+    expect(screen.getByTestId("issue-card-c")).toHaveAttribute(
+      "data-reason",
+      "DUPLICATE_BARCODE",
+    );
   });
 
-  it("clicking 'Retry with override' opens the modal with retry_override kind", async () => {
+  it("clicking the Override action opens the modal with retry_override kind", async () => {
     setHook({ items: [row("a")] });
     render(<PosSyncIssuesPage />);
-    await userEvent.click(screen.getByRole("button", { name: /retry with override/i }));
-    const modal = await screen.findByTestId("reconcile-modal");
-    expect(modal).toHaveAttribute("data-kind", "retry_override");
+    await userEvent.click(screen.getByTestId("action-override-a"));
+    expect(screen.getByTestId("reconcile-modal")).toHaveAttribute(
+      "data-kind",
+      "retry_override",
+    );
   });
 
-  it("clicking 'Record as loss' opens the modal with record_loss kind", async () => {
+  it("clicking the Loss action opens the modal with record_loss kind", async () => {
     setHook({ items: [row("a")] });
     render(<PosSyncIssuesPage />);
-    await userEvent.click(screen.getByRole("button", { name: /record as loss/i }));
-    const modal = await screen.findByTestId("reconcile-modal");
-    expect(modal).toHaveAttribute("data-kind", "record_loss");
+    await userEvent.click(screen.getByTestId("action-loss-a"));
+    expect(screen.getByTestId("reconcile-modal")).toHaveAttribute(
+      "data-kind",
+      "record_loss",
+    );
   });
 
-  it("clicking 'Corrective void' opens the modal with corrective_void kind", async () => {
+  it("clicking the Void action opens the modal with corrective_void kind", async () => {
     setHook({ items: [row("a")] });
     render(<PosSyncIssuesPage />);
-    await userEvent.click(screen.getByRole("button", { name: /corrective void/i }));
-    const modal = await screen.findByTestId("reconcile-modal");
+    await userEvent.click(screen.getByTestId("action-void-a"));
+    expect(screen.getByTestId("reconcile-modal")).toHaveAttribute(
+      "data-kind",
+      "corrective_void",
+    );
+  });
+
+  it("pressing O opens retry_override for the active row", async () => {
+    setHook({ items: [row("a"), row("b")] });
+    render(<PosSyncIssuesPage />);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "O" }));
+    });
+    expect(screen.getByTestId("reconcile-modal")).toHaveAttribute(
+      "data-kind",
+      "retry_override",
+    );
+  });
+
+  it("ArrowDown advances selection then R voids the second row", async () => {
+    setHook({ items: [row("a"), row("b")] });
+    render(<PosSyncIssuesPage />);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "R" }));
+    });
+    const modal = screen.getByTestId("reconcile-modal");
     expect(modal).toHaveAttribute("data-kind", "corrective_void");
   });
 });
