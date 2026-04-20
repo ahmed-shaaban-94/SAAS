@@ -20,6 +20,7 @@ from datapulse.analytics.models import (
     AnalyticsFilter,
     FilterOption,
     FilterOptions,
+    KPISparkline,
     KPISummary,
     TimeSeriesPoint,
 )
@@ -91,7 +92,9 @@ class KpiRepository:
         log.info("get_kpi_summary", target_date=str(target_date))
 
         date_key = target_date.year * 10000 + target_date.month * 100 + target_date.day
-        sparkline_start = target_date - timedelta(days=6)
+        # 11-point trailing sparkline (target + 10 prior days) for the new
+        # dashboard KPI row — see #503.
+        sparkline_start = target_date - timedelta(days=10)
 
         # Single unified CTE: daily KPIs + basket + comparisons + sparkline +
         # significance history (MoM 12 months + YoY 5 years) — all in ONE query.
@@ -163,19 +166,17 @@ class KpiRepository:
         if row["prev_year_ytd"] is not None:
             yoy_growth = safe_growth(ytd_gross, Decimal(str(row["prev_year_ytd"])))
 
-        # Parse sparkline from JSON aggregate
-        sparkline: list[TimeSeriesPoint] = []
-        if row.get("sparkline_points") is not None:
-            raw_points = row["sparkline_points"]
-            # Handle both pre-parsed list and raw JSON string
-            if isinstance(raw_points, str):
-                import json
+        # Parse sparkline(s) from JSON aggregates
+        sparkline = self._parse_sparkline_points(row.get("sparkline_points"))
+        orders_sparkline = self._parse_sparkline_points(row.get("sparkline_orders_points"))
 
-                raw_points = json.loads(raw_points)
-            sparkline = [
-                TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"])))
-                for p in raw_points
-            ]
+        # Per-metric series for the new KPI row (#503). Stock-risk and
+        # expiry-exposure sparklines are left for the route/service layer
+        # to populate once historical snapshots exist.
+        sparklines = [
+            KPISparkline(metric="revenue", points=sparkline),
+            KPISparkline(metric="orders", points=orders_sparkline),
+        ]
 
         # Statistical significance from inline CTE history (no extra queries)
         mom_sig = self._significance_from_history(row.get("mom_history"))
@@ -199,9 +200,29 @@ class KpiRepository:
             mtd_transactions=mtd_transactions,
             ytd_transactions=ytd_transactions,
             sparkline=sparkline,
+            sparklines=sparklines,
             mom_significance=mom_sig,
             yoy_significance=yoy_sig,
         )
+
+    @staticmethod
+    def _parse_sparkline_points(raw: object) -> list[TimeSeriesPoint]:
+        """Parse a ``json_agg`` sparkline payload into ``TimeSeriesPoint``s.
+
+        Handles both pre-parsed list and raw JSON string (asyncpg vs
+        psycopg2 drivers return JSON differently).
+        """
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            import json as _json
+
+            raw = _json.loads(raw)
+        if not isinstance(raw, list):
+            return []
+        return [
+            TimeSeriesPoint(period=str(p["period"]), value=Decimal(str(p["value"]))) for p in raw
+        ]
 
     @staticmethod
     def _significance_from_history(raw_history) -> str | None:

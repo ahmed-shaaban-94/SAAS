@@ -46,6 +46,7 @@ from datapulse.analytics.models.health import (
 )
 from datapulse.analytics.models.kpi import (
     DashboardData,
+    KPISparkline,
     KPISummary,
     SegmentSummary,
     TrendResult,
@@ -107,6 +108,7 @@ __all__ = [
     "HealthDistribution",
     # kpi
     "DashboardData",
+    "KPISparkline",
     "KPISummary",
     "SegmentSummary",
     "TrendResult",

@@ -13,12 +13,20 @@ from uuid import UUID
 
 from datapulse.cache import cache_bump_version
 from datapulse.logging import get_logger
+from datapulse.pipeline.health import (
+    build_counters,
+    build_history_7d,
+    build_last_run,
+    build_nodes,
+)
 from datapulse.pipeline.models import (
+    PipelineHealth,
     PipelineRunCreate,
     PipelineRunList,
     PipelineRunResponse,
     PipelineRunUpdate,
 )
+from datapulse.pipeline.quality_repository import QualityRepository
 from datapulse.pipeline.repository import PipelineRepository
 
 log = get_logger(__name__)
@@ -27,8 +35,50 @@ log = get_logger(__name__)
 class PipelineService:
     """Orchestrates pipeline run operations with business rules."""
 
-    def __init__(self, repo: PipelineRepository) -> None:
+    def __init__(
+        self,
+        repo: PipelineRepository,
+        quality_repo: QualityRepository | None = None,
+    ) -> None:
         self._repo = repo
+        self._quality_repo = quality_repo
+
+    # ── Dashboard health composite (#509) ────────────────────────────────
+
+    def get_health_summary(self) -> PipelineHealth:
+        """Compose the pipeline-health payload for the dashboard card.
+
+        Single service call composes:
+          - Latest run per medallion stage (bronze/staging/marts)
+          - Latest ``full`` run → ``last_run`` summary
+          - Latest run's quality scorecard → ``gates`` + ``tests`` counters
+          - 7-day per-day run history, zero-padded for missing days
+
+        ``next_run_at`` is left ``None`` — APScheduler's next-fire time
+        isn't surfaced on a queryable table yet; the frontend hides the
+        field when absent. (Follow-up: thread via scheduler status.)
+        """
+        latest_by_type = self._repo.get_latest_run_per_type()
+        full_run = self._repo.get_latest_run(run_type="full")
+
+        scorecard_rows: list[dict] = []
+        if self._quality_repo is not None:
+            try:
+                scorecard_rows = self._quality_repo.get_scorecard(limit=1)
+            except Exception as exc:  # pragma: no cover — defensive
+                log.warning("pipeline_health_scorecard_failed", error=str(exc))
+
+        history_rows = self._repo.get_recent_days_summary(days=7)
+
+        gates, tests = build_counters(scorecard_rows)
+        return PipelineHealth(
+            nodes=build_nodes(latest_by_type),
+            last_run=build_last_run(full_run),
+            next_run_at=None,
+            gates=gates,
+            tests=tests,
+            history_7d=build_history_7d(history_rows),
+        )
 
     @staticmethod
     def _compute_duration(started_at: datetime) -> tuple[datetime, Decimal]:
