@@ -1,3 +1,8 @@
+export interface KPISparkline {
+  metric: "revenue" | "orders" | "stock_risk" | "expiry_exposure";
+  points: TimeSeriesPoint[];
+}
+
 export interface KPISummary {
   // Gross sales (primary — net deliberately excluded)
   /** @deprecated Use period_gross. Legacy name kept for AI Light, n8n, and mobile app. */
@@ -24,8 +29,15 @@ export interface KPISummary {
   mtd_transactions: number;
   ytd_transactions: number;
   sparkline?: TimeSeriesPoint[];
+  /** Per-metric sparklines for the new dashboard KPI row (#503). */
+  sparklines?: KPISparkline[];
   mom_significance?: "significant" | "inconclusive" | "noise" | null;
   yoy_significance?: "significant" | "inconclusive" | "noise" | null;
+  // Dashboard KPI row additions (#503)
+  stock_risk_count?: number;
+  stock_risk_delta?: number | null;
+  expiry_exposure_egp?: number;
+  expiry_batch_count?: number;
 }
 
 export interface TimeSeriesPoint {
@@ -55,6 +67,8 @@ export interface RankingItem {
   name: string;
   value: number;
   pct_of_total: number;
+  /** Populated only for site rankings (#507). */
+  staff_count?: number | null;
 }
 
 export interface RankingResult {
@@ -603,4 +617,114 @@ export interface AnomalyAlertItem {
   is_suppressed: boolean;
   suppression_reason: string | null;
   acknowledged: boolean;
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// New dashboard design — composite / display-ready payloads
+// ───────────────────────────────────────────────────────────────────────
+
+/** #506 — exposure tier (30/60/90 days) for the expiry widget. */
+export interface ExpiryExposureTier {
+  tier: "30d" | "60d" | "90d";
+  label: string;
+  total_egp: number;
+  batch_count: number;
+  tone: "red" | "amber" | "green";
+}
+
+/** #505 — single sales-channel segment of the donut. */
+export interface ChannelShare {
+  channel: "retail" | "wholesale" | "institution" | "online";
+  label: string;
+  value_egp: number;
+  pct_of_total: number;
+  source: "derived" | "unavailable";
+}
+
+export interface ChannelsBreakdown {
+  items: ChannelShare[];
+  total_egp: number;
+  data_coverage: "partial" | "full";
+}
+
+/** #508 — display projection for the dashboard anomaly feed. */
+export interface AnomalyCard {
+  id: number;
+  kind: "up" | "down" | "info";
+  title: string;
+  body: string;
+  time_ago: string;
+  confidence: "high" | "medium" | "low" | "info";
+}
+
+/** #510 — single actionable insight for the dashboard alert banner. */
+export interface TopInsight {
+  title: string;
+  body: string;
+  expected_impact_egp: number | null;
+  action_label: string;
+  action_target: string;
+  confidence: "high" | "medium" | "low" | "info";
+  generated_at: string;
+}
+
+/** #509 — composite /pipeline/health payload. */
+export interface PipelineHealthNode {
+  label: "Bronze" | "Silver" | "Gold";
+  value: string;
+  status: "ok" | "running" | "pending" | "failed";
+}
+
+export interface PipelineHealthRun {
+  at: string;
+  duration_seconds: number | null;
+}
+
+export interface PipelineHealthCounter {
+  passed: number;
+  total: number;
+}
+
+export interface PipelineHealthHistoryPoint {
+  date: string;
+  duration_seconds: number | null;
+  status: "ok" | "warning" | "fail" | "none";
+}
+
+export interface PipelineHealth {
+  nodes: PipelineHealthNode[];
+  last_run: PipelineHealthRun | null;
+  next_run_at: string | null;
+  gates: PipelineHealthCounter;
+  tests: PipelineHealthCounter;
+  history_7d: PipelineHealthHistoryPoint[];
+}
+
+/** #504 — composite /analytics/revenue-forecast payload. */
+export interface ForecastBandPoint {
+  date: string;
+  value: number;
+  ci_low: number;
+  ci_high: number;
+}
+
+export interface RevenueTarget {
+  period_end: string;
+  value: number;
+  status: "on_track" | "behind" | "ahead" | "unknown";
+}
+
+export interface RevenueForecastStats {
+  this_period_egp: number;
+  delta_pct: number | null;
+  confidence: number | null;
+}
+
+export interface RevenueForecast {
+  actual: TimeSeriesPoint[];
+  forecast: ForecastBandPoint[];
+  target: RevenueTarget | null;
+  today: string;
+  period: "day" | "week" | "month" | "quarter" | "ytd";
+  stats: RevenueForecastStats;
 }

@@ -107,6 +107,39 @@ export async function fetchAPI<T>(
   return _request<T>(url);
 }
 
+/**
+ * Like ``fetchAPI`` but returns ``null`` on a 204 No Content response
+ * instead of throwing when attempting to parse an empty body. Intended
+ * for endpoints (e.g. ``/ai-light/top-insight``) that legitimately have
+ * "no result" as a success state.
+ */
+export async function fetchAPIOrNull<T>(
+  path: string,
+  params?: FilterParams,
+): Promise<T | null> {
+  const url = `${API_BASE_URL}${path}${buildQueryString(params)}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(url, {
+      headers: authHeaders,
+      signal: controller.signal,
+    });
+    if (res.status === 204) {
+      return null;
+    }
+    if (!res.ok) {
+      const body = await res.text().catch(() => "Unknown error");
+      throw new ApiError(res.status, `API error ${res.status}: ${body}`);
+    }
+    const json = await res.json();
+    return parseDecimals(json) as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function postAPI<T>(path: string, body?: unknown): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
   return _request<T>(url, {
