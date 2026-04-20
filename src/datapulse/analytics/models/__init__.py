@@ -10,6 +10,8 @@ from datapulse.analytics.models.breakdown import (
     BillingBreakdownItem,
     BrandGroup,
     CategoryGroup,
+    ChannelsBreakdown,
+    ChannelShare,
     CustomerTypeBreakdown,
     CustomerTypeBreakdownItem,
     HeatmapCell,
@@ -72,6 +74,8 @@ __all__ = [
     # breakdown
     "BillingBreakdown",
     "BillingBreakdownItem",
+    "ChannelShare",
+    "ChannelsBreakdown",
     "BrandGroup",
     "CategoryGroup",
     "CustomerTypeBreakdown",

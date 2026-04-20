@@ -31,6 +31,7 @@ from datapulse.analytics.models import (
     ABCAnalysis,
     AnalyticsFilter,
     BillingBreakdown,
+    ChannelsBreakdown,
     CustomerAnalytics,
     CustomerHealthScore,
     CustomerTypeBreakdown,
@@ -195,6 +196,9 @@ class AnalyticsService:
         self, filters: AnalyticsFilter | None = None
     ) -> CustomerTypeBreakdown:
         return self._breakdown.get_customer_type_breakdown(filters)
+
+    def get_channels_breakdown(self, filters: AnalyticsFilter | None = None) -> ChannelsBreakdown:
+        return self._breakdown.get_channels_breakdown(filters)
 
     # ── Detail ───────────────────────────────────────────────────────────────
 

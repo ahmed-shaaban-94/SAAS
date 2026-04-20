@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 
 from datapulse.analytics.models import (
     BillingBreakdown,
+    ChannelsBreakdown,
     CustomerTypeBreakdown,
     HeatmapData,
     LifecycleDistribution,
@@ -54,6 +55,26 @@ def get_customer_type_breakdown(
     """Walk-in vs insurance vs other distribution by month."""
     set_cache_headers(response, 300)
     return service.get_customer_type_breakdown(to_filter(params))
+
+
+@router.get("/channels", response_model=ChannelsBreakdown)
+@limiter.limit("60/minute")
+def get_channels(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    params: Annotated[AnalyticsQueryParams, Depends()],
+) -> ChannelsBreakdown:
+    """Sales channel distribution — powers the dashboard donut (#505).
+
+    Retail and institution are derived from ``fct_sales.is_walk_in`` /
+    ``has_insurance``. Wholesale and online are currently surfaced as
+    zero-valued placeholders tagged ``source='unavailable'`` so the
+    donut renders a stable four-segment layout. ``data_coverage='partial'``
+    signals the limitation to the UI.
+    """
+    set_cache_headers(response, 300)
+    return service.get_channels_breakdown(to_filter(params))
 
 
 @router.get("/origin-breakdown")

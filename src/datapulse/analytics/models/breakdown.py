@@ -54,6 +54,39 @@ class CustomerTypeBreakdown(BaseModel):
     items: list[CustomerTypeBreakdownItem]
 
 
+class ChannelShare(BaseModel):
+    """Revenue share for a single sales channel (#505).
+
+    The ``source`` field distinguishes data-backed rows (``"derived"``)
+    from placeholders (``"unavailable"``). Placeholders are emitted so
+    the dashboard donut renders a consistent four-segment layout even
+    though wholesale / online are not yet captured in the source data.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    channel: str  # "retail" | "wholesale" | "institution" | "online"
+    label: str  # "Retail walk-in" | "Wholesale" | "Institution" | "Online"
+    value_egp: JsonDecimal
+    pct_of_total: JsonDecimal
+    source: str  # "derived" | "unavailable"
+
+
+class ChannelsBreakdown(BaseModel):
+    """Tenant-aggregate revenue distribution across sales channels.
+
+    Always contains exactly four items in fixed order so the donut has
+    a stable layout (#505). Rows without a data source are zero-valued
+    and tagged ``source='unavailable'``.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    items: list[ChannelShare]
+    total_egp: JsonDecimal
+    data_coverage: str  # "partial" | "full" — advisory for UI copy
+
+
 class HeatmapCell(BaseModel):
     """Single cell in a calendar heatmap."""
 

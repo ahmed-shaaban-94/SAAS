@@ -1,10 +1,11 @@
 """AI-Light API endpoints.
 
-Provides 4 endpoints under ``/ai-light/`` for AI-powered insights:
+Provides 5 endpoints under ``/ai-light/`` for AI-powered insights:
 - GET /status — check if OpenRouter is configured
 - GET /summary — executive narrative summary
 - GET /anomalies — anomaly detection report
 - GET /changes — change narrative between two periods
+- GET /top-insight — single actionable insight for the banner (#510)
 """
 
 from __future__ import annotations
@@ -12,11 +13,15 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative
+from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative, TopInsight
 from datapulse.ai_light.service import AILightService
-from datapulse.api.deps import get_ai_light_service
+from datapulse.ai_light.top_insight import anomaly_to_top_insight, pick_top_anomaly
+from datapulse.anomalies.repository import AnomalyRepository
+from datapulse.anomalies.service import AnomalyService
+from datapulse.api.cache_helpers import set_cache_headers
+from datapulse.api.deps import SessionDep, get_ai_light_service
 from datapulse.api.limiter import limiter
 from datapulse.logging import get_logger
 from datapulse.rbac.dependencies import require_permission
@@ -85,3 +90,35 @@ def get_changes(
     except Exception as exc:
         log.error("ai_changes_failed", error=str(exc), exc_info=True)
         raise HTTPException(status_code=502, detail="AI service temporarily unavailable") from exc
+
+
+@router.get(
+    "/top-insight", response_model=TopInsight, responses={204: {"description": "No active insight"}}
+)
+@limiter.limit("60/minute")
+def get_top_insight(
+    request: Request,
+    response: Response,
+    session: SessionDep,
+) -> TopInsight | Response:
+    """Single actionable insight for the dashboard alert banner (#510).
+
+    Picks the highest-severity unsuppressed anomaly and returns a banner-
+    ready card with a deep-link CTA. Responds **204 No Content** when
+    nothing currently demands attention — the frontend hides the banner
+    silently instead of showing a stale or empty insight.
+
+    Lightweight by design: reads directly from the anomaly store (no LLM
+    call on the critical-path). The existing ``/summary`` and ``/changes``
+    endpoints remain the place for narrative-heavy output.
+    """
+    set_cache_headers(response, 300)
+    repo = AnomalyRepository(session)
+    anomaly_service = AnomalyService(session=session, repo=repo)
+    alerts = anomaly_service.get_active_alerts(limit=20)
+
+    top = pick_top_anomaly(alerts)
+    if top is None:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    return anomaly_to_top_insight(top)
