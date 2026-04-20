@@ -32,6 +32,7 @@ from datapulse.pipeline.models import (
     VALID_STATUSES,
     ExecuteRequest,
     ExecutionResult,
+    PipelineHealth,
     PipelineRunCreate,
     PipelineRunList,
     PipelineRunResponse,
@@ -103,6 +104,18 @@ def get_latest_run(
     if result is None:
         raise HTTPException(status_code=404, detail="No pipeline runs found")
     return result
+
+
+@router.get("/health", response_model=PipelineHealth)
+def get_pipeline_health(service: ServiceDep) -> PipelineHealth:
+    """Composite pipeline-health card for the dashboard (#509).
+
+    Single payload combining medallion node status, last-run pointer,
+    quality gates + test counters, and a 7-day duration/status history
+    — replaces three separate frontend calls against ``/runs``,
+    ``/quality/scorecard``, and the scheduler.
+    """
+    return service.get_health_summary()
 
 
 @router.get("/runs/{run_id}", response_model=PipelineRunResponse)

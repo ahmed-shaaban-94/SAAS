@@ -100,6 +100,67 @@ class PipelineRunList(BaseModel):
     limit: int
 
 
+# ────────────────────────────────────────────────────────────────────────
+# Dashboard health composite (#509)
+# ────────────────────────────────────────────────────────────────────────
+
+
+class PipelineHealthNode(BaseModel):
+    """Single medallion node (bronze/silver/gold) in the health card."""
+
+    model_config = ConfigDict(frozen=True)
+
+    label: str  # "Bronze" | "Silver" | "Gold"
+    value: str  # human-readable summary (e.g. "1.13M rows", "Running...", "47 marts")
+    status: str  # "ok" | "running" | "pending" | "failed"
+
+
+class PipelineHealthRun(BaseModel):
+    """Last-run summary (timestamp + duration)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    at: datetime
+    duration_seconds: JsonDecimal | None = None
+
+
+class PipelineHealthCounter(BaseModel):
+    """Generic passed/total counter (quality gates, dbt tests)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    passed: int
+    total: int
+
+
+class PipelineHealthHistoryPoint(BaseModel):
+    """A single day on the 7-day run history bar chart."""
+
+    model_config = ConfigDict(frozen=True)
+
+    date: str  # ISO "YYYY-MM-DD"
+    duration_seconds: JsonDecimal | None = None
+    status: str  # "ok" | "warning" | "fail" | "none"
+
+
+class PipelineHealth(BaseModel):
+    """Composite pipeline health payload for the dashboard card (#509).
+
+    Single tidy response combining medallion node status, last/next run
+    pointers, quality counters, and the 7-day duration history — saving
+    the frontend three extra round-trips.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    nodes: list[PipelineHealthNode]
+    last_run: PipelineHealthRun | None = None
+    next_run_at: datetime | None = None
+    gates: PipelineHealthCounter
+    tests: PipelineHealthCounter
+    history_7d: list[PipelineHealthHistoryPoint]
+
+
 class TriggerRequest(BaseModel):
     """Request body for triggering a full pipeline run."""
 
