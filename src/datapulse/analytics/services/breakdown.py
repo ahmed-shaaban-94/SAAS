@@ -8,6 +8,7 @@ from datapulse.analytics.breakdown_repository import BreakdownRepository
 from datapulse.analytics.models import (
     AnalyticsFilter,
     BillingBreakdown,
+    ChannelsBreakdown,
     CustomerTypeBreakdown,
     DateRange,
 )
@@ -62,3 +63,12 @@ class BreakdownService:
         f = self._default_filter(filters)
         log.info("customer_type_breakdown", filters=f.model_dump())
         return self._breakdown_repo.get_customer_type_breakdown(f)
+
+    @cached(ttl=300, prefix=_CACHE_PREFIX)
+    def get_channels_breakdown(self, filters: AnalyticsFilter | None = None) -> ChannelsBreakdown:
+        """Tenant-aggregate revenue per sales channel (cached 300s) — see #505."""
+        if self._breakdown_repo is None:
+            raise RuntimeError("BreakdownRepository not configured")
+        f = self._default_filter(filters)
+        log.info("channels_breakdown", filters=f.model_dump())
+        return self._breakdown_repo.get_channels_breakdown(f)
