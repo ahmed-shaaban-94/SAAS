@@ -27,6 +27,8 @@ import {
   AnomalyFeed,
   PipelineHealthCard,
 } from "@/components/dashboard/new";
+import { OnboardingStrip } from "@/components/dashboard/onboarding-strip";
+import { FirstInsightCard } from "@/components/dashboard/first-insight-card";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useRevenueForecast, type RevenueForecastPeriod } from "@/hooks/use-revenue-forecast";
 import { useChannels } from "@/hooks/use-channels";
@@ -216,6 +218,12 @@ export default function DashboardPage() {
         </header>
 
         <AlertBanner data={topInsight} loading={insightLoading} />
+
+        {/* Phase 2 Golden-Path (#398) retained — self-hides when complete. */}
+        <div className="mt-5 flex flex-col gap-4">
+          <OnboardingStrip />
+          <FirstInsightCard />
+        </div>
 
         <section
           className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-5"
