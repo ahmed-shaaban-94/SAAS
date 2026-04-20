@@ -68,6 +68,14 @@ export interface LoggerDeps {
   pretty?: boolean;
   /** Inject a custom destination stream (tests). Skips rotation setup. */
   destination?: DestinationStream;
+  /** Release tag (typically `app.getVersion()`). Stamped on every log line
+   * via pino's `base` so operators can cross-correlate a Sentry event
+   * (which uses the same string via `initSentry`) with this build's logs. */
+  release?: string;
+  /** Deployment environment (`"production"`, `"development"`, ...). Same
+   * correlation use-case as `release` — keep in lockstep with Sentry's
+   * `environment` field. */
+  environment?: string;
   /** Force a fresh instance even if a cached one already exists.
    *
    * The singleton semantics of `createLogger` mean a subsequent call
@@ -95,6 +103,13 @@ export function createLogger(deps: LoggerDeps = {}): Logger {
   if (_logger && !deps.destination && !deps.reinit) return _logger;
 
   const level = deps.level ?? process.env.LOG_LEVEL ?? DEFAULT_LEVEL;
+  // Build the `base` map dynamically — only attach `release` / `environment`
+  // when they were supplied. Lets tests and early-boot calls (before Electron
+  // is ready) create a logger without fabricating placeholder values.
+  const base: Record<string, unknown> = { app: "pos-desktop", pid: process.pid };
+  if (deps.release) base.release = deps.release;
+  if (deps.environment) base.environment = deps.environment;
+
   const opts: LoggerOptions = {
     level,
     redact: {
@@ -106,7 +121,7 @@ export function createLogger(deps: LoggerDeps = {}): Logger {
     // default epoch milliseconds.
     timestamp: pino.stdTimeFunctions.isoTime,
     // Standard structured fields for server-side ingestion.
-    base: { app: "pos-desktop", pid: process.pid },
+    base,
   };
 
   let stream: DestinationStream;

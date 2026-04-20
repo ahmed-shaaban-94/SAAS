@@ -6,7 +6,10 @@ import { openDb, closeDb } from "../../db/connection";
 import { applySchema } from "../../db/migrate";
 import { setSetting } from "../../db/settings";
 import {
+  _resetSentryForTests,
+  captureRendererError,
   isCrashReportingEnabled,
+  isSentryReady,
   scrubPii,
   PII_TAG_KEYS,
 } from "../../observability/sentry";
@@ -204,5 +207,74 @@ describe("scrubPii", () => {
     scrubPii(event);
     expect(event.tags?.customer_segment).toBe("vip");
     expect(event.tags?.phone_model).toBe("iPhone");
+  });
+});
+
+/**
+ * `captureRendererError` forwards soft renderer errors to Sentry via the
+ * cached SDK module handle. The tests mock the dynamic `import()` so
+ * `@sentry/electron/main` is never actually initialised during the
+ * suite — we just inspect the `captureException` call shape.
+ */
+describe("captureRendererError", () => {
+  const captureExceptionMock = jest.fn();
+
+  beforeEach(() => {
+    _resetSentryForTests();
+    captureExceptionMock.mockReset();
+  });
+
+  it("no-ops when Sentry was not initialised", () => {
+    expect(isSentryReady()).toBe(false);
+    captureRendererError({ message: "boom" });
+    expect(captureExceptionMock).not.toHaveBeenCalled();
+  });
+
+  function primeSentryReady(): void {
+    // Populate the internal `sentryModule` + `sentryReady` flag without
+    // calling `initSentry` (which would dynamic-import for real). We hand
+    // in a minimal stub module whose `captureException` we observe.
+    const internals = require("../../observability/sentry") as typeof import("../../observability/sentry");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (internals as any).__setSentryModuleForTests?.({
+      captureException: captureExceptionMock,
+    });
+  }
+
+  it("forwards message + stack + process=renderer tag when ready", () => {
+    primeSentryReady();
+    captureRendererError({
+      message: "kaboom",
+      stack: "Error: kaboom\n    at Foo",
+      source: "error-boundary",
+    });
+    expect(captureExceptionMock).toHaveBeenCalledTimes(1);
+    const [err, ctx] = captureExceptionMock.mock.calls[0];
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe("kaboom");
+    expect(err.stack).toBe("Error: kaboom\n    at Foo");
+    expect(ctx).toEqual({
+      tags: { process: "renderer", renderer_source: "error-boundary" },
+    });
+  });
+
+  it("coerces out-of-allowlist `source` values to 'manual'", () => {
+    primeSentryReady();
+    captureRendererError({
+      message: "x",
+      source: "arbitrary-attacker-controlled" as never,
+    });
+    const [, ctx] = captureExceptionMock.mock.calls[0];
+    expect(ctx.tags.renderer_source).toBe("manual");
+  });
+
+  it("tolerates a missing stack (uses the Error's own stack)", () => {
+    primeSentryReady();
+    captureRendererError({ message: "m" });
+    const [err] = captureExceptionMock.mock.calls[0];
+    expect(err.message).toBe("m");
+    // Stack comes from the constructed Error; just assert it's non-empty.
+    expect(typeof err.stack).toBe("string");
+    expect(err.stack.length).toBeGreaterThan(0);
   });
 });

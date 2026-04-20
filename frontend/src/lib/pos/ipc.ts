@@ -143,6 +143,17 @@ interface ElectronAPI {
     platform: string;
     isElectron: true;
   };
+  /** Renderer-error bridge — forwards soft errors (uncaught exceptions,
+   * unhandled promise rejections, ErrorBoundary catches) to the main-
+   * process Sentry SDK. Undefined in pre-bridge builds of the POS
+   * desktop app and in every SaaS-web deploy. */
+  observability?: {
+    captureError(report: {
+      message: string;
+      stack?: string;
+      source?: "error-boundary" | "unhandled-rejection" | "window-error" | "manual";
+    }): Promise<void>;
+  };
   onBarcodeScanned(callback: (barcode: string) => void): () => void;
 }
 

@@ -26,8 +26,18 @@ let nextServer: ChildProcess | null = null;
 let isQuitting = false;
 
 // Logger is created lazily — `app.getPath('logs')` requires Electron
-// to be fully initialised, so we defer until after `app.whenReady()`.
-let log = createLogger({ pretty: !app.isPackaged });
+// to be fully initialised, so we defer file-destination wiring until
+// after `app.whenReady()`. `release` / `environment` are stamped on the
+// first call (the singleton below ignores deps on re-entry) so every
+// log line correlates with the matching Sentry event's release tag.
+const RESOLVED_RELEASE = app.getVersion();
+const RESOLVED_ENVIRONMENT =
+  process.env.DATAPULSE_ENV ?? (app.isPackaged ? "production" : "development");
+let log = createLogger({
+  pretty: !app.isPackaged,
+  release: RESOLVED_RELEASE,
+  environment: RESOLVED_ENVIRONMENT,
+});
 
 // ── Paths ──────────────────────────────────────────────────
 function getNextJsDir(): string {
@@ -288,13 +298,16 @@ function createTray(): void {
 // ── App Lifecycle ──────────────────────────────────────────
 app.whenReady().then(async () => {
   // Re-create the logger now that Electron's `app` is ready, so file output
-  // goes to the platform-correct logs path instead of cwd.  `reinit: true`
+  // goes to the platform-correct logs path instead of cwd. `reinit: true`
   // replaces the pre-ready cached instance — without it the singleton guard
   // in `createLogger` would silently hand back the first logger and `logsDir`
-  // would be ignored in production.
+  // would be ignored in production. `release` + `environment` are stamped
+  // so every log line carries the same values as the matching Sentry event.
   log = createLogger({
     logsDir: app.getPath("logs"),
     pretty: !app.isPackaged,
+    release: RESOLVED_RELEASE,
+    environment: RESOLVED_ENVIRONMENT,
     reinit: true,
   });
   log.info({ version: app.getVersion() }, "DataPulse POS starting");
@@ -324,10 +337,10 @@ app.whenReady().then(async () => {
       if (dsn) {
         await initSentry({
           dsn,
-          release: app.getVersion(),
-          environment: process.env.DATAPULSE_ENV ?? (app.isPackaged ? "production" : "development"),
+          release: RESOLVED_RELEASE,
+          environment: RESOLVED_ENVIRONMENT,
         });
-        log.info({ release: app.getVersion() }, "crash reporting enabled");
+        log.info({ release: RESOLVED_RELEASE }, "crash reporting enabled");
       } else {
         log.warn(
           "crash reporting requested but SENTRY_DSN is unset — skipping init",

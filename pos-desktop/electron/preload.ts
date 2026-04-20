@@ -104,6 +104,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     isElectron: true as const,
   },
 
+  // ── observability (renderer-error bridge, #481 follow-up) ──
+  observability: {
+    captureError: (report: {
+      message: string;
+      stack?: string;
+      source?: string;
+    }) => ipcRenderer.invoke("observability.captureError", report),
+  },
+
   // ── barcode scanner events ─────────────────────────────────
   onBarcodeScanned: (callback: (barcode: string) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, barcode: string) =>

@@ -10,6 +10,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
 import { PosCartProvider } from "@/contexts/pos-cart-context";
+import { useRendererCrashBridge } from "@/hooks/use-renderer-crash-bridge";
 
 // Fraunces = italic display on the Totals Hero + invoice.
 // JetBrains Mono = SKUs, barcodes, numeric readouts, kbd chips.
@@ -85,6 +86,14 @@ function PosKeyboardHandler({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** POS-only mount of the renderer-error bridge. Self-contained so it
+ *  can be removed without touching the layout tree. Runs only inside
+ *  Electron (the hook no-ops when `window.electronAPI` is undefined). */
+function RendererCrashBridge({ children }: { children: ReactNode }) {
+  useRendererCrashBridge();
+  return <>{children}</>;
+}
+
 export default function PosLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
@@ -94,13 +103,15 @@ export default function PosLayout({ children }: { children: ReactNode }) {
             <ToastProvider>
               <SessionGuard>
                 <PosCartProvider>
-                  <PosKeyboardHandler>
-                    <div
-                      className={`${fraunces.variable} ${jetbrainsMono.variable} flex min-h-screen flex-col overflow-hidden bg-background text-foreground`}
-                    >
-                      {children}
-                    </div>
-                  </PosKeyboardHandler>
+                  <RendererCrashBridge>
+                    <PosKeyboardHandler>
+                      <div
+                        className={`${fraunces.variable} ${jetbrainsMono.variable} flex min-h-screen flex-col overflow-hidden bg-background text-foreground`}
+                      >
+                        {children}
+                      </div>
+                    </PosKeyboardHandler>
+                  </RendererCrashBridge>
                 </PosCartProvider>
               </SessionGuard>
             </ToastProvider>

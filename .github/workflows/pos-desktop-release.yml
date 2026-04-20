@@ -117,6 +117,52 @@ jobs:
             exit 1
           fi
 
+      # ── Sentry source-map upload (follow-up to #481 / PR #495) ────────
+      # Runs only on tag pushes AND only when SENTRY_AUTH_TOKEN is set.
+      # Without this step, crashes reach Sentry but stacks are NOT
+      # symbolicated. The release name MUST match `app.getVersion()` at
+      # runtime (which reads package.json `version`), so we derive it
+      # from that file rather than the tag to keep the two in lockstep.
+      - name: Detect Sentry release config
+        id: sentry_detect
+        shell: bash
+        run: |
+          # All three secrets are required by getsentry/action-release — if
+          # any is missing, skip the step entirely rather than fail mid-run.
+          MISSING=""
+          [[ -z "${{ secrets.SENTRY_AUTH_TOKEN }}" ]] && MISSING="$MISSING SENTRY_AUTH_TOKEN"
+          [[ -z "${{ secrets.SENTRY_ORG }}" ]]        && MISSING="$MISSING SENTRY_ORG"
+          [[ -z "${{ secrets.SENTRY_PROJECT }}" ]]    && MISSING="$MISSING SENTRY_PROJECT"
+          if [[ -z "$MISSING" ]]; then
+            echo "enabled=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=0" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Sentry source-map upload — missing repo secrets:${MISSING}. Crashes still reach Sentry but stacks will not be symbolicated."
+          fi
+          VERSION=$(node -p "require('./pos-desktop/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload source maps to Sentry
+        if: ${{ startsWith(github.ref, 'refs/tags/pos-desktop-v') && steps.sentry_detect.outputs.enabled == '1' }}
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          version: ${{ steps.sentry_detect.outputs.version }}
+          # The Electron main bundle lives at `pos-desktop/dist/electron/*.js`
+          # with sibling `.map` files (tsc emits both when sourceMap=true).
+          sourcemaps: pos-desktop/dist
+          # `~/dist` = suffix-match: Sentry matches any stack frame whose
+          # URL ends in `/dist/...`. Works for both `file:///...app.asar/dist/...`
+          # and `app:///dist/...` origins that different Electron versions
+          # emit. If symbolication is still partial post-release, fine-tune
+          # with a narrower `url_prefix` matching the runtime stack URLs.
+          url_prefix: "~/dist"
+          finalize: true
+          set_commits: skip
+
       # Keep the artifact around for manual download even on non-release
       # runs. Retention is limited to save storage; tag builds also get
       # the file attached to the Release.

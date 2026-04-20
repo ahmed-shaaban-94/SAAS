@@ -160,6 +160,59 @@ describe("PII redaction", () => {
   });
 });
 
+describe("release + environment base bindings", () => {
+  test("stamps `release` on every log line when supplied", () => {
+    const dest = new CaptureStream();
+    const log = createLogger({ destination: dest, release: "1.2.3" });
+    log.info("boot");
+    log.info({ step: "ready" }, "second");
+    const lines = dest.lines();
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line.release).toBe("1.2.3");
+    }
+  });
+
+  test("stamps `environment` on every log line when supplied", () => {
+    const dest = new CaptureStream();
+    const log = createLogger({ destination: dest, environment: "production" });
+    log.info("one");
+    log.error("two");
+    const lines = dest.lines();
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line.environment).toBe("production");
+    }
+  });
+
+  test("omits `release` and `environment` when neither is supplied", () => {
+    const dest = new CaptureStream();
+    const log = createLogger({ destination: dest });
+    log.info("boot");
+    const [line] = dest.lines();
+    expect(line).not.toHaveProperty("release");
+    expect(line).not.toHaveProperty("environment");
+    // `app` always present — guards against accidentally breaking the base map.
+    expect(line.app).toBe("pos-desktop");
+  });
+
+  test("both fields coexist alongside ad-hoc bindings at log time", () => {
+    const dest = new CaptureStream();
+    const log = createLogger({
+      destination: dest,
+      release: "1.0.0-alpha",
+      environment: "staging",
+    });
+    log.info({ module: "boot", version: 1 }, "ready");
+    const [line] = dest.lines();
+    expect(line.release).toBe("1.0.0-alpha");
+    expect(line.environment).toBe("staging");
+    expect(line.module).toBe("boot");
+    expect(line.version).toBe(1);
+    expect(line.app).toBe("pos-desktop");
+  });
+});
+
 describe("singleton + reinit semantics", () => {
   test("second call without reinit returns the cached instance", () => {
     const first = createLogger({ level: "info" });

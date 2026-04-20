@@ -26,6 +26,11 @@ import { pullCatalog } from "../sync/pull";
 import { isOnline } from "../sync/online";
 import { isDeviceRegistered, registerDevice } from "../authz/device";
 import { currentGrant, grantState, consumeOverrideCode, refreshGrant } from "../authz/grants";
+import {
+  captureRendererError,
+  type RendererErrorPayload,
+} from "../observability/sentry";
+import type { RendererErrorReport } from "./contracts";
 
 const COMMIT_PATH = "/api/v1/pos/transactions/commit";
 
@@ -136,6 +141,24 @@ export function registerIpcHandlers(
   ipcMain.handle("app.version", () => app.getVersion());
 
   ipcMain.handle("app.logsPath", () => app.getPath("logs"));
+
+  // ── observability (renderer-error bridge, #481 follow-up) ──
+  // Fixed-shape payload forwarded to `captureRendererError`. The main-
+  // process Sentry SDK handles PII scrub via `beforeSend`; the
+  // allowlist inside `captureRendererError` further narrows the `source`
+  // tag so the renderer cannot create arbitrary Sentry tags.
+  ipcMain.handle(
+    "observability.captureError",
+    (_e, report: RendererErrorReport) => {
+      if (!report || typeof report.message !== "string") return;
+      const payload: RendererErrorPayload = {
+        message: report.message.slice(0, 2000),
+        stack: typeof report.stack === "string" ? report.stack.slice(0, 10_000) : undefined,
+        source: report.source,
+      };
+      captureRendererError(payload);
+    },
+  );
 
   // ── sync ───────────────────────────────────────────────────
   ipcMain.handle("sync.pushNow", async () => drainQueue(db));
