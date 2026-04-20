@@ -25,12 +25,32 @@ class FileWatcherService:
         self._handler: DataFileHandler | None = None
         self._health: HealthServer | None = None
 
+    def _resolve_tenant_id(self) -> int:
+        """Read the tenant id from `Settings.default_tenant_id`.
+
+        The setting is typed as `str` so it parses safely from env
+        (operators who forget to quote `"1"` in `.env` files don't crash
+        Pydantic). We coerce to int here; an unparseable value falls back
+        to `1` with a warning so a bad env doesn't wedge the watcher
+        (the pipeline endpoint will reject the bad tenant anyway).
+        """
+        raw = getattr(self._settings, "default_tenant_id", "1")
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            log.warning(
+                "invalid_default_tenant_id",
+                raw=repr(raw),
+                fallback=1,
+            )
+            return 1
+
     def _trigger_pipeline(self, files: list[str]) -> None:
         """POST to the pipeline trigger endpoint."""
         api_url = f"{self._settings.api_base_url}/api/v1/pipeline/trigger"
         payload = {
             "source_dir": self._settings.raw_sales_path,
-            "tenant_id": 1,
+            "tenant_id": self._resolve_tenant_id(),
         }
         headers = {}
         if self._settings.api_key:
@@ -43,6 +63,7 @@ class FileWatcherService:
             api_url=api_url,
             file_count=len(files),
             source_dir=self._settings.raw_sales_path,
+            tenant_id=payload["tenant_id"],
         )
 
         try:
@@ -78,7 +99,12 @@ class FileWatcherService:
         if not watch_path.stat().st_mode & 0o444:
             raise PermissionError(f"Watch directory is not readable: {watch_dir}")
 
-        log.info("watcher_starting", watch_dir=watch_dir, debounce=debounce_seconds)
+        log.info(
+            "watcher_starting",
+            watch_dir=watch_dir,
+            debounce=debounce_seconds,
+            tenant_id=self._resolve_tenant_id(),
+        )
 
         self._handler = DataFileHandler(
             trigger_callback=self._trigger_pipeline,

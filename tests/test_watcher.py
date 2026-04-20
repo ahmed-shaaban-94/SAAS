@@ -658,6 +658,84 @@ class TestFileWatcherServiceTriggerPipeline:
         svc._trigger_pipeline(["/data/raw/a.csv"])
 
 
+class TestFileWatcherServiceTenantId:
+    """tenant_id flows from `Settings.default_tenant_id` into the trigger
+    payload. Before this wiring the watcher hardcoded `tenant_id: 1`, which
+    caused multi-tenant deployments to always trigger the pipeline for
+    tenant 1 regardless of which tenant's bucket the file landed in."""
+
+    def _make_settings(self, **overrides) -> MagicMock:
+        settings = MagicMock()
+        settings.raw_sales_path = "/app/data/raw/sales"
+        settings.pipeline_webhook_secret = ""
+        settings.api_base_url = "http://localhost:8000"
+        settings.default_tenant_id = "1"
+        for k, v in overrides.items():
+            setattr(settings, k, v)
+        return settings
+
+    @patch("datapulse.watcher.service.httpx")
+    def test_uses_default_tenant_id_from_settings(self, mock_httpx):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"run_id": "x", "status": "running"}
+        mock_httpx.post.return_value = mock_resp
+
+        svc = FileWatcherService(settings=self._make_settings(default_tenant_id="42"))
+        svc._trigger_pipeline(["/data/raw/a.csv"])
+
+        payload = mock_httpx.post.call_args[1]["json"]
+        assert payload["tenant_id"] == 42
+
+    @patch("datapulse.watcher.service.httpx")
+    def test_parses_numeric_string_to_int(self, mock_httpx):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"run_id": "x", "status": "running"}
+        mock_httpx.post.return_value = mock_resp
+
+        svc = FileWatcherService(settings=self._make_settings(default_tenant_id="123"))
+        svc._trigger_pipeline(["/data/raw/a.csv"])
+
+        payload = mock_httpx.post.call_args[1]["json"]
+        assert isinstance(payload["tenant_id"], int)
+        assert payload["tenant_id"] == 123
+
+    @patch("datapulse.watcher.service.httpx")
+    def test_falls_back_to_1_on_unparseable_value(self, mock_httpx):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"run_id": "x", "status": "running"}
+        mock_httpx.post.return_value = mock_resp
+
+        # A typo in .env — `DEFAULT_TENANT_ID=tenant-a` — should not wedge
+        # the watcher; it logs a warning and uses 1 (the endpoint will
+        # reject the request separately on the API side).
+        svc = FileWatcherService(settings=self._make_settings(default_tenant_id="tenant-a"))
+        svc._trigger_pipeline(["/data/raw/a.csv"])
+
+        payload = mock_httpx.post.call_args[1]["json"]
+        assert payload["tenant_id"] == 1
+
+    @patch("datapulse.watcher.service.httpx")
+    def test_falls_back_when_attribute_missing(self, mock_httpx):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"run_id": "x", "status": "running"}
+        mock_httpx.post.return_value = mock_resp
+
+        # A minimal settings object (e.g. an older Settings stand-in from
+        # another codebase) that doesn't declare `default_tenant_id` at
+        # all should still work — fallback to 1.
+        class BareSettings:
+            raw_sales_path = "/app/data/raw/sales"
+            pipeline_webhook_secret = ""
+            api_base_url = "http://localhost:8000"
+            api_key = ""
+
+        svc = FileWatcherService(settings=BareSettings())  # type: ignore[arg-type]
+        svc._trigger_pipeline(["/data/raw/a.csv"])
+
+        payload = mock_httpx.post.call_args[1]["json"]
+        assert payload["tenant_id"] == 1
+
+
 class TestFileWatcherServiceDefaultSettings:
     """Test that service uses get_settings() when no settings provided."""
 
