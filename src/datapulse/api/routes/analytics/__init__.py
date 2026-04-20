@@ -11,6 +11,7 @@ from datapulse.api.routes.analytics.detail import router as detail_router
 from datapulse.api.routes.analytics.health import router as health_router
 from datapulse.api.routes.analytics.kpi import router as kpi_router
 from datapulse.api.routes.analytics.ranking import router as ranking_router
+from datapulse.api.routes.analytics.revenue_forecast import router as revenue_forecast_router
 
 router = APIRouter(
     prefix="/analytics",
@@ -23,5 +24,6 @@ router.include_router(breakdown_router)
 router.include_router(churn_router)
 router.include_router(health_router)
 router.include_router(detail_router)
+router.include_router(revenue_forecast_router)
 
 __all__ = ["router"]
