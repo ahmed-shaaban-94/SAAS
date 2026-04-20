@@ -98,3 +98,15 @@ services:
 
   # n8n removed — orchestration now in-process via datapulse.scheduler
 
+  # ---------- Watcher (prod overlay) ----------
+  # Uses the same GHCR image as the API. Host port removed — healthcheck
+  # polls the endpoint from inside the container. Opt-in via
+  # `docker compose --profile watcher up -d`.
+  watcher:
+    image: ghcr.io/ahmed-shaaban-94/data-pulse/api:${IMAGE_TAG:?IMAGE_TAG is required for production}
+    ports: !reset []
+    environment:
+      SENTRY_ENVIRONMENT: production
+      API_KEY: ${API_KEY:?API_KEY is required for production}
+      PIPELINE_WEBHOOK_SECRET: ${PIPELINE_WEBHOOK_SECRET:?PIPELINE_WEBHOOK_SECRET is required for production}
+

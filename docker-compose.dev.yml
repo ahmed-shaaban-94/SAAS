@@ -26,3 +26,11 @@ services:
       resources:
         limits:
           memory: 2G
+
+  # Watcher dev overlay: live-reload source + data mount is rw so manual
+  # drops from the host land without copy-in. Still profile-gated so
+  # `docker compose up` without `--profile watcher` doesn't start it.
+  watcher:
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data

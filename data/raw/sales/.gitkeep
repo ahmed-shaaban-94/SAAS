@@ -1,0 +1,4 @@
+# Placeholder so `data/raw/sales` exists in a fresh checkout.
+# The file watcher service (docker-compose `watcher` profile) fails to
+# start if this directory is missing — keeping an empty dir in git is
+# the simplest guarantee.
