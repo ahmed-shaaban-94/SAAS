@@ -257,3 +257,56 @@ class PipelineRepository:
         if row is None:
             return None
         return self._row_to_response(row)
+
+    # ── Dashboard health composite (#509) ───────────────────────────────
+
+    def get_latest_run_per_type(self) -> dict[str, PipelineRunResponse]:
+        """Latest run per ``run_type`` — used by the dashboard health card.
+
+        Uses DISTINCT ON to return the most recent row per ``run_type`` in
+        a single round-trip. Scoped by RLS to the current tenant.
+        """
+        stmt = text(f"""
+            SELECT DISTINCT ON (run_type) {_COLUMNS}
+            FROM public.pipeline_runs
+            ORDER BY run_type, started_at DESC
+        """)
+        rows = self._session.execute(stmt).fetchall()
+        return {row._mapping["run_type"]: self._row_to_response(row) for row in rows}
+
+    def get_recent_days_summary(self, days: int = 7) -> list[dict]:
+        """Day-by-day pipeline activity for the health history strip.
+
+        Returns the latest ``full`` run per day, or the worst-status run
+        when multiple ran in a day. Missing days are filled in by the
+        caller (the SQL only returns days with at least one run).
+        """
+        stmt = text("""
+            WITH runs AS (
+                SELECT
+                    DATE(started_at) AS run_date,
+                    status,
+                    duration_seconds,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY DATE(started_at)
+                        ORDER BY
+                            CASE status
+                                WHEN 'failed'  THEN 0
+                                WHEN 'warning' THEN 1
+                                WHEN 'running' THEN 2
+                                WHEN 'success' THEN 3
+                                ELSE 4
+                            END,
+                            started_at DESC
+                    ) AS rn
+                FROM public.pipeline_runs
+                WHERE started_at >= CURRENT_DATE - make_interval(days => :days - 1)
+                  AND run_type = 'full'
+            )
+            SELECT run_date, status, duration_seconds
+            FROM runs
+            WHERE rn = 1
+            ORDER BY run_date
+        """)
+        rows = self._session.execute(stmt, {"days": days}).mappings().all()
+        return [dict(r) for r in rows]

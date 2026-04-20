@@ -193,7 +193,8 @@ def get_pipeline_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ) -> PipelineService:
     repo = PipelineRepository(session)
-    return PipelineService(repo)
+    quality_repo = QualityRepository(session)
+    return PipelineService(repo, quality_repo=quality_repo)
 
 
 def get_pipeline_executor() -> PipelineExecutor:
