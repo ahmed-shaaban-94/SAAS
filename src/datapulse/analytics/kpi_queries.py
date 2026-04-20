@@ -92,10 +92,15 @@ KPI_SUMMARY_DAILY_SQL = """
         AS date)
     ),
     sparkline AS (
-        SELECT json_agg(
-            json_build_object('period', full_date, 'value', daily_gross_amount)
-            ORDER BY full_date
-        ) AS points
+        SELECT
+            json_agg(
+                json_build_object('period', full_date, 'value', daily_gross_amount)
+                ORDER BY full_date
+            ) AS points,
+            json_agg(
+                json_build_object('period', full_date, 'value', daily_transactions)
+                ORDER BY full_date
+            ) AS orders_points
         FROM public_marts.metrics_summary
         WHERE full_date BETWEEN :sparkline_start AND :target_date
     ),
@@ -130,6 +135,7 @@ KPI_SUMMARY_DAILY_SQL = """
         pm.mtd_gross_amount AS prev_month_mtd,
         py.ytd_gross_amount AS prev_year_ytd,
         sp.points AS sparkline_points,
+        sp.orders_points AS sparkline_orders_points,
         mh.vals AS mom_history,
         yh.vals AS yoy_history
     FROM daily d

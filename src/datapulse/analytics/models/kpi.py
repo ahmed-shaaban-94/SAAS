@@ -33,6 +33,21 @@ class TrendResult(BaseModel):
     stats: StatisticalAnnotation | None = None
 
 
+class KPISparkline(BaseModel):
+    """Per-metric sparkline series for the dashboard KPI row.
+
+    The new dashboard design shows four KPI cards, each with an 11-point
+    trailing sparkline. Revenue and orders are populated from
+    `metrics_summary`; stock_risk and expiry_exposure are placeholders
+    until a historical snapshot feed exists (#503).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    metric: str  # "revenue" | "orders" | "stock_risk" | "expiry_exposure"
+    points: list[TimeSeriesPoint] = Field(default_factory=list)
+
+
 class KPISummary(BaseModel):
     """Executive KPI snapshot for a given target date."""
 
@@ -64,6 +79,12 @@ class KPISummary(BaseModel):
     sparkline: list[TimeSeriesPoint] = Field(default_factory=list)
     mom_significance: str | None = None  # "significant" | "inconclusive" | "noise"
     yoy_significance: str | None = None
+    # Dashboard KPI row additions (#503)
+    stock_risk_count: int = 0
+    stock_risk_delta: int | None = None
+    expiry_exposure_egp: JsonDecimal = Field(default=Decimal("0"))
+    expiry_batch_count: int = 0
+    sparklines: list[KPISparkline] = Field(default_factory=list)
 
 
 class SegmentSummary(BaseModel):

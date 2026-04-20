@@ -2,11 +2,30 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from datapulse.types import JsonDecimal
+
+
+class TopInsight(BaseModel):
+    """Single actionable insight for the dashboard alert banner (#510).
+
+    Wraps the most attention-worthy signal currently in the system — a
+    high-severity anomaly — with a deep-link CTA so the banner can render
+    without front-end orchestration.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    title: str
+    body: str
+    expected_impact_egp: JsonDecimal | None = None
+    action_label: str
+    action_target: str  # deep-link path, e.g. "/dashboard/anomalies/142"
+    confidence: str  # "high" | "medium" | "low" | "info"
+    generated_at: datetime
 
 
 class InsightRequest(BaseModel):

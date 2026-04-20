@@ -10,6 +10,8 @@ from datapulse.analytics.models.breakdown import (
     BillingBreakdownItem,
     BrandGroup,
     CategoryGroup,
+    ChannelsBreakdown,
+    ChannelShare,
     CustomerTypeBreakdown,
     CustomerTypeBreakdownItem,
     HeatmapCell,
@@ -44,6 +46,7 @@ from datapulse.analytics.models.health import (
 )
 from datapulse.analytics.models.kpi import (
     DashboardData,
+    KPISparkline,
     KPISummary,
     SegmentSummary,
     TrendResult,
@@ -71,6 +74,8 @@ __all__ = [
     # breakdown
     "BillingBreakdown",
     "BillingBreakdownItem",
+    "ChannelShare",
+    "ChannelsBreakdown",
     "BrandGroup",
     "CategoryGroup",
     "CustomerTypeBreakdown",
@@ -103,6 +108,7 @@ __all__ = [
     "HealthDistribution",
     # kpi
     "DashboardData",
+    "KPISparkline",
     "KPISummary",
     "SegmentSummary",
     "TrendResult",

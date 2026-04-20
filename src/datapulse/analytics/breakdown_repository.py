@@ -15,6 +15,8 @@ from datapulse.analytics.models import (
     AnalyticsFilter,
     BillingBreakdown,
     BillingBreakdownItem,
+    ChannelsBreakdown,
+    ChannelShare,
     CustomerTypeBreakdown,
     CustomerTypeBreakdownItem,
 )
@@ -113,3 +115,95 @@ class BreakdownRepository:
         ]
 
         return CustomerTypeBreakdown(items=items)
+
+    def get_channels_breakdown(self, filters: AnalyticsFilter) -> ChannelsBreakdown:
+        """Tenant-aggregate revenue distribution across sales channels (#505).
+
+        The raw data does not capture a true sales-channel dimension —
+        ``wholesale`` and ``online`` segments will be zero-valued with
+        ``source='unavailable'`` until upstream ingestion lands.
+        ``retail`` and ``institution`` are derived from
+        ``fct_sales.is_walk_in`` / ``has_insurance`` flags:
+
+            retail walk-in = is_walk_in
+            institution    = has_insurance AND NOT is_walk_in
+            (other revenue is folded back into retail walk-in so the
+             known donut sums to the total — wholesale/online stay 0.)
+        """
+        log.info("get_channels_breakdown", filters=filters.model_dump())
+
+        # fct_sales has all standard dimension columns via joined dims,
+        # but only supports site/date-only at the fact level.
+        where, params = build_where(
+            filters, date_column="date_key", supported_fields=SITE_DATE_ONLY
+        )
+
+        stmt = text(f"""
+            SELECT
+                COALESCE(SUM(
+                    f.sales * (CASE WHEN f.is_walk_in THEN 1 ELSE 0 END)
+                ), 0) AS retail_egp,
+                COALESCE(SUM(
+                    f.sales * (
+                        CASE
+                            WHEN f.has_insurance AND NOT f.is_walk_in THEN 1
+                            ELSE 0
+                        END
+                    )
+                ), 0) AS institution_egp,
+                COALESCE(SUM(f.sales), 0) AS total_egp
+            FROM public_marts.fct_sales f
+            WHERE {where}
+              AND NOT f.is_return
+        """)  # noqa: S608
+
+        row = self._session.execute(stmt, params).mappings().fetchone()
+        retail = Decimal(str(row["retail_egp"])) if row else _ZERO
+        institution = Decimal(str(row["institution_egp"])) if row else _ZERO
+        total = Decimal(str(row["total_egp"])) if row else _ZERO
+
+        # Fold "other" revenue (neither walk-in nor insurance) back into
+        # retail walk-in so the three known segments cover the tenant
+        # total without exposing an "unknown" bucket to end users.
+        other = total - retail - institution
+        if other > _ZERO:
+            retail = retail + other
+
+        def _pct(value: Decimal) -> Decimal:
+            if total == _ZERO:
+                return _ZERO
+            return (value / total * 100).quantize(Decimal("0.01"))
+
+        items = [
+            ChannelShare(
+                channel="retail",
+                label="Retail walk-in",
+                value_egp=retail,
+                pct_of_total=_pct(retail),
+                source="derived",
+            ),
+            ChannelShare(
+                channel="wholesale",
+                label="Wholesale",
+                value_egp=_ZERO,
+                pct_of_total=_ZERO,
+                source="unavailable",
+            ),
+            ChannelShare(
+                channel="institution",
+                label="Institution",
+                value_egp=institution,
+                pct_of_total=_pct(institution),
+                source="derived",
+            ),
+            ChannelShare(
+                channel="online",
+                label="Online",
+                value_egp=_ZERO,
+                pct_of_total=_ZERO,
+                source="unavailable",
+            ),
+        ]
+
+        coverage = "partial"  # wholesale + online always unavailable for now
+        return ChannelsBreakdown(items=items, total_egp=total, data_coverage=coverage)
