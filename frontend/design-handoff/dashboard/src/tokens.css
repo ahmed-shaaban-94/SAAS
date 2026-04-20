@@ -1,0 +1,31 @@
+/* Import in your app root. Complements tailwind.config.js with tokens
+   that are awkward as utilities (gradients, animated states). */
+
+:root {
+  --bg-page: #081826;
+  --bg-card: #102a43;
+  --bg-elevated: #163452;
+  --panel-soft: #1a3550;
+  --surface-strong: #243b53;
+  --border-color: #33506b;
+  --divider: #46627c;
+  --text-primary: #f7fbff;
+  --text-secondary: #b8c0cc;
+  --text-tertiary: #8597a8;
+  --accent: #00c7f2;
+  --accent-strong: #5cdfff;
+  --chart-blue: #20bce5;
+  --chart-amber: #ffab3d;
+  --chart-purple: #7467f8;
+  --growth-green: #1dd48b;
+  --growth-red: #ff7b7b;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
