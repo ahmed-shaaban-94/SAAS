@@ -8,9 +8,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from datapulse.anomalies.calendar import is_holiday_or_event
+from datapulse.anomalies.cards import to_anomaly_card
 from datapulse.anomalies.detector import AnomalyDetector
 from datapulse.anomalies.models import (
     AnomalyAlertResponse,
+    AnomalyCard,
     AnomalyDetectionConfig,
     AnomalyRunResult,
     DetectedAnomaly,
@@ -144,6 +146,11 @@ class AnomalyService:
     def get_active_alerts(self, limit: int = 20) -> list[AnomalyAlertResponse]:
         """Return unacknowledged, unsuppressed alerts."""
         return self._repo.get_active_alerts(limit=limit)
+
+    def get_active_cards(self, limit: int = 10, today: date | None = None) -> list[AnomalyCard]:
+        """Return active alerts projected onto the design-facing card shape (#508)."""
+        alerts = self._repo.get_active_alerts(limit=limit)
+        return [to_anomaly_card(a, today=today) for a in alerts]
 
     def get_history(
         self,

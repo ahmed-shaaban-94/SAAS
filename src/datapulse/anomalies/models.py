@@ -65,3 +65,21 @@ class AnomalyRunResult(BaseModel):
     anomalies_found: int
     suppressed: int
     alerts_saved: int
+
+
+class AnomalyCard(BaseModel):
+    """Display-ready projection for the dashboard anomaly feed widget (#508).
+
+    Maps the raw ``AnomalyAlertResponse`` onto the shape the new design
+    expects — a kind/title/body/time_ago/confidence quintet — so the
+    frontend renders cards without extra transformation.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    kind: str  # "up" | "down" | "info"
+    title: str
+    body: str
+    time_ago: str
+    confidence: str  # "high" | "medium" | "low" | "info"

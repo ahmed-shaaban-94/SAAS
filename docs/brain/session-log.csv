@@ -58,3 +58,4 @@ timestamp,branch,user,layers,modules
 2026-04-20T12:10,claude/loving-ellis-f8c172,Ahmed Shaaban,[frontend],[frontend]
 2026-04-20T14:32,claude/watcher-health-endpoint,Ahmed Shaaban,[frontend;test],[core;frontend;watcher]
 2026-04-20T14:00,claude/pos-renderer-crash-bridge,Ahmed Shaaban,[frontend],[frontend]
+2026-04-20T15:37,claude/expiry-exposure-summary,Ahmed Shaaban,[api;frontend;test],[api;core;expiry;frontend;watcher]
