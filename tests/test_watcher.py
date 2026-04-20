@@ -261,6 +261,43 @@ class TestDataFileHandlerDebounce:
         assert DEFAULT_DEBOUNCE_SECONDS == 10.0
 
 
+class TestDataFileHandlerHealthSnapshot:
+    """Handler exposes a lock-safe snapshot for the health endpoint."""
+
+    def test_snapshot_initial_state(self):
+        handler = DataFileHandler(trigger_callback=MagicMock(), debounce_seconds=7.5)
+        snap = handler.health_snapshot()
+        assert snap["pending_files"] == 0
+        assert snap["debounce_seconds"] == 7.5
+        assert snap["total_triggers"] == 0
+        assert snap["last_trigger_at"] is None
+        handler.stop()
+
+    def test_snapshot_reflects_pending_files(self):
+        handler = DataFileHandler(trigger_callback=MagicMock(), debounce_seconds=5.0)
+        event = FileCreatedEvent("/data/raw/a.csv")
+        event.is_directory = False
+        handler.on_created(event)
+        # File is in `_pending_files` before the debounce fires.
+        snap = handler.health_snapshot()
+        assert snap["pending_files"] == 1
+        handler.stop()
+
+    def test_snapshot_records_trigger_timestamp_iso8601(self):
+        callback = MagicMock()
+        handler = DataFileHandler(trigger_callback=callback, debounce_seconds=0.03)
+        event = FileCreatedEvent("/data/raw/a.csv")
+        event.is_directory = False
+        handler.on_created(event)
+        _wait_for_callback(callback)
+        snap = handler.health_snapshot()
+        assert snap["total_triggers"] == 1
+        assert isinstance(snap["last_trigger_at"], str)
+        # Basic ISO-8601 shape check: "YYYY-MM-DDThh:mm:ss".
+        assert "T" in snap["last_trigger_at"]
+        handler.stop()
+
+
 class TestDataFileHandlerIsDataFile:
     """Test the _is_data_file helper directly."""
 
@@ -302,6 +339,10 @@ class TestFileWatcherServiceLifecycle:
         settings.raw_sales_path = "/tmp/test_watch_dir"
         settings.pipeline_webhook_secret = ""
         settings.api_base_url = "http://localhost:8000"
+        # Disable the embedded health endpoint by default — tests that
+        # exercise it opt in explicitly by overriding this.
+        settings.watcher_health_port = 0
+        settings.watcher_health_host = "127.0.0.1"
         for k, v in overrides.items():
             setattr(settings, k, v)
         return settings

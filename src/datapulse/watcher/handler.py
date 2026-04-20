@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
 from watchdog.events import (
@@ -36,6 +37,10 @@ class DataFileHandler(FileSystemEventHandler):
         self._pending_files: set[str] = set()
         self._timer: threading.Timer | None = None
         self._lock = threading.Lock()
+        # Health / observability — read under `_lock` from a different thread
+        # (the HTTP health server). UTC ISO-8601 when populated.
+        self._last_trigger_at: datetime | None = None
+        self._total_triggers: int = 0
 
     def _is_data_file(self, path: str) -> bool:
         """Check if the file has a valid data extension."""
@@ -91,6 +96,28 @@ class DataFileHandler(FileSystemEventHandler):
             self._trigger_callback(files)
         except Exception as exc:
             log.error("trigger_failed", error=str(exc))
+        # Record attempt (success OR failure) so health surfaces the fact
+        # the watcher reached the trigger path — the callback itself logs
+        # its own outcome separately.
+        with self._lock:
+            self._last_trigger_at = datetime.now(UTC)
+            self._total_triggers += 1
+
+    def health_snapshot(self) -> dict[str, object]:
+        """Lock-safe snapshot for the health endpoint.
+
+        Returns primitives only so callers can JSON-encode without a custom
+        serialiser. `last_trigger_at` is an ISO-8601 string or `None`.
+        """
+        with self._lock:
+            return {
+                "pending_files": len(self._pending_files),
+                "debounce_seconds": self._debounce_seconds,
+                "total_triggers": self._total_triggers,
+                "last_trigger_at": (
+                    self._last_trigger_at.isoformat() if self._last_trigger_at else None
+                ),
+            }
 
     def stop(self) -> None:
         """Cancel any pending timer."""

@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     # API base URL (used by watcher and internal services)
     api_base_url: str = "http://localhost:8000"
 
+    # Watcher health endpoint. 0 disables the embedded HTTP server
+    # (default — backwards compatible). Set to e.g. 8765 in Docker
+    # so a container healthcheck can `curl http://localhost:8765/health`.
+    watcher_health_port: int = 0
+    watcher_health_host: str = "127.0.0.1"
+
     # n8n removed — orchestration via datapulse.scheduler
     pipeline_webhook_secret: str = ""
 

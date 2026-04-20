@@ -11,6 +11,7 @@ from watchdog.observers.api import BaseObserver
 from datapulse.config import Settings, get_settings
 from datapulse.logging import get_logger
 from datapulse.watcher.handler import DataFileHandler
+from datapulse.watcher.health import HealthServer
 
 log = get_logger(__name__)
 
@@ -22,6 +23,7 @@ class FileWatcherService:
         self._settings = settings or get_settings()
         self._observer: BaseObserver | None = None
         self._handler: DataFileHandler | None = None
+        self._health: HealthServer | None = None
 
     def _trigger_pipeline(self, files: list[str]) -> None:
         """POST to the pipeline trigger endpoint."""
@@ -86,10 +88,32 @@ class FileWatcherService:
         self._observer = Observer()
         self._observer.schedule(self._handler, watch_dir, recursive=False)
         self._observer.start()
+
+        # Optional health endpoint (port=0 disables). Start AFTER the
+        # observer so the `is_running` field reports true on first hit.
+        # Read the port defensively: older tests + callers may pass a
+        # `Settings` stand-in that doesn't declare the field yet.
+        port_raw = getattr(self._settings, "watcher_health_port", 0)
+        try:
+            port = int(port_raw)
+        except (TypeError, ValueError):
+            port = 0
+        if port > 0:
+            host = getattr(self._settings, "watcher_health_host", "127.0.0.1")
+            self._health = HealthServer(
+                snapshot_fn=self._health_snapshot,
+                host=str(host),
+                port=port,
+            )
+            self._health.start()
+
         log.info("watcher_started", watch_dir=watch_dir)
 
     def stop(self) -> None:
         """Stop the watcher gracefully."""
+        if self._health:
+            self._health.stop()
+            self._health = None
         if self._handler:
             self._handler.stop()
         if self._observer:
@@ -99,6 +123,19 @@ class FileWatcherService:
                 log.warning("observer_thread_did_not_stop", timeout=5)
             else:
                 log.info("watcher_stopped")
+
+    def _health_snapshot(self) -> dict[str, object]:
+        """Lock-safe dict for the health endpoint. Combines service-level
+        state with the handler's own snapshot."""
+        handler_snap: dict[str, object] = (
+            self._handler.health_snapshot() if self._handler else {}
+        )
+        return {
+            "status": "ok" if self.is_running else "stopped",
+            "watch_dir": self.watch_path,
+            "is_running": self.is_running,
+            **handler_snap,
+        }
 
     @property
     def is_running(self) -> bool:
