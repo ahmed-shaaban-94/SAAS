@@ -57,6 +57,24 @@ class ExpirySummary(BaseModel):
     total_value: JsonDecimal
 
 
+class ExpiryExposureTier(BaseModel):
+    """Tenant-aggregate expiry exposure for a single 30/60/90-day tier.
+
+    Powers the three-card tier widget on the new dashboard design (#506).
+    The response always contains exactly three rows — zero-valued tiers
+    included — so the frontend can render the fixed layout without
+    conditional logic.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    tier: str  # "30d" | "60d" | "90d"
+    label: str  # "Within 30 days" | "31-60 days" | "61-90 days"
+    total_egp: JsonDecimal
+    batch_count: int
+    tone: str  # "red" | "amber" | "green"
+
+
 class ExpiryCalendarDay(BaseModel):
     """Day-by-day expiry count for the calendar view."""
 
