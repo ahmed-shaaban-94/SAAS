@@ -120,6 +120,55 @@ function stripFreeformKeys(
   }
 }
 
+// ── Renderer-error capture bridge ──────────────────────────────
+//
+// Structured payload the renderer posts through the
+// `observability.captureError` IPC channel. Schema is intentionally
+// fixed + minimal so the renderer cannot stuff arbitrary PII into the
+// payload: the `scrubPii` `beforeSend` is still applied, but a narrow
+// surface is the first line of defence.
+export interface RendererErrorPayload {
+  message: string;
+  stack?: string;
+  /** Short source classifier — e.g. "error-boundary", "unhandled-rejection",
+   *  "window-error". Rendered as a Sentry tag so we can filter the dashboard. */
+  source?: string;
+}
+
+const RENDERER_SOURCE_ALLOWLIST = new Set([
+  "error-boundary",
+  "unhandled-rejection",
+  "window-error",
+  "manual",
+]);
+
+type SentryMainModule = typeof import("@sentry/electron/main");
+
+// Cache the SDK module handle from the first init so soft-error capture
+// doesn't re-import on every IPC call (renderer crashes can burst).
+let sentryReady = false;
+let sentryModule: SentryMainModule | null = null;
+
+/** Test-only — reset the init state so each test case starts clean. */
+export function _resetSentryForTests(): void {
+  sentryReady = false;
+  sentryModule = null;
+}
+
+/** Test-only — inject a stub SDK module + mark ready. Used by Jest to
+ *  assert `captureException` call shape without running `initSentry`. */
+export function __setSentryModuleForTests(
+  mod: Pick<SentryMainModule, "captureException">,
+): void {
+  sentryModule = mod as SentryMainModule;
+  sentryReady = true;
+}
+
+/** Read init state — exposed for handler code + tests; do not mutate. */
+export function isSentryReady(): boolean {
+  return sentryReady;
+}
+
 /**
  * Lazy side-effect init. The caller is responsible for only invoking this
  * when `isCrashReportingEnabled` returned true, so we don't import
@@ -129,8 +178,8 @@ function stripFreeformKeys(
 export async function initSentry(params: InitSentryParams): Promise<void> {
   // Dynamic import so a user who has opted out never pays for the SDK
   // at package install / boot time.
-  const { init } = await import("@sentry/electron/main");
-  init({
+  const mod = await import("@sentry/electron/main");
+  mod.init({
     dsn: params.dsn,
     release: params.release,
     environment: params.environment,
@@ -140,5 +189,31 @@ export async function initSentry(params: InitSentryParams): Promise<void> {
     // agnostic — it only mutates shallow top-level fields — so we cast
     // on the way in.
     beforeSend: (event) => scrubPii(event as SentryEvent) as typeof event,
+  });
+  sentryModule = mod;
+  sentryReady = true;
+}
+
+/**
+ * Forward a soft renderer error to Sentry. Called by the
+ * `observability.captureError` IPC handler.
+ *
+ * Hard renderer crashes (`render-process-gone`) are already captured by
+ * `@sentry/electron/main`'s default integrations — this path is only for
+ * uncaught JS exceptions + unhandled promise rejections inside the page.
+ *
+ * No-op (silent) when Sentry was not initialised — respects opt-out
+ * without forcing the caller to guard every call site.
+ */
+export function captureRendererError(payload: RendererErrorPayload): void {
+  if (!sentryReady || !sentryModule) return;
+  const err = new Error(payload.message);
+  if (payload.stack) err.stack = payload.stack;
+  const source =
+    payload.source && RENDERER_SOURCE_ALLOWLIST.has(payload.source)
+      ? payload.source
+      : "manual";
+  sentryModule.captureException(err, {
+    tags: { process: "renderer", renderer_source: source },
   });
 }

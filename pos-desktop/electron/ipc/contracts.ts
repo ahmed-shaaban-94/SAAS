@@ -262,6 +262,23 @@ export interface ElectronAppApi {
   isElectron: true;
 }
 
+/** Fixed schema forwarded from the renderer to Sentry via the
+ *  `observability.captureError` IPC channel. No free-form `tags` /
+ *  `extra` maps — the renderer cannot stuff arbitrary PII in. */
+export interface RendererErrorReport {
+  message: string;
+  stack?: string;
+  /** Short classifier — see allowlist in `observability/sentry.ts`. */
+  source?: "error-boundary" | "unhandled-rejection" | "window-error" | "manual";
+}
+
+export interface ElectronObservabilityApi {
+  /** Forward a soft renderer error (uncaught exception, unhandled
+   * rejection, ErrorBoundary catch) to the main-process Sentry SDK.
+   * Silently no-ops when crash reporting is disabled. */
+  captureError(report: RendererErrorReport): Promise<void>;
+}
+
 /**
  * The full surface exposed at `window.electronAPI` in the renderer.
  * Main-process IPC handlers MUST cover every entry; renderer calls MUST
@@ -275,6 +292,7 @@ export interface ElectronAPI {
   authz: ElectronAuthzApi;
   updater: ElectronUpdaterApi;
   app: ElectronAppApi;
+  observability: ElectronObservabilityApi;
 
   /** Scanner events pushed from main → renderer (keyboard-emulation lives
    *  in the renderer, but this hook is reserved for Phase-2 raw-HID
