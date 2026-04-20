@@ -22,6 +22,11 @@ class RankingItem(BaseModel):
     name: str
     value: JsonDecimal
     pct_of_total: JsonDecimal
+    # Entity-specific enrichment. Populated only when the ranking source
+    # has meaningful data for the field — e.g. ``staff_count`` is set for
+    # site rankings (#507), left ``None`` elsewhere so existing consumers
+    # are unaffected.
+    staff_count: int | None = None
 
 
 class RankingResult(BaseModel):

@@ -98,7 +98,20 @@ class StockReconciliation(BaseModel):
 
 
 class ReorderAlert(BaseModel):
-    """A product/site that has fallen at or below its reorder point."""
+    """A product/site that has fallen at or below its reorder point.
+
+    ``daily_velocity`` / ``days_of_stock`` / ``status`` power the reorder
+    watchlist on the new dashboard design (#507). Status tiers:
+
+        days_of_stock < 5   → "critical"
+        days_of_stock < 10  → "low"
+        otherwise           → "healthy"
+
+    When velocity is 0 (no recent sales) ``days_of_stock`` is ``None`` and
+    ``status`` defaults to ``"low"`` — the item is below its reorder
+    point, so it is never ``healthy``, but we also can't compute an
+    honest burn-down.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -110,6 +123,9 @@ class ReorderAlert(BaseModel):
     current_quantity: JsonDecimal
     reorder_point: Decimal
     reorder_quantity: Decimal
+    daily_velocity: JsonDecimal = Decimal("0")
+    days_of_stock: JsonDecimal | None = None
+    status: str = "low"  # "critical" | "low" | "healthy"
 
 
 class InventoryFilter(BaseModel):

@@ -232,11 +232,56 @@ class RankingRepository:
         )
 
     def get_site_performance(self, filters: AnalyticsFilter) -> RankingResult:
-        """Return site ranking by net sales."""
+        """Return site ranking by net sales with staff count per branch.
+
+        The dashboard site table shows "N staff" under each branch (#507).
+        We derive staff count as ``COUNT(DISTINCT staff_key)`` against
+        ``fct_sales`` within the filter window — a staff member "belongs"
+        to a site if they rang up at least one sale there. ``staff_key=-1``
+        (Unknown) is excluded so unattributed rows don't inflate the
+        headcount.
+        """
         log.info("get_site_performance", filters=filters.model_dump())
-        return self._get_ranking(
-            "public_marts.agg_sales_by_site",
-            "site_key",
-            "site_name",
+
+        where, params = build_where(
             filters,
+            date_column="date_key",
+            supported_fields=SITE_DATE_ONLY,
+        )
+        params["limit"] = filters.limit
+
+        stmt = text(f"""
+            SELECT
+                f.site_key,
+                dim.site_name,
+                ROUND(SUM(f.sales), 2) AS value,
+                COUNT(DISTINCT f.staff_key) FILTER (
+                    WHERE f.staff_key != -1
+                ) AS staff_count
+            FROM public_marts.fct_sales f
+            INNER JOIN public_marts.dim_site dim
+                ON f.site_key = dim.site_key AND f.tenant_id = dim.tenant_id
+            WHERE {where} AND f.site_key != -1
+            GROUP BY f.site_key, dim.site_name
+            ORDER BY value DESC
+            LIMIT :limit
+        """)  # noqa: S608
+
+        rows = self._session.execute(stmt, params).fetchall()
+        # build_ranking expects 3-tuples (key, name, value); we have a 4th
+        # column (staff_count). Tolerate 3-tuple rows from older mocks
+        # / test doubles — staff_count falls back to None.
+        base = build_ranking([(r[0], r[1], r[2]) for r in rows])
+        enriched = [
+            item.model_copy(
+                update={
+                    "staff_count": int(rows[idx][3]) if len(rows[idx]) > 3 else None,
+                }
+            )
+            for idx, item in enumerate(base.items)
+        ]
+        return RankingResult(
+            items=enriched,
+            total=base.total,
+            active_count=base.active_count,
         )

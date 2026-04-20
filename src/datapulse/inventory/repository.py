@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -190,7 +191,14 @@ class InventoryRepository:
     # ── Reorder Alerts ────────────────────────────────────────────────────
 
     def get_reorder_alerts(self, filters: InventoryFilter) -> list[ReorderAlert]:
-        """Return products where current_quantity <= reorder_point."""
+        """Return products where current_quantity <= reorder_point.
+
+        Enriches each row with a trailing-30-day sales velocity and a
+        derived ``status`` tier (#507). The velocity CTE uses
+        ``fct_sales`` scoped to the current tenant via RLS; the LEFT JOIN
+        ensures items with zero recent sales still surface.
+        """
+
         params: dict = {}
         wheres = ["sl.current_quantity <= rc.reorder_point"]
 
@@ -205,6 +213,22 @@ class InventoryRepository:
         params["limit"] = filters.limit
 
         stmt = text(f"""
+            WITH velocity AS (
+                SELECT
+                    p.drug_code,
+                    f.site_key,
+                    ROUND(
+                        SUM(f.quantity) FILTER (WHERE NOT f.is_return) / 30.0,
+                        4
+                    ) AS daily_velocity
+                FROM {_SCHEMA}.fct_sales f
+                INNER JOIN {_SCHEMA}.dim_product p
+                    ON f.product_key = p.product_key AND f.tenant_id = p.tenant_id
+                WHERE f.date_key >= TO_CHAR(
+                    CURRENT_DATE - INTERVAL '30 days', 'YYYYMMDD'
+                )::INT
+                GROUP BY p.drug_code, f.site_key
+            )
             SELECT
                 sl.product_key,
                 sl.site_key,
@@ -213,19 +237,60 @@ class InventoryRepository:
                 sl.site_code,
                 sl.current_quantity,
                 rc.reorder_point,
-                rc.reorder_quantity
+                rc.reorder_quantity,
+                COALESCE(v.daily_velocity, 0) AS daily_velocity
             FROM {_SCHEMA}.agg_stock_levels sl
             INNER JOIN public.reorder_config rc
                 ON sl.drug_code = rc.drug_code
                AND sl.site_code = rc.site_code
                AND sl.tenant_id = rc.tenant_id
+            LEFT JOIN velocity v
+                ON v.drug_code = sl.drug_code
+               AND v.site_key = sl.site_key
             {where_clause}
             ORDER BY (sl.current_quantity - rc.reorder_point) ASC
             LIMIT :limit
         """)  # noqa: S608
 
         rows = self._session.execute(stmt, params).mappings().all()
-        return [ReorderAlert(**dict(r)) for r in rows]
+        return [self._row_to_reorder_alert(dict(r)) for r in rows]
+
+    @staticmethod
+    def _row_to_reorder_alert(row: dict) -> ReorderAlert:
+        """Compute derived ``days_of_stock`` + ``status`` from a raw row.
+
+        Kept dependency-free (pure function) so the threshold logic is
+        easy to unit-test without the DB in the loop.
+        """
+        current = Decimal(str(row["current_quantity"]))
+        velocity = Decimal(str(row.get("daily_velocity", 0) or 0))
+
+        days_of_stock = (current / velocity).quantize(Decimal("0.1")) if velocity > 0 else None
+
+        if days_of_stock is None:
+            # No recent sales → don't claim "critical" or "healthy"; the
+            # item is below its reorder point so "low" is the honest default.
+            status = "low"
+        elif days_of_stock < Decimal("5"):
+            status = "critical"
+        elif days_of_stock < Decimal("10"):
+            status = "low"
+        else:
+            status = "healthy"
+
+        return ReorderAlert(
+            product_key=row["product_key"],
+            site_key=row["site_key"],
+            drug_code=row["drug_code"],
+            drug_name=row["drug_name"],
+            site_code=row["site_code"],
+            current_quantity=current,
+            reorder_point=row["reorder_point"],
+            reorder_quantity=row["reorder_quantity"],
+            daily_velocity=velocity,
+            days_of_stock=days_of_stock,
+            status=status,
+        )
 
     # ── Physical Counts ───────────────────────────────────────────────────
 
