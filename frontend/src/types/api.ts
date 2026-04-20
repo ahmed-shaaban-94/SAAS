@@ -728,3 +728,24 @@ export interface RevenueForecast {
   period: "day" | "week" | "month" | "quarter" | "ytd";
   stats: RevenueForecastStats;
 }
+
+/**
+ * #507 — enriched reorder-alert shape returned directly by the backend.
+ *
+ * Distinct from the legacy ``ReorderAlert`` in ``types/inventory.ts``,
+ * which predates the velocity/status enrichment and is consumed by
+ * older pages via an adapter hook. New widgets use this shape as-is.
+ */
+export interface ReorderWatchlistItem {
+  product_key: number;
+  site_key: number;
+  drug_code: string;
+  drug_name: string;
+  site_code: string;
+  current_quantity: number;
+  reorder_point: number;
+  reorder_quantity: number;
+  daily_velocity: number;
+  days_of_stock: number | null;
+  status: "critical" | "low" | "healthy";
+}
