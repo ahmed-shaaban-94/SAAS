@@ -21,6 +21,7 @@ from datapulse.expiry.models import (
     BatchInfo,
     ExpiryAlert,
     ExpiryCalendarDay,
+    ExpiryExposureTier,
     ExpiryFilter,
     ExpirySummary,
     FefoRequest,
@@ -190,6 +191,32 @@ def get_expiry_summary(
     _check_expiry_plan(limits)
     set_cache_headers(response, 300)
     return service.get_expiry_summary(_make_filter(site_code=site_code))
+
+
+# ------------------------------------------------------------------
+# 5b. GET /expiry/exposure-summary — tenant-aggregate EGP per 30/60/90 tier
+# ------------------------------------------------------------------
+
+
+@router.get("/exposure-summary", response_model=list[ExpiryExposureTier])
+@limiter.limit("60/minute")
+def get_expiry_exposure_summary(
+    request: Request,
+    response: Response,
+    service: ServiceDep,
+    limits: PlanDep,
+    _: Annotated[None, Depends(require_permission("expiry:read"))],
+    site_code: str | None = None,
+) -> list[ExpiryExposureTier]:
+    """Tenant-aggregate expiry exposure (EGP + batch count) per 30/60/90-day tier.
+
+    Powers the three-card exposure widget on the new dashboard design.
+    Always returns exactly three rows in fixed order (30d/60d/90d), even
+    when a tier has no batches (#506).
+    """
+    _check_expiry_plan(limits)
+    set_cache_headers(response, 300)
+    return service.get_exposure_tiers(_make_filter(site_code=site_code))
 
 
 # ------------------------------------------------------------------

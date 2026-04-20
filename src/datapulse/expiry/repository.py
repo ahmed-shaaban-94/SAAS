@@ -11,6 +11,7 @@ from datapulse.expiry.models import (
     BatchInfo,
     ExpiryAlert,
     ExpiryCalendarDay,
+    ExpiryExposureTier,
     ExpiryFilter,
     ExpirySummary,
     QuarantineRequest,
@@ -194,6 +195,72 @@ class ExpiryRepository:
 
         rows = self._session.execute(stmt, params).mappings().all()
         return [ExpirySummary(**dict(r)) for r in rows]
+
+    # ── Exposure tiers (tenant aggregate, 30/60/90) ────────────────────────
+
+    def get_exposure_tiers(self, filters: ExpiryFilter) -> list[ExpiryExposureTier]:
+        """Tenant-aggregate EGP exposure per 30/60/90-day tier.
+
+        Queries ``dim_batch`` directly because ``agg_expiry_summary`` is
+        bucketed by ``computed_status`` (active/near_expiry/expired),
+        which does not map 1:1 to 30/60/90-day day-bands.
+
+        Always returns exactly three rows — zero-valued tiers included —
+        in the order 30d → 60d → 90d. RLS scopes rows to the current
+        tenant; no explicit ``tenant_id`` filter is required.
+        """
+        from decimal import Decimal
+
+        params: dict = {}
+        wheres = [
+            "b.batch_key != -1",
+            "b.current_quantity > 0",
+            "b.days_to_expiry > 0",  # exclude already-expired
+            "b.days_to_expiry <= 90",
+        ]
+        if filters.site_code is not None:
+            wheres.append("b.site_code = :site_code")
+            params["site_code"] = filters.site_code
+
+        where_clause = "WHERE " + " AND ".join(wheres)
+
+        stmt = text(f"""
+            SELECT
+                CASE
+                    WHEN b.days_to_expiry <= 30 THEN '30d'
+                    WHEN b.days_to_expiry <= 60 THEN '60d'
+                    ELSE '90d'
+                END AS tier,
+                COUNT(*)::INT AS batch_count,
+                COALESCE(
+                    SUM(b.current_quantity * COALESCE(b.unit_cost, 0)),
+                    0
+                )::NUMERIC(18, 4) AS total_egp
+            FROM {_SCHEMA}.dim_batch b
+            {where_clause}
+            GROUP BY tier
+        """)  # noqa: S608
+
+        rows = self._session.execute(stmt, params).mappings().all()
+        values = {
+            str(r["tier"]): (int(r["batch_count"]), Decimal(str(r["total_egp"]))) for r in rows
+        }
+
+        tiers: list[tuple[str, str, str]] = [
+            ("30d", "Within 30 days", "red"),
+            ("60d", "31-60 days", "amber"),
+            ("90d", "61-90 days", "green"),
+        ]
+        return [
+            ExpiryExposureTier(
+                tier=tier,
+                label=label,
+                total_egp=values.get(tier, (0, Decimal("0")))[1],
+                batch_count=values.get(tier, (0, Decimal("0")))[0],
+                tone=tone,
+            )
+            for tier, label, tone in tiers
+        ]
 
     # ── Calendar ───────────────────────────────────────────────────────────
 
