@@ -25,6 +25,9 @@ interface ActivePaymentStripProps {
   insurance: InsuranceState | null;
   onInsuranceChange: (next: InsuranceState | null) => void;
   insurers?: string[];
+  /** Optional — when provided, the Insurance strip renders a "Configure" button
+   * that opens the redesigned InsuranceModal for a richer picker (PR 6). */
+  onOpenInsuranceModal?: () => void;
   // Voucher
   voucherCode: string | null;
   voucherDiscount: number;
@@ -78,6 +81,7 @@ export function ActivePaymentStrip(props: ActivePaymentStripProps) {
           insurance={props.insurance}
           onChange={props.onInsuranceChange}
           insurers={props.insurers ?? DEFAULT_INSURERS}
+          onOpenModal={props.onOpenInsuranceModal}
         />
       )}
       {props.method === "voucher" && (
@@ -215,17 +219,35 @@ function InsuranceStrip({
   insurance,
   onChange,
   insurers,
+  onOpenModal,
 }: {
   grandTotal: number;
   insurance: InsuranceState | null;
   onChange: (next: InsuranceState | null) => void;
   insurers: string[];
+  onOpenModal?: () => void;
 }) {
   const insurerPays = insurance ? (grandTotal * insurance.coveragePct) / 100 : 0;
   const customerPays = Math.max(0, grandTotal - insurerPays);
 
   return (
     <div className="space-y-2">
+      {onOpenModal && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onOpenModal}
+            data-testid="insurance-configure-button"
+            className={cn(
+              "rounded-md border px-2.5 py-1 text-[11px] font-semibold",
+              "border-[var(--pos-purple)]/60 bg-[var(--pos-purple)]/10",
+              "text-violet-300 hover:bg-[var(--pos-purple)]/15",
+            )}
+          >
+            Configure…
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-secondary">

@@ -28,6 +28,9 @@ const INVOICE_TAX_NUMBER = "428-893-011";
 interface PendingCheckout {
   transactionId: number;
   method: PaymentMethod;
+  /** Optional — present when the insurance payment flow captured a
+   * pre-auth / policy reference in the InsuranceModal. */
+  insuranceNo?: string;
 }
 
 export default function CheckoutPage() {
@@ -73,6 +76,10 @@ export default function CheckoutPage() {
         applied_discount: appliedDiscount
           ? { source: appliedDiscount.source, ref: appliedDiscount.ref }
           : undefined,
+        insurance_no:
+          method === "insurance" && pending.insuranceNo
+            ? pending.insuranceNo
+            : undefined,
       });
 
       // Fetch full transaction with items for receipt

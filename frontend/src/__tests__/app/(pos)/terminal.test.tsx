@@ -213,4 +213,51 @@ describe("Terminal v2 integration", () => {
     await waitFor(() => expect(screen.getByTestId("charge-button")).toBeInTheDocument());
     expect(screen.getByTestId("charge-button")).toBeDisabled();
   });
+
+  it(
+    "captures insurance_no via the modal and threads it through to the pending checkout",
+    async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await waitFor(() => expect(screen.getByTestId("quick-pick-1")).toBeInTheDocument());
+      await user.click(screen.getByTestId("quick-pick-1"));
+
+      // Activate insurance payment strip (F11) and open the modal via Configure
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "F11" }));
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId("insurance-configure-button")).toBeInTheDocument(),
+      );
+      await user.click(screen.getByTestId("insurance-configure-button"));
+
+      // Fill the modal
+      await waitFor(() =>
+        expect(screen.getByTestId("pos-insurance-modal")).toBeInTheDocument(),
+      );
+      await user.type(
+        screen.getByTestId("pos-insurance-national-id"),
+        "29901011234567",
+      );
+      await user.type(screen.getByTestId("pos-insurance-preauth"), "PA-9001");
+      await user.click(screen.getByTestId("pos-insurance-apply"));
+
+      // Modal closed, insurance state applied, charge enabled
+      await waitFor(() =>
+        expect(screen.queryByTestId("pos-insurance-modal")).not.toBeInTheDocument(),
+      );
+
+      // Click charge
+      await user.click(screen.getByTestId("charge-button"));
+
+      await waitFor(() => {
+        const stored = localStorage.getItem("pos:pending_checkout");
+        expect(stored).toBeTruthy();
+        const parsed = JSON.parse(stored as string);
+        expect(parsed.method).toBe("insurance");
+        expect(parsed.insuranceNo).toBe("PA-9001");
+      });
+    },
+  );
 });

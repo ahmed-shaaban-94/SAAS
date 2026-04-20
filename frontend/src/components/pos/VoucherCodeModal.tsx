@@ -1,12 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Ticket, X } from "lucide-react";
+import { Loader2, Ticket } from "lucide-react";
+import { ModalShell } from "@/components/pos/ModalShell";
 import { useVoucherValidate } from "@/hooks/use-voucher-validate";
-import { computeVoucherDiscount, type CartVoucher } from "@/contexts/pos-cart-context";
+import {
+  computeVoucherDiscount,
+  type CartVoucher,
+} from "@/contexts/pos-cart-context";
 import { cn } from "@/lib/utils";
 
-interface VoucherCodeModalProps {
+/**
+ * VoucherCodeModal — redesigned for PR 6 (Voucher + Promo + Insurance).
+ *
+ * Design source: docs/design/pos-terminal/frames/pos/modals.jsx § VoucherModal.
+ * Contract preserved from Phase 1b (#463) so existing cart context / terminal
+ * integration / Vitest expectations keep working:
+ *   - Accessible label "Voucher code" on the input
+ *   - Primary button "Validate code" → server validates → flips to "Apply voucher"
+ *   - onApply emits a full CartVoucher with resolved discount in EGP
+ */
+export interface VoucherCodeModalProps {
   open: boolean;
   cartSubtotal: number;
   onApply: (voucher: CartVoucher) => void;
@@ -15,21 +29,20 @@ interface VoucherCodeModalProps {
   initialCode?: string;
 }
 
+const QUICK_CODES = ["RAMADAN25", "NEW100", "LOYALTY10"] as const;
+const CODE_PATTERN = /[^A-Z0-9_-]/g;
+
 function fmtEgp(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
-/**
- * VoucherCodeModal (Phase 1b — preserved from #463 for Terminal v2).
- *
- * Flow:
- *   1. User types code -> F12 / Apply -> `validate` call
- *   2. On success, render preview (discount type, value, resolved EGP amount)
- *   3. User clicks Confirm -> onApply({ code, discount_type, value, discount })
- *
- * Esc closes. Initial focus lands on the input. The input carries
- * `data-pos-scanner-ignore` so keyboard shortcuts don't fire while typing.
- */
+function normalizeCode(raw: string): string {
+  return raw.toUpperCase().replace(CODE_PATTERN, "");
+}
+
 export function VoucherCodeModal({
   open,
   cartSubtotal,
@@ -45,31 +58,18 @@ export function VoucherCodeModal({
     if (open) {
       setCode(initialCode);
       validator.reset();
-      // Defer focus to next tick so the input is in the DOM
-      setTimeout(() => inputRef.current?.focus(), 0);
+      setTimeout(() => inputRef.current?.focus(), 80);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialCode]);
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onCancel]);
-
-  if (!open) return null;
-
   async function handleValidate() {
+    const normalized = normalizeCode(code);
+    if (!normalized) return;
     try {
-      await validator.validate(code, cartSubtotal);
+      await validator.validate(normalized, cartSubtotal);
     } catch {
-      // error surface already in validator.error
+      // validator.error surfaces below
     }
   }
 
@@ -79,7 +79,6 @@ export function VoucherCodeModal({
       handleValidate();
       return;
     }
-    // Confirm: compute final discount and apply
     const resolved = computeVoucherDiscount(
       validator.data.discount_type,
       Number(validator.data.value),
@@ -95,120 +94,290 @@ export function VoucherCodeModal({
 
   const preview = validator.data;
   const resolvedDiscount = preview
-    ? computeVoucherDiscount(preview.discount_type, Number(preview.value), cartSubtotal)
+    ? computeVoucherDiscount(
+        preview.discount_type,
+        Number(preview.value),
+        cartSubtotal,
+      )
     : 0;
 
+  const borderStatus: "idle" | "valid" | "invalid" = validator.error
+    ? "invalid"
+    : preview
+      ? "valid"
+      : "idle";
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="voucher-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onCancel}
+    <ModalShell
+      open={open}
+      onClose={onCancel}
+      title="Apply voucher"
+      subtitle="Enter the discount code supplied to the customer."
+      badge="VOUCHER"
+      accent="amber"
+      width={520}
+      testId="pos-voucher-modal"
+      titleId="pos-voucher-modal-title"
+      icon={<Ticket className="h-5 w-5" aria-hidden="true" />}
     >
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
-        className={cn(
-          "w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl",
-        )}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-500/15 text-amber-400">
-              <Ticket className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 id="voucher-modal-title" className="text-base font-semibold text-text-primary">
-                Apply voucher
-              </h2>
-              <p className="text-xs text-text-secondary">
-                Enter the discount code supplied to the customer.
-              </p>
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <label className="sr-only" htmlFor="pos-voucher-code-input">
+          Voucher code
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="pos-voucher-code-input"
+            ref={inputRef}
+            data-pos-scanner-ignore=""
+            data-testid="pos-voucher-code-input"
+            value={code}
+            onChange={(e) => {
+              setCode(normalizeCode(e.target.value));
+              if (validator.data || validator.error) validator.reset();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (preview) {
+                  handleSubmit(e as unknown as React.FormEvent);
+                } else {
+                  handleValidate();
+                }
+              }
+            }}
+            placeholder="RAMADAN25"
+            aria-label="Voucher code"
+            autoComplete="off"
+            inputMode="text"
+            className="font-mono"
+            style={{
+              flex: 1,
+              fontSize: 18,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              padding: "14px 14px",
+              background: "rgba(0,0,0,0.3)",
+              border: "1.5px solid",
+              borderColor:
+                borderStatus === "invalid"
+                  ? "var(--pos-red, #ff7b7b)"
+                  : borderStatus === "valid"
+                    ? "var(--pos-green, #1dd48b)"
+                    : "var(--pos-line, rgba(255,255,255,0.06))",
+              borderRadius: 10,
+              direction: "ltr",
+              color: "var(--pos-ink, #e8ecf2)",
+            }}
+          />
           <button
             type="button"
-            onClick={onCancel}
-            aria-label="Close voucher modal"
-            className="rounded-lg p-1 text-text-secondary hover:bg-surface-raised"
+            onClick={handleValidate}
+            disabled={validator.isLoading || code.trim().length === 0}
+            className="font-semibold"
+            data-testid="pos-voucher-validate-button"
+            style={{
+              padding: "0 18px",
+              borderRadius: 10,
+              background: "rgba(255,171,61,0.18)",
+              border: "1px solid var(--pos-amber, #ffab3d)",
+              color: "var(--pos-amber, #ffab3d)",
+              fontSize: 13,
+              opacity: code.trim().length === 0 ? 0.45 : 1,
+              cursor:
+                validator.isLoading || code.trim().length === 0
+                  ? "not-allowed"
+                  : "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
           >
-            <X className="h-4 w-4" />
+            {validator.isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            Validate
           </button>
         </div>
 
-        <div className="mt-5 space-y-3">
-          <label className="block text-xs font-medium uppercase tracking-wider text-text-secondary">
-            Voucher code
-            <input
-              ref={inputRef}
-              data-pos-scanner-ignore=""
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value.toUpperCase());
-                if (validator.data || validator.error) validator.reset();
+        <div className="flex flex-wrap gap-1.5">
+          {QUICK_CODES.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => {
+                setCode(q);
+                validator.reset();
               }}
-              placeholder="SAVE10"
-              autoComplete="off"
-              className={cn(
-                "mt-1 block w-full rounded-xl border border-border bg-surface-raised px-3 py-2",
-                "font-mono text-base tracking-widest text-text-primary placeholder:text-text-secondary",
-                "focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40",
-              )}
-            />
-          </label>
-
-          {validator.error && !preview && (
-            <p role="alert" className="text-xs text-destructive">
-              {validator.error}
-            </p>
-          )}
-
-          {preview && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-mono uppercase tracking-wider text-amber-400">
-                  {preview.code}
-                </span>
-                <span className="text-text-secondary">
-                  {preview.remaining_uses} use{preview.remaining_uses === 1 ? "" : "s"} left
-                </span>
-              </div>
-              <div className="mt-2 flex items-baseline justify-between">
-                <span className="text-xs text-text-secondary">
-                  {preview.discount_type === "percent"
-                    ? `${Number(preview.value)}% off`
-                    : `Flat EGP ${fmtEgp(Number(preview.value))} off`}
-                </span>
-                <span className="font-mono text-lg font-semibold text-amber-400">
-                  −EGP {fmtEgp(resolvedDiscount)}
-                </span>
-              </div>
-            </div>
-          )}
+              className="font-mono"
+              style={{
+                fontSize: 10,
+                padding: "3px 8px",
+                borderRadius: 5,
+                background: "rgba(184,192,204,0.06)",
+                border:
+                  "1px solid var(--pos-line, rgba(255,255,255,0.06))",
+                color: "var(--pos-ink-3, #7a8494)",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {q}
+            </button>
+          ))}
         </div>
 
-        <div className="mt-5 flex items-center justify-end gap-2">
+        {validator.error && !preview && (
+          <div
+            role="alert"
+            data-testid="pos-voucher-error"
+            style={{
+              marginTop: 4,
+              padding: 12,
+              borderRadius: 10,
+              background: "rgba(255,123,123,0.08)",
+              border: "1px solid rgba(255,123,123,0.3)",
+              color: "var(--pos-red, #ff7b7b)",
+              fontSize: 12.5,
+              fontWeight: 500,
+            }}
+          >
+            {validator.error}
+          </div>
+        )}
+
+        {preview && (
+          <div
+            data-testid="pos-voucher-preview"
+            style={{
+              marginTop: 4,
+              background: "rgba(29,212,139,0.06)",
+              border: "1px solid rgba(29,212,139,0.35)",
+              borderRadius: 12,
+              padding: 14,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "var(--pos-green, #1dd48b)",
+                }}
+              />
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.2em",
+                  color: "var(--pos-green, #1dd48b)",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                }}
+              >
+                Voucher valid
+              </span>
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-fraunces), Fraunces, serif",
+                fontSize: 17,
+                fontStyle: "italic",
+                color: "var(--pos-ink, #e8ecf2)",
+              }}
+            >
+              {preview.discount_type === "percent"
+                ? `${Number(preview.value)}% off`
+                : `Flat EGP ${fmtEgp(Number(preview.value))} off`}
+            </div>
+            <div
+              className="flex items-baseline justify-between"
+              style={{
+                paddingTop: 8,
+                borderTop:
+                  "1px dashed var(--pos-line, rgba(255,255,255,0.06))",
+              }}
+            >
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  color: "var(--pos-ink-3, #7a8494)",
+                  textTransform: "uppercase",
+                }}
+              >
+                Voucher off
+              </span>
+              <span
+                className="font-mono tabular-nums"
+                data-testid="pos-voucher-resolved"
+                style={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: "var(--pos-amber, #ffab3d)",
+                }}
+              >
+                −EGP {fmtEgp(resolvedDiscount)}
+              </span>
+            </div>
+            <div
+              className="font-mono"
+              style={{
+                fontSize: 10,
+                color: "var(--pos-ink-3, #7a8494)",
+              }}
+            >
+              {preview.code} · {preview.remaining_uses} use
+              {preview.remaining_uses === 1 ? "" : "s"} left
+            </div>
+          </div>
+        )}
+
+        <div className="mt-2 flex gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-text-secondary hover:bg-surface-raised"
+            className={cn(
+              "flex-1 rounded-xl border px-4 py-3 text-[13px] font-semibold",
+            )}
+            style={{
+              background: "transparent",
+              borderColor: "var(--pos-line, rgba(255,255,255,0.06))",
+              color: "var(--pos-ink-2, #b8c0cc)",
+            }}
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={validator.isLoading || !code.trim()}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-semibold",
-              "bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40",
-            )}
+            disabled={validator.isLoading || code.trim().length === 0}
+            data-testid="pos-voucher-submit"
+            className="flex-[2] rounded-xl px-4 py-3 text-[13px] font-bold"
+            style={{
+              background: preview
+                ? "linear-gradient(180deg, var(--pos-amber, #ffab3d), #e08f20)"
+                : "rgba(255,255,255,0.04)",
+              color: preview ? "#1a0c00" : "var(--pos-ink-4, #3f4a5a)",
+              border: preview
+                ? "none"
+                : "1px solid var(--pos-line, rgba(255,255,255,0.06))",
+              cursor:
+                validator.isLoading || code.trim().length === 0
+                  ? "not-allowed"
+                  : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+            }}
           >
             {validator.isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             {preview ? "Apply voucher" : "Validate code"}
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }

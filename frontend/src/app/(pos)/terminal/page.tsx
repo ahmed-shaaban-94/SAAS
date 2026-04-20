@@ -6,6 +6,10 @@ import { X, Clock } from "lucide-react";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
 import { PharmacistVerification } from "@/components/pos/PharmacistVerification";
 import { VoucherCodeModal } from "@/components/pos/VoucherCodeModal";
+import {
+  InsuranceModal,
+  type InsuranceApplyPayload,
+} from "@/components/pos/InsuranceModal";
 import { ScanBar } from "@/components/pos/terminal/ScanBar";
 import { QuickPickGrid } from "@/components/pos/terminal/QuickPickGrid";
 import { CartTable } from "@/components/pos/terminal/CartTable";
@@ -88,7 +92,9 @@ export default function PosTerminalPage() {
   const [cashTendered, setCashTendered] = useState("");
   const [cardLast4, setCardLast4] = useState("");
   const [insurance, setInsurance] = useState<InsuranceState | null>(null);
+  const [insuranceNumber, setInsuranceNumber] = useState<string | null>(null);
   const [voucherOpen, setVoucherOpen] = useState(false);
+  const [insuranceOpen, setInsuranceOpen] = useState(false);
   const [pharmacistOpen, setPharmacistOpen] = useState(false);
   const [pendingDrug, setPendingDrug] = useState<PosProductResult | null>(null);
   const [lastKeypadKey, setLastKeypadKey] = useState<string | null>(null);
@@ -236,16 +242,40 @@ export default function PosTerminalPage() {
       // Hand off the active transaction + selected payment method to
       // /checkout. The applied cart discount (voucher OR promotion) is
       // already persisted in the cart context and is read from there by
-      // the checkout page, so no need to duplicate it in localStorage.
-      localStorage.setItem(
-        "pos:pending_checkout",
-        JSON.stringify({ transactionId: txnId, method: activePayment }),
-      );
+      // the checkout page. Insurance extras (insurance_no) ride along so
+      // the checkout page can forward them in the CheckoutRequest.
+      const payload: {
+        transactionId: number;
+        method: TilePaymentMethod;
+        insuranceNo?: string;
+      } = { transactionId: txnId, method: activePayment };
+      if (activePayment === "insurance" && insuranceNumber) {
+        payload.insuranceNo = insuranceNumber;
+      }
+      localStorage.setItem("pos:pending_checkout", JSON.stringify(payload));
       router.push("/checkout");
     } catch {
       // Error surfaced via checkout.error
     }
-  }, [terminal, items.length, grandTotal, activeTransactionId, checkout, activePayment, router]);
+  }, [
+    terminal,
+    items.length,
+    grandTotal,
+    activeTransactionId,
+    checkout,
+    activePayment,
+    insuranceNumber,
+    router,
+  ]);
+
+  const handleInsuranceApply = useCallback(
+    (payload: InsuranceApplyPayload) => {
+      setInsurance(payload.state);
+      setInsuranceNumber(payload.insuranceNumber);
+      setActivePayment("insurance");
+    },
+    [],
+  );
 
   // ----- Keyboard shortcuts -----
 
@@ -458,7 +488,11 @@ export default function PosTerminalPage() {
             cardLast4={cardLast4}
             onCardLast4Change={setCardLast4}
             insurance={insurance}
-            onInsuranceChange={setInsurance}
+            onInsuranceChange={(next) => {
+              setInsurance(next);
+              if (!next) setInsuranceNumber(null);
+            }}
+            onOpenInsuranceModal={() => setInsuranceOpen(true)}
             voucherCode={voucherCode}
             voucherDiscount={voucherDiscount}
             onOpenVoucherModal={() => setVoucherOpen(true)}
@@ -483,6 +517,13 @@ export default function PosTerminalPage() {
         cartSubtotal={subtotal}
         onApply={handleVoucherApply}
         onCancel={() => setVoucherOpen(false)}
+      />
+      <InsuranceModal
+        open={insuranceOpen}
+        onClose={() => setInsuranceOpen(false)}
+        onApply={handleInsuranceApply}
+        grandTotal={grandTotal}
+        initial={insurance}
       />
       <PharmacistVerification
         open={pharmacistOpen}
