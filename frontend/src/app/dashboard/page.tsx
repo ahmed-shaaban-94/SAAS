@@ -202,7 +202,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-page text-ink-primary font-sans grid grid-cols-1 xl:grid-cols-[248px_1fr]">
       <DashboardSidebar activeHref="/dashboard" />
 
-      <main id="main-content" className="px-8 py-7 pb-16 max-w-[1600px]">
+      <main className="px-8 py-7 pb-16 max-w-[1600px]">
         <header className="flex flex-wrap items-end gap-5 mb-6">
           <div className="flex-1 min-w-[320px]">
             <div className="text-sm text-ink-secondary flex items-center gap-2 flex-wrap">

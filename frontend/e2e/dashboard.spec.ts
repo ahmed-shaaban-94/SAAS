@@ -68,7 +68,10 @@ test.describe("Dashboard (new design)", () => {
   });
 
   test("skip-to-content anchor targets #main-content", async ({ page }) => {
-    await expect(page.locator("#main-content")).toBeAttached();
+    // V2Layout provides the canonical <main#main-content> above the
+    // per-route content — scope to the element to avoid strict-mode
+    // duplicates that a nested layout could produce.
+    await expect(page.locator("main#main-content")).toBeAttached();
   });
 
   test("no pageerrors and no 5xx on initial render", async ({ page }) => {
