@@ -76,6 +76,27 @@ jobs:
         working-directory: pos-desktop
         run: npx electron-builder install-app-deps
 
+      # Detect whether Windows code-signing secrets are available (#476).
+      # CSC_LINK (base64-encoded .pfx) + CSC_KEY_PASSWORD are standard
+      # electron-builder env vars — when both are set the build produces
+      # a signed installer and SmartScreen reputation can start accruing.
+      # When missing (e.g. forked PRs, local dev) we fall through to an
+      # unsigned build with a loud notice so the state is auditable.
+      - name: Detect code-signing config
+        id: signing_detect
+        shell: bash
+        run: |
+          MISSING=""
+          [[ -z "${{ secrets.CSC_LINK }}" ]]         && MISSING="$MISSING CSC_LINK"
+          [[ -z "${{ secrets.CSC_KEY_PASSWORD }}" ]] && MISSING="$MISSING CSC_KEY_PASSWORD"
+          if [[ -z "$MISSING" ]]; then
+            echo "enabled=1" >> "$GITHUB_OUTPUT"
+            echo "::notice::Code-signing cert detected — installer will be signed."
+          else
+            echo "enabled=0" >> "$GITHUB_OUTPUT"
+            echo "::notice::Code-signing cert NOT configured — producing UNSIGNED installer. Missing secrets:${MISSING}. Add them to the repo (Settings → Secrets) to enable signing. Tracked under #476."
+          fi
+
       # Run the canonical build script. Uses Git Bash (pre-installed on
       # windows-latest). Produces:
       #   pos-desktop/resources/nextjs/*  (standalone Next.js server)
@@ -88,6 +109,15 @@ jobs:
           # triggered by a tag push. For PRs / workflow_dispatch (without
           # publish=true) we explicitly set PUBLISH=never below.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Windows code-signing (#476). Empty when secrets are missing —
+          # electron-builder skips signing silently in that case.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Opt-in: upload the .pfx to a hardware token / EV signer in a
+          # future iteration. The variable is forwarded so `signtool` can
+          # pick it up when #476 upgrades to an EV cert.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
           if [[ "${{ github.ref }}" == refs/tags/pos-desktop-v* ]]; then
             echo "Tag build — electron-builder will publish to GitHub Releases."
@@ -116,6 +146,26 @@ jobs:
             echo "::error::No NSIS installer produced in dist/"
             exit 1
           fi
+
+      # When signing is enabled, confirm the produced binary actually carries
+      # a valid signature — guards against silent signing failures (wrong
+      # cert password, expired cert, etc) that electron-builder logs as a
+      # warning but does not fail the build on (#476).
+      - name: Verify installer signature
+        if: ${{ steps.signing_detect.outputs.enabled == '1' }}
+        shell: pwsh
+        working-directory: pos-desktop
+        run: |
+          $exe = Get-ChildItem -Path dist -Filter "*-Setup.exe" | Select-Object -First 1
+          if (-not $exe) { Write-Error "No installer found"; exit 1 }
+          $sig = Get-AuthenticodeSignature $exe.FullName
+          Write-Host "Status:  $($sig.Status)"
+          Write-Host "Signer:  $($sig.SignerCertificate.Subject)"
+          Write-Host "Issuer:  $($sig.SignerCertificate.Issuer)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Error "Installer signature is '$($sig.Status)' — signing secrets wired but produced an invalid signature. See #476."
+            exit 1
+          }
 
       # ── Sentry source-map upload (follow-up to #481 / PR #495) ────────
       # Runs only on tag pushes AND only when SENTRY_AUTH_TOKEN is set.
