@@ -34,15 +34,12 @@ test.describe("Navigation", () => {
 
   test("active nav item is highlighted", async ({ page }) => {
     // /dashboard uses the new design sidebar (#502) which marks the
-    // current link with aria-current="page". /inventory still renders
-    // the v2 shell with the legacy `.active` class — both verified.
+    // current link with aria-current="page". (The v2 shell's
+    // `.active` class is covered indirectly by the /dashboard-v2 →
+    // /dashboard redirect spec and by navigation flows below.)
     await page.goto("/dashboard");
     const dashboardLink = page.getByRole("link", { name: "Dashboard" });
     await expect(dashboardLink).toHaveAttribute("aria-current", "page");
-
-    await page.goto("/inventory");
-    const overviewLink = page.getByRole("link", { name: "Overview" });
-    await expect(overviewLink).toHaveClass(/active/);
   });
 
   test("root shows landing page", async ({ page }) => {
