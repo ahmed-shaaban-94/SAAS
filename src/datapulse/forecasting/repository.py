@@ -242,6 +242,11 @@ class ForecastingRepository:
             where = "entity_type = :et AND entity_key IS NULL AND granularity = :g"
             params = {"et": entity_type, "g": granularity}
 
+        # Defensive LIMIT: a forecast is semantically bounded by the number
+        # of points per (entity, granularity) — realistically <400 (daily
+        # horizon for a year, monthly for decade). 1000 is ~3x the largest
+        # realistic case; anything larger signals corrupt data worth failing
+        # loudly on rather than silently OOM'ing.
         stmt = text(f"""
             SELECT forecast_date, point_forecast, lower_bound, upper_bound,
                    method, mape, mae, rmse, run_at
@@ -249,6 +254,7 @@ class ForecastingRepository:
             WHERE {where}
               AND forecast_date >= CURRENT_DATE
             ORDER BY forecast_date
+            LIMIT 1000
         """)
         rows = self._session.execute(stmt, params).fetchall()
         if not rows:

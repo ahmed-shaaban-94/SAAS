@@ -17,6 +17,13 @@ DATE_RANGE_SQL = """
 """
 
 # ── Filter options ────────────────────────────────────────────────────────────
+#
+# Returns up to ~1600 rows (500 categories + 500 brands + 100 sites + 500 staff).
+# Not run per-request — ``KPIService.get_filter_options`` caches the result for
+# 3600s (services/kpi.py:110-121). If you add a new UNION branch here, consider
+# whether the cardinality budget still holds, and whether the cache TTL needs
+# revisiting (filter options change when dbt runs, which is less frequent
+# than 1h in production).
 
 FILTER_OPTIONS_SQL = """
     SELECT * FROM (
