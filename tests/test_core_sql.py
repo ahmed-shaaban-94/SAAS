@@ -132,7 +132,19 @@ class TestBuildWhere:
         # Defensive: never splice arbitrary operator text into SQL, since
         # a typo like "= ;DROP TABLE" would otherwise land in the query.
         with pytest.raises(ValueError, match="unsupported operator"):
-            build_where([("col", "LIKE", "v", "foo")])
+            build_where([("col", "BETWEEN", "v", "foo")])
+
+    def test_like_and_ilike_supported(self):
+        # Wildcards (``%``, ``_``) are the caller's responsibility — they go
+        # in the bound *value*, never in the operator or column_expr.
+        clause, params = build_where(
+            [
+                ("endpoint", "ILIKE", "endpoint", "%analytics%"),
+                ("user_id", "LIKE", "user_id", "svc_%"),
+            ]
+        )
+        assert clause == "endpoint ILIKE :endpoint AND user_id LIKE :user_id"
+        assert params == {"endpoint": "%analytics%", "user_id": "svc_%"}
 
     def test_not_equal_operators_both_forms(self):
         clause_bang, _ = build_where([("c", "!=", "v", 1)])

@@ -23,12 +23,15 @@ test.describe("Dashboard (new design)", () => {
   });
 
   test("primary sidebar navigation is present", async ({ page }) => {
+    // After #573 switched /dashboard to DashboardShell v2, NAV_GROUPS
+    // labels the /dashboard item "Overview" (not "Dashboard"). "Dashboard"
+    // as an accessibility name now substring-matches "My Dashboard"
+    // (/my-dashboard) which is NOT the active link.
     const nav = page.getByRole("navigation", { name: "Primary navigation" });
     await expect(nav).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(
+      nav.getByRole("link", { name: "Overview", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   test("period segmented control has 5 options", async ({ page }) => {
