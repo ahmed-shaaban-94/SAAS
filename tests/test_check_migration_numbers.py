@@ -116,12 +116,70 @@ class TestFailingCases:
         assert result.returncode == 0
 
 
+class TestKnownDuplicatesAllowlist:
+    """The allowlist grandfathers historic dupes but still flags new ones."""
+
+    def _make_tree(self, tmp_path: Path, files: list[str], known: list[str]) -> Path:
+        """Build a tmp migrations dir with files + an allowlist file."""
+        migrations = tmp_path / "migrations"
+        migrations.mkdir()
+        for name in files:
+            (migrations / name).write_text("-- test\nSELECT 1;\n")
+        (migrations / ".known-duplicate-prefixes").write_text(
+            "\n".join(["# test allowlist", *known]) + "\n"
+        )
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "check_migration_numbers.py").write_text(SCRIPT.read_text())
+        return scripts_dir / "check_migration_numbers.py"
+
+    def test_known_duplicate_passes_with_warning(self, tmp_path):
+        """A dup prefix listed in .known-duplicate-prefixes is grandfathered."""
+        script = self._make_tree(
+            tmp_path,
+            files=["031_a.sql", "031_b.sql", "032_next.sql"],
+            known=["031"],
+        )
+        result = _run(script)
+        assert result.returncode == 0, result.stderr
+        assert "WARNING" in result.stdout
+        assert "031" in result.stdout
+
+    def test_new_duplicate_still_fails_even_with_allowlist(self, tmp_path):
+        """A NEW duplicate (not in the allowlist) must still fail."""
+        script = self._make_tree(
+            tmp_path,
+            files=["031_a.sql", "031_b.sql", "050_a.sql", "050_b.sql"],
+            known=["031"],  # 050 is NOT grandfathered
+        )
+        result = _run(script)
+        assert result.returncode == 1
+        assert "Duplicate migration prefix '050'" in result.stderr
+        # The grandfathered 031 still appears as a warning, not a failure:
+        assert "031" in result.stdout
+
+    def test_allowlist_missing_file_is_equivalent_to_empty(self, tmp_path):
+        """No allowlist file => no grandfathering => dupes fail as before."""
+        migrations = tmp_path / "migrations"
+        migrations.mkdir()
+        (migrations / "031_a.sql").write_text("")
+        (migrations / "031_b.sql").write_text("")
+        # Deliberately no .known-duplicate-prefixes file
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "check_migration_numbers.py").write_text(SCRIPT.read_text())
+        result = _run(scripts_dir / "check_migration_numbers.py")
+        assert result.returncode == 1
+        assert "Duplicate migration prefix '031'" in result.stderr
+
+
 @pytest.mark.unit
-def test_real_repo_migrations_state_is_known():
-    """Documents the current state on main: the script fails because
-    of issue #538's three duplicate pairs. Once the duplicates are
-    reconciled (per RUNBOOK §3 procedure), this test should be updated
-    to assert a passing return code.
+def test_real_repo_state_has_exactly_three_grandfathered_dupes():
+    """Documents the current state on main: the 3 known duplicates
+    (031, 088, 089) are grandfathered via migrations/.known-duplicate-prefixes,
+    so the script exits 0 but emits a warning. When the rename follow-up PR
+    lands, both the dupes AND the allowlist entries go away, and this test
+    still passes (exit 0, zero warnings).
     """
     result = subprocess.run(
         [sys.executable, str(SCRIPT)],
@@ -129,15 +187,8 @@ def test_real_repo_migrations_state_is_known():
         text=True,
         check=False,
     )
-    # This is a guarded regression — if a future PR accidentally RESOLVES
-    # the duplicates (e.g. by merging the rename PR), this test updates them
-    # of the shift. Kept permissive: either exit-0 (all resolved) or exit-1
-    # with the three known duplicates.
-    assert result.returncode in (0, 1)
-    if result.returncode == 1:
-        # Expected state today (#538 open): must list the known duplicates.
-        for prefix in ("031", "088", "089"):
-            assert f"Duplicate migration prefix '{prefix}'" in result.stderr, (
-                f"Expected known duplicate prefix '{prefix}' to be reported "
-                f"while #538 is open. stderr:\n{result.stderr}"
-            )
+    # Must succeed either way — grandfathered debt doesn't fail CI.
+    assert result.returncode == 0, (
+        f"Expected exit 0 on main. If a NEW duplicate landed, reconcile it; "
+        f"if the known-duplicates file was deleted, restore it. stderr:\n{result.stderr}"
+    )

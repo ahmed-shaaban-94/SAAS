@@ -1,0 +1,23 @@
+# Known pre-existing duplicate migration prefixes — grandfathered by
+# scripts/check_migration_numbers.py pending the reconciliation follow-up
+# tracked in issue #538.
+#
+# The CI check FAILS on any duplicate prefix NOT listed here (protecting
+# main from NEW duplicates), and PRINTS A WARNING for listed prefixes
+# (reminding us the debt is still there).
+#
+# Procedure to remove an entry:
+# 1. Follow docs/RUNBOOK.md section 3 — audit each live environment's
+#    schema_migrations table to confirm which file is applied under
+#    the duplicate prefix.
+# 2. Rename the later-added file to the next free numeric slot.
+# 3. Update any hardcoded references.
+# 4. Delete the corresponding line below.
+# 5. Any host that applied the RENAMED file under the old prefix
+#    needs a one-line INSERT into schema_migrations — see RUNBOOK.
+#
+# Format: one prefix per line, comments start with '#', blank lines OK.
+
+031
+088
+089
