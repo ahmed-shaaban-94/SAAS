@@ -318,6 +318,37 @@ docker logs datapulse-api --since 10m 2>&1 | \
 docker exec datapulse-api env | grep AUTH0
 ```
 
+### API refuses to boot: "Auth must be configured in production/staging"
+
+**Symptom**: `docker compose up api` exits immediately; logs show a
+pydantic `ValidationError` mentioning
+`Auth must be configured in production/staging (app_env=..., sentry_environment=...)`.
+
+**Cause (by design)**: Two deployment-mode flags gate auth — `APP_ENV` and
+`SENTRY_ENVIRONMENT`. Whenever **either** resolves to a non-dev value
+(anything other than `development`/`test`), the API refuses to boot with
+both `API_KEY` and `AUTH0_DOMAIN` empty. This prevents the dev fallback
+— which returns fake claims `tenant_id=1`, `roles=["viewer"]` — from
+ever being served in a production deployment (issue #537).
+
+**Fix**:
+
+```bash
+# 1. Verify the two env vars
+docker exec datapulse-api env | grep -E '^(APP_ENV|SENTRY_ENVIRONMENT)='
+
+# 2. Configure at least one of the auth mechanisms
+#    (either API key for service-to-service, or Auth0 for interactive users)
+API_KEY=<openssl rand -hex 32>
+AUTH0_DOMAIN=<your-tenant>.auth0.com
+
+# 3. Restart the service
+docker compose up -d --no-deps api
+```
+
+**Do NOT** fix this by setting `APP_ENV=development` on a production host
+— that is exactly the misconfiguration this guard exists to catch.
+
 ### dbt run fails after migration
 
 If a migration added/removed columns, dbt models may fail with `column does not exist`.

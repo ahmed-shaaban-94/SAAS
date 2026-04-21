@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://github.com/ahmed-shaaban-94/Data-Pulse/actions/workflows/ci.yml"><img src="https://github.com/ahmed-shaaban-94/Data-Pulse/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/ahmed-shaaban-94/Data-Pulse/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/coverage-95%25-brightgreen.svg?style=flat-square" alt="Coverage">
+  <img src="https://img.shields.io/badge/coverage-79%25-green.svg?style=flat-square" alt="Coverage">
   <img src="https://img.shields.io/badge/tests-1,342-blue.svg?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/API_endpoints-100+-orange.svg?style=flat-square" alt="API Endpoints">
   <img src="https://img.shields.io/badge/transactions-1.1M+-purple.svg?style=flat-square" alt="Transactions">
@@ -471,7 +471,7 @@ make dev                 # Start + print access URLs
 make status              # Show service health
 
 # Testing
-make test                # Python tests with coverage (95%+)
+make test                # Python tests with coverage (~79% unit, gated at 77%)
 make test-e2e            # Playwright E2E tests
 make dbt-test            # dbt model tests
 
@@ -565,7 +565,7 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 | SQL migrations | 22 |
 | Test files | 98 |
 | Test functions | 1,342 |
-| Code coverage | 95%+ |
+| Code coverage (unit) | ~79% (gated 77%) |
 | dbt models | 16 |
 | dbt tests | ~47 |
 | E2E specs | 11 |

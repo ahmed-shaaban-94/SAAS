@@ -82,7 +82,11 @@ markers = [
 source = ["datapulse"]
 
 [tool.coverage.report]
-fail_under = 95
+# Unit-test coverage floor. Kept 2 points below measured current (~79% on main)
+# so normal variance doesn't break CI but a real regression does.
+# Aligned with `.github/workflows/ci.yml` unit-test `--cov-fail-under` and
+# `make coverage` (single source of truth — see issue #540).
+fail_under = 77
 show_missing = true
 
 [tool.mypy]

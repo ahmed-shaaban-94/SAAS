@@ -1,4 +1,4 @@
-.PHONY: up down build test lint fmt dbt logs clean dev status pipeline demo help setup backup restore
+.PHONY: up down build test coverage lint fmt dbt logs clean dev status pipeline demo help setup backup restore
 
 ## Compose file shortcuts
 DEV_COMPOSE  = docker compose -f docker-compose.yml -f docker-compose.dev.yml
@@ -90,7 +90,8 @@ help:
 	@echo "  demo      Full demo: build + load data + dbt + serve (dev)"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test      Run Python unit tests with coverage"
+	@echo "  test      Run Python unit tests (in container) with coverage"
+	@echo "  coverage  Run unit tests locally with the same coverage gate CI enforces"
 	@echo "  test-e2e  Run Playwright E2E tests"
 	@echo ""
 	@echo "Code Quality:"
@@ -113,6 +114,12 @@ help:
 ## Testing
 test:
 	docker exec -it datapulse-api pytest --cov=datapulse --cov-report=term-missing
+
+# Unit-test coverage with the same floor CI enforces. Reproducing CI's exact
+# command locally avoids push-fail-fix-push round-trips (issue #540).
+coverage:
+	DATABASE_URL="sqlite:///:memory:" REDIS_URL="" SENTRY_ENVIRONMENT=test \
+	    pytest -m unit --cov=datapulse --cov-report=term-missing --cov-fail-under=77 -q
 
 test-e2e:
 	docker compose exec frontend npx playwright test

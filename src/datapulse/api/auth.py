@@ -21,6 +21,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 
 from datapulse.api.jwt import verify_jwt
 from datapulse.config import Settings, get_settings
+from datapulse.core.config import is_non_dev_env
 from datapulse.core.security import compare_secrets
 
 _auth_logger = structlog.get_logger()
@@ -158,15 +159,18 @@ def get_current_user(
             }
         raise HTTPException(status_code=401, detail="Authentication failed")
 
-    # 3. Dev mode — both auth mechanisms unconfigured
+    # 3. Dev mode — both auth mechanisms unconfigured.
+    # SECURITY: defense-in-depth gate. Refuse the fallback whenever *either*
+    # app_env or sentry_environment indicates a non-dev deployment, so a single
+    # misconfigured env var cannot leak admin-adjacent claims (issue #537).
     if not settings.api_key and not settings.auth0_domain:
-        env = settings.sentry_environment
-        if env not in ("development", "test"):
+        if is_non_dev_env(settings.app_env, settings.sentry_environment):
             _auth_logger.error(
                 "auth_not_configured_in_production",
-                environment=env,
-                detail="API_KEY and AUTH0_DOMAIN are both empty in non-dev environment "
-                "— refusing to return dev fallback with admin roles",
+                app_env=settings.app_env,
+                sentry_environment=settings.sentry_environment,
+                detail="API_KEY and AUTH0_DOMAIN are both empty in a non-dev "
+                "environment — refusing to return dev fallback claims",
             )
             raise HTTPException(
                 status_code=503,

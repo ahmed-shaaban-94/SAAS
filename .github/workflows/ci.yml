@@ -63,7 +63,10 @@ jobs:
           REDIS_URL: ""
           SENTRY_ENVIRONMENT: test
           PYTHONFAULTHANDLER: "1"
-        run: pytest -m unit --timeout=120 --cov=datapulse --cov-report=term-missing --cov-fail-under=45 -x -q
+        # Coverage floor aligned with pyproject.toml and `make coverage`.
+        # Current measured unit coverage on main is ~79%; gate is floor-2 to
+        # allow normal variance without masking real regressions (issue #540).
+        run: pytest -m unit --timeout=120 --cov=datapulse --cov-report=term-missing --cov-fail-under=77 -x -q
 
   test-integration:
     name: Integration Tests
@@ -125,6 +128,9 @@ jobs:
           # test_audit_log_immutability, test_db_role_timeouts). Must match
           # the value used in the "Run migrations" step above.
           DB_READER_PASSWORD: ci_reader_pass
+        # Integration gate stays at 40 for now — can't measure locally
+        # without Postgres, so we keep the historic number rather than
+        # guess. Raising this is tracked as a follow-up to #540.
         run: pytest -m integration --timeout=120 --cov=datapulse --cov-report=term-missing --cov-report=xml --cov-fail-under=40
       - name: Upload coverage report
         if: always()
