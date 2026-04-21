@@ -281,9 +281,9 @@ class TestPIILeakPrevention:
     def test_sentry_pii_disabled_in_source(self):
         from pathlib import Path
 
-        import datapulse.api.app as app_module
+        import datapulse.api.bootstrap.observability as observability_module
 
-        source = Path(app_module.__file__).read_text()
+        source = Path(observability_module.__file__).read_text()
         assert "send_default_pii=False" in source
 
     def test_auth_error_messages_generic(self):
