@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from datapulse.core.sql import build_where_eq
 from datapulse.dispensing.models import (
     DaysOfStock,
     DispenseRate,
@@ -34,17 +35,13 @@ class DispensingRepository:
 
     def get_dispense_rates(self, filters: DispensingFilter) -> list[DispenseRate]:
         """Return avg dispense rate per product/site over last 90 days."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq(
+            [
+                ("site_key", "site_key", filters.site_key),
+                ("drug_code", "drug_code", filters.drug_code),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -66,17 +63,13 @@ class DispensingRepository:
 
     def get_days_of_stock(self, filters: DispensingFilter) -> list[DaysOfStock]:
         """Return days of stock remaining per product/site."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq(
+            [
+                ("site_key", "site_key", filters.site_key),
+                ("drug_code", "drug_code", filters.drug_code),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -99,17 +92,13 @@ class DispensingRepository:
 
     def get_velocity(self, filters: DispensingFilter) -> list[VelocityClassification]:
         """Return product velocity classifications (fast/normal/slow/dead)."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-        if filters.velocity_class is not None:
-            wheres.append("velocity_class = :velocity_class")
-            params["velocity_class"] = filters.velocity_class
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq(
+            [
+                ("drug_code", "drug_code", filters.drug_code),
+                ("velocity_class", "velocity_class", filters.velocity_class),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -137,20 +126,14 @@ class DispensingRepository:
 
     def get_stockout_risk(self, filters: DispensingFilter) -> list[StockoutRisk]:
         """Return products at risk of stockout, optionally filtered by risk level."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-        if filters.risk_level is not None:
-            wheres.append("risk_level = :risk_level")
-            params["risk_level"] = filters.risk_level
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq(
+            [
+                ("site_key", "site_key", filters.site_key),
+                ("drug_code", "drug_code", filters.drug_code),
+                ("risk_level", "risk_level", filters.risk_level),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -179,17 +162,13 @@ class DispensingRepository:
 
     def get_reconciliation(self, filters: DispensingFilter) -> list[StockReconciliation]:
         """Return stock reconciliation (physical count vs calculated) ordered by variance."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq(
+            [
+                ("site_key", "site_key", filters.site_key),
+                ("drug_code", "drug_code", filters.drug_code),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""

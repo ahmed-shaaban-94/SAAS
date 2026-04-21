@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from datapulse.core.sql import build_where, build_where_eq
 from datapulse.expiry.models import (
     BatchInfo,
     ExpiryAlert,
@@ -39,18 +40,18 @@ class ExpiryRepository:
 
     def get_batches(self, filters: ExpiryFilter) -> list[BatchInfo]:
         """Return batches from dim_batch with computed alert_level."""
-        params: dict = {}
-        wheres = ["b.batch_key != -1", "b.current_quantity > 0"]
-
-        if filters.site_code is not None:
-            wheres.append("b.site_code = :site_code")
-            params["site_code"] = filters.site_code
-        if filters.drug_code is not None:
-            wheres.append("b.drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
+        where, params = build_where_eq(
+            [
+                ("b.site_code", "site_code", filters.site_code),
+                ("b.drug_code", "drug_code", filters.drug_code),
+            ],
+            extra_clauses=["b.batch_key != -1", "b.current_quantity > 0"],
+        )
+        # alert_level is a derived bucket with its own parameterized CASE —
+        # kept inline because the helper only supports simple comparisons.
         if filters.alert_level is not None:
-            wheres.append(
-                "CASE"
+            where += (
+                " AND CASE"
                 " WHEN b.days_to_expiry <= 0 THEN 'expired'"
                 " WHEN b.days_to_expiry <= 30 THEN 'critical'"
                 " WHEN b.days_to_expiry <= 60 THEN 'warning'"
@@ -59,7 +60,7 @@ class ExpiryRepository:
             )
             params["alert_level"] = filters.alert_level
 
-        where_clause = "WHERE " + " AND ".join(wheres)
+        where_clause = f"WHERE {where}"
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -100,17 +101,16 @@ class ExpiryRepository:
 
     def get_near_expiry(self, days_threshold: int, filters: ExpiryFilter) -> list[ExpiryAlert]:
         """Return batches expiring within ``days_threshold`` days from feat_expiry_alerts."""
-        params: dict = {"days_threshold": days_threshold, "limit": filters.limit}
-        wheres = ["b.days_to_expiry <= :days_threshold", "b.current_quantity > 0"]
-
-        if filters.site_code is not None:
-            wheres.append("b.site_code = :site_code")
-            params["site_code"] = filters.site_code
-        if filters.drug_code is not None:
-            wheres.append("b.drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = "WHERE " + " AND ".join(wheres)
+        where, params = build_where(
+            [
+                ("b.days_to_expiry", "<=", "days_threshold", days_threshold),
+                ("b.site_code", "=", "site_code", filters.site_code),
+                ("b.drug_code", "=", "drug_code", filters.drug_code),
+            ],
+            extra_clauses=["b.current_quantity > 0"],
+        )
+        where_clause = f"WHERE {where}"
+        params["limit"] = filters.limit
 
         stmt = text(f"""
             SELECT
@@ -134,17 +134,15 @@ class ExpiryRepository:
 
     def get_expired(self, filters: ExpiryFilter) -> list[ExpiryAlert]:
         """Return all batches past their expiry date."""
-        params: dict = {"limit": filters.limit}
-        wheres = ["b.days_to_expiry <= 0", "b.current_quantity > 0"]
-
-        if filters.site_code is not None:
-            wheres.append("b.site_code = :site_code")
-            params["site_code"] = filters.site_code
-        if filters.drug_code is not None:
-            wheres.append("b.drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = "WHERE " + " AND ".join(wheres)
+        where, params = build_where_eq(
+            [
+                ("b.site_code", "site_code", filters.site_code),
+                ("b.drug_code", "drug_code", filters.drug_code),
+            ],
+            extra_clauses=["b.days_to_expiry <= 0", "b.current_quantity > 0"],
+        )
+        where_clause = f"WHERE {where}"
+        params["limit"] = filters.limit
 
         stmt = text(f"""
             SELECT
@@ -170,14 +168,8 @@ class ExpiryRepository:
 
     def get_expiry_summary(self, filters: ExpiryFilter) -> list[ExpirySummary]:
         """Return batch counts by expiry bucket per site from agg_expiry_summary."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_code is not None:
-            wheres.append("site_code = :site_code")
-            params["site_code"] = filters.site_code
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq([("site_code", "site_code", filters.site_code)])
+        where_clause = f"WHERE {where}" if params else ""
 
         stmt = text(f"""
             SELECT
@@ -211,18 +203,16 @@ class ExpiryRepository:
         """
         from decimal import Decimal
 
-        params: dict = {}
-        wheres = [
-            "b.batch_key != -1",
-            "b.current_quantity > 0",
-            "b.days_to_expiry > 0",  # exclude already-expired
-            "b.days_to_expiry <= 90",
-        ]
-        if filters.site_code is not None:
-            wheres.append("b.site_code = :site_code")
-            params["site_code"] = filters.site_code
-
-        where_clause = "WHERE " + " AND ".join(wheres)
+        where, params = build_where_eq(
+            [("b.site_code", "site_code", filters.site_code)],
+            extra_clauses=[
+                "b.batch_key != -1",
+                "b.current_quantity > 0",
+                "b.days_to_expiry > 0",  # exclude already-expired
+                "b.days_to_expiry <= 90",
+            ],
+        )
+        where_clause = f"WHERE {where}"
 
         stmt = text(f"""
             SELECT
@@ -268,18 +258,16 @@ class ExpiryRepository:
         self, start_date: date, end_date: date, filters: ExpiryFilter
     ) -> list[ExpiryCalendarDay]:
         """Return day-by-day expiry counts between start_date and end_date."""
-        params: dict = {"start_date": start_date, "end_date": end_date, "limit": filters.limit}
-        wheres = [
-            "b.expiry_date BETWEEN :start_date AND :end_date",
-            "b.batch_key != -1",
-            "b.current_quantity > 0",
-        ]
-
-        if filters.site_code is not None:
-            wheres.append("b.site_code = :site_code")
-            params["site_code"] = filters.site_code
-
-        where_clause = "WHERE " + " AND ".join(wheres)
+        where, params = build_where(
+            [
+                ("b.expiry_date", ">=", "start_date", start_date),
+                ("b.expiry_date", "<=", "end_date", end_date),
+                ("b.site_code", "=", "site_code", filters.site_code),
+            ],
+            extra_clauses=["b.batch_key != -1", "b.current_quantity > 0"],
+        )
+        where_clause = f"WHERE {where}"
+        params["limit"] = filters.limit
 
         stmt = text(f"""
             SELECT

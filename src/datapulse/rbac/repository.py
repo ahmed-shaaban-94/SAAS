@@ -8,6 +8,8 @@ import structlog
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from datapulse.core.sql import build_set_eq
+
 logger = structlog.get_logger()
 
 
@@ -205,33 +207,32 @@ class RBACRepository:
         return result
 
     def update_member(self, member_id: int, **fields) -> dict | None:
-        sets: list[str] = []
-        params: dict = {"mid": member_id}
-
-        if "role_key" in fields and fields["role_key"] is not None:
+        # role_key is validated + mapped to role_id before reaching build_set_eq
+        # so build_set_eq only sees literal column names at the call site.
+        role_id: int | None = None
+        if fields.get("role_key") is not None:
             role = self.get_role_by_key(fields["role_key"])
             if not role:
                 raise ValueError(f"Unknown role: {fields['role_key']}")
-            sets.append("role_id = :rid")
-            params["rid"] = role["role_id"]
+            role_id = role["role_id"]
 
-        if "display_name" in fields and fields["display_name"] is not None:
-            sets.append("display_name = :name")
-            params["name"] = fields["display_name"]
-
-        if "is_active" in fields and fields["is_active"] is not None:
-            sets.append("is_active = :active")
-            params["active"] = fields["is_active"]
-
-        if not sets:
+        body, set_params = build_set_eq(
+            [
+                ("role_id", "rid", role_id),
+                ("display_name", "name", fields.get("display_name")),
+                ("is_active", "active", fields.get("is_active")),
+            ]
+        )
+        if not body:
             return self.get_member_by_id(member_id)
 
-        sets.append("updated_at = :now")
-        params["now"] = datetime.now(UTC)
+        body += ", updated_at = :now"
+        set_params["now"] = datetime.now(UTC)
+        set_params["mid"] = member_id
 
         self._s.execute(
-            text(f"UPDATE public.tenant_members SET {', '.join(sets)} WHERE member_id = :mid"),
-            params,
+            text(f"UPDATE public.tenant_members SET {body} WHERE member_id = :mid"),
+            set_params,
         )
         return self.get_member_by_id(member_id)
 
@@ -334,33 +335,23 @@ class RBACRepository:
         return result
 
     def update_sector(self, sector_id: int, **fields) -> dict | None:
-        sets: list[str] = []
-        params: dict = {"sid": sector_id}
-
-        if "sector_name" in fields and fields["sector_name"] is not None:
-            sets.append("sector_name = :name")
-            params["name"] = fields["sector_name"]
-
-        if "description" in fields and fields["description"] is not None:
-            sets.append("description = :desc")
-            params["desc"] = fields["description"]
-
-        if "site_codes" in fields and fields["site_codes"] is not None:
-            sets.append("site_codes = :codes")
-            params["codes"] = fields["site_codes"]
-
-        if "is_active" in fields and fields["is_active"] is not None:
-            sets.append("is_active = :active")
-            params["active"] = fields["is_active"]
-
-        if not sets:
+        body, params = build_set_eq(
+            [
+                ("sector_name", "name", fields.get("sector_name")),
+                ("description", "desc", fields.get("description")),
+                ("site_codes", "codes", fields.get("site_codes")),
+                ("is_active", "active", fields.get("is_active")),
+            ]
+        )
+        if not body:
             return self.get_sector(sector_id)
 
-        sets.append("updated_at = :now")
+        body += ", updated_at = :now"
         params["now"] = datetime.now(UTC)
+        params["sid"] = sector_id
 
         self._s.execute(
-            text(f"UPDATE public.sectors SET {', '.join(sets)} WHERE sector_id = :sid"),
+            text(f"UPDATE public.sectors SET {body} WHERE sector_id = :sid"),
             params,
         )
         return self.get_sector(sector_id)

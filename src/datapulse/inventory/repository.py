@@ -8,6 +8,7 @@ from decimal import Decimal
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from datapulse.core.sql import build_where, build_where_eq
 from datapulse.inventory.models import (
     AdjustmentRequest,
     InventoryCount,
@@ -39,17 +40,13 @@ class InventoryRepository:
 
     def get_stock_levels(self, filters: InventoryFilter) -> list[StockLevel]:
         """Return current stock levels, optionally filtered by site or drug."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq(
+            [
+                ("site_key", "site_key", filters.site_key),
+                ("drug_code", "drug_code", filters.drug_code),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -69,14 +66,14 @@ class InventoryRepository:
 
     def get_stock_level_by_drug(self, drug_code: str, filters: InventoryFilter) -> list[StockLevel]:
         """Return stock levels for a specific drug across all sites."""
-        params: dict = {"drug_code": drug_code, "limit": filters.limit}
-        wheres = ["drug_code = :drug_code"]
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-
-        where_clause = f"WHERE {' AND '.join(wheres)}"
+        where, params = build_where_eq(
+            [
+                ("drug_code", "drug_code", drug_code),
+                ("site_key", "site_key", filters.site_key),
+            ]
+        )
+        where_clause = f"WHERE {where}"
+        params["limit"] = filters.limit
         stmt = text(f"""
             SELECT
                 product_key, drug_code, drug_name, drug_brand,
@@ -96,26 +93,16 @@ class InventoryRepository:
 
     def get_movements(self, filters: InventoryFilter) -> list[StockMovement]:
         """Return movement events with product/site names, filtered by provided criteria."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("m.site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("p.drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-        if filters.movement_type is not None:
-            wheres.append("m.movement_type = :movement_type")
-            params["movement_type"] = filters.movement_type
-        if filters.start_date is not None:
-            wheres.append("m.movement_date >= :start_date")
-            params["start_date"] = filters.start_date
-        if filters.end_date is not None:
-            wheres.append("m.movement_date <= :end_date")
-            params["end_date"] = filters.end_date
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where(
+            [
+                ("m.site_key", "=", "site_key", filters.site_key),
+                ("p.drug_code", "=", "drug_code", filters.drug_code),
+                ("m.movement_type", "=", "movement_type", filters.movement_type),
+                ("m.movement_date", ">=", "start_date", filters.start_date),
+                ("m.movement_date", "<=", "end_date", filters.end_date),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -154,17 +141,13 @@ class InventoryRepository:
 
     def get_valuation(self, filters: InventoryFilter) -> list[StockValuation]:
         """Return stock valuation (WAC) per product/site."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where_eq(
+            [
+                ("site_key", "site_key", filters.site_key),
+                ("drug_code", "drug_code", filters.drug_code),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -199,17 +182,14 @@ class InventoryRepository:
         ensures items with zero recent sales still surface.
         """
 
-        params: dict = {}
-        wheres = ["sl.current_quantity <= rc.reorder_point"]
-
-        if filters.site_key is not None:
-            wheres.append("sl.site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("sl.drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-
-        where_clause = f"WHERE {' AND '.join(wheres)}"
+        where, params = build_where_eq(
+            [
+                ("sl.site_key", "site_key", filters.site_key),
+                ("sl.drug_code", "drug_code", filters.drug_code),
+            ],
+            extra_clauses=["sl.current_quantity <= rc.reorder_point"],
+        )
+        where_clause = f"WHERE {where}"
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -296,23 +276,15 @@ class InventoryRepository:
 
     def get_counts(self, filters: InventoryFilter) -> list[InventoryCount]:
         """Return physical inventory count records."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("p.drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-        if filters.start_date is not None:
-            wheres.append("count_date >= :start_date")
-            params["start_date"] = filters.start_date
-        if filters.end_date is not None:
-            wheres.append("count_date <= :end_date")
-            params["end_date"] = filters.end_date
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where(
+            [
+                ("site_key", "=", "site_key", filters.site_key),
+                ("p.drug_code", "=", "drug_code", filters.drug_code),
+                ("count_date", ">=", "start_date", filters.start_date),
+                ("count_date", "<=", "end_date", filters.end_date),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
@@ -344,23 +316,15 @@ class InventoryRepository:
 
     def get_reconciliation(self, filters: InventoryFilter) -> list[StockReconciliation]:
         """Return reconciliation report (counted vs calculated)."""
-        params: dict = {}
-        wheres: list[str] = []
-
-        if filters.site_key is not None:
-            wheres.append("site_key = :site_key")
-            params["site_key"] = filters.site_key
-        if filters.drug_code is not None:
-            wheres.append("drug_code = :drug_code")
-            params["drug_code"] = filters.drug_code
-        if filters.start_date is not None:
-            wheres.append("count_date >= :start_date")
-            params["start_date"] = filters.start_date
-        if filters.end_date is not None:
-            wheres.append("count_date <= :end_date")
-            params["end_date"] = filters.end_date
-
-        where_clause = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+        where, params = build_where(
+            [
+                ("site_key", "=", "site_key", filters.site_key),
+                ("drug_code", "=", "drug_code", filters.drug_code),
+                ("count_date", ">=", "start_date", filters.start_date),
+                ("count_date", "<=", "end_date", filters.end_date),
+            ]
+        )
+        where_clause = f"WHERE {where}" if params else ""
         params["limit"] = filters.limit
 
         stmt = text(f"""
