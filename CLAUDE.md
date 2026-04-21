@@ -90,7 +90,7 @@ migrations/             # 000-015+: schemas, RLS, tenants, n8n, pipeline_runs, q
 n8n/workflows/          # 6 workflows: health, pipeline, success/failure/digest/error
 frontend/               # Next.js 14: 21+ pages, 9+ SWR hooks, Recharts, Tailwind, Playwright E2E
 android/                # Kotlin + Jetpack Compose: data/domain/presentation/di
-tests/                  # pytest: 124 test files, coverage enforced at 95%+
+tests/                  # pytest: 124 test files, unit coverage ~79% (enforced at 77% in CI)
 ```
 
 ## Docker Services
@@ -166,7 +166,7 @@ docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/da
 
 ### Testing
 - pytest + pytest-cov: 124 test files, ~1,300+ test functions
-- Current coverage: 95%+ on `src/datapulse/` (enforced in CI via `--cov-fail-under=95`)
+- Current unit coverage: ~79% on `src/datapulse/` (enforced in CI via `--cov-fail-under=77`; reproduce locally with `make coverage`). Target is 95% — tracked per-module; integration-test gate remains at 40% pending a measured baseline (issue #540).
 - Playwright E2E tests: 12 spec files (`frontend/e2e/`)
 - Vitest + MSW + Testing Library available for frontend unit tests
 - Run tests: `make test` (Python), `docker compose exec frontend npx playwright test` (E2E)

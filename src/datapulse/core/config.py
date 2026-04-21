@@ -9,6 +9,18 @@ from pydantic_settings import BaseSettings
 
 logger = structlog.get_logger()
 
+_DEV_ENVS = frozenset({"development", "test"})
+
+
+def is_non_dev_env(app_env: str, sentry_environment: str) -> bool:
+    """Return True when either env label signals a non-development deployment.
+
+    Defense in depth for security-sensitive gates (auth fallback, secret
+    requirements). A single misconfigured variable must not open the gate —
+    see issue #537.
+    """
+    return app_env not in _DEV_ENVS or sentry_environment not in _DEV_ENVS
+
 
 class ForecastConfig(BaseModel):
     """Forecasting hyperparameters — extracted from hardcoded values."""
@@ -115,7 +127,14 @@ class Settings(BaseSettings):
     # Embed (iframe white-label)
     embed_allowed_origins: list[str] = []  # Domains allowed to iframe embed
 
-    # Sentry (error tracking)
+    # Deployment mode — authoritative flag for security-sensitive gates.
+    # One of: "development", "test", "staging", "production".
+    # SECURITY: this is the only field that should gate auth/security
+    # behavior. Keep distinct from sentry_environment (telemetry label)
+    # so the two cannot be conflated (see issue #537).
+    app_env: str = "development"
+
+    # Sentry (error tracking) — telemetry label, NOT a security boundary.
     sentry_dsn: str = ""
     sentry_environment: str = "development"
     sentry_traces_sample_rate: float = 0.1  # 10% performance monitoring
@@ -178,11 +197,22 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_auth_in_production(self) -> "Settings":
-        """Fail fast at startup if auth is unconfigured in non-dev environments."""
-        env = self.sentry_environment
-        if env not in ("development", "test") and not self.api_key and not self.auth0_domain:
+        """Fail fast at startup if auth is unconfigured in non-dev environments.
+
+        Defense in depth: refuse to boot when *either* ``app_env`` or
+        ``sentry_environment`` signals a non-dev deployment. Using OR instead
+        of AND means a single misconfigured variable cannot bypass the gate
+        (see issue #537).
+        """
+        if (
+            is_non_dev_env(self.app_env, self.sentry_environment)
+            and not self.api_key
+            and not self.auth0_domain
+        ):
             raise ValueError(
-                f"Auth must be configured in production/staging (environment={env!r}). "
+                "Auth must be configured in production/staging "
+                f"(app_env={self.app_env!r}, "
+                f"sentry_environment={self.sentry_environment!r}). "
                 "Set API_KEY or AUTH0_DOMAIN in the environment."
             )
         return self
@@ -201,8 +231,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_required_secrets(self) -> "Settings":
-        """Fail fast in non-dev environments when critical secrets are missing."""
-        if self.sentry_environment in ("development", "test"):
+        """Fail fast in non-dev environments when critical secrets are missing.
+
+        Like ``_require_auth_in_production``, this validator trips whenever
+        *either* ``app_env`` or ``sentry_environment`` indicates a non-dev
+        deployment — so a misconfigured single variable cannot bypass it.
+        """
+        if not is_non_dev_env(self.app_env, self.sentry_environment):
             return self
 
         missing: list[str] = []

@@ -318,56 +318,36 @@ docker logs datapulse-api --since 10m 2>&1 | \
 docker exec datapulse-api env | grep AUTH0
 ```
 
-### Pipeline webhook returns 503 "Pipeline auth not configured"
+### API refuses to boot: "Auth must be configured in production/staging"
 
-**Symptom**: calls to `/api/v1/pipeline/trigger`, `/execute/bronze`,
-`/execute/dbt-*`, `/execute/quality-check`, or `/runs/{id}/resume` return
-503 with body `{"detail":"Pipeline auth not configured"}`.
+**Symptom**: `docker compose up api` exits immediately; logs show a
+pydantic `ValidationError` mentioning
+`Auth must be configured in production/staging (app_env=..., sentry_environment=...)`.
 
-**Cause (by design)**: `PIPELINE_WEBHOOK_SECRET` is empty. The legacy
-`PIPELINE_AUTH_DISABLED=true` kill-switch was removed in issue #539 —
-there is no longer any way to run pipeline webhooks without a secret.
-A single misconfigured env var used to disable webhook auth entirely;
-combined with missing rate limits, an unauthenticated caller could
-trigger unlimited Bronze loads / dbt runs.
-
-**Fix — for local development**:
-
-```bash
-# In your .env (NOT in production):
-PIPELINE_WEBHOOK_SECRET=dev-local-pipeline-secret-$(openssl rand -hex 8)
-
-# Then pass the header when calling the pipeline:
-curl -X POST http://localhost:8000/api/v1/pipeline/execute/bronze \
-    -H "X-Pipeline-Token: $PIPELINE_WEBHOOK_SECRET" \
-    -H "Content-Type: application/json" \
-    -d '{"run_id": "<uuid>"}'
-```
-
-**Fix — for production**: generate a long random secret
-(`openssl rand -hex 32`) and configure it on the host and on every
-n8n / scheduler workflow that triggers pipeline steps.
-
-### Pipeline webhook returns 429 "Too Many Requests"
-
-**Symptom**: a pipeline caller sees a 429 after rapid repeat calls.
-
-**Cause (by design)**: every pipeline mutation route carries a
-`5/minute` rate limit (issue #539). The limit is per client IP.
-A scheduler, n8n workflow, or stuck retry loop can trip it.
+**Cause (by design)**: Two deployment-mode flags gate auth — `APP_ENV` and
+`SENTRY_ENVIRONMENT`. Whenever **either** resolves to a non-dev value
+(anything other than `development`/`test`), the API refuses to boot with
+both `API_KEY` and `AUTH0_DOMAIN` empty. This prevents the dev fallback
+— which returns fake claims `tenant_id=1`, `roles=["viewer"]` — from
+ever being served in a production deployment (issue #537).
 
 **Fix**:
 
 ```bash
-# Inspect recent 429 responses in the API log
-docker logs datapulse-api --since 5m 2>&1 | jq -c 'select(.status == 429)'
+# 1. Verify the two env vars
+docker exec datapulse-api env | grep -E '^(APP_ENV|SENTRY_ENVIRONMENT)='
 
-# Most common cause: a retry loop firing faster than once every 12s.
-# Tune the caller's backoff, not the server's gate.
+# 2. Configure at least one of the auth mechanisms
+#    (either API key for service-to-service, or Auth0 for interactive users)
+API_KEY=<openssl rand -hex 32>
+AUTH0_DOMAIN=<your-tenant>.auth0.com
+
+# 3. Restart the service
+docker compose up -d --no-deps api
 ```
 
-Raise the gate only if you understand the cost — the 5/minute limit
-caps how fast a compromised token can trigger Bronze/dbt operations.
+**Do NOT** fix this by setting `APP_ENV=development` on a production host
+— that is exactly the misconfiguration this guard exists to catch.
 
 ### dbt run fails after migration
 
