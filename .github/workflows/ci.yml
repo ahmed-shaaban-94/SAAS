@@ -121,6 +121,10 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           SENTRY_ENVIRONMENT: test
           PYTHONFAULTHANDLER: "1"
+          # Required by tests that build a datapulse_reader DSN (e.g.
+          # test_audit_log_immutability, test_db_role_timeouts). Must match
+          # the value used in the "Run migrations" step above.
+          DB_READER_PASSWORD: ci_reader_pass
         run: pytest -m integration --timeout=120 --cov=datapulse --cov-report=term-missing --cov-report=xml --cov-fail-under=40
       - name: Upload coverage report
         if: always()
