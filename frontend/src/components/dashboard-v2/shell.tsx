@@ -8,10 +8,17 @@
  *     extensibility — sections + nav links + badges, not editorial.
  *   - Pulse bar chrome from Dashboard.html (animated ECG at the top of
  *     every page, app-level).
+ *   - Responsive behavior: below 1024px the sidebar becomes a
+ *     slide-in drawer triggered by a hamburger button. Above 1024px it
+ *     is a permanent column with an optional collapse toggle
+ *     (240px ↔ 68px). ESC + backdrop tap + swipe-left close the drawer.
+ *     Route change also auto-closes the drawer (so users don't see the
+ *     drawer overlay the page they just navigated to).
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   TrendingUp,
@@ -25,6 +32,10 @@ import {
   ShoppingCart,
   Activity,
   Target,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import "./dashboard-v2.css";
 
@@ -98,17 +109,81 @@ const NAV_SECTIONS: NavSectionDef[] = [
   },
 ];
 
-function Sidebar({ activeHref }: { activeHref?: string }) {
+interface SidebarProps {
+  activeHref?: string;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+function Sidebar({
+  activeHref,
+  mobileOpen,
+  onMobileClose,
+  collapsed,
+  onToggleCollapse,
+}: SidebarProps) {
+  const touchStartX = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    if (deltaX < -60) onMobileClose();
+    touchStartX.current = null;
+  }
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onMobileClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen, onMobileClose]);
+
   return (
-    <aside className="side">
-      <Link href="/dashboard" className="brand">
-        <LogoMark />
-        DataPulse
-      </Link>
+    <aside
+      className={`side${mobileOpen ? " open" : ""}${collapsed ? " collapsed" : ""}`}
+      role="navigation"
+      aria-label="Primary"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="side-header">
+        <Link href="/dashboard" className="brand">
+          <LogoMark />
+          {!collapsed && <span>DataPulse</span>}
+        </Link>
+
+        {/* Mobile close button — visible only when drawer is open */}
+        <button
+          type="button"
+          className="side-close"
+          onClick={onMobileClose}
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
+
+        {/* Desktop collapse toggle — hidden on mobile by CSS */}
+        <button
+          type="button"
+          className="side-collapse"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+      </div>
 
       {NAV_SECTIONS.map((section) => (
         <div key={section.label}>
-          <div className="nav-section">{section.label}</div>
+          {!collapsed && <div className="nav-section">{section.label}</div>}
           {section.items.map((item) => {
             const Icon = item.icon;
             const isActive = activeHref === item.href;
@@ -117,10 +192,11 @@ function Sidebar({ activeHref }: { activeHref?: string }) {
                 key={item.href}
                 href={item.href}
                 className={`nav-link ${isActive ? "active" : ""}`}
+                title={collapsed ? item.label : undefined}
               >
                 <Icon size={14} />
-                {item.label}
-                {item.badge && (
+                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && item.badge && (
                   <span className={`n ${item.badge.tone === "red" ? "red" : ""}`}>
                     {item.badge.text}
                   </span>
@@ -228,10 +304,46 @@ export function DashboardShell({
   breadcrumbs,
   children,
 }: DashboardShellProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const pathname = usePathname();
+
+  // Auto-close the mobile drawer whenever the user navigates — otherwise
+  // the drawer stays over the page they just landed on, which feels stuck.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   return (
-    <div className="dashboard-v2">
+    <div className={`dashboard-v2${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`}>
+      {/* Mobile hamburger — visible only below lg breakpoint (see CSS). */}
+      <button
+        type="button"
+        className="mobile-menu-btn"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open navigation menu"
+        aria-expanded={mobileOpen}
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Mobile backdrop — closes drawer on tap. Hidden on desktop via CSS. */}
+      {mobileOpen && (
+        <div
+          className="side-backdrop"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <div className="app">
-        <Sidebar activeHref={activeHref} />
+        <Sidebar
+          activeHref={activeHref}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((v) => !v)}
+        />
         <div className="main">
           <PulseBar stats={pulseStats} />
           {breadcrumbs && breadcrumbs.length > 0 && (
