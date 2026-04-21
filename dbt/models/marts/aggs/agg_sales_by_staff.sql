@@ -13,7 +13,8 @@
             "CREATE POLICY reader_tenant ON {{ this }} FOR SELECT TO datapulse_reader USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::INT)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_staff_year_month ON {{ this }} (year, month)",
             "CREATE INDEX IF NOT EXISTS idx_agg_sales_by_staff_staff_key ON {{ this }} (staff_key)",
-            "CREATE INDEX IF NOT EXISTS idx_agg_staff_tenant_key ON {{ this }} (tenant_id, staff_key)"
+            "CREATE INDEX IF NOT EXISTS idx_agg_staff_tenant_key ON {{ this }} (tenant_id, staff_key)",
+            "CREATE INDEX IF NOT EXISTS idx_agg_staff_tenant_ym ON {{ this }} (tenant_id, (year * 100 + month))"
         ]
     )
 }}
