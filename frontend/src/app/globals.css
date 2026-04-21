@@ -13,6 +13,11 @@
   --color-divider: var(--divider);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  /* Dashboard-v3 (#501) tokens — ink scale + design aliases */
+  --color-ink-primary: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-tertiary: var(--text-tertiary);
   --color-accent: var(--accent-color);
   --color-accent-strong: var(--accent-strong);
   --color-chart-blue: var(--chart-blue);
@@ -23,6 +28,7 @@
 
   /* ── Font family ── */
   --font-sans: 'Inter Variable', Inter, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ── Custom animations ── */
   --animate-fade-in: fadeIn 0.4s ease-out forwards;
@@ -43,6 +49,7 @@
   --divider: #d9e5f0;
   --text-primary: #102a43;
   --text-secondary: #627d98;
+  --text-tertiary: #8597a8;
   --accent-color: #00c7f2;
   --accent-strong: #0b7da1;
   --chart-blue: #1cb9e7;
@@ -102,6 +109,7 @@
   --divider: #46627c;
   --text-primary: #f7fbff;
   --text-secondary: #b8c0cc;
+  --text-tertiary: #8597a8;
   --accent-color: #00c7f2;
   --accent-strong: #5cdfff;
   --chart-blue: #20bce5;
@@ -981,6 +989,7 @@ html {
   --divider: #46627c;
   --text-primary: #f7fbff;
   --text-secondary: #b8c0cc;
+  --text-tertiary: #8597a8;
   --accent-color: #00c7f2;
   --accent-strong: #5cdfff;
   --chart-blue: #20bce5;

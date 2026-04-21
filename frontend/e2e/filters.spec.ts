@@ -2,7 +2,9 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Filters", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/dashboard");
+    // Post-#502 the new /dashboard has no FilterBar (handoff layout owns its
+    // own period control). /inventory still renders the shared FilterBar.
+    await page.goto("/inventory");
   });
 
   test("date preset buttons are clickable", async ({ page }) => {
@@ -12,9 +14,8 @@ test.describe("Filters", () => {
       .first();
     await expect(presetButton).toBeVisible({ timeout: 10000 });
     await presetButton.click();
-    // After clicking, the page should still be functional (no crash)
-    // Post-v2 cutover: /dashboard h1 is "Good morning." (see dashboard.spec.ts).
-    await expect(page.locator("h1.page-title")).toContainText("Good morning");
+    // After clicking, the page should still be functional (no crash).
+    await expect(page.locator("h1.page-title")).toContainText(/Inventory/i);
   });
 
   test("clicking a date preset updates URL search params", async ({ page }) => {

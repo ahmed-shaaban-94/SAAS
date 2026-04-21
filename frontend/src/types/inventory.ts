@@ -48,6 +48,10 @@ export interface ReorderAlert {
   risk_level: "stockout" | "critical" | "at_risk";
   suggested_reorder_qty: number;
   days_of_stock: number | null;
+  /** trailing-30d avg units/day (#507) */
+  velocity?: number | null;
+  /** derived tier for the new dashboard watchlist (#507) */
+  status?: "critical" | "low" | "healthy";
 }
 
 export interface ReorderConfig {
