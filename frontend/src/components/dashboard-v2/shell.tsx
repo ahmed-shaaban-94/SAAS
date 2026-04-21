@@ -184,7 +184,7 @@ function Sidebar({
     <aside
       className={`side${mobileOpen ? " open" : ""}${collapsed ? " collapsed" : ""}`}
       role="navigation"
-      aria-label="Primary"
+      aria-label="Primary navigation"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -229,6 +229,7 @@ function Sidebar({
                 key={item.href}
                 href={item.href}
                 className={`nav-link ${isActive ? "active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
                 title={collapsed ? item.label : undefined}
               >
                 <Icon size={14} />

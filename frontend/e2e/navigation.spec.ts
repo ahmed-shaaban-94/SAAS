@@ -33,13 +33,16 @@ test.describe("Navigation", () => {
   });
 
   test("active nav item is highlighted", async ({ page }) => {
-    // /dashboard uses the new design sidebar (#502) which marks the
-    // current link with aria-current="page". (The v2 shell's
-    // `.active` class is covered indirectly by the /dashboard-v2 →
-    // /dashboard redirect spec and by navigation flows below.)
+    // /dashboard is now rendered inside DashboardShell v2 (#573). The
+    // NAV_GROUPS entry for /dashboard is labeled "Overview"; the old
+    // locator `{ name: "Dashboard" }` substring-matches "My Dashboard"
+    // (/my-dashboard) which is not the active link. Use exact:true to
+    // keep the test pinned to the correct link.
     await page.goto("/dashboard");
-    const dashboardLink = page.getByRole("link", { name: "Dashboard" });
-    await expect(dashboardLink).toHaveAttribute("aria-current", "page");
+    const overviewLink = page
+      .getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("link", { name: "Overview", exact: true });
+    await expect(overviewLink).toHaveAttribute("aria-current", "page");
   });
 
   test("root shows landing page", async ({ page }) => {
