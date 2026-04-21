@@ -184,7 +184,7 @@ function Sidebar({
     <aside
       className={`side${mobileOpen ? " open" : ""}${collapsed ? " collapsed" : ""}`}
       role="navigation"
-      aria-label="Primary"
+      aria-label="Primary navigation"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
