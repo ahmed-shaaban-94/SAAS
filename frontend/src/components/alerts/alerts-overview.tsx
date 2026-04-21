@@ -29,7 +29,13 @@ const SEVERITY_COLORS: Record<string, string> = {
   info: "text-blue-500 bg-blue-500/10 border-blue-500/20",
 };
 
-export function AlertsOverview() {
+interface AlertsOverviewProps {
+  /** Hide the legacy 3-tile stat grid when the migrated page renders
+   *  its own KpiCard row above. */
+  hideStats?: boolean;
+}
+
+export function AlertsOverview({ hideStats = false }: AlertsOverviewProps = {}) {
   const { data: allAlerts, isLoading, error, acknowledgeAlert } = useAlertLog(false);
   const unacknowledged = allAlerts?.filter((a) => !a.acknowledged) ?? [];
   const acknowledged = allAlerts?.filter((a) => a.acknowledged) ?? [];
@@ -38,24 +44,26 @@ export function AlertsOverview() {
   if (error) return <ErrorRetry title="Failed to load alerts" />;
 
   return (
-    <div className="mt-6 space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="viz-panel viz-card-hover rounded-[1.5rem] p-5">
-          <Bell className="mb-3 h-4 w-4 text-accent" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Total Alerts</p>
-          <p className="text-2xl font-bold text-text-primary">{allAlerts?.length ?? 0}</p>
+    <div className={hideStats ? "space-y-6" : "mt-6 space-y-6"}>
+      {!hideStats && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="viz-panel viz-card-hover rounded-[1.5rem] p-5">
+            <Bell className="mb-3 h-4 w-4 text-accent" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Total Alerts</p>
+            <p className="text-2xl font-bold text-text-primary">{allAlerts?.length ?? 0}</p>
+          </div>
+          <div className="viz-panel rounded-[1.5rem] border-red-500/20 bg-red-500/8 p-5">
+            <AlertTriangle className="mb-3 h-4 w-4 text-red-500" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Unacknowledged</p>
+            <p className="text-2xl font-bold text-red-500">{unacknowledged.length}</p>
+          </div>
+          <div className="viz-panel rounded-[1.5rem] border-green-500/20 bg-green-500/8 p-5">
+            <Check className="mb-3 h-4 w-4 text-green-500" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Acknowledged</p>
+            <p className="text-2xl font-bold text-green-500">{acknowledged.length}</p>
+          </div>
         </div>
-        <div className="viz-panel rounded-[1.5rem] border-red-500/20 bg-red-500/8 p-5">
-          <AlertTriangle className="mb-3 h-4 w-4 text-red-500" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Unacknowledged</p>
-          <p className="text-2xl font-bold text-red-500">{unacknowledged.length}</p>
-        </div>
-        <div className="viz-panel rounded-[1.5rem] border-green-500/20 bg-green-500/8 p-5">
-          <Check className="mb-3 h-4 w-4 text-green-500" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Acknowledged</p>
-          <p className="text-2xl font-bold text-green-500">{acknowledged.length}</p>
-        </div>
-      </div>
+      )}
 
       {unacknowledged.length > 0 && (
         <div className="viz-panel rounded-[1.75rem] p-5">

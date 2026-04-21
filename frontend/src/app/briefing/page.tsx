@@ -1,23 +1,39 @@
 "use client";
 
+/**
+ * /briefing — Executive Briefing on the v2 shell.
+ *
+ * Ops Surfaces batch (Apr 2026): migrated from `(app)/briefing/page.tsx`
+ * and replaced the inline `BriefingKPI` component with the canonical
+ * lean `KpiCard` from the design-handoff kit. Uses 5 tiles (one extra
+ * vs the standard 4) because executive briefings traditionally surface
+ * basket size alongside the 4 standard headline metrics.
+ *
+ * AI narrative + Action Items sections unchanged. Auto-refresh still
+ * fires every 10 minutes via SWR `refreshInterval`.
+ */
+
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
   RefreshCw,
   AlertTriangle,
   ArrowUpRight,
   ArrowDownRight,
   Sparkles,
+  Wallet,
+  Calendar,
+  Users,
+  ShoppingBag,
+  Percent,
 } from "lucide-react";
-import { Header } from "@/components/layout/header";
-import { PageTransition } from "@/components/layout/page-transition";
+
+import { DashboardShell } from "@/components/dashboard-v2/shell";
+import { KpiCard, type KpiColor, type KpiDir } from "@/components/dashboard/new";
+import { LoadingCard } from "@/components/loading-card";
 import { fetchAPI } from "@/lib/api-client";
 import type { KPISummary, AISummary, TopMovers } from "@/types/api";
 
-// Auto-refresh interval — 10 minutes
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 function fmt(n: number, decimals = 0): string {
@@ -32,46 +48,6 @@ function fmtPct(n: number | null): string {
   return `${sign}${n.toFixed(1)}%`;
 }
 
-// ---------------------------------------------------------------------------
-// KPI card
-// ---------------------------------------------------------------------------
-function BriefingKPI({
-  label,
-  value,
-  subLabel,
-  trend,
-}: {
-  label: string;
-  value: string;
-  subLabel?: string;
-  trend?: "up" | "down" | "flat" | null;
-}) {
-  const TrendIcon =
-    trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const trendColor =
-    trend === "up"
-      ? "text-emerald-400"
-      : trend === "down"
-        ? "text-rose-400"
-        : "text-text-secondary";
-
-  return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-        {label}
-      </p>
-      <p className="text-3xl font-bold tabular-nums text-text-primary">{value}</p>
-      <div className="flex items-center gap-1.5">
-        <TrendIcon className={`h-3.5 w-3.5 ${trendColor}`} />
-        <p className={`text-xs font-medium ${trendColor}`}>{subLabel ?? "—"}</p>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Action item
-// ---------------------------------------------------------------------------
 function ActionItem({
   index,
   label,
@@ -105,9 +81,6 @@ function ActionItem({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
 export default function BriefingPage() {
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
@@ -151,14 +124,12 @@ export default function BriefingPage() {
     setLastRefreshed(new Date());
   }
 
-  // Update last-refreshed timestamp when SWR auto-refreshes
   useEffect(() => {
     if (!kpiLoading) setLastRefreshed(new Date());
   }, [kpi, kpiLoading]);
 
   const isLoading = kpiLoading || aiLoading || moversLoading;
 
-  // Build top 3 action items from movers
   const topGainers = movers?.gainers?.slice(0, 2) ?? [];
   const topLoser = movers?.losers?.[0];
   const actionItems = [
@@ -178,15 +149,25 @@ export default function BriefingPage() {
       : []),
   ].slice(0, 3);
 
+  const momDir: KpiDir = (kpi?.mom_growth_pct ?? 0) >= 0 ? "up" : "down";
+  const yoyDir: KpiDir = (kpi?.yoy_growth_pct ?? 0) >= 0 ? "up" : "down";
+
   return (
-    <PageTransition>
-      <div className="space-y-6 p-4 sm:p-6">
+    <DashboardShell
+      activeHref="/briefing"
+      breadcrumbs={[
+        { label: "DataPulse", href: "/dashboard" },
+        { label: "Executive" },
+        { label: "Briefing" },
+      ]}
+    >
+      <div className="page">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Header
-              title="Executive Briefing"
-              description="Daily snapshot for leadership — auto-refreshes every 10 minutes"
-            />
+            <h1 className="page-title">Executive briefing.</h1>
+            <p className="page-sub">
+              Daily snapshot for leadership — auto-refreshes every 10 minutes.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-text-secondary">
@@ -209,77 +190,68 @@ export default function BriefingPage() {
           </div>
         </div>
 
-        <section>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
-            Key Performance Indicators
-          </p>
-          {kpiLoading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="viz-panel h-28 animate-pulse rounded-[1.5rem]"
-                />
-              ))}
-            </div>
-          ) : kpi ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <BriefingKPI
+        <section
+          className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5"
+          aria-label="Executive KPIs"
+        >
+          {kpiLoading || !kpi ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <LoadingCard key={i} lines={3} className="h-[168px]" />
+            ))
+          ) : (
+            <>
+              <KpiCard
                 label="Period Revenue"
                 value={`EGP ${fmt(kpi.period_gross, 0)}`}
-                subLabel={
-                  kpi.mom_growth_pct !== null
-                    ? `${fmtPct(kpi.mom_growth_pct)} MoM`
-                    : undefined
-                }
-                trend={
-                  kpi.mom_growth_pct === null
-                    ? "flat"
-                    : kpi.mom_growth_pct > 0
-                      ? "up"
-                      : "down"
-                }
+                delta={{
+                  dir: momDir,
+                  text: kpi.mom_growth_pct !== null ? fmtPct(kpi.mom_growth_pct) : "—",
+                }}
+                sub="selected period, MoM change"
+                color="accent"
+                icon={Wallet}
+                sparkline={[]}
               />
-              <BriefingKPI
+              <KpiCard
                 label="MTD Revenue"
                 value={`EGP ${fmt(kpi.mtd_gross, 0)}`}
-                subLabel={
-                  kpi.yoy_growth_pct !== null
-                    ? `${fmtPct(kpi.yoy_growth_pct)} YoY`
-                    : undefined
-                }
-                trend={
-                  kpi.yoy_growth_pct === null
-                    ? "flat"
-                    : kpi.yoy_growth_pct > 0
-                      ? "up"
-                      : "down"
-                }
+                delta={{
+                  dir: yoyDir,
+                  text: kpi.yoy_growth_pct !== null ? fmtPct(kpi.yoy_growth_pct) : "—",
+                }}
+                sub="month-to-date vs same period last year"
+                color="purple"
+                icon={Calendar}
+                sparkline={[]}
               />
-              <BriefingKPI
+              <KpiCard
                 label="Transactions"
                 value={fmt(kpi.period_transactions)}
-                subLabel="Selected period"
-                trend="flat"
+                delta={{ dir: "up", text: "selected period" }}
+                sub="unique sales transactions"
+                color="amber"
+                icon={ShoppingBag}
+                sparkline={[]}
               />
-              <BriefingKPI
+              <KpiCard
                 label="Customers"
                 value={fmt(kpi.period_customers)}
-                subLabel="Selected period"
-                trend="flat"
+                delta={{ dir: "up", text: "distinct buyers" }}
+                sub="in the selected period"
+                color="red"
+                icon={Users}
+                sparkline={[]}
               />
-              <BriefingKPI
+              <KpiCard
                 label="Avg Basket"
                 value={`EGP ${fmt(kpi.avg_basket_size, 0)}`}
-                subLabel="Per transaction"
-                trend="flat"
+                delta={{ dir: "up", text: "per transaction" }}
+                sub="average order value"
+                color="accent"
+                icon={Percent}
+                sparkline={[]}
               />
-            </div>
-          ) : (
-            <div className="viz-panel flex items-center gap-2 rounded-[1.5rem] p-4 text-sm text-text-secondary">
-              <AlertTriangle className="h-4 w-4 text-chart-amber" />
-              KPI data unavailable
-            </div>
+            </>
           )}
         </section>
 
@@ -358,6 +330,6 @@ export default function BriefingPage() {
           </section>
         </div>
       </div>
-    </PageTransition>
+    </DashboardShell>
   );
 }
