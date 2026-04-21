@@ -92,9 +92,17 @@ export function usePosCheckout() {
   ): Promise<CheckoutResponse> {
     setLoading(true);
     try {
+      // Audit C1: the backend now requires Idempotency-Key on /checkout so a
+      // network-layer retry can't double-charge. Mint a fresh UUID per
+      // user-initiated checkout; the server dedupes replays for 168h.
+      const idempotencyKey =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `ck-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const res = await postAPI<CheckoutResponse>(
         `/api/v1/pos/transactions/${transactionId}/checkout`,
         req,
+        { headers: { "Idempotency-Key": idempotencyKey } },
       );
       setState({ transactionId: null, isLoading: false, error: null });
       return res;

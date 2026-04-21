@@ -140,11 +140,15 @@ export async function fetchAPIOrNull<T>(
   }
 }
 
-export async function postAPI<T>(path: string, body?: unknown): Promise<T> {
+export async function postAPI<T>(
+  path: string,
+  body?: unknown,
+  options?: { headers?: Record<string, string> },
+): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
   return _request<T>(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
 }

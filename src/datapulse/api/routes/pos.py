@@ -29,6 +29,11 @@ from datapulse.api.deps import get_pos_service, get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.billing.pos_guard import require_pos_plan
 from datapulse.logging import get_logger
+from datapulse.pos.idempotency import (
+    IdempotencyContext,
+    idempotency_dependency,
+    record_response,
+)
 from datapulse.pos.models import (
     AddItemRequest,
     CashCountRequest,
@@ -74,6 +79,12 @@ router = APIRouter(
 ServiceDep = Annotated[PosService, Depends(get_pos_service)]
 CurrentUser = Annotated[dict, Depends(get_current_user)]
 SessionDep = Annotated[Session, Depends(get_tenant_session)]
+
+# Audit C1 — the legacy 3-step checkout (draft -> items -> checkout) was missing
+# RBAC + idempotency, a gap behind the M1 /transactions/commit route. Declaring
+# the dependency factory at module level (alongside _commit_idempotency_dep at
+# line ~982) so tests can override this specific callable if needed.
+_legacy_checkout_idempotency_dep = idempotency_dependency("POST /pos/transactions/{id}/checkout")
 
 
 def _tenant_id_of(user: CurrentUser) -> int:
@@ -418,6 +429,7 @@ def remove_item(
 @router.post(
     "/transactions/{transaction_id}/checkout",
     response_model=CheckoutResponse,
+    dependencies=[Depends(require_permission("pos:transaction:checkout"))],
 )
 @limiter.limit("30/minute")
 async def checkout(
@@ -426,13 +438,27 @@ async def checkout(
     body: CheckoutRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_legacy_checkout_idempotency_dep)],
 ) -> CheckoutResponse:
-    """Finalise a draft transaction: totals -> payment -> stock -> bronze write."""
-    return await service.checkout(
+    """Finalise a draft transaction: totals -> payment -> stock -> bronze write.
+
+    Audit C1 hardening: this route now requires an ``Idempotency-Key`` header
+    (the client should mint a fresh UUID per user-initiated checkout and
+    re-send it on retry) and the ``pos:transaction:checkout`` permission.
+    Device-bound Ed25519 verification stays exclusive to the desktop
+    ``/transactions/commit`` route — browser pilots have no private keypair.
+    """
+    if idem.replay:
+        return CheckoutResponse.model_validate(idem.cached_body)
+    result = await service.checkout(
         transaction_id=transaction_id,
         tenant_id=_tenant_id_of(user),
         request=body,
     )
+    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
+    db_session.commit()
+    return result
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -894,9 +920,7 @@ from datapulse.pos.devices import (  # noqa: E402
     register_device,
 )
 from datapulse.pos.idempotency import (  # noqa: E402
-    IdempotencyContext,
     idempotency_dependency,
-    record_response,
 )
 from datapulse.pos.models import (  # noqa: E402  # noqa: E402,F811
     CapabilitiesDoc,

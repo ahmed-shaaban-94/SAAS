@@ -18,7 +18,11 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_pos_service, get_tenant_plan_limits
+from datapulse.api.deps import (
+    get_pos_service,
+    get_tenant_plan_limits,
+    get_tenant_session,
+)
 from datapulse.billing.plans import PLAN_LIMITS
 from datapulse.pos.constants import (
     PaymentMethod,
@@ -67,6 +71,7 @@ def _make_app(service: MagicMock) -> FastAPI:
         permissions={
             "pos:terminal:open",
             "pos:transaction:create",
+            "pos:transaction:checkout",
             "pos:transaction:void",
             "pos:return:create",
             "pos:shift:reconcile",
@@ -78,6 +83,14 @@ def _make_app(service: MagicMock) -> FastAPI:
     app.dependency_overrides[get_pos_service] = lambda: service
     app.dependency_overrides[get_tenant_plan_limits] = lambda: PLAN_LIMITS["platform"]
     app.dependency_overrides[get_access_context] = lambda: _ctx
+    # POS checkout now enforces idempotency; unit tests don't hit the real DB.
+    # Override the session dep with a mock whose execute() short-circuits the
+    # check_and_claim SELECT to "no prior row" (first() returns None) so the
+    # INSERT path is taken. That INSERT also runs on the mock and returns a
+    # MagicMock — harmless for these route-shape tests.
+    _mock_session = MagicMock()
+    _mock_session.execute.return_value.mappings.return_value.first.return_value = None
+    app.dependency_overrides[get_tenant_session] = lambda: _mock_session
 
     # Replicate the production exception -> status mapping for these tests
     @app.exception_handler(InsufficientStockError)
@@ -392,11 +405,32 @@ class TestTransactionRoutes:
         resp = client.post(
             "/api/v1/pos/transactions/100/checkout",
             json={"payment_method": "cash", "cash_tendered": "100"},
+            headers={"Idempotency-Key": "test-key-returns-response"},
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["receipt_number"] == "R20260415-1-100"
         assert body["payment_method"] == "cash"
+
+    def test_checkout_requires_idempotency_key(
+        self,
+        client: TestClient,
+        mock_service: MagicMock,
+    ):
+        """Audit C1 regression guard: the legacy web-checkout route must
+        require an ``Idempotency-Key`` header so a client retry after a
+        network blip can't double-charge.  The desktop /transactions/commit
+        route has enforced this since M1; the browser path did not.
+        """
+        resp = client.post(
+            "/api/v1/pos/transactions/100/checkout",
+            json={"payment_method": "cash", "cash_tendered": "100"},
+            # No Idempotency-Key header — FastAPI must reject with 422
+            # before any business logic runs.
+        )
+        assert resp.status_code == 422
+        # Must fail validation before reaching the service layer.
+        mock_service.checkout.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
