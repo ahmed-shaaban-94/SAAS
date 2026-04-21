@@ -1,0 +1,143 @@
+version: 2
+
+models:
+  - name: stg_pos_sales
+    description: >
+      Silver layer: POS transactions reshaped to the stg_sales column
+      contract so a future `stg_sales_unified` UNION can stitch ERP + POS
+      rows without casting. Source: bronze.pos_transactions (migration
+      056). Grain: one row per (tenant_id, transaction_id, drug_code,
+      site_code). Dimensional attributes (drug_name/brand/category,
+      site_name, staff_name) are placeholder-filled here and resolved
+      downstream via dim_product / dim_site / dim_staff joins.
+    columns:
+      # -- Metadata --
+      - name: tenant_id
+        description: "Tenant scope (matches bronze.pos_transactions.tenant_id)"
+        tests:
+          - not_null
+      - name: source_file
+        description: "'pos:' || source_type (e.g. 'pos:pos_api', 'pos:manual')"
+        tests:
+          - not_null
+      - name: source_quarter
+        description: "'POS-YYYYQn' derived from transaction_date (for lineage dashboards)"
+      - name: loaded_at
+        description: "Timestamp when row was ingested into bronze.pos_transactions"
+        tests:
+          - not_null
+
+      # -- Transaction --
+      - name: invoice_id
+        description: "POS transaction_id (string, tenant-scoped unique with drug_code)"
+      - name: invoice_date
+        description: "Date portion of transaction_date"
+        tests:
+          - not_null
+      - name: billing_way
+        description: "POS-Cash | POS-Card | POS-Insurance | POS-Mixed | POS-Unknown"
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - POS-Cash
+                - POS-Card
+                - POS-Insurance
+                - POS-Mixed
+                - POS-Unknown
+      - name: billing_id
+        description: "POS register_id (nullable)"
+
+      # -- Product --
+      - name: drug_code
+        description: "Drug/material code (resolved to dim_product downstream)"
+        tests:
+          - not_null
+      - name: drug_name
+        description: "Always 'Unknown' at stg_pos_sales — dim_product enriches in gold"
+      - name: drug_brand
+        description: "Always 'Unknown' at stg_pos_sales — dim_product enriches in gold"
+      - name: drug_cluster
+        description: "Always 'Uncategorized' at stg_pos_sales"
+      - name: drug_status
+        description: "Always 'Unknown' at stg_pos_sales — lifecycle status comes from dim_product"
+        tests:
+          - accepted_values:
+              values:
+                - Active
+                - Cancelled
+                - Delisted
+                - New
+                - Unknown
+      - name: is_temporary
+        description: "Always FALSE at stg_pos_sales (POS has no -T listings)"
+
+      # -- Classification --
+      - name: drug_category
+        description: "Always 'Uncategorized' at stg_pos_sales"
+      - name: drug_subcategory
+        description: "Always 'Uncategorized' at stg_pos_sales"
+      - name: drug_division
+        description: "Always 'Uncategorized' at stg_pos_sales"
+      - name: drug_segment
+        description: "Always 'Uncategorized' at stg_pos_sales"
+
+      # -- Customer / Site --
+      - name: customer_id
+        description: "POS customer code (NULL when walk-in sale)"
+      - name: customer_name
+        description: "'Walk-in' when customer_id is NULL, 'Unknown' otherwise"
+        tests:
+          - not_null
+      - name: site_code
+        description: "POS site code"
+        tests:
+          - not_null
+      - name: site_name
+        description: "Always 'Unknown' at stg_pos_sales — dim_site enriches in gold"
+      - name: buyer
+        description: "Always 'Unknown' at stg_pos_sales"
+
+      # -- Personnel --
+      - name: staff_id
+        description: "POS cashier_id mapped to the stg_sales.staff_id slot"
+      - name: staff_name
+        description: "Always 'Unknown' at stg_pos_sales — dim_staff enriches in gold"
+      - name: staff_position
+        description: "Always 'Cashier' for POS rows"
+      - name: area_manager
+        description: "Always 'Unknown' at stg_pos_sales"
+
+      # -- Financial --
+      - name: quantity
+        description: "Signed quantity (negative on returns; mirrors stg_sales convention)"
+      - name: sales
+        description: "unit_price * signed_quantity (rounded to 4 decimals)"
+      - name: discount
+        description: "Negative-signed discount magnitude (0 when no discount; mirrors stg_sales)"
+      - name: net_amount
+        description: "sales + discount (= sales on zero-discount rows)"
+
+      # -- Derived date parts --
+      - name: invoice_year
+        description: "Year extracted from transaction_date"
+      - name: invoice_month
+        description: "Month extracted from transaction_date"
+      - name: invoice_quarter
+        description: "Quarter extracted from transaction_date"
+
+      # -- Flags --
+      - name: is_return
+        description: "Direct from bronze.is_return"
+      - name: has_insurance
+        description: "payment_method = 'insurance'"
+      - name: is_walk_in
+        description: "customer_id IS NULL or empty"
+      - name: has_staff
+        description: "cashier_id IS NOT NULL and non-empty"
+
+      # -- Insurance --
+      - name: insurance_tel
+        description: "Always NULL at stg_pos_sales (POS bronze doesn't carry this)"
+      - name: insurance_no
+        description: "Insurance/national ID from bronze.pos_transactions (nullable)"

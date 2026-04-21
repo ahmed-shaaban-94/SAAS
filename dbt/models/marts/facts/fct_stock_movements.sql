@@ -57,45 +57,29 @@ adjustments AS (
     FROM {{ ref('stg_stock_adjustments') }}
 ),
 
-dispenses AS (
-    -- Outflow from sales (existing fct_sales — forward-looking FK resolution)
+sales_movements AS (
+    -- Single scan of fct_sales (+ dim joins) producing both dispense and
+    -- return movements. Previously split into two CTEs that scanned the
+    -- same rows twice and paid for the dim joins twice — merging cuts
+    -- this model's fct_sales reads in half.
     SELECT
         f.tenant_id,
-        d.full_date                         AS movement_date,
+        d.full_date                                                    AS movement_date,
         p.drug_code,
         s.site_code,
-        NULL                                AS batch_number,
-        'dispense'                          AS movement_type,
-        -f.quantity,                        -- negative (outgoing)
-        NULL::NUMERIC(18,4)                 AS unit_cost,
-        f.invoice_id                        AS reference,
+        NULL                                                           AS batch_number,
+        CASE WHEN f.is_return THEN 'return' ELSE 'dispense' END        AS movement_type,
+        -- dispense: negative (outgoing); return: positive (incoming)
+        CASE WHEN f.is_return THEN ABS(f.quantity) ELSE -f.quantity END AS quantity,
+        NULL::NUMERIC(18,4)                                            AS unit_cost,
+        f.invoice_id                                                   AS reference,
         f.loaded_at
     FROM {{ ref('fct_sales') }} f
     INNER JOIN {{ ref('dim_date') }}    d  ON f.date_key    = d.date_key
     INNER JOIN {{ ref('dim_product') }} p  ON f.product_key = p.product_key AND f.tenant_id = p.tenant_id
     INNER JOIN {{ ref('dim_site') }}    s  ON f.site_key    = s.site_key    AND f.tenant_id = s.tenant_id
-    WHERE f.quantity > 0
-      AND f.is_return = FALSE
-),
-
-returns AS (
-    -- Inflow from returns (fct_sales rows with is_return = TRUE)
-    SELECT
-        f.tenant_id,
-        d.full_date                         AS movement_date,
-        p.drug_code,
-        s.site_code,
-        NULL                                AS batch_number,
-        'return'                            AS movement_type,
-        ABS(f.quantity),                    -- positive (incoming)
-        NULL::NUMERIC(18,4)                 AS unit_cost,
-        f.invoice_id                        AS reference,
-        f.loaded_at
-    FROM {{ ref('fct_sales') }} f
-    INNER JOIN {{ ref('dim_date') }}    d  ON f.date_key    = d.date_key
-    INNER JOIN {{ ref('dim_product') }} p  ON f.product_key = p.product_key AND f.tenant_id = p.tenant_id
-    INNER JOIN {{ ref('dim_site') }}    s  ON f.site_key    = s.site_key    AND f.tenant_id = s.tenant_id
-    WHERE f.is_return = TRUE
+    WHERE (f.is_return = FALSE AND f.quantity > 0)
+       OR  f.is_return = TRUE
 ),
 
 all_movements AS (
@@ -103,9 +87,7 @@ all_movements AS (
     UNION ALL
     SELECT * FROM adjustments
     UNION ALL
-    SELECT * FROM dispenses
-    UNION ALL
-    SELECT * FROM returns
+    SELECT * FROM sales_movements
 ),
 
 with_keys AS (

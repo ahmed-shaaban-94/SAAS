@@ -14,6 +14,7 @@ import structlog
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from datapulse.core.sql import build_where_eq
 from datapulse.purchase_orders.models import (
     MarginAnalysisList,
     MarginAnalysisRow,
@@ -88,17 +89,15 @@ class PurchaseOrderRepository:
         offset: int = 0,
         limit: int = 20,
     ) -> POList:
-        clauses = ["po.tenant_id = :tenant_id"]
-        params: dict = {"tenant_id": tenant_id, "limit": limit, "offset": offset}
-
-        if status is not None:
-            clauses.append("po.status = :status")
-            params["status"] = status
-        if supplier_code is not None:
-            clauses.append("po.supplier_code = :supplier_code")
-            params["supplier_code"] = supplier_code
-
-        where = " AND ".join(clauses)
+        where, params = build_where_eq(
+            [
+                ("po.tenant_id", "tenant_id", tenant_id),
+                ("po.status", "status", status),
+                ("po.supplier_code", "supplier_code", supplier_code),
+            ]
+        )
+        params["limit"] = limit
+        params["offset"] = offset
 
         count_stmt = text(f"SELECT COUNT(*) FROM bronze.purchase_orders po WHERE {where}")
         total = self._session.execute(count_stmt, params).scalar_one()
