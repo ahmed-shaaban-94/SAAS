@@ -124,6 +124,10 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           SENTRY_ENVIRONMENT: test
           PYTHONFAULTHANDLER: "1"
+          # Required by tests that build a datapulse_reader DSN (e.g.
+          # test_audit_log_immutability, test_db_role_timeouts). Must match
+          # the value used in the "Run migrations" step above.
+          DB_READER_PASSWORD: ci_reader_pass
         # Integration gate stays at 40 for now — can't measure locally
         # without Postgres, so we keep the historic number rather than
         # guess. Raising this is tracked as a follow-up to #540.
