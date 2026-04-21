@@ -5,6 +5,8 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from datapulse.core.sql import build_where
+
 
 class AuditRepository:
     def __init__(self, session: Session) -> None:
@@ -22,31 +24,37 @@ class AuditRepository:
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[dict], int]:
-        conditions: list[str] = []
-        params: dict = {}
+        # Wildcards are wrapped at the call site per build_where's contract;
+        # the helper binds the value as-is. Date bounds are kept as literal
+        # extra_clauses because they need a ``CAST(... AS timestamptz)`` on
+        # the value — a shape the tuple-form helper intentionally does not
+        # support (operators don't encode value transforms).
+        endpoint_pattern = f"%{endpoint}%" if endpoint else None
 
-        if action:
-            conditions.append("action = :action")
-            params["action"] = action
-        if endpoint:
-            conditions.append("endpoint ILIKE :endpoint")
-            params["endpoint"] = f"%{endpoint}%"
-        if method:
-            conditions.append("method = :method")
-            params["method"] = method
-        if user_id:
-            conditions.append("user_id = :user_id")
-            params["user_id"] = user_id
+        extra: list[str] = []
+        date_params: dict = {}
         if start_date:
-            conditions.append("created_at >= CAST(:start_date AS timestamptz)")
-            params["start_date"] = start_date
+            extra.append("created_at >= CAST(:start_date AS timestamptz)")
+            date_params["start_date"] = start_date
         if end_date:
-            conditions.append(
+            # End side is "< next_day" so the range is half-open — matches the
+            # inclusive-end semantics the UI presents to the user.
+            extra.append(
                 "created_at < CAST(CAST(:end_date AS date) + INTERVAL '1 day' AS timestamptz)"
             )
-            params["end_date"] = end_date
+            date_params["end_date"] = end_date
 
-        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        where_body, params = build_where(
+            [
+                ("action", "=", "action", action),
+                ("endpoint", "ILIKE", "endpoint", endpoint_pattern),
+                ("method", "=", "method", method),
+                ("user_id", "=", "user_id", user_id),
+            ],
+            extra_clauses=extra,
+        )
+        params.update(date_params)
+        where = f"WHERE {where_body}" if where_body != "1=1" else ""
 
         count_sql = text(f"SELECT COUNT(*) FROM public.audit_log {where}")  # noqa: S608
         total = self._session.execute(count_sql, params).scalar() or 0

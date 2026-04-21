@@ -19,7 +19,13 @@ __all__ = ["build_set_eq", "build_where", "build_where_eq"]
 
 # Operators accepted by build_where(). Anything outside this set is a call-site
 # bug — raise rather than splice unknown operator text into SQL.
-_ALLOWED_OPERATORS = frozenset({"=", "!=", "<>", "<", "<=", ">", ">="})
+#
+# LIKE / ILIKE accept a bound value like any other operator; wildcard handling
+# (``%`` and ``_``) is the caller's responsibility — include them in the
+# *value* the caller binds (e.g. ``f"%{search_term}%"``), never in the
+# column_expr. User-supplied wildcards can broaden the pattern but cannot
+# inject SQL, since the value is still a bind parameter.
+_ALLOWED_OPERATORS = frozenset({"=", "!=", "<>", "<", "<=", ">", ">=", "LIKE", "ILIKE"})
 
 
 def build_where(
@@ -32,9 +38,9 @@ def build_where(
     Each condition is a 4-tuple ``(column_expr, operator, param_name, value)``:
     - ``column_expr`` — the SQL side (e.g. ``"m.movement_date"``). Always a
       literal at the call site, never user input.
-    - ``operator`` — one of ``=``, ``!=``, ``<>``, ``<``, ``<=``, ``>``, ``>=``.
-      Any other value raises ``ValueError`` (defensive: we never splice unknown
-      operator text into SQL).
+    - ``operator`` — one of ``=``, ``!=``, ``<>``, ``<``, ``<=``, ``>``, ``>=``,
+      ``LIKE``, ``ILIKE``. Any other value raises ``ValueError`` (defensive:
+      we never splice unknown operator text into SQL).
     - ``param_name`` — bind-parameter name; appears as ``:<param_name>`` in SQL.
     - ``value`` — Python value. If ``None``, the clause is dropped.
 
