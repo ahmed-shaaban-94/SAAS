@@ -152,7 +152,7 @@ def idempotency_dependency(endpoint: str):
                 return idem.cached_body
             ...
     """
-    from datapulse.api.deps import get_tenant_session
+    from datapulse.core.auth import get_tenant_session
 
     async def _dep(
         request: Request,

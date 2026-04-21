@@ -124,7 +124,7 @@ class TestGetCurrentUser:
             "tenant_id": "42",
             "https://datapulse.tech/roles": ["admin"],
         }
-        with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
+        with patch("datapulse.core.auth.verify_jwt", return_value=fake_claims):
             result = get_current_user(
                 credentials=creds,
                 api_key=None,
@@ -139,7 +139,7 @@ class TestGetCurrentUser:
         creds = MagicMock()
         creds.credentials = "jwt-token-value"
         fake_claims = {"sub": "user123"}
-        with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
+        with patch("datapulse.core.auth.verify_jwt", return_value=fake_claims):
             result = get_current_user(
                 credentials=creds,
                 api_key=None,
@@ -152,7 +152,7 @@ class TestGetCurrentUser:
         creds = MagicMock()
         creds.credentials = "jwt-token-value"
         fake_claims = {"sub": "user123", "tid": "99"}
-        with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
+        with patch("datapulse.core.auth.verify_jwt", return_value=fake_claims):
             result = get_current_user(
                 credentials=creds,
                 api_key=None,
@@ -169,7 +169,7 @@ class TestGetCurrentUser:
             "sub": "user123",
             "https://datapulse.tech/tenant_id": 7,
         }
-        with patch("datapulse.api.auth.verify_jwt", return_value=fake_claims):
+        with patch("datapulse.core.auth.verify_jwt", return_value=fake_claims):
             result = get_current_user(
                 credentials=creds,
                 api_key=None,
@@ -183,7 +183,7 @@ class TestGetCurrentUser:
         creds.credentials = "jwt-token-value"
         fake_claims = {"sub": "user123", "tenant_id": tenant_id}
         with (
-            patch("datapulse.api.auth.verify_jwt", return_value=fake_claims),
+            patch("datapulse.core.auth.verify_jwt", return_value=fake_claims),
             pytest.raises(HTTPException) as exc_info,
         ):
             get_current_user(
@@ -295,7 +295,7 @@ class TestGetOptionalUser:
         creds = MagicMock()
         creds.credentials = "expired-jwt"
         with patch(
-            "datapulse.api.auth.verify_jwt",
+            "datapulse.core.auth.verify_jwt",
             side_effect=HTTPException(status_code=403, detail="Forbidden"),
         ):
             result = get_optional_user(
@@ -319,7 +319,7 @@ class TestGetOptionalUser:
         creds.credentials = "any-token"
         with (
             patch(
-                "datapulse.api.auth.verify_jwt",
+                "datapulse.core.auth.verify_jwt",
                 side_effect=HTTPException(status_code=503, detail="Auth0 unavailable"),
             ),
             pytest.raises(HTTPException) as exc_info,

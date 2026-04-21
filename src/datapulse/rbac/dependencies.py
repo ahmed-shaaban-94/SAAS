@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Annotated, Any
+from typing import Annotated
 
 import structlog
 from fastapi import Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from datapulse.api.auth import get_current_user
 from datapulse.config import get_settings
+from datapulse.core.auth import UserClaims, get_current_user
 from datapulse.core.db import get_session_factory
 from datapulse.rbac.models import AccessContext, RoleKey
 from datapulse.rbac.repository import RBACRepository
@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 
 
 def _get_rbac_session(
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[UserClaims, Depends(get_current_user)],
 ) -> Session:
     """Create a raw (non-RLS) session for RBAC lookups.
 
@@ -47,7 +47,7 @@ def _build_rbac_service(session: Session) -> RBACService:
 
 
 def get_rbac_service(
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[UserClaims, Depends(get_current_user)],
 ) -> Generator[RBACService, None, None]:
     """Yield an RBACService and guarantee the underlying session is closed."""
     session = _get_rbac_session(user)
@@ -58,7 +58,7 @@ def get_rbac_service(
 
 
 def get_access_context(
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[UserClaims, Depends(get_current_user)],
 ) -> AccessContext:
     """Resolve the full access context for the current user.
 

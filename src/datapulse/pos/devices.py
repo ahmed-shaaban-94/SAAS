@@ -33,7 +33,7 @@ from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from datapulse.api.deps import get_tenant_session
+from datapulse.core.auth import get_tenant_session
 
 CLOCK_SKEW_TOLERANCE_MINUTES: int = 2
 

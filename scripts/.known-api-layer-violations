@@ -6,26 +6,11 @@
 # from datapulse.api.* (outside src/datapulse/api/ itself), and PRINTS
 # A WARNING for listed files so the debt stays visible.
 #
-# Why these are grandfathered: each path below imports a FastAPI-dep
-# symbol (get_current_user / get_tenant_session / get_tenant_plan_limits)
-# that currently lives in api/ for wiring reasons. Moving those symbols
-# to core/ would break ~15 tests that patch("datapulse.api.auth...") /
-# patch("datapulse.api.deps...") — a file-move refactor best done as its
-# own PR. See docs/brain/decisions/ for the full rationale.
-#
-# Procedure to remove an entry:
-# 1. Move the referenced symbol to datapulse.core.* (or another allowed
-#    layer per .claude/rules/datapulse-graph.md).
-# 2. Re-export via datapulse.api.* for backwards compatibility, OR update
-#    the patch targets in every test that mocks the old location.
-# 3. Run: python scripts/check_api_layer_imports.py — file should drop
-#    out of the WARNING set. Delete the matching line below.
+# Issue #541 closed: auth + deps primitives moved to core/ and billing/;
+# re-export shims in api/auth.py and api/deps.py preserve the old import
+# paths for the rest of the codebase. Allowlist is now empty — ANY new
+# `from datapulse.api.*` outside src/datapulse/api/ is a CI failure.
 #
 # Format: one POSIX-style repo-relative path per line,
 #         comments start with '#', blank lines OK.
 
-src/datapulse/billing/pos_guard.py
-src/datapulse/pos/devices.py
-src/datapulse/pos/idempotency.py
-src/datapulse/pos/overrides.py
-src/datapulse/rbac/dependencies.py

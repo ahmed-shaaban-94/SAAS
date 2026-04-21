@@ -21,9 +21,9 @@ from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException
 
-from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_tenant_plan_limits
+from datapulse.billing.dependencies import get_tenant_plan_limits
 from datapulse.billing.plans import PlanLimits
+from datapulse.core.auth import get_current_user
 
 
 def require_pos_plan() -> Any:

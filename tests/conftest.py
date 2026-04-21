@@ -171,7 +171,11 @@ def _patch_get_settings_globally():
         "datapulse.import_pipeline.reader.get_settings",
         "datapulse.bronze.loader.get_settings",
         "datapulse.api.deps.get_settings",
-        "datapulse.api.auth.get_settings",
+        # auth + jwt moved to core/ as part of issue #541; old api/auth
+        # and api/jwt no longer own get_settings, so patch the canonical
+        # modules instead.
+        "datapulse.core.auth.get_settings",
+        "datapulse.core.jwt.get_settings",
         "datapulse.embed.token.get_settings",
         "datapulse.api.routes.explore.get_settings",
         "datapulse.cache.get_settings",

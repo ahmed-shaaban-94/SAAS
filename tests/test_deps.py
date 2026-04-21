@@ -54,7 +54,7 @@ class TestGetDbSession:
 
 
 class TestGetTenantSession:
-    @patch("datapulse.api.deps.get_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
     def test_sets_tenant_id_from_user(self, mock_factory):
         mock_session = MagicMock()
         mock_factory.return_value = MagicMock(return_value=mock_session)
@@ -77,7 +77,7 @@ class TestGetTenantSession:
         mock_session.commit.assert_called_once()
         mock_session.close.assert_called_once()
 
-    @patch("datapulse.api.deps.get_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
     def test_defaults_tenant_id_to_1(self, mock_factory):
         mock_session = MagicMock()
         mock_factory.return_value = MagicMock(return_value=mock_session)
@@ -92,7 +92,7 @@ class TestGetTenantSession:
         with contextlib.suppress(StopIteration):
             next(gen)
 
-    @patch("datapulse.api.deps.get_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
     def test_rollback_on_exception(self, mock_factory):
         mock_session = MagicMock()
         mock_factory.return_value = MagicMock(return_value=mock_session)

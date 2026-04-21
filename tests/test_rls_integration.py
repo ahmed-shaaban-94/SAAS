@@ -62,7 +62,7 @@ class TestRLSTenantSessionBoundary:
     # 1. SET LOCAL is called with the correct tenant_id from user claims
     # ------------------------------------------------------------------
 
-    @patch("datapulse.api.deps.get_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
     def test_get_tenant_session_sets_local_tenant_id(self, mock_factory: MagicMock) -> None:
         """SET LOCAL app.tenant_id must be called with the tenant_id from JWT claims."""
         mock_session = MagicMock()
@@ -96,7 +96,7 @@ class TestRLSTenantSessionBoundary:
     # 2. Fallback to default_tenant_id when JWT claim is absent
     # ------------------------------------------------------------------
 
-    @patch("datapulse.api.deps.get_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
     def test_get_tenant_session_uses_default_when_tenant_id_missing(
         self, mock_factory: MagicMock
     ) -> None:
@@ -120,7 +120,7 @@ class TestRLSTenantSessionBoundary:
     # 3. tenant_id comes from claims — not hardcoded
     # ------------------------------------------------------------------
 
-    @patch("datapulse.api.deps.get_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
     def test_get_tenant_session_tenant_id_from_claims_not_hardcoded(
         self, mock_factory: MagicMock
     ) -> None:
@@ -156,7 +156,7 @@ class TestRLSTenantSessionBoundary:
     # 4. SET LOCAL is called *before* the session is yielded (not deferred)
     # ------------------------------------------------------------------
 
-    @patch("datapulse.api.deps.get_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
     def test_tenant_session_set_local_called_before_yield(self, mock_factory: MagicMock) -> None:
         """SET LOCAL must be issued during session setup, before the caller receives it.
 

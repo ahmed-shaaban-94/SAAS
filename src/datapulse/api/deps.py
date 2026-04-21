@@ -1,4 +1,12 @@
-"""FastAPI dependency injection for database sessions and services."""
+"""FastAPI dependency injection for database sessions and services.
+
+Historical note: ``get_current_user``, ``get_tenant_session``, and
+``get_tenant_plan_limits`` used to live here. They moved to
+:mod:`datapulse.core.auth` and :mod:`datapulse.billing.dependencies` so
+business modules could import them without climbing into the api layer
+(issue #541). The names are re-exported below for backwards compatibility
+with existing ``app.dependency_overrides`` setups in tests.
+"""
 
 from __future__ import annotations
 
@@ -32,13 +40,21 @@ from datapulse.analytics.service import AnalyticsService
 
 # Service imports for newly added factory functions
 from datapulse.annotations.service import AnnotationService
-from datapulse.api.auth import UserClaims, get_current_user, require_api_key
-from datapulse.billing.plans import PlanLimits, get_plan_limits
+from datapulse.billing.dependencies import (  # noqa: F401 (re-exported for routes)
+    get_tenant_plan_limits,
+)
 from datapulse.billing.repository import BillingRepository
 from datapulse.billing.service import BillingService
 from datapulse.billing.stripe_client import StripeClient
-from datapulse.cache import current_tenant_id
 from datapulse.config import get_settings
+from datapulse.core.auth import (  # noqa: F401 (re-exported for routes + tests)
+    CurrentUser,
+    SessionDep,
+    UserClaims,
+    get_current_user,
+    get_tenant_session,
+    require_api_key,
+)
 from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
     get_engine,
     get_session_factory,
@@ -124,40 +140,6 @@ def get_db_session() -> Generator[Session, None, None]:
     finally:
         session.close()
         structlog.contextvars.unbind_contextvars("tenant_id")
-
-
-def get_tenant_session(
-    user: Annotated[UserClaims, Depends(get_current_user)],
-) -> Generator[Session, None, None]:
-    """Create a DB session scoped to the authenticated user's tenant.
-
-    Extracts tenant_id from the JWT claims and sets it via SET LOCAL
-    so that PostgreSQL RLS policies filter data automatically.
-    """
-    tenant_id = user.get("tenant_id") or "1"
-    current_tenant_id.set(str(tenant_id))
-    structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
-    session = get_session_factory()()
-    try:
-        session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-        session.execute(text("SET LOCAL statement_timeout = '30s'"))
-        yield session
-        session.commit()
-    except SQLAlchemyError:
-        logger.exception("db_session_error", session_type="tenant", tenant_id=str(tenant_id))
-        session.rollback()
-        raise
-    except BaseException:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-        structlog.contextvars.unbind_contextvars("tenant_id")
-
-
-# Type aliases for FastAPI dependency injection
-SessionDep = Annotated[Session, Depends(get_tenant_session)]
-CurrentUser = Annotated[UserClaims, Depends(get_current_user)]
 
 
 def get_analytics_service(
@@ -246,22 +228,6 @@ def get_billing_service(
         price_to_plan=settings.stripe_price_to_plan_map,
         base_url=settings.billing_base_url,
     )
-
-
-def get_tenant_plan_limits(
-    user: CurrentUser,
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> PlanLimits:
-    """Dependency that returns the current tenant's plan limits.
-
-    Inject into routes that need to enforce plan limits (e.g. pipeline trigger,
-    data source creation). Raises HTTP 403 with a clear message when a limit
-    would be exceeded.
-    """
-    tenant_id = int(user.get("tenant_id", "1"))
-    repo = BillingRepository(session)
-    plan = repo.get_tenant_plan(tenant_id)
-    return get_plan_limits(plan)
 
 
 # Alias for backwards compatibility — analytics.py and ai_light.py import this name

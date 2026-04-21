@@ -41,7 +41,7 @@ def override_token_verifier(expected_action: str):
         @router.post("/.../void",
                      dependencies=[Depends(override_token_verifier("void"))])
     """
-    from datapulse.api.deps import get_tenant_session
+    from datapulse.core.auth import get_tenant_session
 
     async def _dep(
         request: Request,

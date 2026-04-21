@@ -302,7 +302,7 @@ class TestPIILeakPrevention:
             auth0_audience="https://api.test.com",
         )
         with (
-            patch("datapulse.api.jwt.httpx.get", side_effect=Exception("connection refused")),
+            patch("datapulse.core.jwt.httpx.get", side_effect=Exception("connection refused")),
             pytest.raises(HTTPException) as exc_info,
         ):
             verify_jwt("eyJ.fake.token", fake_settings)

@@ -29,19 +29,19 @@ def mock_settings() -> MagicMock:
 
 
 class TestGetSigningKey:
-    @patch("datapulse.api.jwt._fetch_jwks")
+    @patch("datapulse.core.jwt._fetch_jwks")
     def test_jwks_parse_error(self, mock_fetch, mock_settings):
         """When PyJWKSet.from_dict fails, should raise 503."""
         mock_fetch.return_value = {"keys": []}  # empty keys -> parse error
 
         # PyJWKSet.from_dict with empty keys raises PyJWKSetError
-        with patch("datapulse.api.jwt.jwt.PyJWKSet.from_dict") as mock_jwk_set:
+        with patch("datapulse.core.jwt.jwt.PyJWKSet.from_dict") as mock_jwk_set:
             mock_jwk_set.side_effect = pyjwt.PyJWKSetError("no keys")
             with pytest.raises(HTTPException) as exc:
                 _get_signing_key("some-token", mock_settings)
             assert exc.value.status_code == 503
 
-    @patch("datapulse.api.jwt._fetch_jwks")
+    @patch("datapulse.core.jwt._fetch_jwks")
     def test_invalid_token_format(self, mock_fetch, mock_settings):
         """When token header can't be decoded, should raise 401."""
         mock_fetch.return_value = {"keys": [{"kid": "k1", "kty": "RSA", "n": "abc", "e": "AQAB"}]}
@@ -52,9 +52,9 @@ class TestGetSigningKey:
         mock_jwk_set.keys = [mock_jwk]
 
         with (
-            patch("datapulse.api.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
+            patch("datapulse.core.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
             patch(
-                "datapulse.api.jwt.jwt.get_unverified_header",
+                "datapulse.core.jwt.jwt.get_unverified_header",
                 side_effect=pyjwt.DecodeError("bad token"),
             ),
         ):
@@ -63,7 +63,7 @@ class TestGetSigningKey:
             assert exc.value.status_code == 401
             assert "Invalid token format" in exc.value.detail
 
-    @patch("datapulse.api.jwt._fetch_jwks")
+    @patch("datapulse.core.jwt._fetch_jwks")
     def test_token_missing_kid(self, mock_fetch, mock_settings):
         """When token header has no kid, should raise 401."""
         mock_fetch.return_value = {"keys": [{"kid": "k1", "kty": "RSA"}]}
@@ -74,9 +74,9 @@ class TestGetSigningKey:
         mock_jwk_set.keys = [mock_jwk]
 
         with (
-            patch("datapulse.api.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
+            patch("datapulse.core.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
             patch(
-                "datapulse.api.jwt.jwt.get_unverified_header",
+                "datapulse.core.jwt.jwt.get_unverified_header",
                 return_value={"alg": "RS256"},  # no kid
             ),
         ):
@@ -85,7 +85,7 @@ class TestGetSigningKey:
             assert exc.value.status_code == 401
             assert "missing key ID" in exc.value.detail
 
-    @patch("datapulse.api.jwt._fetch_jwks")
+    @patch("datapulse.core.jwt._fetch_jwks")
     def test_key_found_on_first_try(self, mock_fetch, mock_settings):
         """When kid matches on first try, returns the key."""
         mock_fetch.return_value = {"keys": [{"kid": "match-kid"}]}
@@ -96,16 +96,16 @@ class TestGetSigningKey:
         mock_jwk_set.keys = [mock_jwk]
 
         with (
-            patch("datapulse.api.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
+            patch("datapulse.core.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
             patch(
-                "datapulse.api.jwt.jwt.get_unverified_header",
+                "datapulse.core.jwt.jwt.get_unverified_header",
                 return_value={"kid": "match-kid", "alg": "RS256"},
             ),
         ):
             result = _get_signing_key("good-token", mock_settings)
             assert result.key_id == "match-kid"
 
-    @patch("datapulse.api.jwt._fetch_jwks")
+    @patch("datapulse.core.jwt._fetch_jwks")
     def test_key_found_after_cache_refresh(self, mock_fetch, mock_settings):
         """When kid not found initially, clears cache and retries."""
         mock_jwk_old = MagicMock()
@@ -126,11 +126,11 @@ class TestGetSigningKey:
 
         with (
             patch(
-                "datapulse.api.jwt.jwt.PyJWKSet.from_dict",
+                "datapulse.core.jwt.jwt.PyJWKSet.from_dict",
                 side_effect=[mock_jwk_set_old, mock_jwk_set_new],
             ),
             patch(
-                "datapulse.api.jwt.jwt.get_unverified_header",
+                "datapulse.core.jwt.jwt.get_unverified_header",
                 return_value={"kid": "new-kid", "alg": "RS256"},
             ),
         ):
@@ -138,7 +138,7 @@ class TestGetSigningKey:
             assert result.key_id == "new-kid"
             assert mock_fetch.call_count == 2
 
-    @patch("datapulse.api.jwt._fetch_jwks")
+    @patch("datapulse.core.jwt._fetch_jwks")
     def test_key_not_found_after_retry(self, mock_fetch, mock_settings):
         """When kid not found even after cache refresh, raises 401."""
         mock_jwk = MagicMock()
@@ -149,9 +149,9 @@ class TestGetSigningKey:
         mock_fetch.return_value = {"keys": [{"kid": "wrong-kid"}]}
 
         with (
-            patch("datapulse.api.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
+            patch("datapulse.core.jwt.jwt.PyJWKSet.from_dict", return_value=mock_jwk_set),
             patch(
-                "datapulse.api.jwt.jwt.get_unverified_header",
+                "datapulse.core.jwt.jwt.get_unverified_header",
                 return_value={"kid": "missing-kid", "alg": "RS256"},
             ),
         ):
@@ -160,7 +160,7 @@ class TestGetSigningKey:
             assert exc.value.status_code == 401
             assert "signing key not found" in exc.value.detail
 
-    @patch("datapulse.api.jwt._fetch_jwks")
+    @patch("datapulse.core.jwt._fetch_jwks")
     def test_retry_jwks_parse_error(self, mock_fetch, mock_settings):
         """When second parse after cache refresh fails, raises 503."""
         mock_jwk_old = MagicMock()
@@ -175,11 +175,11 @@ class TestGetSigningKey:
 
         with (
             patch(
-                "datapulse.api.jwt.jwt.PyJWKSet.from_dict",
+                "datapulse.core.jwt.jwt.PyJWKSet.from_dict",
                 side_effect=[mock_jwk_set_old, pyjwt.PyJWKSetError("bad keys")],
             ),
             patch(
-                "datapulse.api.jwt.jwt.get_unverified_header",
+                "datapulse.core.jwt.jwt.get_unverified_header",
                 return_value={"kid": "new-kid", "alg": "RS256"},
             ),
         ):
