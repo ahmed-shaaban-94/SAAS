@@ -229,6 +229,7 @@ function Sidebar({
                 key={item.href}
                 href={item.href}
                 className={`nav-link ${isActive ? "active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
                 title={collapsed ? item.label : undefined}
               >
                 <Icon size={14} />
