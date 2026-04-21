@@ -486,20 +486,16 @@ class PurchaseOrderRepository:
         offset: int = 0,
         limit: int = 50,
     ) -> MarginAnalysisList:
-        clauses = ["ma.tenant_id = :tenant_id"]
-        params: dict = {"tenant_id": tenant_id, "limit": limit, "offset": offset}
-
-        if year is not None:
-            clauses.append("ma.year = :year")
-            params["year"] = year
-        if month is not None:
-            clauses.append("ma.month = :month")
-            params["month"] = month
-        if drug_code is not None:
-            clauses.append("ma.drug_code = :drug_code")
-            params["drug_code"] = drug_code
-
-        where = " AND ".join(clauses)
+        where, params = build_where_eq(
+            [
+                ("ma.tenant_id", "tenant_id", tenant_id),
+                ("ma.year", "year", year),
+                ("ma.month", "month", month),
+                ("ma.drug_code", "drug_code", drug_code),
+            ]
+        )
+        params["limit"] = limit
+        params["offset"] = offset
 
         count_stmt = text(f"SELECT COUNT(*) FROM public_marts.agg_margin_analysis ma WHERE {where}")
         total = self._session.execute(count_stmt, params).scalar_one()

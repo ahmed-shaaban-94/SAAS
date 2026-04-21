@@ -14,51 +14,49 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["build_where_eq"]
+__all__ = ["build_set_eq", "build_where", "build_where_eq"]
 
 
-def build_where_eq(
-    conditions: list[tuple[str, str, Any]],
+# Operators accepted by build_where(). Anything outside this set is a call-site
+# bug — raise rather than splice unknown operator text into SQL.
+_ALLOWED_OPERATORS = frozenset({"=", "!=", "<>", "<", "<=", ">", ">="})
+
+
+def build_where(
+    conditions: list[tuple[str, str, str, Any]],
     *,
     extra_clauses: list[str] | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Build a parameterized WHERE body from equality conditions.
+    """Build a parameterized WHERE body from comparison conditions.
 
-    Each condition is a 3-tuple ``(column_expr, param_name, value)``:
-    - ``column_expr`` — the SQL side (e.g. ``"po.status"``). Always a literal
-      at the call site, never user input.
-    - ``param_name`` — the bind-parameter name (e.g. ``"status"``). Appears as
-      ``:<param_name>`` in the emitted SQL.
-    - ``value`` — the Python value. If ``None``, the clause is dropped.
+    Each condition is a 4-tuple ``(column_expr, operator, param_name, value)``:
+    - ``column_expr`` — the SQL side (e.g. ``"m.movement_date"``). Always a
+      literal at the call site, never user input.
+    - ``operator`` — one of ``=``, ``!=``, ``<>``, ``<``, ``<=``, ``>``, ``>=``.
+      Any other value raises ``ValueError`` (defensive: we never splice unknown
+      operator text into SQL).
+    - ``param_name`` — bind-parameter name; appears as ``:<param_name>`` in SQL.
+    - ``value`` — Python value. If ``None``, the clause is dropped.
 
     Example:
-        clause, params = build_where_eq([
-            ("po.tenant_id",     "tenant_id",     tenant_id),
-            ("po.status",        "status",        status),
-            ("po.supplier_code", "supplier_code", supplier_code),
+        clause, params = build_where([
+            ("m.site_key",       "=",  "site_key",   filters.site_key),
+            ("m.movement_date",  ">=", "start_date", filters.start_date),
+            ("m.movement_date",  "<=", "end_date",   filters.end_date),
         ])
-        # → ("po.tenant_id = :tenant_id AND po.status = :status", {...})
-        # if supplier_code was None, its clause is dropped.
 
-    Args:
-        conditions: Equality clauses. ``None`` values are filtered out.
-        extra_clauses: Additional SQL fragments that do not need bind params
-            (e.g. ``"po.is_deleted = FALSE"``). Appended with AND. Must also
-            be literals at the call site.
-
-    Returns:
-        ``(clause, params)``. ``clause`` is the body of a WHERE (no leading
-        ``WHERE``); ``params`` is a dict ready to pass to SQLAlchemy ``text()``
-        execution. When no clause survives, ``clause`` is ``"1=1"`` so the
-        caller can interpolate it safely after ``WHERE``.
+    See :func:`build_where_eq` for an equality-only shortcut that skips the
+    operator column in each tuple.
     """
     fragments: list[str] = []
     params: dict[str, Any] = {}
 
-    for column_expr, param_name, value in conditions:
+    for column_expr, operator, param_name, value in conditions:
+        if operator not in _ALLOWED_OPERATORS:
+            raise ValueError(f"build_where: unsupported operator {operator!r}")
         if value is None:
             continue
-        fragments.append(f"{column_expr} = :{param_name}")
+        fragments.append(f"{column_expr} {operator} :{param_name}")
         params[param_name] = value
 
     if extra_clauses:
@@ -66,3 +64,63 @@ def build_where_eq(
 
     clause = " AND ".join(fragments) if fragments else "1=1"
     return clause, params
+
+
+def build_where_eq(
+    conditions: list[tuple[str, str, Any]],
+    *,
+    extra_clauses: list[str] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    """Equality-only shortcut for :func:`build_where`.
+
+    Each condition is a 3-tuple ``(column_expr, param_name, value)``. The
+    operator is always ``=``. ``None`` values are dropped.
+
+    Example:
+        clause, params = build_where_eq([
+            ("po.tenant_id",     "tenant_id",     tenant_id),
+            ("po.status",        "status",        status),
+            ("po.supplier_code", "supplier_code", supplier_code),
+        ])
+    """
+    return build_where(
+        [(col, "=", name, value) for col, name, value in conditions],
+        extra_clauses=extra_clauses,
+    )
+
+
+def build_set_eq(
+    assignments: list[tuple[str, str, Any]],
+) -> tuple[str, dict[str, Any]]:
+    """Build a parameterized SET body for UPDATE statements.
+
+    Each assignment is a 3-tuple ``(column_name, param_name, value)``. Values
+    that are ``None`` are dropped, which maps naturally to "only update the
+    columns the caller supplied."
+
+    Returns ``(set_body, params)``. ``set_body`` is the body of a SET clause
+    (no leading ``SET``). When *no* assignment survives, returns an empty
+    string — callers must handle the "nothing to update" case explicitly,
+    since issuing ``UPDATE ... SET  WHERE ...`` would be a syntax error.
+
+    Example:
+        body, params = build_set_eq([
+            ("role_id",      "rid",    role["role_id"]),
+            ("display_name", "name",   new_name),
+            ("is_active",    "active", is_active),
+        ])
+        if not body:
+            return self.get_member_by_id(member_id)
+        session.execute(
+            text(f"UPDATE tenant_members SET {body} WHERE member_id = :mid"),
+            {"mid": member_id, **params},
+        )
+    """
+    fragments: list[str] = []
+    params: dict[str, Any] = {}
+    for column_name, param_name, value in assignments:
+        if value is None:
+            continue
+        fragments.append(f"{column_name} = :{param_name}")
+        params[param_name] = value
+    return ", ".join(fragments), params
