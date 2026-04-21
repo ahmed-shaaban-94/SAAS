@@ -1,14 +1,10 @@
 export { DashboardSidebar } from "./sidebar";
-export { AlertBanner } from "./alert-banner";
 export { KpiCard, DEFAULT_KPI_ICONS } from "./kpi-card";
 export type { KpiColor, KpiDir } from "./kpi-card";
 export { RevenueChart } from "./revenue-chart";
 export { ChannelDonut } from "./channel-donut";
 export { InventoryTable } from "./inventory-table";
 export { ExpiryHeatmap } from "./expiry-heatmap";
-export { BranchList } from "./branch-list";
-export { AnomalyFeed } from "./anomaly-feed";
-export { PipelineHealthCard } from "./pipeline-health";
 export { AttentionQueue } from "./AttentionQueue";
 export { AttentionRow } from "./AttentionRow";
 export { AttentionChips } from "./AttentionChips";

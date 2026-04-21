@@ -422,7 +422,7 @@ function PageActions({
       </div>
       <button
         type="button"
-        className="px-3.5 py-2 rounded-lg border border-border/60 text-[13px] inline-flex items-center gap-2 hover:bg-elevated/60
+        className="h-11 md:h-9 px-3.5 rounded-lg border border-border/60 text-[13px] inline-flex items-center gap-2 hover:bg-elevated/60
                    focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         <Download className="w-3.5 h-3.5" aria-hidden />
@@ -430,7 +430,7 @@ function PageActions({
       </button>
       <button
         type="button"
-        className="px-3.5 py-2 rounded-lg bg-accent text-page font-semibold text-[13px] inline-flex items-center gap-2 hover:bg-accent-strong
+        className="h-11 md:h-9 px-3.5 rounded-lg bg-accent text-page font-semibold text-[13px] inline-flex items-center gap-2 hover:bg-accent-strong
                    focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         <Plus className="w-3.5 h-3.5" aria-hidden />
