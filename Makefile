@@ -1,4 +1,4 @@
-.PHONY: up down build test coverage lint fmt dbt logs clean dev status pipeline demo help setup backup restore
+.PHONY: up down build test coverage coverage-pos lint fmt dbt logs clean dev status pipeline demo help setup backup restore
 
 ## Compose file shortcuts
 DEV_COMPOSE  = docker compose -f docker-compose.yml -f docker-compose.dev.yml
@@ -120,6 +120,17 @@ test:
 coverage:
 	DATABASE_URL="sqlite:///:memory:" REDIS_URL="" SENTRY_ENVIRONMENT=test \
 	    pytest -m unit --cov=datapulse --cov-report=term-missing --cov-fail-under=77 -q
+
+# POS-specific coverage gate (audit §8 item 4). POS is the largest
+# single module and gets its own higher floor — 85% — because the
+# transaction + checkout + shift close critical paths must have tight
+# unit coverage before v1.0 tag. Raise this floor incrementally; never
+# lower it without a documented reason.
+coverage-pos:
+	DATABASE_URL="sqlite:///:memory:" REDIS_URL="" SENTRY_ENVIRONMENT=test \
+	    pytest tests/test_pos_*.py -m unit \
+	        --cov=datapulse.pos --cov=datapulse.api.routes.pos \
+	        --cov-report=term-missing --cov-fail-under=85 -q
 
 test-e2e:
 	docker compose exec frontend npx playwright test

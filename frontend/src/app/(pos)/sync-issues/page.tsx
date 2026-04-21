@@ -79,7 +79,7 @@ export default function PosSyncIssuesPage() {
   }, [items, activeIdx, electronAvailable]);
 
   return (
-    <div className="flex min-h-screen flex-col" data-testid="pos-sync-issues-page">
+    <div className="pos-root flex min-h-screen flex-col" data-testid="pos-sync-issues-page">
       <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
         <button
           type="button"

@@ -23,9 +23,11 @@ function CashInput({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-text-secondary">{label}</label>
+      <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary">
+        {label}
+      </label>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[11px] font-semibold uppercase text-cyan-300">
           EGP
         </span>
         <input
@@ -35,8 +37,9 @@ function CashInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cn(
-            "w-full rounded-xl border border-border bg-surface py-3 pl-12 pr-4",
-            "text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent",
+            "w-full rounded-xl border border-[var(--pos-line)] bg-[var(--pos-card)] py-3 pl-12 pr-4",
+            "font-mono tabular-nums text-base text-text-primary",
+            "focus:border-[var(--pos-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--pos-accent)]",
           )}
           placeholder="0.00"
         />
@@ -129,9 +132,12 @@ export default function ShiftPage() {
   }, [view, handlePrint, handleCloseTerminal]);
 
   return (
-    <div className="flex min-h-screen flex-col" data-testid="pos-shift-page">
+    <div
+      className="pos-root flex min-h-screen flex-col"
+      data-testid="pos-shift-page"
+    >
       <header
-        className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 print:hidden"
+        className="flex h-14 items-center justify-between border-b border-[var(--pos-line)] bg-[var(--pos-card)] px-4 print:hidden"
         data-print-hide
       >
         <button
@@ -159,7 +165,21 @@ export default function ShiftPage() {
 
       <main className="flex flex-1 flex-col p-4 md:p-6">
         {view === "open" && (
-          <div className="mx-auto w-full max-w-sm space-y-4">
+          <div className="mx-auto w-full max-w-sm space-y-5">
+            <div>
+              <div
+                className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-300"
+                aria-hidden="true"
+              >
+                ● Shift open
+              </div>
+              <h1 className="mt-1.5 font-[family-name:var(--font-fraunces)] text-2xl italic text-text-primary">
+                Start the drawer, count opening cash
+              </h1>
+              <p className="mt-1 text-xs text-text-secondary">
+                Name the terminal, confirm the site, and drop in the starting float.
+              </p>
+            </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-text-secondary">
                 Terminal Name
@@ -168,7 +188,7 @@ export default function ShiftPage() {
                 type="text"
                 value={terminalName}
                 onChange={(e) => setTerminalName(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full rounded-xl border border-[var(--pos-line)] bg-[var(--pos-card)] px-4 py-3 text-sm text-text-primary focus:border-[var(--pos-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--pos-accent)]"
               />
             </div>
             <div>
@@ -179,7 +199,7 @@ export default function ShiftPage() {
                 type="text"
                 value={siteCode}
                 onChange={(e) => setSiteCode(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full rounded-xl border border-[var(--pos-line)] bg-[var(--pos-card)] px-4 py-3 text-sm text-text-primary focus:border-[var(--pos-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--pos-accent)]"
               />
             </div>
             <CashInput label="Opening Cash" value={openingCash} onChange={setOpeningCash} />
@@ -190,8 +210,8 @@ export default function ShiftPage() {
               disabled={isLoading}
               className={cn(
                 "flex w-full items-center justify-center gap-2 rounded-xl py-3",
-                "bg-accent text-sm font-semibold text-accent-foreground",
-                "shadow-[0_8px_24px_rgba(0,199,242,0.2)] hover:bg-accent/90",
+                "bg-[var(--pos-accent)] text-sm font-semibold text-[var(--pos-bg)]",
+                "shadow-[0_8px_24px_rgba(0,199,242,0.28)] hover:bg-[var(--pos-accent-hi)]",
                 "disabled:pointer-events-none disabled:opacity-40",
               )}
             >
@@ -206,23 +226,41 @@ export default function ShiftPage() {
         )}
 
         {view === "active" && terminal && (
-          <div className="mx-auto w-full max-w-sm space-y-4">
-            <div className="rounded-xl border border-accent/20 bg-accent/5 p-4 text-center">
-              <p className="text-xs text-text-secondary">Active Terminal</p>
-              <p className="mt-1 text-lg font-bold text-text-primary">{terminal.terminal_name}</p>
+          <div className="mx-auto w-full max-w-sm space-y-5">
+            <div>
+              <div
+                className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-300"
+                aria-hidden="true"
+              >
+                ● Shift active
+              </div>
+              <h1 className="mt-1.5 font-[family-name:var(--font-fraunces)] text-2xl italic text-text-primary">
+                Drawer open, ready to ring
+              </h1>
+              <p className="mt-1 text-xs text-text-secondary">
+                Jump to the terminal to start scanning, or close out when the shift ends.
+              </p>
+            </div>
+            <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] p-4 text-center shadow-[0_0_0_1px_rgba(0,199,242,0.1),0_0_28px_rgba(0,199,242,0.08)]">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-cyan-300">
+                Active Terminal
+              </p>
+              <p className="mt-1 font-[family-name:var(--font-fraunces)] text-lg italic text-text-primary">
+                {terminal.terminal_name}
+              </p>
               <p className="text-xs text-text-secondary">Site: {terminal.site_code}</p>
             </div>
             <button
               type="button"
               onClick={() => router.push("/terminal")}
-              className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
+              className="w-full rounded-xl bg-[var(--pos-accent)] py-3 text-sm font-semibold text-[var(--pos-bg)] shadow-[0_8px_24px_rgba(0,199,242,0.28)] hover:bg-[var(--pos-accent-hi)]"
             >
               Go to POS Terminal
             </button>
             <button
               type="button"
               onClick={() => setView("close")}
-              className="w-full rounded-xl border border-border py-3 text-sm font-medium text-text-secondary hover:bg-surface-raised"
+              className="w-full rounded-xl border border-[var(--pos-line)] py-3 text-sm font-medium text-text-secondary hover:bg-[var(--pos-card)]"
             >
               Close Shift
             </button>

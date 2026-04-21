@@ -308,11 +308,9 @@ export default function PosTerminalPage() {
         setActivePayment("insurance");
         return;
       }
-      if (e.key === "F12") {
-        e.preventDefault();
-        openVoucherModal();
-        return;
-      }
+      // F12 intentionally unbound — layout previously dispatched a dead
+      // pos:void-transaction event on F12 which collided with this
+      // handler. Voucher stays on F7.
       if (e.key === "Escape" && voucherOpen) {
         // VoucherCodeModal handles its own Escape
         return;

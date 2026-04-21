@@ -16,6 +16,8 @@ const TONE_COLOR: Record<NonNullable<Shortcut["tone"]>, string> = {
   green: "text-emerald-300",
 };
 
+// F12 removed — was a duplicate of F7 (voucher) and collided with the
+// layout-level void-transaction dispatch. Single shortcut per function.
 const SHORTCUTS: Shortcut[] = [
   { key: "F1", label: "Terminal", tone: "cyan" },
   { key: "F2", label: "Sync", tone: "amber" },
@@ -23,7 +25,6 @@ const SHORTCUTS: Shortcut[] = [
   { key: "F9", label: "Cash", tone: "green" },
   { key: "F10", label: "Card", tone: "cyan" },
   { key: "F11", label: "Insurance", tone: "purple" },
-  { key: "F12", label: "Apply voucher", tone: "amber" },
   { key: "1–9", label: "Quick pick" },
   { key: "/", label: "Search" },
   { key: "Enter", label: "Charge", tone: "cyan" },

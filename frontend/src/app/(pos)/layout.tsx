@@ -50,7 +50,16 @@ function SessionGuard({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** Keyboard shortcuts for the POS terminal */
+/** Keyboard shortcuts for the POS terminal.
+ *
+ * Audit C-follow-up: removed the F12 dispatch here — it fired
+ * ``pos:void-transaction`` which no component listened to, AND it collided
+ * with the terminal page's own F12 handler (voucher modal) because both
+ * handlers attach to window.keydown. Net effect was a dead event plus a
+ * preventDefault race. F12 is now owned by the terminal page alone
+ * (voucher) until product decides whether to rebind it to void to match
+ * the pharma-pos skill convention.
+ */
 function PosKeyboardHandler({ children }: { children: ReactNode }) {
   const handleKey = useCallback((e: KeyboardEvent) => {
     // Dispatch custom events so any component can listen without prop-drilling
@@ -70,10 +79,6 @@ function PosKeyboardHandler({ children }: { children: ReactNode }) {
       case "F8":
         e.preventDefault();
         window.dispatchEvent(new CustomEvent("pos:open-return"));
-        break;
-      case "F12":
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent("pos:void-transaction"));
         break;
     }
   }, []);

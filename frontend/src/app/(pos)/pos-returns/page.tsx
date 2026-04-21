@@ -70,7 +70,7 @@ export default function ReturnsPage() {
   // ── Success state ──────────────────────────────────────────────
   if (returnResult) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="pos-root flex min-h-screen flex-col">
         <header className="flex h-14 items-center border-b border-border bg-surface px-4">
           <span className="text-sm font-semibold text-text-primary">Return Processed</span>
         </header>
@@ -115,7 +115,7 @@ export default function ReturnsPage() {
 
   // ── Main return form state ─────────────────────────────────────
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="pos-root flex min-h-screen flex-col">
       <header className="flex h-14 items-center border-b border-border bg-surface px-4">
         <button
           type="button"

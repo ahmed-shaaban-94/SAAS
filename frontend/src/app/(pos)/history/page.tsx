@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 import type { TransactionResponse, TransactionStatus } from "@/types/pos";
 
 const STATUS_COLORS: Record<TransactionStatus, string> = {
-  draft: "text-text-secondary bg-surface-raised",
-  completed: "text-green-400 bg-green-500/10",
-  voided: "text-destructive bg-destructive/10",
-  returned: "text-amber-400 bg-amber-500/10",
+  draft: "text-text-secondary bg-white/[0.04]",
+  completed: "text-emerald-300 bg-emerald-400/10",
+  voided: "text-[#ff7b7b] bg-[rgba(255,123,123,0.1)]",
+  returned: "text-amber-300 bg-amber-400/10",
 };
 
 function fmt(n: number): string {
@@ -37,8 +37,8 @@ export default function PosHistoryPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
+    <div className="pos-root flex min-h-screen flex-col">
+      <header className="flex h-14 items-center justify-between border-b border-[var(--pos-line)] bg-[var(--pos-card)] px-4">
         <button
           type="button"
           onClick={() => router.push("/terminal")}
@@ -47,18 +47,29 @@ export default function PosHistoryPage() {
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
-        <span className="text-sm font-semibold text-text-primary">Transaction History</span>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-300">
+          ● History
+        </span>
         <button
           type="button"
           onClick={() => mutate()}
           aria-label="Refresh"
-          className="rounded-lg p-1.5 text-text-secondary hover:bg-surface-raised"
+          className="rounded-lg p-1.5 text-text-secondary hover:bg-[var(--pos-card)]"
         >
           <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-y-auto p-4">
+        <div className="mb-4">
+          <h1 className="font-[family-name:var(--font-fraunces)] text-2xl italic text-text-primary">
+            Every receipt from this shift
+          </h1>
+          <p className="mt-1 text-xs text-text-secondary">
+            Ring-up order, newest first. Tap a completed sale to return or void.
+          </p>
+        </div>
+
         {isError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-center text-sm text-destructive">
             Failed to load history
@@ -68,14 +79,17 @@ export default function PosHistoryPage() {
         {isLoading && !transactions.length && (
           <div className="space-y-2">
             {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl bg-surface" />
+              <div key={i} className="h-20 animate-pulse rounded-xl bg-[var(--pos-card)]" />
             ))}
           </div>
         )}
 
         {!isLoading && transactions.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
-            <p className="text-sm">No transactions found</p>
+            <div className="font-[family-name:var(--font-fraunces)] text-lg italic text-text-primary">
+              All clear.
+            </div>
+            <p className="mt-1 text-xs">No transactions found.</p>
           </div>
         )}
 
@@ -83,17 +97,17 @@ export default function PosHistoryPage() {
           {transactions.map((txn) => (
             <div
               key={txn.id}
-              className="rounded-xl border border-border bg-surface p-3 transition-colors hover:border-border/80"
+              className="rounded-xl border border-[var(--pos-line)] bg-[var(--pos-card)] p-3 transition-colors hover:border-cyan-400/30"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium tabular-nums text-text-primary">
+                    <span className="font-mono text-sm font-semibold tabular-nums text-text-primary">
                       #{txn.receipt_number ?? txn.id}
                     </span>
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                        "rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider",
                         STATUS_COLORS[txn.status],
                       )}
                     >
@@ -108,7 +122,7 @@ export default function PosHistoryPage() {
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold tabular-nums text-text-primary">
+                  <p className="font-mono text-sm font-semibold tabular-nums text-cyan-300">
                     EGP {fmt(txn.grand_total)}
                   </p>
                 </div>
@@ -116,7 +130,7 @@ export default function PosHistoryPage() {
 
               {/* Action buttons — only for completed transactions */}
               {txn.status === "completed" && (
-                <div className="mt-2 flex gap-2 border-t border-border/50 pt-2">
+                <div className="mt-2 flex gap-2 border-t border-[var(--pos-line)] pt-2">
                   <button
                     type="button"
                     onClick={() =>
@@ -156,18 +170,18 @@ export default function PosHistoryPage() {
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--pos-line)] disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm text-text-secondary">
+            <span className="font-mono text-xs text-text-secondary">
               {page} / {totalPages}
             </span>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--pos-line)] disabled:opacity-40"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

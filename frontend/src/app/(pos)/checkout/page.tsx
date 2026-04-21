@@ -130,7 +130,7 @@ export default function CheckoutPage() {
   // Error state
   if (checkout.error) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="pos-root flex min-h-screen flex-col">
         <header className="flex h-14 items-center border-b border-border bg-surface px-4">
           <button
             type="button"
@@ -162,7 +162,7 @@ export default function CheckoutPage() {
       (session?.user?.name as string | undefined) ?? "Cashier";
     const discountSource = appliedDiscount?.source;
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="pos-root flex min-h-screen flex-col">
         <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
           <OfflineBadge />
           <span className="text-sm font-semibold text-text-primary">Checkout Complete</span>
@@ -205,7 +205,7 @@ export default function CheckoutPage() {
 
   // Fallback: manual payment selection (if auto-process skipped)
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="pos-root flex min-h-screen flex-col">
       <header className="flex h-14 items-center border-b border-border bg-surface px-4">
         <button
           type="button"
