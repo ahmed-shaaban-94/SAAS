@@ -10,7 +10,13 @@ import { ErrorRetry } from "@/components/error-retry";
 import { LoadingCard } from "@/components/loading-card";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
-export function SiteOverview() {
+interface SiteOverviewProps {
+  /** Hide the legacy SummaryStats row when the migrated page renders
+   *  its own KpiCard grid above. */
+  hideSummary?: boolean;
+}
+
+export function SiteOverview({ hideSummary = false }: SiteOverviewProps = {}) {
   const { filters } = useFilters();
   const { data, error, isLoading } = useSites(filters);
 
@@ -62,7 +68,7 @@ export function SiteOverview() {
 
   return (
     <div>
-      <SummaryStats stats={stats} className="mb-6" />
+      {!hideSummary && <SummaryStats stats={stats} className="mb-6" />}
       <div className="mb-4 flex justify-end">
         <CsvExportButton data={exportData} filename="sites" />
       </div>

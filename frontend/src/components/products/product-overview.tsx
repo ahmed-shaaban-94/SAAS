@@ -18,7 +18,14 @@ import {
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
-export function ProductOverview() {
+interface ProductOverviewProps {
+  /** When true, the 4-stat SummaryStats row is hidden — used by the
+   *  migrated /products page, which renders its own KpiCard row from the
+   *  UI kit above this component. */
+  hideSummary?: boolean;
+}
+
+export function ProductOverview({ hideSummary = false }: ProductOverviewProps = {}) {
   const { filters } = useFilters();
   const { data, error, isLoading } = useTopProducts(filters);
   const { data: originData } = useOriginBreakdown(filters);
@@ -79,8 +86,8 @@ export function ProductOverview() {
 
   return (
     <div>
-      <SummaryStats stats={stats} />
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      {!hideSummary && <SummaryStats stats={stats} />}
+      <div className={hideSummary ? "grid gap-6 lg:grid-cols-3" : "mt-6 grid gap-6 lg:grid-cols-3"}>
         <div className="viz-panel rounded-[1.7rem] p-6">
           <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
             Top Products by Revenue

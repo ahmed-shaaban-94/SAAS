@@ -53,7 +53,13 @@ function StaffDistributionBar({ data }: { data: { name: string; value: number; f
   );
 }
 
-export function StaffOverview() {
+interface StaffOverviewProps {
+  /** Hide the legacy 4-stat SummaryStats row when the migrated page
+   *  renders its own KpiCard grid above. */
+  hideSummary?: boolean;
+}
+
+export function StaffOverview({ hideSummary = false }: StaffOverviewProps = {}) {
   const { filters } = useFilters();
   const { data, error, isLoading } = useTopStaff(filters);
   const theme = useChartTheme();
@@ -117,7 +123,7 @@ export function StaffOverview() {
 
   return (
     <div>
-      <SummaryStats stats={stats} className="mb-6" />
+      {!hideSummary && <SummaryStats stats={stats} className="mb-6" />}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="viz-panel viz-card-hover rounded-[1.75rem] p-6">
           <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">

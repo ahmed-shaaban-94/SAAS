@@ -14,7 +14,13 @@ import { LoadingCard } from "@/components/loading-card";
 import { RankingTableSkeleton } from "@/components/ui/table-skeleton";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
-export function CustomerOverview() {
+interface CustomerOverviewProps {
+  /** Hide the legacy 4-stat SummaryStats row when the migrated page
+   *  renders its own KpiCard grid above. */
+  hideSummary?: boolean;
+}
+
+export function CustomerOverview({ hideSummary = false }: CustomerOverviewProps = {}) {
   const { filters } = useFilters();
   const { data, error, isLoading } = useTopCustomers(filters);
 
@@ -78,8 +84,8 @@ export function CustomerOverview() {
 
   return (
     <div>
-      <SummaryStats stats={stats} />
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      {!hideSummary && <SummaryStats stats={stats} />}
+      <div className={hideSummary ? "grid gap-6 lg:grid-cols-3" : "mt-6 grid gap-6 lg:grid-cols-3"}>
         <div className="viz-panel rounded-[1.7rem] p-6">
           <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
             Top Customers by Revenue

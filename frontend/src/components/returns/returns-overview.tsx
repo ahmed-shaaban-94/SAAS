@@ -26,7 +26,13 @@ function isNonProduct(r: { drug_brand: string; customer_name: string }): boolean
   );
 }
 
-export function ReturnsOverview() {
+interface ReturnsOverviewProps {
+  /** Hide the legacy SummaryStats row when the migrated page renders
+   *  its own KpiCard grid above. */
+  hideSummary?: boolean;
+}
+
+export function ReturnsOverview({ hideSummary = false }: ReturnsOverviewProps = {}) {
   const { filters } = useFilters();
   const { data, error, isLoading } = useReturns(filters);
 
@@ -98,7 +104,7 @@ export function ReturnsOverview() {
 
   return (
     <div>
-      <SummaryStats stats={summaryStats} className="mb-6" />
+      {!hideSummary && <SummaryStats stats={summaryStats} className="mb-6" />}
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="viz-panel rounded-[1.7rem] p-5">
           <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary">
