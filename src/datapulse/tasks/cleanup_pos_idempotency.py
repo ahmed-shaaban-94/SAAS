@@ -23,12 +23,12 @@ def run(session: Session) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    from datapulse.api.deps import get_db_session
+    from datapulse.core.db import get_session_factory
     from datapulse.logging import get_logger
 
     log = get_logger(__name__)
-    for session in get_db_session():
+    factory = get_session_factory()
+    with factory() as session:
         deleted = run(session)
         session.commit()
         log.info("pos_idempotency_cleanup_complete", deleted=deleted)
-        break
