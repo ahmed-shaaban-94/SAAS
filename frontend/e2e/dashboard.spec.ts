@@ -44,21 +44,28 @@ test.describe("Dashboard (new design)", () => {
     await expect(page.getByRole("button", { name: /New report/i })).toBeVisible();
   });
 
-  test("all ten design widgets mount", async ({ page }) => {
+  test("four action-center zones mount", async ({ page }) => {
     test.skip(needsBackend, "widget hydration uses API data — validate in staging");
-    await expect(page.getByRole("heading", { name: "Revenue trend" })).toBeVisible({
+    // Zone 1 — AttentionQueue (hero)
+    await expect(page.getByRole("region", { name: "Attention queue" })).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.getByRole("heading", { name: "Channel split" })).toBeVisible();
+    // Zone 2 — KpiStrip
+    await expect(
+      page.getByRole("region", { name: "Key performance indicators" }),
+    ).toBeVisible();
+    // Zone 3 Row A — RevenueChart + ExpiryHeatmap
+    await expect(page.getByRole("heading", { name: "Revenue trend" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Expiry calendar" })).toBeVisible();
+    // Zone 3 Row B — InventoryTable + BranchListRollup
     await expect(
       page.getByRole("heading", { name: "Inventory — reorder watchlist" }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Expiry calendar" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Top branches" })).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Anomalies & insights" }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Pipeline health" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Branches" })).toBeVisible();
+    // Zone 4 — DashboardFooterBar
+    await expect(page.getByRole("button", { name: /Channels/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /All anomalies/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /All reports/i })).toBeVisible();
   });
 
   test("expiry calendar exposes 98 grid cells for screen readers", async ({ page }) => {
