@@ -65,23 +65,26 @@ class TestRequireApiKey:
 
 
 class TestRequirePipelineToken:
-    def test_dev_mode_skips(self):
-        """Empty secret + PIPELINE_AUTH_DISABLED=true -> dev mode, should pass."""
-        with patch.dict(os.environ, {"PIPELINE_AUTH_DISABLED": "true"}):
+    def test_empty_secret_raises_503(self):
+        """Empty secret always raises 503 — no env-var escape (issue #539)."""
+        with pytest.raises(HTTPException) as exc_info:
             require_pipeline_token(token=None, settings=_settings(pipeline_webhook_secret=""))
+        assert exc_info.value.status_code == 503
 
-    def test_empty_secret_without_opt_in_raises_503(self):
-        """Empty secret without PIPELINE_AUTH_DISABLED raises 503."""
-        with patch.dict(os.environ, {}, clear=False):
-            # Ensure PIPELINE_AUTH_DISABLED is not set
-            env = os.environ.copy()
-            env.pop("PIPELINE_AUTH_DISABLED", None)
-            with patch.dict(os.environ, env, clear=True):
-                with pytest.raises(HTTPException) as exc_info:
-                    require_pipeline_token(
-                        token=None, settings=_settings(pipeline_webhook_secret="")
-                    )
-                assert exc_info.value.status_code == 503
+    def test_pipeline_auth_disabled_env_var_is_inert(self):
+        """The legacy PIPELINE_AUTH_DISABLED kill-switch must have no effect.
+
+        Regression guard for #539: pre-fix, setting this env var to "true"
+        with an empty secret caused require_pipeline_token to return
+        successfully (no auth). The kill-switch was removed entirely;
+        setting the env var must not change behavior.
+        """
+        with (
+            patch.dict(os.environ, {"PIPELINE_AUTH_DISABLED": "true"}),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            require_pipeline_token(token=None, settings=_settings(pipeline_webhook_secret=""))
+        assert exc_info.value.status_code == 503
 
     def test_valid_token(self):
         require_pipeline_token(token="tok123", settings=_settings(pipeline_webhook_secret="tok123"))

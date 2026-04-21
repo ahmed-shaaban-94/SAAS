@@ -11,7 +11,6 @@ When the corresponding config value is empty, the guard is skipped (dev mode).
 
 from __future__ import annotations
 
-import os
 import re
 from typing import Any, TypedDict
 
@@ -65,16 +64,18 @@ def require_pipeline_token(
 ) -> None:
     """Verify the X-Pipeline-Token header for pipeline execution endpoints.
 
-    Skips validation when ``settings.pipeline_webhook_secret`` is empty.
+    Refuses to run when ``settings.pipeline_webhook_secret`` is empty — there
+    is no kill-switch. The legacy ``PIPELINE_AUTH_DISABLED`` env var was
+    removed in issue #539 because a single misconfigured variable disabled
+    webhook auth entirely. For local development, set any non-empty dev
+    token (see docs/RUNBOOK.md §7).
     """
     if not settings.pipeline_webhook_secret:
-        if os.getenv("PIPELINE_AUTH_DISABLED", "").lower() != "true":
-            _auth_logger.error(
-                "pipeline_auth_unconfigured",
-                detail="PIPELINE_WEBHOOK_SECRET is empty and PIPELINE_AUTH_DISABLED is not set",
-            )
-            raise HTTPException(status_code=503, detail="Pipeline auth not configured")
-        return  # explicitly opted-in to no auth
+        _auth_logger.error(
+            "pipeline_auth_unconfigured",
+            detail="PIPELINE_WEBHOOK_SECRET is empty",
+        )
+        raise HTTPException(status_code=503, detail="Pipeline auth not configured")
     if not token or not compare_secrets(token, settings.pipeline_webhook_secret):
         raise HTTPException(status_code=403, detail="Authentication failed")
 
