@@ -21,7 +21,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 
 from datapulse.api.jwt import verify_jwt
 from datapulse.config import Settings, get_settings
-from datapulse.core.config import _is_non_dev_env
+from datapulse.core.config import is_non_dev_env
 from datapulse.core.security import compare_secrets
 
 _auth_logger = structlog.get_logger()
@@ -164,7 +164,7 @@ def get_current_user(
     # app_env or sentry_environment indicates a non-dev deployment, so a single
     # misconfigured env var cannot leak admin-adjacent claims (issue #537).
     if not settings.api_key and not settings.auth0_domain:
-        if _is_non_dev_env(settings.app_env, settings.sentry_environment):
+        if is_non_dev_env(settings.app_env, settings.sentry_environment):
             _auth_logger.error(
                 "auth_not_configured_in_production",
                 app_env=settings.app_env,

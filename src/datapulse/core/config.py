@@ -13,7 +13,7 @@ logger = structlog.get_logger()
 _DEV_ENVS = frozenset({"development", "test"})
 
 
-def _is_non_dev_env(app_env: str, sentry_environment: str) -> bool:
+def is_non_dev_env(app_env: str, sentry_environment: str) -> bool:
     """Return True when either env label signals a non-development deployment.
 
     Defense in depth for security-sensitive gates (auth fallback, secret
@@ -206,7 +206,7 @@ class Settings(BaseSettings):
         (see issue #537).
         """
         if (
-            _is_non_dev_env(self.app_env, self.sentry_environment)
+            is_non_dev_env(self.app_env, self.sentry_environment)
             and not self.api_key
             and not self.auth0_domain
         ):
@@ -238,7 +238,7 @@ class Settings(BaseSettings):
         *either* ``app_env`` or ``sentry_environment`` indicates a non-dev
         deployment — so a misconfigured single variable cannot bypass it.
         """
-        if not _is_non_dev_env(self.app_env, self.sentry_environment):
+        if not is_non_dev_env(self.app_env, self.sentry_environment):
             return self
 
         missing: list[str] = []

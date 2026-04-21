@@ -76,6 +76,23 @@ class TestStartupGateCannotBeBypassed:
             auth0_domain="",
         )
 
+    def test_app_env_loads_from_environment_variable(self, monkeypatch):
+        """APP_ENV env var must map to ``app_env`` — else the guard fails open.
+
+        Unit tests pass ``app_env`` as a kwarg, but real deployments rely on
+        pydantic_settings auto-mapping the env var. If the mapping breaks
+        (renamed field, added ``env_prefix``, etc.) the code default
+        ``"development"`` silently wins and re-opens the bypass this fix
+        was designed to close.
+        """
+        monkeypatch.setenv("APP_ENV", "production")
+        monkeypatch.setenv("API_KEY", "configured-for-test")
+        monkeypatch.setenv("DATABASE_URL", "")
+        monkeypatch.setenv("PIPELINE_WEBHOOK_SECRET", "disabled-for-test")
+        monkeypatch.setenv("DB_READER_PASSWORD", "test")
+        settings = Settings(_env_file=None)
+        assert settings.app_env == "production"
+
 
 class TestRuntimeGateCannotBeBypassed:
     """``get_current_user`` must refuse the dev fallback in any non-dev ``app_env``."""
