@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from datapulse.api.backpressure import AdmissionController
@@ -108,6 +109,11 @@ def create_app() -> FastAPI:
     )
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+    # SlowAPI's per-route @limiter.limit decorators require SlowAPIMiddleware
+    # to actually enforce; without it the decorator wraps the endpoint but
+    # the rate check silently no-ops. (Issue #539: rate limits were declared
+    # but never fired because this middleware was missing.)
+    app.add_middleware(SlowAPIMiddleware)
 
     # Business exception handlers — ordered from most specific to least specific
     @app.exception_handler(ValidationError)

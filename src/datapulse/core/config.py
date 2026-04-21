@@ -1,6 +1,5 @@
 """Application settings loaded from environment variables."""
 
-import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -211,10 +210,7 @@ class Settings(BaseSettings):
             missing.append("API_KEY or AUTH0_DOMAIN")
         if not self.db_reader_password:
             missing.append("DB_READER_PASSWORD")
-        if (
-            not self.pipeline_webhook_secret
-            and os.getenv("PIPELINE_AUTH_DISABLED", "").lower() != "true"
-        ):
+        if not self.pipeline_webhook_secret:
             missing.append("PIPELINE_WEBHOOK_SECRET")
 
         if missing:

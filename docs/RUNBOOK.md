@@ -318,6 +318,57 @@ docker logs datapulse-api --since 10m 2>&1 | \
 docker exec datapulse-api env | grep AUTH0
 ```
 
+### Pipeline webhook returns 503 "Pipeline auth not configured"
+
+**Symptom**: calls to `/api/v1/pipeline/trigger`, `/execute/bronze`,
+`/execute/dbt-*`, `/execute/quality-check`, or `/runs/{id}/resume` return
+503 with body `{"detail":"Pipeline auth not configured"}`.
+
+**Cause (by design)**: `PIPELINE_WEBHOOK_SECRET` is empty. The legacy
+`PIPELINE_AUTH_DISABLED=true` kill-switch was removed in issue #539 —
+there is no longer any way to run pipeline webhooks without a secret.
+A single misconfigured env var used to disable webhook auth entirely;
+combined with missing rate limits, an unauthenticated caller could
+trigger unlimited Bronze loads / dbt runs.
+
+**Fix — for local development**:
+
+```bash
+# In your .env (NOT in production):
+PIPELINE_WEBHOOK_SECRET=dev-local-pipeline-secret-$(openssl rand -hex 8)
+
+# Then pass the header when calling the pipeline:
+curl -X POST http://localhost:8000/api/v1/pipeline/execute/bronze \
+    -H "X-Pipeline-Token: $PIPELINE_WEBHOOK_SECRET" \
+    -H "Content-Type: application/json" \
+    -d '{"run_id": "<uuid>"}'
+```
+
+**Fix — for production**: generate a long random secret
+(`openssl rand -hex 32`) and configure it on the host and on every
+n8n / scheduler workflow that triggers pipeline steps.
+
+### Pipeline webhook returns 429 "Too Many Requests"
+
+**Symptom**: a pipeline caller sees a 429 after rapid repeat calls.
+
+**Cause (by design)**: every pipeline mutation route carries a
+`5/minute` rate limit (issue #539). The limit is per client IP.
+A scheduler, n8n workflow, or stuck retry loop can trip it.
+
+**Fix**:
+
+```bash
+# Inspect recent 429 responses in the API log
+docker logs datapulse-api --since 5m 2>&1 | jq -c 'select(.status == 429)'
+
+# Most common cause: a retry loop firing faster than once every 12s.
+# Tune the caller's backoff, not the server's gate.
+```
+
+Raise the gate only if you understand the cost — the 5/minute limit
+caps how fast a compromised token can trigger Bronze/dbt operations.
+
 ### dbt run fails after migration
 
 If a migration added/removed columns, dbt models may fail with `column does not exist`.

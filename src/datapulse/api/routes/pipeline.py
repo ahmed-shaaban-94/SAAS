@@ -23,6 +23,7 @@ from datapulse.api.deps import (
     get_pipeline_service,
     get_quality_service,
 )
+from datapulse.api.limiter import limiter
 from datapulse.billing.service import BillingService, PlanLimitExceededError
 from datapulse.cache import cache_invalidate_pattern
 from datapulse.logging import get_logger
@@ -223,7 +224,9 @@ def _sse_event(event_type: str, data: dict) -> str:
     response_model=PipelineRunResponse,
     status_code=201,
 )
+@limiter.limit("5/minute")
 def create_run(
+    request: Request,
     service: ServiceDep,
     body: PipelineRunCreate,
 ) -> PipelineRunResponse:
@@ -235,7 +238,9 @@ def create_run(
     "/runs/{run_id}",
     response_model=PipelineRunResponse,
 )
+@limiter.limit("5/minute")
 def update_run(
+    request: Request,
     service: ServiceDep,
     run_id: UUID,
     body: PipelineRunUpdate,
@@ -270,7 +275,9 @@ def update_run(
     status_code=202,
     dependencies=[Depends(require_pipeline_token)],
 )
+@limiter.limit("5/minute")
 async def trigger_pipeline(
+    request: Request,
     service: ServiceDep,
     billing: Annotated[BillingService, Depends(get_billing_service)],
     user: Annotated[dict, Depends(get_current_user)],
@@ -341,7 +348,9 @@ async def trigger_pipeline(
     response_model=PipelineRunResponse,
     dependencies=[Depends(require_pipeline_token)],
 )
+@limiter.limit("5/minute")
 def resume_run(
+    request: Request,
     service: ServiceDep,
     run_id: UUID,
 ) -> PipelineRunResponse:
@@ -403,7 +412,9 @@ def resume_run(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
+@limiter.limit("5/minute")
 async def execute_bronze(
+    request: Request,
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
@@ -421,7 +432,9 @@ async def execute_bronze(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
+@limiter.limit("5/minute")
 async def execute_dbt_staging(
+    request: Request,
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
@@ -436,7 +449,9 @@ async def execute_dbt_staging(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
+@limiter.limit("5/minute")
 async def execute_dbt_marts(
+    request: Request,
     executor: ExecutorDep,
     body: ExecuteRequest,
 ) -> ExecutionResult:
@@ -451,7 +466,9 @@ async def execute_dbt_marts(
     response_model=ExecutionResult,
     dependencies=[Depends(require_pipeline_token)],
 )
+@limiter.limit("5/minute")
 async def execute_forecasting(
+    request: Request,
     executor: ExecutorDep,
     body: ExecuteRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -492,7 +509,9 @@ def get_quality_checks(
     response_model=QualityReport,
     dependencies=[Depends(require_pipeline_token)],
 )
+@limiter.limit("5/minute")
 def execute_quality_check(
+    request: Request,
     quality_service: QualityServiceDep,
     body: QualityCheckRequest,
     user: Annotated[dict, Depends(get_current_user)],
