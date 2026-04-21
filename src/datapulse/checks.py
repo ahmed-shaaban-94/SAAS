@@ -9,7 +9,7 @@ import time
 import structlog
 from sqlalchemy import text
 
-from datapulse.api.deps import get_engine
+from datapulse.core.db import get_engine
 
 logger = structlog.get_logger()
 

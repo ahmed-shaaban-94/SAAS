@@ -30,6 +30,11 @@ jobs:
         # Issue #538: guards against duplicate migration numbers that a
         # prefix-keyed runner can silently skip. Uses stdlib only — no deps.
         run: python scripts/check_migration_numbers.py
+      - name: Check api-layer imports (no new violations)
+        # Issue #541: forbids business modules from importing datapulse.api.*.
+        # Grandfathered offenders are listed in
+        # scripts/.known-api-layer-violations. Uses stdlib only — no deps.
+        run: python scripts/check_api_layer_imports.py
 
   typecheck:
     name: Type Check
