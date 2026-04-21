@@ -35,6 +35,12 @@ models:
         description: "Total quantity lost to damage, shrinkage, or write-off"
       - name: last_movement_date
         description: "Date of the most recent movement"
+      - name: last_loaded_at
+        description: >
+          MAX(loaded_at) across the partition's source movements. Used as the
+          incremental watermark: the next incremental run filters
+          fct_stock_movements on ``loaded_at > MAX(last_loaded_at)`` to find
+          partitions that need re-summing.
 
   - name: agg_stock_valuation
     description: >
