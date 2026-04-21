@@ -35,6 +35,36 @@ class PosRepository:
     # Terminal sessions
     # ──────────────────────────────────────────────────────────────
 
+    def count_active_terminals(self, tenant_id: int) -> int:
+        """Count terminals currently in ``open``/``active``/``paused`` status
+        for the tenant. Used by the server-side single-terminal guard in
+        :meth:`PosService.open_terminal` (audit §3.4 M2 follow-up).
+        """
+        row = self._session.execute(
+            text(
+                """SELECT count(*) AS n FROM pos.terminal_sessions
+                    WHERE tenant_id = :tid
+                      AND status IN ('open','active','paused')"""
+            ),
+            {"tid": tenant_id},
+        ).scalar()
+        return int(row or 0)
+
+    def get_tenant_max_terminals(self, tenant_id: int) -> int:
+        """Return the tenant's ``pos_max_terminals`` cap (default 1).
+
+        Falls back to 1 when the column isn't populated or the tenant row
+        doesn't exist — safe default per the original §1.4 plan.
+        """
+        row = self._session.execute(
+            text(
+                """SELECT pos_max_terminals FROM bronze.tenants
+                    WHERE tenant_id = :tid"""
+            ),
+            {"tid": tenant_id},
+        ).scalar()
+        return int(row or 1)
+
     def create_terminal_session(
         self,
         *,

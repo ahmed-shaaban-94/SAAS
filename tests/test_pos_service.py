@@ -271,6 +271,42 @@ class TestTerminalLifecycle:
         assert session.status == TerminalStatus.open
         mock_repo.create_terminal_session.assert_called_once()
 
+    def test_open_terminal_blocks_when_single_terminal_cap_reached(
+        self,
+        service: PosService,
+        mock_repo: MagicMock,
+    ):
+        """Audit §3.4 / M2 follow-up — server-side single-terminal guard.
+
+        When a tenant on the default cap (1) already has an open shift,
+        a second ``open_terminal`` must raise :class:`PosError` with
+        ``multi_terminal_limit_reached`` detail. Stops a second machine
+        from silently racing past the client-side guard.
+        """
+        mock_repo.count_active_terminals.return_value = 1
+        mock_repo.get_tenant_max_terminals.return_value = 1
+
+        with pytest.raises(PosError) as exc_info:
+            service.open_terminal(tenant_id=1, site_code="SITE01", staff_id="staff-2")
+
+        assert "multi_terminal_limit_reached" in (exc_info.value.detail or "")
+        mock_repo.create_terminal_session.assert_not_called()
+
+    def test_open_terminal_allows_under_multi_terminal_cap(
+        self,
+        service: PosService,
+        mock_repo: MagicMock,
+    ):
+        """Enterprise tenants with pos_max_terminals > active_count succeed."""
+        mock_repo.count_active_terminals.return_value = 2
+        mock_repo.get_tenant_max_terminals.return_value = 4
+        mock_repo.create_terminal_session.return_value = _terminal_row("open")
+
+        session = service.open_terminal(tenant_id=1, site_code="SITE01", staff_id="staff-3")
+
+        assert session.status == TerminalStatus.open
+        mock_repo.create_terminal_session.assert_called_once()
+
     def test_pause_terminal_valid_transition(
         self,
         service: PosService,

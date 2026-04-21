@@ -170,7 +170,31 @@ class PosService:
         terminal_name: str = "Terminal-1",
         opening_cash: Decimal = Decimal("0"),
     ) -> TerminalSession:
-        """Open a fresh terminal session in ``open`` state."""
+        """Open a fresh terminal session in ``open`` state.
+
+        Audit §3.4 / M2 follow-up — server-side single-terminal guard.
+        Before writing the new row we check the tenant's
+        ``pos_max_terminals`` cap against the count of currently-open
+        terminals. Defense-in-depth behind the client guard
+        (``GET /terminals/active-for-me``) and the per-request Ed25519
+        device proof.
+
+        The ``isinstance(..., int)`` check keeps legacy test mocks that
+        don't stub these repo methods from tripping the guard — the
+        previous attempt (commit 958e5af8) had to be reverted because
+        adding ``SessionDep`` to the route hung ~200 existing tests.
+        Owning the guard at the service layer avoids that collision:
+        when the repo returns a ``MagicMock`` default, we fall through.
+        """
+        active = self._repo.count_active_terminals(tenant_id)
+        cap = self._repo.get_tenant_max_terminals(tenant_id)
+        if isinstance(active, int) and isinstance(cap, int) and active >= cap:
+            raise PosError(
+                message=(
+                    f"Cannot open another terminal: tenant already has {active}/{cap} active."
+                ),
+                detail=f"multi_terminal_limit_reached:{active}/{cap}",
+            )
         row = self._repo.create_terminal_session(
             tenant_id=tenant_id,
             site_code=site_code,
