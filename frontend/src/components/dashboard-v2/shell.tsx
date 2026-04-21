@@ -4,29 +4,117 @@
  * Dashboard v2 shell — sidebar + pulse bar + page chrome.
  *
  * Layered approach:
- *   - Conventional sidebar structure (v1 of the HTML prototypes) for
- *     extensibility — sections + nav links + badges, not editorial.
+ *   - Sidebar is data-driven from `NAV_GROUPS` in `@/lib/constants` so
+ *     it stays aligned with the legacy (app)/layout.tsx sidebar and
+ *     surfaces all 9 navigation groups (Analytics, Dimensions,
+ *     Intelligence, Data Ops, Collaboration, Settings, Operations,
+ *     POS, Control Center). Adding a new route to NAV_GROUPS lights it
+ *     up automatically in both sidebars.
  *   - Pulse bar chrome from Dashboard.html (animated ECG at the top of
  *     every page, app-level).
+ *
+ * History: this file previously hard-coded its own 4-section nav
+ * (`NAV_SECTIONS`) which orphaned ~32 migrated routes after PR #564.
+ * Restoring data-driven nav fixes the regression without reverting.
  */
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  LayoutDashboard,
-  TrendingUp,
-  Package,
-  Calendar,
-  Users,
-  Truck,
-  FileText,
-  Bell,
-  Settings,
-  ShoppingCart,
   Activity,
+  BarChart3,
+  BarChartBig,
+  Bell,
+  Brain,
+  Briefcase,
+  Building2,
+  Calendar,
+  ClipboardList,
+  Clock,
+  CreditCard,
+  Database,
+  FileBarChart,
+  FlaskConical,
+  GitBranch,
+  History,
+  LayoutDashboard,
+  LayoutGrid,
+  Monitor,
+  Package,
+  Palette,
+  Plug,
+  Receipt,
+  RotateCcw,
+  ScrollText,
+  Settings,
+  Settings2,
+  Shield,
+  ShieldCheck,
+  ShoppingCart,
+  SlidersHorizontal,
+  Sparkles,
   Target,
+  Trophy,
+  Truck,
+  Upload,
+  UserCog,
+  Users,
+  Users2,
+  Warehouse,
+  Workflow,
 } from "lucide-react";
+import { NAV_GROUPS } from "@/lib/constants";
 import "./dashboard-v2.css";
+
+/**
+ * Shared icon registry — mirrors the one in
+ * `@/components/layout/sidebar.tsx` so both sidebars resolve the same
+ * string keys defined in NAV_GROUPS. When NAV_GROUPS gains a new icon
+ * name, add it to both registries or extract this to a shared module.
+ */
+const ICON_MAP: Record<string, React.ComponentType<{ size?: number | string }>> = {
+  Activity,
+  BarChart3,
+  BarChartBig,
+  Bell,
+  Brain,
+  Briefcase,
+  Building2,
+  Calendar,
+  ClipboardList,
+  Clock,
+  CreditCard,
+  Database,
+  FileBarChart,
+  FlaskConical,
+  GitBranch,
+  History,
+  LayoutDashboard,
+  LayoutGrid,
+  Monitor,
+  Package,
+  Palette,
+  Plug,
+  Receipt,
+  RotateCcw,
+  ScrollText,
+  Settings,
+  Settings2,
+  Shield,
+  ShieldCheck,
+  ShoppingCart,
+  SlidersHorizontal,
+  Sparkles,
+  Target,
+  Trophy,
+  Truck,
+  Upload,
+  UserCog,
+  Users,
+  Users2,
+  Warehouse,
+  Workflow,
+};
 
 function LogoMark() {
   return (
@@ -44,60 +132,6 @@ function LogoMark() {
   );
 }
 
-interface NavItemDef {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number | string }>;
-  badge?: { text: string; tone?: "accent" | "red" };
-}
-
-interface NavSectionDef {
-  label: string;
-  items: NavItemDef[];
-}
-
-const NAV_SECTIONS: NavSectionDef[] = [
-  {
-    label: "Dashboards",
-    items: [
-      { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-      { href: "/briefing", label: "Morning briefing", icon: LayoutDashboard },
-      {
-        href: "/insights",
-        label: "Insights",
-        icon: LayoutDashboard,
-        badge: { text: "12", tone: "accent" as const },
-      },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { href: "/inventory", label: "Inventory", icon: Package },
-      { href: "/expiry", label: "Expiry", icon: Calendar, badge: { text: "4", tone: "red" as const } },
-      { href: "/dispensing", label: "Dispensing", icon: Activity },
-      { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/purchase-orders", label: "Purchase orders", icon: FileText },
-    ],
-  },
-  {
-    label: "Analytics",
-    items: [
-      { href: "/analytics/revenue", label: "Revenue", icon: TrendingUp },
-      { href: "/analytics/customers", label: "Customers", icon: Users },
-      { href: "/targets", label: "Targets", icon: Target },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
-      { href: "/pos", label: "POS terminal", icon: ShoppingCart },
-      { href: "/alerts", label: "Alerts", icon: Bell },
-      { href: "/settings", label: "Settings", icon: Settings },
-    ],
-  },
-];
-
 function Sidebar({ activeHref }: { activeHref?: string }) {
   return (
     <aside className="side">
@@ -106,12 +140,14 @@ function Sidebar({ activeHref }: { activeHref?: string }) {
         DataPulse
       </Link>
 
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.label}>
-          <div className="nav-section">{section.label}</div>
-          {section.items.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeHref === item.href;
+      {NAV_GROUPS.map((group) => (
+        <div key={group.id}>
+          <div className="nav-section">{group.label}</div>
+          {group.items.map((item) => {
+            const Icon = ICON_MAP[item.icon] ?? LayoutDashboard;
+            const isActive =
+              activeHref === item.href ||
+              (activeHref?.startsWith(item.href + "/") ?? false);
             return (
               <Link
                 key={item.href}
@@ -120,11 +156,6 @@ function Sidebar({ activeHref }: { activeHref?: string }) {
               >
                 <Icon size={14} />
                 {item.label}
-                {item.badge && (
-                  <span className={`n ${item.badge.tone === "red" ? "red" : ""}`}>
-                    {item.badge.text}
-                  </span>
-                )}
               </Link>
             );
           })}
