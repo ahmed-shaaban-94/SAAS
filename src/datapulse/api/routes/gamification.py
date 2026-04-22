@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.cache_helpers import set_cache_headers
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_gamification_service
 from datapulse.api.limiter import limiter
 from datapulse.gamification.models import (
     BadgeAwardRequest,
@@ -28,7 +27,6 @@ from datapulse.gamification.models import (
     StreakResponse,
     XPEvent,
 )
-from datapulse.gamification.repository import GamificationRepository
 from datapulse.gamification.service import GamificationService
 
 router = APIRouter(
@@ -36,18 +34,6 @@ router = APIRouter(
     tags=["gamification"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-# ------------------------------------------------------------------
-# Dependency injection
-# ------------------------------------------------------------------
-
-
-def get_gamification_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> GamificationService:
-    repo = GamificationRepository(session)
-    return GamificationService(repo)
 
 
 ServiceDep = Annotated[GamificationService, Depends(get_gamification_service)]

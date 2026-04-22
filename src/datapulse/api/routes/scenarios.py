@@ -5,13 +5,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_scenario_service
 from datapulse.api.limiter import limiter
 from datapulse.scenarios.models import ScenarioInput, ScenarioResult
-from datapulse.scenarios.repository import ScenarioRepository
 from datapulse.scenarios.service import ScenarioService
 
 router = APIRouter(
@@ -21,14 +19,7 @@ router = APIRouter(
 )
 
 
-def _get_scenario_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> ScenarioService:
-    repo = ScenarioRepository(session)
-    return ScenarioService(repo)
-
-
-ServiceDep = Annotated[ScenarioService, Depends(_get_scenario_service)]
+ServiceDep = Annotated[ScenarioService, Depends(get_scenario_service)]
 
 
 @router.post("/simulate", response_model=ScenarioResult)

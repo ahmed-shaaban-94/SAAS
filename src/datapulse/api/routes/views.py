@@ -5,13 +5,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import CurrentUser, get_tenant_session
+from datapulse.api.deps import CurrentUser, get_views_service
 from datapulse.api.limiter import limiter
 from datapulse.views.models import SavedViewCreate, SavedViewResponse, SavedViewUpdate
-from datapulse.views.repository import ViewsRepository
 from datapulse.views.service import ViewsService
 
 router = APIRouter(
@@ -19,12 +17,6 @@ router = APIRouter(
     tags=["views"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-def get_views_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> ViewsService:
-    return ViewsService(ViewsRepository(session))
 
 
 ServiceDep = Annotated[ViewsService, Depends(get_views_service)]

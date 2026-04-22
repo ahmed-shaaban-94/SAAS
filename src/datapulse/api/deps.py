@@ -378,3 +378,107 @@ def get_voucher_service(
     from datapulse.pos.voucher_service import VoucherService
 
     return VoucherService(VoucherRepository(session))
+
+
+# ─── Factories moved out of route files (issue #542) ──────────────────
+# Each factory below used to live in its route file, forcing the route
+# to import a `*Repository` class directly. Hoisted here so the routes
+# only import the service factory and the layer rule stays honest.
+
+
+def get_views_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.views.repository import ViewsRepository
+    from datapulse.views.service import ViewsService
+
+    return ViewsService(ViewsRepository(session))
+
+
+def get_lead_service(
+    session: Annotated[Session, Depends(get_plain_session)],
+):
+    from datapulse.leads.repository import LeadRepository
+    from datapulse.leads.service import LeadService
+
+    return LeadService(LeadRepository(session))
+
+
+def get_audit_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.audit.repository import AuditRepository
+    from datapulse.audit.service import AuditService
+
+    return AuditService(AuditRepository(session))
+
+
+def get_scenario_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.scenarios.repository import ScenarioRepository
+    from datapulse.scenarios.service import ScenarioService
+
+    return ScenarioService(ScenarioRepository(session))
+
+
+def get_targets_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.targets.repository import TargetsRepository
+    from datapulse.targets.service import TargetsService
+
+    return TargetsService(TargetsRepository(session))
+
+
+def get_anomaly_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.anomalies.repository import AnomalyRepository
+    from datapulse.anomalies.service import AnomalyService
+
+    return AnomalyService(session=session, repo=AnomalyRepository(session))
+
+
+def get_gamification_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.gamification.repository import GamificationRepository
+    from datapulse.gamification.service import GamificationService
+
+    return GamificationService(GamificationRepository(session))
+
+
+def get_reseller_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.reseller.repository import ResellerRepository
+    from datapulse.reseller.service import ResellerService
+
+    return ResellerService(ResellerRepository(session))
+
+
+def get_first_insight_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    """Wire FirstInsightService with its fetcher lambdas.
+
+    Order does not matter (the picker enforces priority), but listing the
+    fetchers by descending priority keeps the configuration readable.
+    """
+    from datapulse.insights_first.repository import (
+        fetch_expiry_risk_candidate,
+        fetch_mom_change_candidate,
+        fetch_stock_risk_candidate,
+        fetch_top_seller_candidate,
+    )
+    from datapulse.insights_first.service import FirstInsightService
+
+    return FirstInsightService(
+        fetchers=[
+            lambda tid: fetch_mom_change_candidate(session, tid),
+            lambda tid: fetch_expiry_risk_candidate(session, tid),
+            lambda tid: fetch_stock_risk_candidate(session, tid),
+            lambda tid: fetch_top_seller_candidate(session, tid),
+        ],
+    )

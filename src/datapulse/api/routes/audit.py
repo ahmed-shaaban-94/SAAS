@@ -5,13 +5,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_audit_service
 from datapulse.api.limiter import limiter
 from datapulse.audit.models import AuditLogPage
-from datapulse.audit.repository import AuditRepository
 from datapulse.audit.service import AuditService
 
 router = APIRouter(
@@ -21,13 +19,7 @@ router = APIRouter(
 )
 
 
-def _get_audit_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> AuditService:
-    return AuditService(AuditRepository(session))
-
-
-ServiceDep = Annotated[AuditService, Depends(_get_audit_service)]
+ServiceDep = Annotated[AuditService, Depends(get_audit_service)]
 
 
 @router.get("", response_model=AuditLogPage)

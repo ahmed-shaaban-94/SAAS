@@ -72,3 +72,7 @@ class ResellerService:
     def get_payouts(self, reseller_id: int) -> list[PayoutResponse]:
         """Get payout history."""
         return self._repo.get_payouts(reseller_id)
+
+    def tenant_belongs_to_reseller(self, tenant_id: int, reseller_id: int) -> bool:
+        """Check whether the given tenant is linked to the given reseller."""
+        return self._repo.tenant_belongs_to_reseller(tenant_id, reseller_id)

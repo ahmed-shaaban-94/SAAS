@@ -10,18 +10,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_first_insight_service
 from datapulse.api.limiter import limiter
 from datapulse.insights_first.models import FirstInsightResponse
-from datapulse.insights_first.repository import (
-    fetch_expiry_risk_candidate,
-    fetch_mom_change_candidate,
-    fetch_stock_risk_candidate,
-    fetch_top_seller_candidate,
-)
 from datapulse.insights_first.service import FirstInsightService
 
 router = APIRouter(
@@ -29,33 +22,6 @@ router = APIRouter(
     tags=["insights"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-def get_first_insight_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> FirstInsightService:
-    """Wires the production fetchers.
-
-    Order does not matter (the picker enforces priority), but listing them
-    by descending priority keeps the configuration readable.
-
-    Active (listed in descending priority for readability; picker enforces
-    the real order):
-    - mom_change    (follow-up #2)
-    - expiry_risk   (follow-up #3)
-    - stock_risk    (follow-up #4)
-    - top_seller    (#402, fallback signal)
-
-    All four Phase 2 fetchers shipped.
-    """
-    return FirstInsightService(
-        fetchers=[
-            lambda tid: fetch_mom_change_candidate(session, tid),
-            lambda tid: fetch_expiry_risk_candidate(session, tid),
-            lambda tid: fetch_stock_risk_candidate(session, tid),
-            lambda tid: fetch_top_seller_candidate(session, tid),
-        ],
-    )
 
 
 ServiceDep = Annotated[FirstInsightService, Depends(get_first_insight_service)]

@@ -85,7 +85,10 @@ def _make_client(
     mock_repo.tenant_belongs_to_reseller.return_value = tenant_belongs
 
     mock_service = MagicMock(spec=ResellerService)
-    mock_service._repo = mock_repo  # _check_reseller_access accesses _repo directly
+    # _repo kept for any call paths that still reach through; the route's
+    # _check_reseller_access now delegates to the service method directly.
+    mock_service._repo = mock_repo
+    mock_service.tenant_belongs_to_reseller.return_value = tenant_belongs
     mock_service.get_dashboard.return_value = ResellerDashboard(reseller=_reseller())
     mock_service.get_tenants.return_value = []
     mock_service.get_commissions.return_value = []

@@ -8,11 +8,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 
 from datapulse.anomalies.models import AnomalyAlertResponse, AnomalyCard
-from datapulse.anomalies.repository import AnomalyRepository
 from datapulse.anomalies.service import AnomalyService
 from datapulse.api.auth import get_current_user
 from datapulse.api.cache_helpers import set_cache_headers
-from datapulse.api.deps import SessionDep
+from datapulse.api.deps import get_anomaly_service
 from datapulse.api.limiter import limiter
 
 router = APIRouter(
@@ -22,12 +21,7 @@ router = APIRouter(
 )
 
 
-def _get_anomaly_service(session: SessionDep) -> AnomalyService:
-    repo = AnomalyRepository(session)
-    return AnomalyService(session=session, repo=repo)
-
-
-_ServiceDep = Annotated[AnomalyService, Depends(_get_anomaly_service)]
+_ServiceDep = Annotated[AnomalyService, Depends(get_anomaly_service)]
 
 
 @router.get("/active", response_model=list[AnomalyAlertResponse])

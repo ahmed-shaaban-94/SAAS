@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.cache_helpers import set_cache_headers
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_targets_service
 from datapulse.api.limiter import limiter
 from datapulse.targets.models import (
     AlertConfigCreate,
@@ -24,7 +23,6 @@ from datapulse.targets.models import (
     TargetResponse,
     TargetSummary,
 )
-from datapulse.targets.repository import TargetsRepository
 from datapulse.targets.service import TargetsService
 
 router = APIRouter(
@@ -32,18 +30,6 @@ router = APIRouter(
     tags=["targets"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-# ------------------------------------------------------------------
-# Dependency injection (local factory — does not modify deps.py)
-# ------------------------------------------------------------------
-
-
-def get_targets_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> TargetsService:
-    repo = TargetsRepository(session)
-    return TargetsService(repo)
 
 
 ServiceDep = Annotated[TargetsService, Depends(get_targets_service)]

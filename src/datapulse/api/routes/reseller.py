@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.cache_helpers import set_cache_headers
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_reseller_service
 from datapulse.api.limiter import limiter
 from datapulse.reseller.models import (
     CommissionResponse,
@@ -23,7 +22,6 @@ from datapulse.reseller.models import (
     ResellerResponse,
     ResellerTenantResponse,
 )
-from datapulse.reseller.repository import ResellerRepository
 from datapulse.reseller.service import ResellerService
 
 router = APIRouter(
@@ -31,13 +29,6 @@ router = APIRouter(
     tags=["reseller"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-def get_reseller_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> ResellerService:
-    repo = ResellerRepository(session)
-    return ResellerService(repo)
 
 
 ServiceDep = Annotated[ResellerService, Depends(get_reseller_service)]
@@ -59,7 +50,7 @@ def _check_reseller_access(
     if _PLATFORM_ADMIN_ROLES.intersection(roles):
         return
     tenant_id = int(user.get("tenant_id", "0"))
-    if not service._repo.tenant_belongs_to_reseller(tenant_id, reseller_id):
+    if not service.tenant_belongs_to_reseller(tenant_id, reseller_id):
         raise HTTPException(status_code=403, detail="Access denied to this reseller")
 
 
