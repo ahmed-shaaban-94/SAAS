@@ -53,27 +53,39 @@ src/datapulse/          # Python backend
 ├── config.py           # Pydantic settings
 ├── bronze/             # Bronze layer: loader.py, column_map.py
 ├── import_pipeline/    # CSV/Excel reader, validator, type detector
-├── analytics/          # Gold layer: models, repository, service (10 API endpoints)
-├── pipeline/           # Pipeline tracking + execution + quality gates (11 API endpoints)
-├── api/                # FastAPI: app.py, deps.py, routes/ (health, analytics, pipeline)
+├── analytics/          # Gold layer: models, repository, service
+├── pipeline/           # Pipeline tracking + execution + quality gates
+├── api/                # FastAPI: app.py, deps.py, routes/ (46 route files, ~283 routes)
+├── core/               # Cross-cutting primitives: auth, db, jwt, security, config
 ├── graph/              # Code intelligence: indexer.py, store.py, analyzers/, mcp_server.py
+├── brain/              # Session memory (FTS + pgvector); MCP-indexed knowledge base
+├── scheduler/          # APScheduler jobs (health, digests, sync schedules, #546-3 rls audit)
 ├── ai_light/           # Lightweight AI insights (OpenAI/Anthropic client)
 ├── anomalies/          # Anomaly detection + calendar
 ├── annotations/        # Chart annotations
 ├── audit/              # Audit log service
 ├── billing/            # Stripe subscription + plans
 ├── branding/           # Tenant branding (logo, colors)
+├── control_center/     # Data control plane: connectors, mappings, pipeline drafts, sync
+├── dispensing/         # Pharma dispensing analytics
 ├── embed/              # Embeddable chart tokens
+├── expiry/             # Batch/lot expiry tracking (FEFO)
 ├── explore/            # Self-service data exploration
 ├── forecasting/        # Time-series forecasting
 ├── gamification/       # Points/badges system
+├── insights_first/     # First-insight quick wins for the onboarding flow
+├── inventory/          # Stock levels, reorder, movements
+├── leads/              # Marketing lead capture
 ├── lineage/            # Data lineage tracking
 ├── notifications_center/ # In-app notification feed
 ├── onboarding/         # New tenant onboarding flow + sample pharma dataset seeder
+├── pos/                # POS terminals, transactions, shifts, catalog (see also pos-desktop/)
+├── purchase_orders/    # PO creation + receipt + vendor invoices
 ├── rbac/               # Role-based access control
 ├── reports/            # Scheduled report generation
 ├── reseller/           # Reseller/white-label support
 ├── scenarios/          # What-if scenario modeling
+├── suppliers/          # Supplier CRUD + catalog
 ├── targets/            # KPI target tracking
 ├── tasks/              # Background task queue
 ├── upload/             # File upload + UUID path traversal prevention
@@ -84,13 +96,13 @@ src/datapulse/          # Python backend
 dbt/models/             # dbt transformation
 ├── bronze/             # Source definitions
 ├── staging/            # Silver: stg_sales (dedup, clean, 30 cols)
-└── marts/              # Gold: 6 dims, 1 fact, 8 aggs, metrics_summary
+└── marts/              # Gold: 8 dims, 6 facts, 14 aggs, metrics_summary
 
-migrations/             # 000-015+: schemas, RLS, tenants, n8n, pipeline_runs, quality_checks
-n8n/workflows/          # 6 workflows: health, pipeline, success/failure/digest/error
-frontend/               # Next.js 14: 21+ pages, 9+ SWR hooks, Recharts, Tailwind, Playwright E2E
+migrations/             # 000-099+: schemas, RLS, tenants, pipeline_runs, quality_checks, POS, billing
+n8n/workflows/          # 8 workflows: health, pipeline, success/failure/digest/error
+frontend/               # Next.js 14: 60 pages, 116 hooks, Recharts, Tailwind, 28 Playwright E2E specs
 android/                # Kotlin + Jetpack Compose: data/domain/presentation/di
-tests/                  # pytest: 124 test files, unit coverage ~79% (enforced at 77% in CI)
+tests/                  # pytest: 237 test files, unit coverage enforced at 77% in CI (target 95%)
 ```
 
 ## Docker Services
@@ -115,15 +127,15 @@ docker compose up -d --build
 |--------|---------|-------------|
 | `bronze` | Raw data, as-is from source | Python bronze loader |
 | `public_staging` / `silver` | Cleaned, transformed | dbt staging models |
-| `public_marts` / `gold` | Aggregated, business-ready | dbt marts models (6 dims + 1 fact + 8 aggs) |
+| `public_marts` / `gold` | Aggregated, business-ready | dbt marts models (8 dims + 6 facts + 14 aggs) |
 | `brain` | Session tracking, decisions, incidents, project knowledge | Stop hook + MCP tools |
 
 ### Key Data Volumes
 
 - bronze.sales: 2.27M rows (Q1.2023-Q4.2025, 47 cols)
 - stg_sales: ~1.1M (deduped), fct_sales: 1.13M (6 FKs, 4 financial measures)
-- 6 dims: date(1096), billing(11), customer(24.8k), product(17.8k), site(2), staff(1.2k)
-- 8 aggs + metrics_summary + pipeline_runs + quality_checks
+- 8 dims: date(1096), billing(11), customer(24.8k), product(17.8k), site(2), staff(1.2k), plus pharma dims (batch, supplier)
+- 14 aggs + metrics_summary + pipeline_runs + quality_checks
 
 ## Running the Bronze Pipeline
 
@@ -165,7 +177,7 @@ docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/da
 - ErrorBoundary wraps layout to catch React component crashes
 
 ### Testing
-- pytest + pytest-cov: 124 test files, ~1,300+ test functions
+- pytest + pytest-cov: 237 test files, ~865 test functions (@pytest.mark.unit / integration split)
 - Current unit coverage: ~79% on `src/datapulse/` (enforced in CI via `--cov-fail-under=77`; reproduce locally with `make coverage`). Target is 95% — tracked per-module; integration-test gate remains at 40% pending a measured baseline (issue #540).
 - Playwright E2E tests: 12 spec files (`frontend/e2e/`)
 - Vitest + MSW + Testing Library available for frontend unit tests
