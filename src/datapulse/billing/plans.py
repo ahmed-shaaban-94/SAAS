@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,12 @@ class PlanLimits:
     quality_gates: bool
     name: str
     price_display: str
+
+    # Egypt PMF (#604). price_egp in piastres (1 EGP = 100 piastres) to
+    # map cleanly onto provider cents APIs; price_currency_default decides
+    # what to render when the tenant hasn't picked a currency yet.
+    price_egp: int
+    price_currency_default: Literal["USD", "EGP"]
 
     # Platform tier fields (pharmaceutical inventory & dispensing)
     inventory_management: bool = False
@@ -37,6 +44,8 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         quality_gates=False,
         name="Starter",
         price_display="$0/mo",
+        price_egp=0,
+        price_currency_default="USD",
         inventory_management=False,
         expiry_tracking=False,
         dispensing_analytics=False,
@@ -54,6 +63,8 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         quality_gates=True,
         name="Pro",
         price_display="$49/mo",
+        price_egp=149_900,
+        price_currency_default="USD",
         inventory_management=True,
         expiry_tracking=True,
         dispensing_analytics=True,
@@ -73,6 +84,8 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         quality_gates=True,
         name="Platform",
         price_display="$99/mo",
+        price_egp=299_900,
+        price_currency_default="USD",
         inventory_management=True,
         expiry_tracking=True,
         dispensing_analytics=True,
@@ -90,6 +103,8 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         quality_gates=True,
         name="Enterprise",
         price_display="Custom",
+        price_egp=0,
+        price_currency_default="USD",
         inventory_management=True,
         expiry_tracking=True,
         dispensing_analytics=True,
