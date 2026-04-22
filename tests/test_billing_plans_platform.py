@@ -36,6 +36,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.inventory_management is False
 
@@ -48,6 +50,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.expiry_tracking is False
 
@@ -60,6 +64,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.dispensing_analytics is False
 
@@ -72,6 +78,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.purchase_orders is False
 
@@ -84,6 +92,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.pos_integration is False
 
@@ -96,6 +106,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.max_stock_items == 0
 
@@ -108,6 +120,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.max_suppliers == 0
 
@@ -120,6 +134,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         assert limits.stock_alerts is False
 
@@ -132,6 +148,8 @@ class TestPlanLimitsFields:
             quality_gates=False,
             name="Test",
             price_display="$0",
+            price_egp=0,
+            price_currency_default="USD",
         )
         with pytest.raises((AttributeError, TypeError)):
             limits.inventory_management = True  # type: ignore[misc]

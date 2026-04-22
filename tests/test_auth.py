@@ -334,6 +334,35 @@ class TestGetCurrentUser:
             )
         assert exc_info.value.status_code == 401
 
+    def test_jwt_locale_claim_surfaced(self):
+        """Auth0 'locale' claim lands on UserClaims['locale']."""
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {
+            "sub": "user123",
+            "tenant_id": "42",
+            "locale": "ar-EG",
+        }
+        with patch("datapulse.core.auth.verify_jwt", return_value=fake_claims):
+            result = get_current_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key", auth0_domain="example.auth0.com"),
+            )
+        assert result["locale"] == "ar-EG"
+
+    def test_jwt_missing_locale_claim_defaults_to_en_us(self):
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {"sub": "user123", "tenant_id": "42"}
+        with patch("datapulse.core.auth.verify_jwt", return_value=fake_claims):
+            result = get_current_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key", auth0_domain="example.auth0.com"),
+            )
+        assert result["locale"] == "en-US"
+
 
 # ------------------------------------------------------------------
 # get_optional_user

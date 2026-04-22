@@ -54,6 +54,7 @@ class UserClaims(TypedDict):
     email: str
     preferred_username: str
     tenant_id: str
+    locale: str  # BCP-47 tag; default 'en-US' (#604)
     roles: list[str]
     raw_claims: dict[str, Any]
 
@@ -179,11 +180,13 @@ def get_current_user(
             or claims.get("roles")
             or []
         )
+        locale = str(claims.get("locale") or "en-US")
         return {
             "sub": claims.get("sub", ""),
             "email": claims.get("email", ""),
             "preferred_username": claims.get("preferred_username", ""),
             "tenant_id": tenant_id_str,
+            "locale": locale,
             "roles": roles,
             "raw_claims": claims,
         }
@@ -196,6 +199,7 @@ def get_current_user(
                 "email": "",
                 "preferred_username": "api-key",
                 "tenant_id": settings.default_tenant_id,
+                "locale": "en-US",
                 "roles": list(settings.api_key_roles),
                 "raw_claims": {},
             }
@@ -225,6 +229,7 @@ def get_current_user(
             "email": "dev@datapulse.local",
             "preferred_username": "dev",
             "tenant_id": settings.default_tenant_id,
+            "locale": "en-US",
             "roles": ["viewer"],
             "raw_claims": {},
         }
