@@ -20,6 +20,7 @@ from datapulse.pos.models import (
     ShiftRecord,
     ShiftSummaryResponse,
 )
+from datapulse.pos.models.commission import ActiveShiftResponse
 from datapulse.pos.pharmacist_verifier import TOKEN_TTL_SECONDS
 
 if TYPE_CHECKING:
@@ -173,6 +174,44 @@ class ShiftCashMixin:
         """Return the currently open shift for a terminal (None if no open shift)."""
         row = self._repo.get_current_shift(terminal_id)
         return ShiftRecord.model_validate(row) if row else None
+
+    def get_active_shift_for_staff(
+        self,
+        *,
+        tenant_id: int,
+        staff_id: str,
+    ) -> ActiveShiftResponse | None:
+        """Return the staff's active shift enriched with commission + target (#627).
+
+        Assembles three pieces in one call:
+
+        * Shift header (``opened_at``, ``shift_date``, etc.) from ``pos.shift_records``
+        * Commission earned + transactions-so-far from ``pos.transactions`` joined
+          to ``pos.product_catalog_meta`` (LEFT JOIN so unlisted drugs contribute 0)
+        * Daily sales target from the terminal row
+
+        ``None`` when the staff has no open shift — the route layer converts
+        that to a 404.
+        """
+        shift = self._repo.get_active_shift_for_staff(tenant_id, staff_id)
+        if shift is None:
+            return None
+
+        summary = self._repo.get_shift_commission_summary(int(shift["id"]))
+        target = self._repo.get_terminal_daily_target(int(shift["terminal_id"]))
+
+        return ActiveShiftResponse(
+            shift_id=int(shift["id"]),
+            terminal_id=int(shift["terminal_id"]),
+            staff_id=str(shift["staff_id"]),
+            shift_date=shift["shift_date"],
+            opened_at=shift["opened_at"],
+            opening_cash=to_decimal(shift.get("opening_cash", 0)),
+            commission_earned_egp=to_decimal(summary.get("commission_earned_egp", 0)),
+            daily_sales_target_egp=target,
+            transactions_so_far=int(summary.get("transactions_so_far", 0) or 0),
+            sales_so_far_egp=to_decimal(summary.get("sales_so_far_egp", 0)),
+        )
 
     def get_shift_by_id(self, shift_id: int) -> ShiftRecord | None:
         """Return a shift by its primary key (None if not found)."""

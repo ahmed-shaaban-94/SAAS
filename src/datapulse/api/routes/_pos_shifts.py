@@ -25,6 +25,7 @@ from datapulse.pos.models import (
     ShiftSummaryResponse,
     StartShiftRequest,
 )
+from datapulse.pos.models.commission import ActiveShiftResponse
 from datapulse.rbac.dependencies import require_permission
 
 router = APIRouter()
@@ -67,6 +68,28 @@ def list_shifts(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/shifts/current", response_model=ActiveShiftResponse)
+@limiter.limit("120/minute")
+def get_current_shift_for_me(
+    request: Request,
+    service: ServiceDep,
+    user: CurrentUser,
+) -> ActiveShiftResponse:
+    """Return the authenticated staff's active shift + commission + target (#627).
+
+    Terminal status-strip polls this after every sale so the commission pill
+    and trophy bar update live. 404 when the staff has no open shift (UI
+    shows the "open shift" prompt instead of the status strip).
+    """
+    shift = service.get_active_shift_for_staff(
+        tenant_id=_tenant_id_of(user),
+        staff_id=_staff_id_of(user),
+    )
+    if shift is None:
+        raise HTTPException(status_code=404, detail="No active shift for this user")
+    return shift
 
 
 @router.get("/shifts/current/{terminal_id}", response_model=ShiftRecord)

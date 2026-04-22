@@ -29,6 +29,8 @@ from datapulse.api.auth import get_current_user
 from datapulse.api.limiter import limiter
 from datapulse.api.routes import (
     _pos_catalog,
+    _pos_clinical,
+    _pos_customer_lookup,
     _pos_offline,
     _pos_receipts,
     _pos_routes_deps,
@@ -78,6 +80,8 @@ for _sub in (
     _pos_terminals,
     _pos_transactions,
     _pos_catalog,
+    _pos_clinical,
+    _pos_customer_lookup,
     _pos_receipts,
     _pos_void_returns,
     _pos_shifts,

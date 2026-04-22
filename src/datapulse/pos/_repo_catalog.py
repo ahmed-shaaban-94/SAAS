@@ -108,6 +108,156 @@ class CatalogRepoMixin:
         )
         return dict(row) if row else None
 
+    def get_drug_detail(self, drug_code: str) -> dict[str, Any] | None:
+        """Return drug detail joined with POS-owned clinical meta (#623).
+
+        LEFT JOIN on ``pos.product_catalog_meta`` so a drug without clinical
+        data still returns its dim_product core with ``counseling_text=NULL``
+        and ``active_ingredient=NULL``. RLS scopes both tables to the current
+        tenant.
+        """
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT
+                        p.drug_code,
+                        p.drug_name,
+                        p.drug_brand,
+                        p.drug_cluster,
+                        p.drug_category,
+                        COALESCE(
+                            (
+                                SELECT f.unit_price
+                                FROM   public_marts.fct_sales f
+                                WHERE  f.tenant_id = p.tenant_id
+                                AND    f.drug_code = p.drug_code
+                                ORDER  BY f.invoice_date DESC
+                                LIMIT  1
+                            ),
+                            0
+                        ) AS unit_price,
+                        m.counseling_text,
+                        m.active_ingredient
+                    FROM   public_marts.dim_product p
+                    LEFT   JOIN pos.product_catalog_meta m
+                           ON m.tenant_id = p.tenant_id
+                          AND m.drug_code = p.drug_code
+                    WHERE  p.drug_code = :drug_code
+                    LIMIT  1
+                """),
+                {"drug_code": drug_code},
+            )
+            .mappings()
+            .first()
+        )
+        return dict(row) if row else None
+
+    def get_cross_sell_rules(self, drug_code: str) -> list[dict[str, Any]]:
+        """Return static cross-sell suggestions for ``drug_code`` (#623).
+
+        Joins ``pos.cross_sell_rules`` to ``dim_product`` for the suggested
+        name + latest unit_price. Rows whose suggested drug is missing from
+        ``dim_product`` are silently dropped (INNER JOIN) so the UI never
+        shows an orphan code with no name.
+        """
+        rows = (
+            self._session.execute(
+                text("""
+                    SELECT
+                        r.suggested_drug_code AS drug_code,
+                        p.drug_name,
+                        r.reason,
+                        r.reason_tag,
+                        COALESCE(
+                            (
+                                SELECT f.unit_price
+                                FROM   public_marts.fct_sales f
+                                WHERE  f.tenant_id = p.tenant_id
+                                AND    f.drug_code = p.drug_code
+                                ORDER  BY f.invoice_date DESC
+                                LIMIT  1
+                            ),
+                            0
+                        ) AS unit_price
+                    FROM   pos.cross_sell_rules r
+                    JOIN   public_marts.dim_product p
+                           ON p.drug_code = r.suggested_drug_code
+                    WHERE  r.primary_drug_code = :drug_code
+                    ORDER  BY r.id
+                """),
+                {"drug_code": drug_code},
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
+
+    def get_alternatives_by_ingredient(
+        self,
+        drug_code: str,
+    ) -> list[dict[str, Any]]:
+        """Return drugs sharing the same ``active_ingredient`` (#623).
+
+        Self-joins ``product_catalog_meta`` on ``active_ingredient`` to find
+        siblings, then joins ``dim_product`` for names + latest unit_price.
+        Excludes the primary drug itself. Caller is responsible for filtering
+        to positive-savings rows — this repo method returns all siblings.
+        """
+        rows = (
+            self._session.execute(
+                text("""
+                    WITH primary AS (
+                        SELECT
+                            m.tenant_id,
+                            m.drug_code,
+                            m.active_ingredient,
+                            COALESCE(
+                                (
+                                    SELECT f.unit_price
+                                    FROM   public_marts.fct_sales f
+                                    WHERE  f.tenant_id = m.tenant_id
+                                    AND    f.drug_code = m.drug_code
+                                    ORDER  BY f.invoice_date DESC
+                                    LIMIT  1
+                                ),
+                                0
+                            ) AS unit_price
+                        FROM   pos.product_catalog_meta m
+                        WHERE  m.drug_code = :drug_code
+                          AND  m.active_ingredient IS NOT NULL
+                    )
+                    SELECT
+                        alt.drug_code,
+                        p.drug_name,
+                        COALESCE(
+                            (
+                                SELECT f.unit_price
+                                FROM   public_marts.fct_sales f
+                                WHERE  f.tenant_id = p.tenant_id
+                                AND    f.drug_code = p.drug_code
+                                ORDER  BY f.invoice_date DESC
+                                LIMIT  1
+                            ),
+                            0
+                        ) AS unit_price,
+                        primary.unit_price AS primary_unit_price
+                    FROM   pos.product_catalog_meta alt
+                    JOIN   primary
+                           ON alt.tenant_id        = primary.tenant_id
+                          AND alt.active_ingredient = primary.active_ingredient
+                          AND alt.drug_code         <> primary.drug_code
+                    JOIN   public_marts.dim_product p
+                           ON p.drug_code = alt.drug_code
+                          AND p.tenant_id = alt.tenant_id
+                    ORDER  BY p.drug_name
+                """),
+                {"drug_code": drug_code},
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
+
     def list_catalog_products(
         self,
         cursor: str | None,
