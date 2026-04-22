@@ -1,9 +1,9 @@
 "use client";
 
 import { AUTH_PROVIDER, signIn } from "@/lib/auth-bridge";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Activity, LogIn } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 /** Allow only relative paths to prevent open redirect to external domains. */
 function isSafeCallbackUrl(url: string): boolean {
@@ -11,10 +11,30 @@ function isSafeCallbackUrl(url: string): boolean {
 }
 
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get("callbackUrl") || "/dashboard";
   const callbackUrl = isSafeCallbackUrl(rawCallback) ? rawCallback : "/dashboard";
   const error = searchParams.get("error");
+
+  // When Clerk is the active provider, /login is legacy — bounce straight
+  // to the Clerk-rendered sign-in page so the user never sees the
+  // transitional Auth0-era card. Returning to Auth0 (AUTH_PROVIDER=auth0)
+  // falls through to the original flow below.
+  useEffect(() => {
+    if (AUTH_PROVIDER === "clerk") {
+      const target = `/sign-in?redirect_url=${encodeURIComponent(callbackUrl)}`;
+      router.replace(target);
+    }
+  }, [router, callbackUrl]);
+
+  if (AUTH_PROVIDER === "clerk") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-page">
+        <Activity className="h-8 w-8 animate-pulse text-accent" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page px-4">
@@ -50,12 +70,7 @@ function LoginForm() {
           )}
 
           <button
-            onClick={() =>
-              signIn(
-                AUTH_PROVIDER === "clerk" ? undefined : "auth0",
-                { callbackUrl },
-              )
-            }
+            onClick={() => signIn("auth0", { callbackUrl })}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-page transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-page"
           >
             <LogIn className="h-4 w-4" />
@@ -65,7 +80,7 @@ function LoginForm() {
 
         {/* Footer */}
         <p className="text-center text-xs text-text-secondary">
-          Secured by {AUTH_PROVIDER === "clerk" ? "Clerk" : "Auth0"}
+          Secured by Auth0
         </p>
       </div>
     </div>
