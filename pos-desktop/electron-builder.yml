@@ -1,11 +1,11 @@
-# electron-builder configuration
+# electron-builder configuration — DataPulse POS Desktop
 # Docs: https://www.electron.build/configuration
 
 appId: tech.smartdatapulse.pos
 productName: DataPulse POS
 copyright: Copyright (c) 2026 DataPulse
 
-# Include the compiled Next.js standalone output
+# Include the compiled Next.js standalone output and icon assets
 extraResources:
   - from: resources/nextjs
     to: nextjs
@@ -23,17 +23,35 @@ win:
       arch: [x64]
   icon: assets/icon.ico
   artifactName: "DataPulse-POS-${version}-Setup.${ext}"
+  # Dual-hash signing satisfies both legacy (SHA-1) and modern (SHA-256)
+  # Windows SmartScreen / Authenticode requirements. CSC_LINK +
+  # CSC_KEY_PASSWORD env vars are read automatically by electron-builder.
+  signingHashAlgorithms:
+    - sha256
+    - sha1
+  # Timestamp server keeps the signature valid after the cert expires
+  timeStampServer: http://timestamp.sectigo.com
 
+# ── NSIS installer ───────────────────────────────────────────
 nsis:
   oneClick: false
+  # per-machine install (Program Files) — requires UAC elevation, which is
+  # expected for a pharmacy cashier workstation managed by IT.
   perMachine: true
+  allowElevation: true
   allowToChangeInstallationDirectory: true
   installerIcon: assets/icon.ico
   uninstallerIcon: assets/icon.ico
+  uninstallDisplayName: DataPulse POS
+  # Clean up AppData on uninstall so re-installs start fresh
+  deleteAppDataOnUninstall: false
   license: null
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: DataPulse POS
+  # Launch app after installer finishes (matches user expectation)
+  runAfterFinish: true
+  # NSIS supports silent mode via /S flag automatically; no extra config needed.
 
 # ── Build output ────────────────────────────────────────────
 directories:
@@ -47,10 +65,15 @@ files:
   - "!node_modules/**/*.md"
   - "!node_modules/**/*.ts"
   - "!node_modules/**/test/**"
+  - "!node_modules/**/*.map"
 
-# ── Auto-update ─────────────────────────────────────────────
+# ── Auto-update (electron-updater via GitHub Releases) ──────
+# electron-updater will check for updates at the GitHub releases page and
+# download the delta installer when available.
+# Release notes are pulled from the GitHub release description.
 publish:
   provider: github
   owner: ahmed-shaaban-94
   repo: Data-Pulse
+  # Use 'release' so pre-releases are excluded from auto-update channel
   releaseType: release
