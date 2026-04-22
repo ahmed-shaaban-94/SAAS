@@ -9,6 +9,7 @@
     "build:budget": "next build && node scripts/check-bundle-budget.js",
     "start": "next start",
     "lint": "next lint",
+    "lint:strict": "next lint --max-warnings=0",
     "test:e2e": "playwright test"
   },
   "dependencies": {

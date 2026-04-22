@@ -48,7 +48,9 @@ make test-e2e        # Run Playwright E2E tests
 | Framework | Next.js 14 (App Router) |
 | Language | TypeScript strict mode |
 | Styling | Tailwind CSS |
-| Lint/Format | ESLint + Prettier (Next.js defaults) |
+| Lint/Format | ESLint 8.57 + Prettier (Next.js defaults) — `.eslintrc.json` legacy config (#548) |
+
+**ESLint version policy**: pinned to `^8.57` because the Next.js `eslint-config-next@15` preset still uses `.eslintrc.json`-style rules. Migrating to ESLint 9's flat config (`eslint.config.js`) is deferred until Next ships a flat-config compatible preset. CI runs `npm run lint` (= `next lint`) on every PR; `npm run lint:strict` (= `next lint --max-warnings=0`) is the local gate for zero-warning branches.
 
 ### dbt
 
