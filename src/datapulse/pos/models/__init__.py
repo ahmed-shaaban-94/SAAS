@@ -45,6 +45,15 @@ from datapulse.pos.models.customer import (
     PosCustomerChurn,
     PosCustomerLookup,
 )
+from datapulse.pos.models.delivery import (
+    AvailableRidersResponse,
+    CreateDeliveryRequest,
+    DeliveryChannel,
+    DeliveryResponse,
+    DeliveryStatus,
+    RiderResponse,
+    RiderStatus,
+)
 from datapulse.pos.models.offline import (
     CapabilitiesDoc,
     DeviceRegisterRequest,
@@ -130,6 +139,14 @@ from datapulse.pos.models.vouchers import (
 __all__ = [
     # cart
     "PosCartItem",
+    # delivery
+    "AvailableRidersResponse",
+    "CreateDeliveryRequest",
+    "DeliveryChannel",
+    "DeliveryResponse",
+    "DeliveryStatus",
+    "RiderResponse",
+    "RiderStatus",
     # clinical
     "AlternativeItem",
     "CrossSellItem",

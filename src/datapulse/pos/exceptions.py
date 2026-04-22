@@ -106,6 +106,35 @@ class VoidNotAllowedError(PosError):
         self.transaction_id = transaction_id
 
 
+class RiderNotFoundError(PosError):
+    """Raised when a rider lookup returns no row for the given tenant.
+
+    Maps to HTTP 404 Not Found.
+    """
+
+    def __init__(self, rider_id: int) -> None:
+        super().__init__(
+            message=f"Rider {rider_id} not found",
+            detail=f"rider_id={rider_id}",
+        )
+        self.rider_id = rider_id
+
+
+class RiderUnavailableError(PosError):
+    """Raised when a rider is not in 'available' status at dispatch time.
+
+    Maps to HTTP 409 Conflict.
+    """
+
+    def __init__(self, rider_id: int, current_status: str) -> None:
+        super().__init__(
+            message=f"Rider {rider_id} is not available (status: {current_status})",
+            detail=f"rider_id={rider_id} status={current_status}",
+        )
+        self.rider_id = rider_id
+        self.current_status = current_status
+
+
 class ShiftNotOpenError(PosError):
     """Raised when a transaction is attempted without an open shift.
 
