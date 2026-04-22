@@ -96,3 +96,21 @@ test.describe("Dashboard (new design)", () => {
     expect(errors, errors.join("\n")).toEqual([]);
   });
 });
+
+test.describe("dashboard — Arabic (#604 RTL)", () => {
+  test("renders with dir=rtl and Arabic sidebar labels", async ({ page, context }) => {
+    await context.addCookies([
+      {
+        name: "NEXT_LOCALE",
+        value: "ar",
+        url: "http://localhost:3000",
+      },
+    ]);
+    await page.goto("/dashboard");
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+    // At least one sidebar nav label should be Arabic, not English.
+    const sidebar = page.locator('[data-testid="sidebar-nav"]');
+    await expect(sidebar).toContainText(/لوحة|الفواتير|الإعدادات/);
+  });
+});
