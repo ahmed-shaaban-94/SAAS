@@ -25,7 +25,7 @@ import { ScanDisambigPicker } from "@/components/pos/terminal/ScanDisambigPicker
 import { ProvisionalBanner } from "@/components/pos/terminal/ProvisionalBanner";
 import { productToQuickPick, type TilePaymentMethod } from "@/components/pos/terminal/types";
 import { CheckoutConfirmModal } from "@/components/pos/terminal/CheckoutConfirmModal";
-import { ClinicalPanelSkeleton } from "@/components/pos/terminal/ClinicalPanelSkeleton";
+import { ClinicalPanel } from "@/components/pos/terminal/ClinicalPanel";
 import { CustomerBar } from "@/components/pos/terminal/CustomerBar";
 import { ChurnAlertCard } from "@/components/pos/terminal/ChurnAlertCard";
 import { ShiftOpenModal } from "@/components/pos/terminal/ShiftOpenModal";
@@ -132,6 +132,10 @@ export default function PosTerminalPage() {
 
   const scanInputRef = useRef<HTMLInputElement>(null);
 
+  // D2 — active drug code for ClinicalPanel: track the most-recently-added
+  // item so the panel auto-updates as the cashier scans or quick-picks.
+  const [activeDrugCode, setActiveDrugCode] = useState<string | null>(null);
+
   // No redirect — ShiftOpenModal blocks the page until a shift is opened.
 
   // Auto-focus scan bar on mount
@@ -174,6 +178,7 @@ export default function PosTerminalPage() {
       if (!offline.isOnline) {
         setUnsyncedCodes((prev) => new Set(prev).add(item.drug_code));
       }
+      setActiveDrugCode(item.drug_code);
       setScanToast(`${item.drug_name} added`);
       // Refocus scan bar
       scanInputRef.current?.focus();
@@ -587,7 +592,7 @@ export default function PosTerminalPage() {
             "xl:col-start-3 xl:col-span-1 xl:row-start-1",
           )}
         >
-          <ClinicalPanelSkeleton activeDrugCode={null} />
+          <ClinicalPanel activeDrugCode={activeDrugCode} />
         </section>
       </main>
 
@@ -659,6 +664,7 @@ export default function PosTerminalPage() {
               line_total: pendingDrug.unit_price,
               is_controlled: pendingDrug.is_controlled,
             });
+            setActiveDrugCode(pendingDrug.drug_code);
             setScanToast(`${pendingDrug.drug_name} added`);
           }
           setPendingDrug(null);
