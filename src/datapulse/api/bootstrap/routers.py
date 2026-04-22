@@ -40,6 +40,7 @@ from datapulse.api.routes import (
     search,
     suppliers,
     targets,
+    tenants,
     upload,
     views,
 )
@@ -93,6 +94,7 @@ def _register_core_routers(app: FastAPI) -> None:
         branding.router,
         branding.public_router,
         reseller.router,
+        tenants.router,
     ):
         app.include_router(router, prefix=_API_PREFIX)
 

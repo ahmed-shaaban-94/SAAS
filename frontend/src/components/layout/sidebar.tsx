@@ -51,7 +51,9 @@ import { NAV_GROUPS, type NavGroup } from "@/lib/constants";
 import { HealthIndicator } from "./health-indicator";
 import { SavedViewsMenu } from "./saved-views-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageToggle } from "./language-toggle";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useLocale } from "next-intl";
+import { type Locale } from "@/i18n/config";
 
 interface SidebarProps {
   anomalyCount?: number;
@@ -316,6 +318,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const touchStartX = useRef<number | null>(null);
+  const locale = useLocale() as Locale;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -393,7 +396,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
             </div>
 
             {/* Navigation groups */}
-            <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+            <nav data-testid="sidebar-nav" className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
               {NAV_GROUPS.map((group) => (
                 <NavGroupSection
                   key={group.id}
@@ -413,8 +416,10 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
             {/* Footer */}
             <div className="border-t border-border px-4 py-3 space-y-3">
               <UserInfo />
-              <ThemeToggle />
-              <LanguageToggle />
+              <div className="flex items-center justify-between gap-2">
+                <ThemeToggle />
+                <LocaleSwitcher currentLocale={locale} />
+              </div>
               <HealthIndicator />
               <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
             </div>
@@ -490,8 +495,10 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
           <UserInfo collapsed={collapsed} />
           {!collapsed && (
             <>
-              <ThemeToggle />
-              <LanguageToggle />
+              <div className="flex items-center justify-between gap-2">
+                <ThemeToggle />
+                <LocaleSwitcher currentLocale={locale} />
+              </div>
               <HealthIndicator />
               <p className="text-xs text-text-secondary">DataPulse v0.1.0</p>
             </>
@@ -499,6 +506,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
           {collapsed && (
             <div className="flex flex-col items-center gap-2">
               <ThemeToggle />
+              <LocaleSwitcher currentLocale={locale} />
               <HealthIndicator />
             </div>
           )}

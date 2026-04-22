@@ -340,5 +340,26 @@
       "lastYear": "Last Year",
       "trendComparison": "Revenue Trend Comparison"
     }
+  },
+  "billing": {
+    "upgrade_cta": "Upgrade to Pro",
+    "currency": {
+      "unavailable_egp": "Payments in EGP are coming soon. Contact support."
+    },
+    "plan": {
+      "starter": { "title": "Starter", "tagline": "Try it free" },
+      "pro":     { "title": "Pro",     "tagline": "For growing pharmacies" },
+      "platform":{ "title": "Platform","tagline": "For pharmacy chains" },
+      "enterprise":{ "title": "Enterprise", "tagline": "Custom pricing" }
+    }
+  },
+  "settings": {
+    "tenant": {
+      "title": "Tenant settings",
+      "locale_label": "Language",
+      "currency_label": "Billing currency",
+      "save": "Save",
+      "saved": "Saved"
+    }
   }
 }
