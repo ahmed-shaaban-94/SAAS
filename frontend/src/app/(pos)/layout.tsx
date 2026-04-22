@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, type ReactNode } from "react";
-import { Fraunces, JetBrains_Mono } from "next/font/google";
+import { Fraunces, JetBrains_Mono, Cairo } from "next/font/google";
 import { useSession, signIn } from "@/lib/auth-bridge";
 import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
@@ -29,9 +29,12 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-// IBM Plex Sans Arabic = Arabic body copy on the POS + receipt surfaces
-// (cart item names, counseling text, customer names, thanks footer).
-const plexArabic = IBM_Plex_Sans_Arabic({
+// Arabic body copy on the POS + receipt surfaces. Cairo fills the
+// --font-plex-arabic slot — see PR #620 for why we swapped off
+// IBM_Plex_Sans_Arabic (squash-merge dropped the import + next 15.5.15
+// SWC name-resolution failure) and why Cairo is the right substitute
+// (DataPulse's own colors_and_type.css names Cairo as `--dp-font-ar`).
+const plexArabic = Cairo({
   subsets: ["arabic"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-plex-arabic",
