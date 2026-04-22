@@ -196,6 +196,23 @@ class Settings(BaseSettings):
     control_center_creds_key: str = ""
 
     @model_validator(mode="after")
+    def _reject_cors_wildcard_with_credentials(self) -> "Settings":
+        """Reject ``CORS_ORIGINS=['*']`` because the CORS middleware always
+        runs with ``allow_credentials=True`` (see
+        ``datapulse.api.bootstrap.middleware``). The browser rejects that
+        combination and any proxy that honors it is a CSRF-grade hole
+        (#546). Operators who genuinely want an open API must list origins
+        explicitly.
+        """
+        if "*" in self.cors_origins:
+            raise ValueError(
+                "CORS_ORIGINS=['*'] is forbidden because credentials are "
+                "allowed — list origins explicitly (e.g. "
+                "'https://app.example.com,https://admin.example.com')."
+            )
+        return self
+
+    @model_validator(mode="after")
     def _require_auth_in_production(self) -> "Settings":
         """Fail fast at startup if auth is unconfigured in non-dev environments.
 
