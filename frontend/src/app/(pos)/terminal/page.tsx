@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Clock } from "lucide-react";
-import { OfflineBadge } from "@/components/pos/OfflineBadge";
+import { TopStatusStrip } from "@/components/pos/terminal/TopStatusStrip";
+import { useActiveShift } from "@/hooks/use-active-shift";
 import { PharmacistVerification } from "@/components/pos/PharmacistVerification";
 import { VoucherCodeModal } from "@/components/pos/VoucherCodeModal";
 import {
@@ -80,6 +80,7 @@ export default function PosTerminalPage() {
   } = usePosCart();
   const checkout = usePosCheckout();
   const offline = useOfflineState();
+  const { shift } = useActiveShift(terminal?.id);
 
   // Voucher presentation derived from the unified cart-discount slot. Promotions
   // live in the same slot but render through a different UI (PromotionsModal +
@@ -446,30 +447,12 @@ export default function PosTerminalPage() {
         isOffline && "pos-provisional-rail",
       )}
     >
-      {/* Header */}
-      <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
-        <div className="flex items-center gap-3">
-          <OfflineBadge />
-          <span className="text-sm font-semibold text-text-primary">DataPulse POS</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-            <Clock className="h-3.5 w-3.5" />
-            <span>{terminal?.terminal_name}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push("/shift")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5",
-              "text-xs font-medium text-text-secondary hover:bg-surface-raised",
-            )}
-          >
-            <X className="h-3.5 w-3.5" />
-            Close
-          </button>
-        </div>
-      </header>
+      {/* D4 — TopStatusStrip (sync pill · commission · daily target · clock) */}
+      <TopStatusStrip
+        shift={shift}
+        terminalName={terminal?.terminal_name}
+        onClose={() => router.push("/shift")}
+      />
 
       {isOffline && <ProvisionalBanner pending={offline.pending} />}
 
