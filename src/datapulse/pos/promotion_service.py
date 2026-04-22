@@ -25,6 +25,7 @@ from datapulse.pos.models import (
     PromotionStatus,
     PromotionUpdate,
 )
+from datapulse.pos.models.promotions import PreviewMatchesRequest, PreviewMatchesResponse
 from datapulse.pos.promotion_repository import PromotionRepository
 
 log = get_logger(__name__)
@@ -93,6 +94,9 @@ class PromotionService:
             {item.drug_cluster for item in req.items if item.drug_cluster is not None}
         )
         drug_brands = sorted({item.drug_brand for item in req.items if item.drug_brand is not None})
+        active_ingredients = sorted(
+            {item.active_ingredient for item in req.items if item.active_ingredient is not None}
+        )
         now = datetime.now(UTC)
         candidates = self._repo.list_eligible(
             tenant_id,
@@ -100,6 +104,7 @@ class PromotionService:
             drug_codes=drug_codes,
             drug_clusters=drug_clusters,
             drug_brands=drug_brands,
+            active_ingredients=active_ingredients,
             subtotal=Decimal(str(req.subtotal)),
         )
         out: list[EligiblePromotion] = []
@@ -169,16 +174,32 @@ class PromotionService:
                 ),
                 Decimal("0"),
             )
-        # brand (migration 104)
-        brands = {b.lower() for b in promo.scope_brands}
+        if promo.scope == PromotionScope.brand:
+            brands = {b.lower() for b in promo.scope_brands}
+            return sum(
+                (
+                    Decimal(str(i.quantity)) * Decimal(str(i.unit_price))
+                    for i in items
+                    if i.drug_brand is not None and i.drug_brand.lower() in brands
+                ),
+                Decimal("0"),
+            )
+        # active_ingredient (migration 106)
+        ais = {a.lower() for a in promo.scope_active_ingredients}
         return sum(
             (
                 Decimal(str(i.quantity)) * Decimal(str(i.unit_price))
                 for i in items
-                if i.drug_brand is not None and i.drug_brand.lower() in brands
+                if i.active_ingredient is not None and i.active_ingredient.lower() in ais
             ),
             Decimal("0"),
         )
+
+    def preview_matches(
+        self, tenant_id: int, req: PreviewMatchesRequest
+    ) -> PreviewMatchesResponse:
+        """Return how many SKUs match the given scope+values in the product catalog."""
+        return self._repo.preview_matches(tenant_id, req.scope, req.values)
 
     # ------------------------------------------------------------------
     # Discount computation — pure helper (parallels VoucherService)
