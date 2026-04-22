@@ -36,11 +36,25 @@
 
 ### Production deploy (CI/CD)
 
-Deployments are triggered automatically by merging to `main`. The GitHub Actions workflow (`deploy-prod.yml`) handles:
+Production deploys are **tag-triggered** (see `.github/workflows/deploy-prod.yml`).
+The workflow fires on one of two inputs:
+
+| Trigger | When to use | How |
+|---------|-------------|-----|
+| `push: tags: [v*]` | Every planned release | `git tag v0.8.0 && git push origin v0.8.0` on `main` after CHANGELOG is updated |
+| `workflow_dispatch` | Rollbacks, hotfix re-deploys, out-of-band runs | Actions tab → **Deploy Production** → *Run workflow* (optionally override `image_tag`) |
+
+Pipeline stages are the same for both triggers:
 1. Build Docker images
 2. Trivy security scan (fail on CRITICAL/HIGH)
 3. Push to registry
 4. SSH deploy to DigitalOcean droplet
+
+**Why tag-triggered, not main-triggered:** a green `main` is the input to
+a release, not a release itself — batching commits into a tag (with a
+CHANGELOG entry and a human-readable semver) gives a clear rollback point
+and a 1:1 mapping between deployed code and a recoverable git ref. See
+`.github/workflows/deploy-prod.yml` for the authoritative trigger list.
 
 ### Manual deploy (emergency)
 

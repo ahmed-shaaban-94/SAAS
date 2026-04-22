@@ -105,6 +105,26 @@ chore: update Docker base images
 4. Submit a PR with a clear description
 5. Wait for CI checks and review
 
+## Releases
+
+Production deploys are tag-triggered. To cut a release:
+
+1. Merge everything you want in the release to `main`. CI on `main` must be green.
+2. Update `CHANGELOG.md` with a new heading `## [vX.Y.Z] — YYYY-MM-DD` and a
+   bulleted summary of user-visible changes. Commit on `main`.
+3. Tag locally and push:
+   ```bash
+   git checkout main && git pull --ff-only
+   git tag -a vX.Y.Z -m "vX.Y.Z: <one-line summary>"
+   git push origin vX.Y.Z
+   ```
+4. The `Deploy Production` workflow fires on the tag push. Follow it in the
+   Actions tab; it will halt if the latest staging deploy is not green.
+5. For hotfixes or re-deploys without cutting a new tag, use the Actions UI
+   → **Deploy Production** → *Run workflow* (`workflow_dispatch`).
+
+See [`docs/RUNBOOK.md §2`](./docs/RUNBOOK.md) for the full production-deploy runbook.
+
 ## Project Structure
 
 See the [README.md](./README.md#project-structure) for the full directory layout
