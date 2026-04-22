@@ -56,6 +56,8 @@ export function PromotionsModal({ open, onClose, clusterFor }: PromotionsModalPr
       items: items.map((i) => ({
         drug_code: i.drug_code,
         drug_cluster: clusterFor ? clusterFor(i.drug_code) : null,
+        drug_brand: null,
+        active_ingredient: null,
         quantity: i.quantity,
         unit_price: i.unit_price,
       })),

@@ -455,7 +455,7 @@ export default function PosTerminalPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs text-text-secondary">
             <Clock className="h-3.5 w-3.5" />
-            <span>{terminal.terminal_name}</span>
+            <span>{terminal?.terminal_name}</span>
           </div>
           <button
             type="button"
