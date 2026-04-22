@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -28,11 +29,37 @@ class BillingStatus(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    """Request to create a Stripe Checkout session."""
+    """Request to create a Checkout session.
 
-    price_id: str = Field(..., description="Stripe Price ID for the plan")
+    For Stripe (USD): ``price_id`` is the Stripe Price ID.
+    For Paymob/InstaPay (EGP): ``price_id`` is the plan key (e.g. ``"pro"``).
+    Set ``currency="EGP"`` to route to the Egyptian payment provider.
+    """
+
+    price_id: str = Field(..., description="Stripe Price ID (USD) or plan key (EGP)")
     success_url: str = Field(default="/billing?success=true")
     cancel_url: str = Field(default="/billing?canceled=true")
+    currency: Literal["USD", "EGP"] = Field(
+        default="USD",
+        description="ISO-4217 currency code — determines the payment provider",
+    )
+
+
+class InstapayUploadRequest(BaseModel):
+    """Tenant uploads proof of payment for InstaPay manual reconciliation."""
+
+    plan: str = Field(..., description="Plan key the tenant is subscribing to")
+    amount_egp: int = Field(..., ge=1, description="Amount transferred in EGP")
+    transfer_reference: str = Field(..., min_length=4, description="Bank transfer reference")
+    proof_url: str = Field(..., description="Public URL of the uploaded payment screenshot")
+
+
+class InstapayApproveRequest(BaseModel):
+    """Admin approves an InstaPay transfer and activates the subscription."""
+
+    tenant_id: int = Field(..., ge=1)
+    plan: str = Field(..., description="Plan to activate")
+    admin_note: str = Field(default="", description="Optional audit note")
 
 
 class CheckoutResponse(BaseModel):

@@ -43,11 +43,13 @@ from datapulse.annotations.service import AnnotationService
 from datapulse.billing.dependencies import (  # noqa: F401 (re-exported for routes)
     get_tenant_plan_limits,
 )
+from datapulse.billing.instapay_client import InstaPayClient
+from datapulse.billing.paymob_client import PaymobClient
 from datapulse.billing.provider import PaymentProvider
 from datapulse.billing.repository import BillingRepository
 from datapulse.billing.service import BillingService
 from datapulse.billing.stripe_client import StripeClient
-from datapulse.config import get_settings
+from datapulse.config import Settings, get_settings
 from datapulse.core.auth import (  # noqa: F401 (re-exported for routes + tests)
     CurrentUser,
     SessionDep,
@@ -217,16 +219,32 @@ def get_ai_light_service(
     return AILightService(settings=settings, session=session)
 
 
+def _build_providers(settings: Settings) -> dict[str, PaymentProvider]:
+    """Build the provider map for BillingService — USD=Stripe, EGP=Paymob+InstaPay."""
+    providers: dict[str, PaymentProvider] = {
+        "USD": StripeClient(settings.stripe_secret_key),
+    }
+    if settings.paymob_api_key:
+        providers["EGP"] = PaymobClient(
+            api_key=settings.paymob_api_key,
+            integration_id=settings.paymob_integration_id,
+            iframe_id=settings.paymob_iframe_id,
+            hmac_secret=settings.paymob_hmac_secret,
+        )
+    else:
+        # Fall back to InstaPay (manual bank transfer) when Paymob is unconfigured.
+        providers["EGP"] = InstaPayClient(base_url=settings.billing_base_url)
+    return providers
+
+
 def get_billing_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ) -> BillingService:
     settings = get_settings()
     repo = BillingRepository(session)
-    stripe = StripeClient(settings.stripe_secret_key)
-    providers: dict[str, PaymentProvider] = {"USD": stripe}
     return BillingService(
         repo=repo,
-        providers=providers,
+        providers=_build_providers(settings),
         price_to_plan=settings.stripe_price_to_plan_map,
         base_url=settings.billing_base_url,
     )
@@ -241,11 +259,9 @@ def build_billing_webhook_service(session: Session) -> BillingService:
     lifecycle (commit/rollback/close) stays with the caller.
     """
     settings = get_settings()
-    stripe = StripeClient(settings.stripe_secret_key)
-    providers: dict[str, PaymentProvider] = {"USD": stripe}
     return BillingService(
         repo=BillingRepository(session),
-        providers=providers,
+        providers=_build_providers(settings),
         price_to_plan=settings.stripe_price_to_plan_map,
         base_url=settings.billing_base_url,
     )

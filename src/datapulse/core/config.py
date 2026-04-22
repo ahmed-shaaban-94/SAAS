@@ -206,6 +206,12 @@ class Settings(BaseSettings):
     stripe_price_pro_monthly: str = ""  # price_xxx from Stripe Dashboard
     billing_base_url: str = "https://smartdatapulse.tech"
 
+    # Paymob (EGP) — Egypt PMF #604
+    paymob_api_key: str = ""
+    paymob_integration_id: str = ""  # online card integration ID from dashboard
+    paymob_iframe_id: str = ""  # iframe ID from Paymob dashboard
+    paymob_hmac_secret: str = ""  # HMAC secret for webhook verification
+
     # Control Center — credential encryption key (pgcrypto pgp_sym_encrypt)
     # Generate with: openssl rand -base64 48
     # Must be set when using Postgres/SQL Server connectors with stored passwords.
