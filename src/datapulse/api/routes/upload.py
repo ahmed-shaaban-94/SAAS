@@ -10,7 +10,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from datapulse.api.auth import get_current_user
+from datapulse.api.deps import get_billing_service
 from datapulse.api.limiter import limiter
+from datapulse.billing import PlanLimitExceededError
+from datapulse.billing.service import BillingService
 from datapulse.rbac.dependencies import require_permission
 from datapulse.upload.models import InventoryPreviewResult, PreviewResult, UploadedFile
 from datapulse.upload.service import UploadService
@@ -75,9 +78,23 @@ async def _close_upload_file(upload: UploadFile) -> None:
 async def upload_files(
     request: Request,
     files: list[UploadFile],
+    user: UserDep,
     service: Annotated[UploadService, Depends(_get_service)],
+    billing: Annotated[BillingService, Depends(get_billing_service)],
 ) -> list[UploadedFile]:
-    """Upload one or more files for preview before import."""
+    """Upload one or more files for preview before import.
+
+    Rejects the request with **413** *before* any body bytes are streamed
+    when the tenant is already at/over their plan's data-source or row
+    limit (#546). A failed quota check here avoids the 100 MB per-file
+    bandwidth and disk cost a naïve "accept-then-reject-at-import" path
+    would incur.
+    """
+    try:
+        billing.check_plan_limits(int(user.get("tenant_id", "0")))
+    except PlanLimitExceededError as e:
+        raise HTTPException(status_code=413, detail=str(e)) from e
+
     results = []
     max_size = 100 * 1024 * 1024  # 100MB
     chunk_size = 64 * 1024  # 64KB — stream to cap memory per upload
