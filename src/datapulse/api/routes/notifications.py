@@ -2,32 +2,23 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import CurrentUser, get_tenant_session
+from datapulse.api.deps import CurrentUser, get_notification_service
 from datapulse.api.limiter import limiter
 from datapulse.notifications_center.models import NotificationCount, NotificationResponse
-from datapulse.notifications_center.repository import NotificationRepository
 from datapulse.notifications_center.service import NotificationService
+from datapulse.notifications_center.streaming import iter_unread_count_events
 
 router = APIRouter(
     prefix="/notifications",
     tags=["notifications"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-def get_notification_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> NotificationService:
-    return NotificationService(NotificationRepository(session))
 
 
 ServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
@@ -77,35 +68,8 @@ async def notification_stream(
     user_id = user["sub"]
     tenant_id = user.get("tenant_id", "1")
 
-    async def event_generator():
-        from sqlalchemy import text as sa_text
-
-        from datapulse.core.db import get_session_factory
-
-        last_count = -1
-        while True:
-            if await request.is_disconnected():
-                break
-            try:
-                session = get_session_factory()()
-                try:
-                    session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-                    session.execute(sa_text("SET LOCAL statement_timeout = '10s'"))
-                    repo = NotificationRepository(session)
-                    count = repo.unread_count(user_id)
-                    if count != last_count:
-                        last_count = count
-                        data = json.dumps({"unread": count})
-                        yield f"event: count\ndata: {data}\n\n"
-                    session.commit()
-                finally:
-                    session.close()
-            except Exception:
-                yield "event: error\ndata: {}\n\n"
-            await asyncio.sleep(5)
-
     return StreamingResponse(
-        event_generator(),
+        iter_unread_count_events(user_id, tenant_id, request.is_disconnected),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

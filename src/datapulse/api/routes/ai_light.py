@@ -18,10 +18,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from datapulse.ai_light.models import AISummary, AnomalyReport, ChangeNarrative, TopInsight
 from datapulse.ai_light.service import AILightService
 from datapulse.ai_light.top_insight import anomaly_to_top_insight, pick_top_anomaly
-from datapulse.anomalies.repository import AnomalyRepository
 from datapulse.anomalies.service import AnomalyService
 from datapulse.api.cache_helpers import set_cache_headers
-from datapulse.api.deps import SessionDep, get_ai_light_service
+from datapulse.api.deps import get_ai_light_service, get_anomaly_service
 from datapulse.api.limiter import limiter
 from datapulse.logging import get_logger
 from datapulse.rbac.dependencies import require_permission
@@ -34,6 +33,7 @@ router = APIRouter(
 log = get_logger(__name__)
 
 ServiceDep = Annotated[AILightService, Depends(get_ai_light_service)]
+AnomalyServiceDep = Annotated[AnomalyService, Depends(get_anomaly_service)]
 
 
 @router.get("/status")
@@ -99,7 +99,7 @@ def get_changes(
 def get_top_insight(
     request: Request,
     response: Response,
-    session: SessionDep,
+    anomaly_service: AnomalyServiceDep,
 ) -> TopInsight | Response:
     """Single actionable insight for the dashboard alert banner (#510).
 
@@ -113,8 +113,6 @@ def get_top_insight(
     endpoints remain the place for narrative-heavy output.
     """
     set_cache_headers(response, 300)
-    repo = AnomalyRepository(session)
-    anomaly_service = AnomalyService(session=session, repo=repo)
     alerts = anomaly_service.get_active_alerts(limit=20)
 
     top = pick_top_anomaly(alerts)

@@ -475,6 +475,56 @@ def get_reseller_service(
     return ResellerService(ResellerRepository(session))
 
 
+def get_branding_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.branding.repository import BrandingRepository
+    from datapulse.branding.service import BrandingService
+
+    return BrandingService(BrandingRepository(session))
+
+
+def get_public_plain_session() -> Generator[Session, None, None]:
+    """Short-timeout plain session for public (no-auth) endpoints.
+
+    Defense-in-depth: caps unauthenticated queries at 10s so a slow query
+    cannot be abused as a DoS vector. Use :func:`get_plain_session` (30s)
+    for authenticated plain-session paths instead.
+    """
+    session = get_session_factory()()
+    try:
+        session.execute(text("SET LOCAL statement_timeout = '10s'"))
+        yield session
+    except SQLAlchemyError:
+        logger.exception("db_session_error", session_type="public_plain")
+        session.rollback()
+        raise
+    except BaseException:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def get_public_branding_service(
+    session: Annotated[Session, Depends(get_public_plain_session)],
+):
+    """Factory for the public (no-auth) branding lookup used by the login page."""
+    from datapulse.branding.repository import BrandingRepository
+    from datapulse.branding.service import BrandingService
+
+    return BrandingService(BrandingRepository(session))
+
+
+def get_notification_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.notifications_center.repository import NotificationRepository
+    from datapulse.notifications_center.service import NotificationService
+
+    return NotificationService(NotificationRepository(session))
+
+
 def get_first_insight_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ):

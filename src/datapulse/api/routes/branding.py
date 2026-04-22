@@ -6,28 +6,20 @@ for domain-based branding resolution (no auth required).
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from typing import Annotated
 
-import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.cache_helpers import set_cache_headers
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_branding_service, get_public_branding_service
 from datapulse.api.limiter import limiter
 from datapulse.branding.models import (
     BrandingResponse,
     BrandingUpdate,
     PublicBrandingResponse,
 )
-from datapulse.branding.repository import BrandingRepository
 from datapulse.branding.service import BrandingService
-from datapulse.core.db import get_session_factory
-
-_logger = structlog.get_logger()
 
 # Authenticated router
 router = APIRouter(
@@ -43,19 +35,8 @@ public_router = APIRouter(
 )
 
 
-# ------------------------------------------------------------------
-# Dependency injection
-# ------------------------------------------------------------------
-
-
-def get_branding_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> BrandingService:
-    repo = BrandingRepository(session)
-    return BrandingService(repo)
-
-
 ServiceDep = Annotated[BrandingService, Depends(get_branding_service)]
+PublicServiceDep = Annotated[BrandingService, Depends(get_public_branding_service)]
 
 
 # ------------------------------------------------------------------
@@ -110,30 +91,14 @@ def delete_logo(
 # ------------------------------------------------------------------
 
 
-def _get_raw_session() -> Generator[Session, None, None]:
-    """Unauthenticated DB session for public lookups (no RLS)."""
-    session = get_session_factory()()
-    try:
-        session.execute(text("SET LOCAL statement_timeout = '10s'"))
-        yield session
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
 @public_router.get("/public", response_model=PublicBrandingResponse)
 @limiter.limit("60/minute")
 def get_public_branding(
     request: Request,
     response: Response,
+    service: PublicServiceDep,
     domain: str = Query(..., description="Custom domain or subdomain to look up"),
-    *,
-    session: Annotated[Session, Depends(_get_raw_session)],
 ) -> PublicBrandingResponse:
     """Get public branding by domain (no auth required, for login page)."""
-    repo = BrandingRepository(session)
-    service = BrandingService(repo)
     response.headers["Cache-Control"] = "max-age=600, public"
     return service.get_public_branding(domain)

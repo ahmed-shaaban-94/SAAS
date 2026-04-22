@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from datapulse.api.app import create_app
 from datapulse.api.auth import get_current_user
-from datapulse.api.routes.notifications import get_notification_service
+from datapulse.api.deps import get_notification_service
 from datapulse.notifications_center.models import NotificationCount, NotificationResponse
 
 
