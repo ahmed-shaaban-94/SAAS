@@ -87,10 +87,18 @@ class RBACService:
         If the user's email isn't in either list, they get "viewer" role.
         Called from the auth dependency to ensure every authenticated user
         has a tenant_members record. Returns the member dict.
+
+        Refuses empty emails: the ``(tenant_id, email)`` unique index would
+        collide the moment two emailless callers tried to auto-register.
         """
         member = self._repo.get_member_by_user_id(tenant_id, user_id)
         if member:
             return member
+
+        if not email:
+            raise ValueError(
+                f"User {user_id} has no email claim; cannot auto-register as a tenant member"
+            )
 
         # Check if invited by email (pending invite)
         invited = self._repo.get_member_by_email(tenant_id, email)

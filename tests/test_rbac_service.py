@@ -175,6 +175,34 @@ class TestEnsureMemberExists:
             role_key="viewer",
         )
 
+    def test_empty_email_refused_when_no_existing_member(self):
+        # Regression: empty email + no existing user_id would previously hit
+        # the (tenant_id, email) unique index with Key=(..,"") — now raises
+        # a ValueError that the dependency translates to 403.
+        repo = MagicMock()
+        repo.get_member_by_user_id.return_value = None
+
+        service = RBACService(repo)
+        with pytest.raises(ValueError, match="no email claim"):
+            service.ensure_member_exists(1, "some-user", "", "some-name")
+
+        repo.get_member_by_email.assert_not_called()
+        repo.create_member.assert_not_called()
+
+    def test_empty_email_returns_existing_member_without_db_write(self):
+        # If a tenant_members row for this user_id already exists, empty
+        # email is fine — we just return it. No INSERT happens.
+        existing = _make_member(email="", user_id="some-user")
+        repo = MagicMock()
+        repo.get_member_by_user_id.return_value = existing
+
+        service = RBACService(repo)
+        result = service.ensure_member_exists(1, "some-user", "", "some-name")
+
+        assert result == existing
+        repo.create_member.assert_not_called()
+        repo.get_member_by_email.assert_not_called()
+
 
 class TestInviteMember:
     def test_invite_success(self):

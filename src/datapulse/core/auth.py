@@ -39,6 +39,11 @@ _auth_logger = structlog.get_logger()
 _db_logger = structlog.get_logger()
 _TENANT_ID_RE = re.compile(r"^\d{1,10}$")
 
+# Sentinel user_id used when a caller authenticates with a shared X-API-Key.
+# API-key callers are service credentials, not tenant users — RBAC auto-
+# registration is bypassed for this sentinel (see rbac/dependencies.py).
+API_KEY_USER_ID = "api-key-user"
+
 
 class UserClaims(TypedDict):
     """Typed structure for authenticated user JWT claims."""
@@ -154,7 +159,7 @@ def get_current_user(
     if api_key:
         if settings.api_key and compare_secrets(api_key, settings.api_key):
             return {
-                "sub": "api-key-user",
+                "sub": API_KEY_USER_ID,
                 "email": "",
                 "preferred_username": "api-key",
                 "tenant_id": settings.default_tenant_id,

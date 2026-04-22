@@ -11,13 +11,43 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from datapulse.config import get_settings
-from datapulse.core.auth import UserClaims, get_current_user
+from datapulse.core.auth import API_KEY_USER_ID, UserClaims, get_current_user
 from datapulse.core.db import get_session_factory
 from datapulse.rbac.models import AccessContext, RoleKey
 from datapulse.rbac.repository import RBACRepository
 from datapulse.rbac.service import RBACService
 
 logger = structlog.get_logger()
+
+# Synthetic member_id for API-key callers. Never matches a real
+# tenant_members.member_id (which is SERIAL, starts at 1).
+_API_KEY_SYNTHETIC_MEMBER_ID = 0
+
+
+def _synthesize_api_key_context(tenant_id: int, session: Session) -> AccessContext:
+    """Build an AccessContext for API-key (service credential) callers.
+
+    API-key callers are shared service credentials, not tenant users, and
+    must not be auto-registered into ``tenant_members`` — that path would
+    collide on the ``(tenant_id, email)`` unique index the moment any
+    other API-key-user row already exists with an empty email.
+
+    The synthesized context grants admin-level access: all permissions
+    assigned to the ``admin`` role, no sector restriction. Endpoint-level
+    gating still applies via ``require_auth_role`` / ``require_api_key``.
+    """
+    repo = RBACRepository(session)
+    permissions = set(repo.get_role_permissions("admin"))
+    return AccessContext(
+        member_id=_API_KEY_SYNTHETIC_MEMBER_ID,
+        tenant_id=tenant_id,
+        user_id=API_KEY_USER_ID,
+        role_key="admin",
+        permissions=permissions,
+        sector_ids=[],
+        site_codes=[],
+        is_admin=True,
+    )
 
 
 def _get_rbac_session(
@@ -69,10 +99,17 @@ def get_access_context(
     """
     session = _get_rbac_session(user)
     try:
-        service = _build_rbac_service(session)
-
         tenant_id = int(user.get("tenant_id", "1"))
         user_id = user.get("sub", "")
+
+        # API-key callers are service credentials — never tenant_members
+        # rows. Short-circuit to a synthetic admin context so we don't
+        # attempt to INSERT a duplicate row with empty email (issue:
+        # tenant_members_tenant_id_email_key unique violation).
+        if user_id == API_KEY_USER_ID:
+            return _synthesize_api_key_context(tenant_id, session)
+
+        service = _build_rbac_service(session)
         email = user.get("email", "")
         name = user.get("preferred_username", "") or email.split("@")[0]
 
