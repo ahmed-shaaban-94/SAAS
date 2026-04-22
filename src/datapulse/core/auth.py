@@ -201,11 +201,13 @@ def get_current_user(
             }
         raise HTTPException(status_code=401, detail="Authentication failed")
 
-    # 3. Dev mode — both auth mechanisms unconfigured.
+    # 3. Dev mode — neither API key nor the active IdP is configured.
     # SECURITY: defense-in-depth gate. Refuse the fallback whenever *either*
     # app_env or sentry_environment indicates a non-dev deployment, so a single
     # misconfigured env var cannot leak admin-adjacent claims (issue #537).
-    if not settings.api_key and not settings.auth0_domain:
+    # ``_jwt_provider_configured`` reflects the active provider (Auth0 or
+    # Clerk); swapping providers via AUTH_PROVIDER does not weaken this gate.
+    if not settings.api_key and not settings._jwt_provider_configured:
         if is_non_dev_env(settings.app_env, settings.sentry_environment):
             _auth_logger.error(
                 "auth_not_configured_in_production",

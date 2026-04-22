@@ -3,7 +3,7 @@
 import useSWR from "swr";
 import { fetchAPI, postAPI, swrKey } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/constants";
-import { getSession } from "next-auth/react";
+import { getSession } from "@/lib/auth-bridge";
 
 export interface Annotation {
   id: number;

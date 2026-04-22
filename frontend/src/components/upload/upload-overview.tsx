@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, File, Check, X, Eye, Loader2, Play } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constants";
-import { getSession } from "next-auth/react";
+import { getSession } from "@/lib/auth-bridge";
 import { LoadingCard } from "@/components/loading-card";
 import { PipelineProgress } from "./pipeline-progress";
 import { RecentImports } from "./recent-imports";

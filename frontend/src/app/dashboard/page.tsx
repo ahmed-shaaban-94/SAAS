@@ -14,7 +14,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download, Plus } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/lib/auth-bridge";
 
 import {
   AttentionQueue,

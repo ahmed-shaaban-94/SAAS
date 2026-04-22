@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { AUTH_PROVIDER, signIn } from "@/lib/auth-bridge";
 import { useSearchParams } from "next/navigation";
 import { Activity, LogIn } from "lucide-react";
 import { Suspense } from "react";
@@ -50,7 +50,12 @@ function LoginForm() {
           )}
 
           <button
-            onClick={() => signIn("auth0", { callbackUrl })}
+            onClick={() =>
+              signIn(
+                AUTH_PROVIDER === "clerk" ? undefined : "auth0",
+                { callbackUrl },
+              )
+            }
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-page transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-page"
           >
             <LogIn className="h-4 w-4" />
@@ -60,7 +65,7 @@ function LoginForm() {
 
         {/* Footer */}
         <p className="text-center text-xs text-text-secondary">
-          Secured by Auth0
+          Secured by {AUTH_PROVIDER === "clerk" ? "Clerk" : "Auth0"}
         </p>
       </div>
     </div>

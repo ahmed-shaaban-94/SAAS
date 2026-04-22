@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/lib/auth-bridge";
 import { initAnalytics, identifyUser } from "@/lib/analytics";
 
 /**

@@ -1,4 +1,4 @@
-import { getSession } from "next-auth/react";
+import { getSession } from "@/lib/auth-bridge";
 import { API_BASE_URL } from "./constants";
 import type { FilterParams } from "@/types/filters";
 

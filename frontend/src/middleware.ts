@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+const AUTH_PROVIDER =
+  (process.env.NEXT_PUBLIC_AUTH_PROVIDER as "auth0" | "clerk") || "auth0";
 
 /** Paths that do not require authentication. */
 const PUBLIC_PATHS = [
   "/login",
+  "/sign-in",    // Clerk hosted sign-in route
+  "/sign-up",    // Clerk hosted sign-up route
   "/api/auth",
   // dev-login removed — was a temporary dev bypass
   "/",           // Marketing landing page
@@ -52,13 +58,85 @@ function resolveTenantDomain(request: NextRequest): string | null {
   return null;
 }
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+/**
+ * Add the shared tenant-domain header and CSP/security headers the app
+ * always needs. Mutates the given response in place; returns it for
+ * convenient `return applyCommonHeaders(...)` usage from both provider
+ * branches.
+ */
+function applyCommonHeaders(
+  response: NextResponse,
+  tenantDomain: string | null,
+): NextResponse {
+  if (tenantDomain) {
+    response.headers.set("X-Tenant-Domain", tenantDomain);
+  }
 
-  // --- Tenant domain resolution ---
+  const auth0Domain = process.env.AUTH0_DOMAIN || "";
+  const auth0Origin = auth0Domain ? `https://${auth0Domain}` : "";
+  const clerkFrontend = process.env.NEXT_PUBLIC_CLERK_FRONTEND_API || "";
+  const clerkOrigin = clerkFrontend ? clerkFrontend.replace(/\/$/, "") : "";
+  const isDev = process.env.NODE_ENV === "development";
+
+  // Allow scripts from Clerk when active — Clerk injects its JS from its
+  // own CDN (e.g. https://oriented-lark-68.clerk.accounts.dev/). Keep the
+  // Auth0 additions for the return path.
+  const scriptExtras = [
+    auth0Origin,
+    AUTH_PROVIDER === "clerk" ? clerkOrigin : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const scriptSrc = isDev
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${scriptExtras}`.trim()
+    : `script-src 'self' 'unsafe-inline' ${scriptExtras}`.trim();
+
+  response.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      scriptSrc,
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self'",
+      `connect-src 'self' ${scriptExtras}`.trim(),
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      `form-action 'self' ${scriptExtras}`.trim(),
+    ].join("; "),
+  );
+
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  return response;
+}
+
+const isProtectedRoute = createRouteMatcher([
+  "/((?!sign-in|sign-up|login|api/auth|embed|demo|terms|privacy|landing|$).*)",
+]);
+
+// --- Clerk path --------------------------------------------------------
+const clerkMw = clerkMiddleware(async (auth, request) => {
+  const tenantDomain = resolveTenantDomain(request);
+  if (isProtectedRoute(request)) {
+    const { userId } = await auth();
+    if (!userId) {
+      const loginUrl = new URL("/sign-in", request.url);
+      loginUrl.searchParams.set("redirect_url", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+  return applyCommonHeaders(NextResponse.next(), tenantDomain);
+});
+
+// --- Auth0 / NextAuth path --------------------------------------------
+async function nextAuthMiddleware(request: NextRequest): Promise<NextResponse> {
+  const { pathname } = request.nextUrl;
   const tenantDomain = resolveTenantDomain(request);
 
-  // --- Auth check (skip for public paths & static assets) ---
   if (!isPublicPath(pathname)) {
     const token = await getToken({
       req: request,
@@ -72,44 +150,16 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // --- Tenant domain header ---
-  const response = NextResponse.next();
-  if (tenantDomain) {
-    response.headers.set("X-Tenant-Domain", tenantDomain);
+  return applyCommonHeaders(NextResponse.next(), tenantDomain);
+}
+
+// Single exported middleware — branches on the active provider so flipping
+// NEXT_PUBLIC_AUTH_PROVIDER does not require swapping import paths.
+export function middleware(request: NextRequest) {
+  if (AUTH_PROVIDER === "clerk") {
+    return clerkMw(request, {} as never);
   }
-
-  // --- Security headers ---
-  const auth0Domain = process.env.AUTH0_DOMAIN || "";
-  const auth0Origin = auth0Domain ? `https://${auth0Domain}` : "";
-  const isDev = process.env.NODE_ENV === "development";
-
-  // Next.js requires 'unsafe-inline' for styles (CSS-in-JS / Tailwind injection).
-  // Dev mode additionally needs 'unsafe-eval' for React Refresh / HMR.
-  // API calls now go through Traefik on same origin — no extra connect-src needed.
-  const scriptSrc = isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-    : "script-src 'self' 'unsafe-inline'";
-
-  response.headers.set(
-    "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      scriptSrc,
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
-      "font-src 'self'",
-      `connect-src 'self'${auth0Origin ? ` ${auth0Origin}` : ""}`,
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      `form-action 'self'${auth0Origin ? ` ${auth0Origin}` : ""}`,
-    ].join("; "),
-  );
-
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  return response;
+  return nextAuthMiddleware(request);
 }
 
 export const config = {

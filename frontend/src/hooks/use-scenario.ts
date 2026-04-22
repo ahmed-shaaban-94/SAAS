@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { API_BASE_URL } from "@/lib/constants";
-import { getSession } from "next-auth/react";
+import { getSession } from "@/lib/auth-bridge";
 
 export interface Adjustment {
   parameter: "price" | "volume" | "cost";
