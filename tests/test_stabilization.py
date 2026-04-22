@@ -51,7 +51,9 @@ async def test_upload_rejects_oversized_file_mid_stream():
         await upload_files(
             request=mock_request,
             files=[mock_file],
+            user={"tenant_id": "1"},
             service=mock_service,
+            billing=_noop_billing(),
         )
 
     assert exc_info.value.status_code == 413
@@ -86,7 +88,9 @@ async def test_upload_accepts_small_file():
     result = await upload_files(
         request=mock_request,
         files=[mock_file],
+        user={"tenant_id": "1"},
         service=mock_service,
+        billing=_noop_billing(),
     )
 
     assert len(result) == 1
@@ -102,6 +106,57 @@ async def _consume_upload_stream(_filename, chunk_iter):
     async for _chunk in chunk_iter:
         pass
     return MagicMock()
+
+
+def _noop_billing() -> MagicMock:
+    """BillingService stub whose check_plan_limits is a no-op (tenant under quota)."""
+    billing = MagicMock()
+    billing.check_plan_limits = MagicMock(return_value=None)
+    return billing
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_tenant_over_plan_limits_without_reading_body():
+    """#546: upload returns 413 BEFORE reading any upload bytes when tenant
+    is over their plan's data-source / row limit.
+    """
+    from fastapi import HTTPException
+
+    from datapulse.api.routes.upload import upload_files
+    from datapulse.billing import PlanLimitExceededError
+
+    read_calls = 0
+
+    async def _mock_read(size=-1):
+        nonlocal read_calls
+        read_calls += 1
+        return b""
+
+    mock_file = MagicMock()
+    mock_file.filename = "ignored.csv"
+    mock_file.size = None
+    mock_file.read = _mock_read
+
+    mock_service = MagicMock()
+    mock_service.save_temp_file_stream = AsyncMock()
+
+    billing = MagicMock()
+    billing.check_plan_limits.side_effect = PlanLimitExceededError(
+        limit_type="total_rows", current=10_000, limit=10_000, plan="starter"
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await upload_files(
+            request=MagicMock(),
+            files=[mock_file],
+            user={"tenant_id": "1"},
+            service=mock_service,
+            billing=billing,
+        )
+
+    assert exc_info.value.status_code == 413
+    assert read_calls == 0, "Body must not be read when quota gate rejects"
+    mock_service.save_temp_file_stream.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
