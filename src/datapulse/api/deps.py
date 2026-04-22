@@ -43,6 +43,7 @@ from datapulse.annotations.service import AnnotationService
 from datapulse.billing.dependencies import (  # noqa: F401 (re-exported for routes)
     get_tenant_plan_limits,
 )
+from datapulse.billing.provider import PaymentProvider
 from datapulse.billing.repository import BillingRepository
 from datapulse.billing.service import BillingService
 from datapulse.billing.stripe_client import StripeClient
@@ -221,10 +222,11 @@ def get_billing_service(
 ) -> BillingService:
     settings = get_settings()
     repo = BillingRepository(session)
-    client = StripeClient(settings.stripe_secret_key)
+    stripe = StripeClient(settings.stripe_secret_key)
+    providers: dict[str, PaymentProvider] = {"USD": stripe}
     return BillingService(
-        repo,
-        client,
+        repo=repo,
+        providers=providers,
         price_to_plan=settings.stripe_price_to_plan_map,
         base_url=settings.billing_base_url,
     )
@@ -239,9 +241,11 @@ def build_billing_webhook_service(session: Session) -> BillingService:
     lifecycle (commit/rollback/close) stays with the caller.
     """
     settings = get_settings()
+    stripe = StripeClient(settings.stripe_secret_key)
+    providers: dict[str, PaymentProvider] = {"USD": stripe}
     return BillingService(
-        BillingRepository(session),
-        StripeClient(settings.stripe_secret_key),
+        repo=BillingRepository(session),
+        providers=providers,
         price_to_plan=settings.stripe_price_to_plan_map,
         base_url=settings.billing_base_url,
     )

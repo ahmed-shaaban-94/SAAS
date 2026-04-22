@@ -18,8 +18,8 @@ from datapulse.billing.plans import (
     get_plan_limits,
     resolve_plan_from_price,
 )
+from datapulse.billing.provider import PaymentProvider, ProviderUnavailableError
 from datapulse.billing.repository import BillingRepository
-from datapulse.billing.stripe_client import StripeClient
 
 logger = structlog.get_logger()
 
@@ -44,20 +44,35 @@ class PlanLimitExceededError(Exception):
 
 
 class BillingService:
-    """Coordinates billing operations between Stripe, DB, and plan enforcement."""
+    """Business logic for subscriptions, plans, usage, and provider routing."""
 
     def __init__(
         self,
         repo: BillingRepository,
-        stripe_client: StripeClient,
+        providers: dict[str, PaymentProvider],
         *,
         price_to_plan: dict[str, str],
         base_url: str = "https://smartdatapulse.tech",
     ) -> None:
         self._repo = repo
-        self._stripe = stripe_client
+        self._providers = providers
+        # Back-compat shim — checkout/portal/webhook code paths still reference
+        # self._stripe directly. Route all new access through _provider_for;
+        # existing call-sites migrate in a follow-up task (PR 2 keeps behaviour).
+        self._stripe = providers.get("USD")  # type: ignore[assignment]
         self._price_to_plan = price_to_plan
         self._base_url = base_url
+
+    def _provider_for(self, currency: str) -> PaymentProvider:
+        """Return the PaymentProvider registered for *currency* (ISO-4217 uppercase).
+
+        Raises ProviderUnavailableError when no provider is configured for the
+        requested currency — surfaces as HTTP 503 in billing routes.
+        """
+        provider = self._providers.get(currency.upper())
+        if provider is None:
+            raise ProviderUnavailableError(currency)
+        return provider
 
     def check_plan_limits(
         self,
