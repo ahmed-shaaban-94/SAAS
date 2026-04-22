@@ -26,6 +26,9 @@ import { ProvisionalBanner } from "@/components/pos/terminal/ProvisionalBanner";
 import { productToQuickPick, type TilePaymentMethod } from "@/components/pos/terminal/types";
 import { CheckoutConfirmModal } from "@/components/pos/terminal/CheckoutConfirmModal";
 import { ClinicalPanelSkeleton } from "@/components/pos/terminal/ClinicalPanelSkeleton";
+import { CustomerBar } from "@/components/pos/terminal/CustomerBar";
+import { ChurnAlertCard } from "@/components/pos/terminal/ChurnAlertCard";
+import { usePosCustomerLookup } from "@/hooks/use-pos-customer-lookup";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
 import { usePosProducts } from "@/hooks/use-pos-products";
@@ -102,6 +105,13 @@ export default function PosTerminalPage() {
   // lives inside a confirm modal, not inline on the right column. This
   // frees the right column for the Clinical/AI panel in Phase D1.
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  // D3 — customer phone lookup. Currently backed by fixtures (issue
+  // #624 for the real endpoint). Phone state lives here so the churn
+  // alert below CustomerBar and any future D4 loyalty surfaces can
+  // read the same resolved customer without re-fetching.
+  const [customerPhone, setCustomerPhone] = useState("");
+  const { data: resolvedCustomer, isLoading: isCustomerLoading } =
+    usePosCustomerLookup(customerPhone);
   const [pendingDrug, setPendingDrug] = useState<PosProductResult | null>(null);
   const [lastKeypadKey, setLastKeypadKey] = useState<string | null>(null);
   const [unsyncedCodes, setUnsyncedCodes] = useState<Set<string>>(() => new Set());
@@ -484,9 +494,11 @@ export default function PosTerminalPage() {
           "xl:grid-cols-[minmax(0,4fr)_minmax(0,3fr)_minmax(0,2.5fr)] xl:grid-rows-1",
         )}
       >
-        {/* COL 1 — Cart column (handoff: customer bar → churn alert → scan
-            → cart list → cart foot with grand total + CTA). D3 adds the
-            customer bar and churn card above the scan bar. */}
+        {/* COL 1 — Cart column (handoff §1.3: customer bar → churn alert →
+            scan → cart list → cart foot with grand total + CTA). D3 adds
+            the customer bar and churn card above the scan bar;
+            ChurnAlertCard is conditional per §Editorial Principles #4
+            ("AI triggers, not AI chatter"). */}
         <section
           aria-label="Cart column"
           className={cn(
@@ -495,6 +507,15 @@ export default function PosTerminalPage() {
             "xl:col-start-1",
           )}
         >
+          <CustomerBar
+            phone={customerPhone}
+            onPhoneChange={setCustomerPhone}
+            customer={resolvedCustomer}
+            isLoading={isCustomerLoading}
+          />
+          {resolvedCustomer?.churn && (
+            <ChurnAlertCard churn={resolvedCustomer.churn} />
+          )}
           <ScanBar
             ref={scanInputRef}
             value={scanQuery}
