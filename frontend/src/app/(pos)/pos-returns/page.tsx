@@ -125,7 +125,7 @@ export default function ReturnsPage() {
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
-        <span className="ml-4 text-sm font-semibold text-text-primary">Process Return</span>
+        <span className="ms-4 text-sm font-semibold text-text-primary">Process Return</span>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4">

@@ -104,7 +104,7 @@ export function ShiftOpenModal({
             }}
             onKeyDown={handleKeyDown}
             className={cn(
-              "w-full rounded-xl border border-[var(--pos-line)] bg-[var(--pos-bg)] py-3 pl-12 pr-4",
+              "w-full rounded-xl border border-[var(--pos-line)] bg-[var(--pos-bg)] py-3 ps-12 pe-4",
               "font-mono tabular-nums text-[22px] font-semibold text-text-primary",
               "focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50",
               error && "border-red-500/70",

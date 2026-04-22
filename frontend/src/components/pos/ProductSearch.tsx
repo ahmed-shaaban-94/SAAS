@@ -57,7 +57,7 @@ export function ProductSearch({ siteCode, onSelect, className }: ProductSearchPr
           placeholder="Search drug… (F1)"
           aria-label="Search drug"
           className={cn(
-            "w-full rounded-xl border border-border bg-surface py-3 pl-9 pr-4 text-sm",
+            "w-full rounded-xl border border-border bg-surface py-3 ps-9 pe-4 text-sm",
             "text-text-primary placeholder:text-text-secondary",
             "focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent",
           )}

@@ -1405,3 +1405,29 @@ html {
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   D6 — Tactile press animation for QuickPickGrid buttons
+   80ms ease-out down, 160ms ease-in up; respects prefers-reduced-motion
+   ═══════════════════════════════════════════════════════════════════ */
+.active-tactile {
+  transition:
+    transform 160ms ease-in,
+    border-bottom-width 160ms ease-in,
+    background-color 150ms,
+    border-color 150ms;
+}
+.active-tactile:active {
+  transform: translateY(2px);
+  border-bottom-width: 4px;
+  transition:
+    transform 80ms ease-out,
+    border-bottom-width 80ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .active-tactile,
+  .active-tactile:active {
+    transform: none !important;
+    transition: background-color 150ms, border-color 150ms !important;
+  }
+}

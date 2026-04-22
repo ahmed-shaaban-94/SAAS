@@ -56,12 +56,21 @@ export function CartPanel({ className }: CartPanelProps) {
       </div>
 
       {/* Items list */}
-      <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+      <div className="flex-1 space-y-2 overflow-y-auto pe-1">
         {items.length === 0 ? (
-          <EmptyState
-            title="Cart is empty"
-            description="Search for a drug and add it to the cart."
-          />
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+            <div className="font-mono text-[22px] text-text-secondary/30">▬▬▬</div>
+            <p
+              dir="rtl"
+              style={{ fontFamily: "var(--font-plex-arabic, sans-serif)", fontWeight: 700, fontSize: 15 }}
+              className="text-text-secondary"
+            >
+              ابدأ بمسح الصنف أو اختيار من الأصناف السريعة
+            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-secondary/50">
+              Scan barcode · F1 to search · press 1–8 to quick-pick
+            </p>
+          </div>
         ) : (
           items.map((item) => (
             <CartItem

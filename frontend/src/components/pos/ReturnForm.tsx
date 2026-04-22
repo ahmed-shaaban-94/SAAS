@@ -98,7 +98,7 @@ export function ReturnForm({ transaction, onSuccess }: ReturnFormProps) {
                     <p className="text-xs text-text-secondary">Batch: {item.batch_number}</p>
                   )}
                 </div>
-                <div className="ml-2 text-right">
+                <div className="ms-2 text-end">
                   <p className="text-xs tabular-nums text-text-secondary">
                     {Number(item.quantity)} × EGP {fmt(Number(item.unit_price))}
                   </p>

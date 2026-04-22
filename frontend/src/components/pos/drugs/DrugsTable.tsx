@@ -96,8 +96,8 @@ export function DrugsTable({
                 "grid-cols-[1.6fr_130px_100px_100px_132px_76px]",
                 "px-4 py-2.5 transition-colors",
                 active && "bg-cyan-400/5",
-                active && "border-l-[3px] border-l-cyan-400 pl-[13px]",
-                !active && "border-l-[3px] border-l-transparent",
+                active && "border-s-[3px] border-s-cyan-400 ps-[13px]",
+                !active && "border-s-[3px] border-s-transparent",
                 disabled && "opacity-70",
               )}
             >

@@ -38,7 +38,7 @@ export function CartRow({
       className={cn(
         "relative grid items-center gap-1.5 border-b border-[var(--pos-line)] px-3.5 py-2.5",
         "[grid-template-columns:28px_1fr_96px_88px_110px_28px]",
-        !synced && "pl-5",
+        !synced && "ps-5",
       )}
     >
       {/* Amber rail for unsynced lines */}
