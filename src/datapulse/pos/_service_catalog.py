@@ -21,6 +21,11 @@ from datapulse.pos.models import (
     PosProductResult,
     PosStockInfo,
 )
+from datapulse.pos.models.clinical import (
+    AlternativeItem,
+    CrossSellItem,
+    DrugDetail,
+)
 from datapulse.pos.receipt import generate_pdf_receipt, generate_thermal_receipt
 
 if TYPE_CHECKING:
@@ -130,6 +135,69 @@ class CatalogMixin:
         ]
         next_cursor = items[-1].updated_at if len(items) == limit else None
         return CatalogStockPage(items=items, next_cursor=next_cursor)
+
+    def get_drug_detail(self, drug_code: str) -> DrugDetail | None:
+        """Return drug detail + POS-owned clinical metadata (#623).
+
+        ``None`` when the drug_code is unknown in ``dim_product``; the route
+        layer converts that to a 404.
+        """
+        row = self._repo.get_drug_detail(drug_code)
+        if row is None:
+            return None
+        return DrugDetail(
+            drug_code=row["drug_code"],
+            drug_name=row["drug_name"],
+            drug_brand=row.get("drug_brand"),
+            drug_cluster=row.get("drug_cluster"),
+            drug_category=row.get("drug_category"),
+            unit_price=to_decimal(row.get("unit_price", 0)),
+            counseling_text=row.get("counseling_text"),
+            active_ingredient=row.get("active_ingredient"),
+        )
+
+    def get_cross_sell(self, drug_code: str) -> list[CrossSellItem]:
+        """Return the static cross-sell suggestions for ``drug_code`` (#623).
+
+        Returns an empty list — never raises — when the drug has no rules;
+        the clinical panel card hides client-side.
+        """
+        rows = self._repo.get_cross_sell_rules(drug_code)
+        return [
+            CrossSellItem(
+                drug_code=r["drug_code"],
+                drug_name=r["drug_name"],
+                reason=r["reason"],
+                reason_tag=r["reason_tag"],
+                unit_price=to_decimal(r.get("unit_price", 0)),
+            )
+            for r in rows
+        ]
+
+    def get_alternatives(self, drug_code: str) -> list[AlternativeItem]:
+        """Return generic alternatives with positive savings (#623).
+
+        Filters out siblings where ``savings_egp <= 0`` so the UI only
+        surfaces true cost-savers. Drugs with no ``active_ingredient`` on
+        file return an empty list (repo query is a no-op in that case).
+        """
+        rows = self._repo.get_alternatives_by_ingredient(drug_code)
+        items: list[AlternativeItem] = []
+        for r in rows:
+            primary_price = to_decimal(r.get("primary_unit_price", 0))
+            alt_price = to_decimal(r.get("unit_price", 0))
+            savings = primary_price - alt_price
+            if savings <= 0:
+                continue
+            items.append(
+                AlternativeItem(
+                    drug_code=r["drug_code"],
+                    drug_name=r["drug_name"],
+                    unit_price=alt_price,
+                    savings_egp=savings,
+                )
+            )
+        return items
 
     async def get_stock_info(
         self,

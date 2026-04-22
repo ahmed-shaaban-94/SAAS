@@ -265,3 +265,114 @@ class ShiftRepoMixin:
             .all()
         )
         return [dict(r) for r in rows]
+
+    def get_active_shift_for_staff(
+        self,
+        tenant_id: int,
+        staff_id: str,
+    ) -> dict[str, Any] | None:
+        """Return the staff's currently-open shift, if any (#627).
+
+        A staff can have at most one open shift across all terminals (enforced
+        by convention, not by a DB constraint — the terminal-level unique
+        index on open sessions is the primary gate). Returns the most recent
+        open row; callers that need a stricter guarantee should check
+        ``terminal_sessions`` instead.
+        """
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT id, terminal_id, tenant_id, staff_id, shift_date,
+                           opened_at, closed_at, opening_cash, closing_cash,
+                           expected_cash, variance
+                    FROM   pos.shift_records
+                    WHERE  tenant_id = :tenant_id
+                    AND    staff_id  = :staff_id
+                    AND    closed_at IS NULL
+                    ORDER  BY opened_at DESC
+                    LIMIT  1
+                """),
+                {"tenant_id": tenant_id, "staff_id": staff_id},
+            )
+            .mappings()
+            .first()
+        )
+        return dict(row) if row else None
+
+    def get_shift_commission_summary(
+        self,
+        shift_id: int,
+    ) -> dict[str, Any]:
+        """Return ``commission_earned`` + live sales totals for a shift (#627).
+
+        Sums ``line_total * commission_rate`` across completed transactions
+        in the shift, falling back to 0 for drugs without a catalog meta row
+        (LEFT JOIN). Returns deterministic zeros for a shift with no items
+        so the terminal's status-strip pill renders correctly on empty shifts.
+        """
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT
+                        COALESCE(
+                            SUM(ti.line_total * COALESCE(m.commission_rate, 0)),
+                            0
+                        ) AS commission_earned_egp,
+                        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'completed')
+                            AS transactions_so_far,
+                        COALESCE(
+                            SUM(t.grand_total) FILTER (WHERE t.status = 'completed'),
+                            0
+                        ) AS sales_so_far_egp
+                    FROM        pos.transactions t
+                    LEFT  JOIN  pos.transaction_items ti
+                                ON ti.transaction_id = t.id
+                    LEFT  JOIN  pos.product_catalog_meta m
+                                ON m.tenant_id = t.tenant_id
+                               AND m.drug_code = ti.drug_code
+                    WHERE       t.shift_id = :shift_id
+                """),
+                {"shift_id": shift_id},
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return {
+                "commission_earned_egp": Decimal("0"),
+                "transactions_so_far": 0,
+                "sales_so_far_egp": Decimal("0"),
+            }
+        return dict(row)
+
+    def get_terminal_daily_target(
+        self,
+        terminal_id: int,
+    ) -> Decimal | None:
+        """Return ``daily_sales_target_egp`` for a terminal, ``None`` if unset (#627).
+
+        Joins ``pos.terminal_sessions`` → ``pos.terminal_config`` via the
+        stable ``terminal_name`` key. Returns ``None`` for terminals without
+        a config row OR with an explicit NULL target — both cases mean "no
+        target" to the UI, which then hides the trophy bar.
+        """
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT tc.daily_sales_target_egp
+                    FROM        pos.terminal_sessions ts
+                    LEFT  JOIN  pos.terminal_config   tc
+                                ON tc.tenant_id     = ts.tenant_id
+                               AND tc.terminal_name = ts.terminal_name
+                    WHERE  ts.id = :terminal_id
+                    LIMIT  1
+                """),
+                {"terminal_id": terminal_id},
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return None
+        value = row.get("daily_sales_target_egp")
+        return Decimal(str(value)) if value is not None else None

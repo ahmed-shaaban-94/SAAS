@@ -34,6 +34,17 @@ from datapulse.pos.models.checkout import (
     VoidRequest,
     VoidResponse,
 )
+from datapulse.pos.models.clinical import (
+    AlternativeItem,
+    CrossSellItem,
+    DrugDetail,
+)
+from datapulse.pos.models.commission import ActiveShiftResponse
+from datapulse.pos.models.customer import (
+    LateRefillItem,
+    PosCustomerChurn,
+    PosCustomerLookup,
+)
 from datapulse.pos.models.offline import (
     CapabilitiesDoc,
     DeviceRegisterRequest,
@@ -119,6 +130,16 @@ from datapulse.pos.models.vouchers import (
 __all__ = [
     # cart
     "PosCartItem",
+    # clinical
+    "AlternativeItem",
+    "CrossSellItem",
+    "DrugDetail",
+    # commission / active shift
+    "ActiveShiftResponse",
+    # customer lookup
+    "LateRefillItem",
+    "PosCustomerChurn",
+    "PosCustomerLookup",
     # checkout
     "AppliedDiscount",
     "CheckoutRequest",
