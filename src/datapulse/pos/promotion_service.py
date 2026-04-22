@@ -92,9 +92,7 @@ class PromotionService:
         drug_clusters = sorted(
             {item.drug_cluster for item in req.items if item.drug_cluster is not None}
         )
-        drug_brands = sorted(
-            {item.drug_brand for item in req.items if item.drug_brand is not None}
-        )
+        drug_brands = sorted({item.drug_brand for item in req.items if item.drug_brand is not None})
         now = datetime.now(UTC)
         candidates = self._repo.list_eligible(
             tenant_id,

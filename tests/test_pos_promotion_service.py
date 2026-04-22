@@ -164,8 +164,8 @@ def test_eligible_base_scope_brand_sums_only_matching_brands() -> None:
     items = _items(
         ("A", None, Decimal("2"), Decimal("15"), "BAYER"),  # case-insensitive → 30
         ("B", None, Decimal("1"), Decimal("20"), "Sanofi"),  # skipped
-        ("C", None, Decimal("3"), Decimal("10"), "gsk"),     # case-insensitive → 30
-        ("D", None, Decimal("1"), Decimal("5"), None),       # no brand → skipped
+        ("C", None, Decimal("3"), Decimal("10"), "gsk"),  # case-insensitive → 30
+        ("D", None, Decimal("1"), Decimal("5"), None),  # no brand → skipped
     )
     base = PromotionService.eligible_base(promo, items)
     assert base == Decimal("60")

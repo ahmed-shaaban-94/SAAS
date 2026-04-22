@@ -210,9 +210,7 @@ class PromotionRepository:
                 else current.scope_categories
             ),
             scope_brands=(
-                payload.scope_brands
-                if payload.scope_brands is not None
-                else current.scope_brands
+                payload.scope_brands if payload.scope_brands is not None else current.scope_brands
             ),
         )
         refreshed = self.get(tenant_id, promotion_id)
@@ -472,9 +470,7 @@ class PromotionRepository:
             )
         return out
 
-    def _load_scope_joins(
-        self, promotion_id: int
-    ) -> tuple[list[str], list[str], list[str]]:
+    def _load_scope_joins(self, promotion_id: int) -> tuple[list[str], list[str], list[str]]:
         """Return (scope_items, scope_categories, scope_brands) for a promotion.
 
         Three round-trips — acceptable for admin CRUD paths. The hot-path
