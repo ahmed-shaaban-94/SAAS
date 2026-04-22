@@ -9,7 +9,7 @@ import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import text
 
-from datapulse.api.deps import CurrentUser, get_billing_service
+from datapulse.api.deps import CurrentUser, build_billing_webhook_service, get_billing_service
 from datapulse.api.limiter import limiter
 from datapulse.billing.models import (
     BillingStatus,
@@ -18,6 +18,8 @@ from datapulse.billing.models import (
     PortalResponse,
 )
 from datapulse.billing.service import BillingService
+from datapulse.config import get_settings
+from datapulse.core.db import get_session_factory
 
 logger = structlog.get_logger()
 
@@ -87,12 +89,6 @@ async def stripe_webhook(
     stripe_signature: Annotated[str | None, Header(alias="stripe-signature")] = None,
 ) -> dict:
     """Handle Stripe webhook events. Not behind JWT — uses Stripe signature verification."""
-    from datapulse.billing.repository import BillingRepository
-    from datapulse.billing.service import BillingService
-    from datapulse.billing.stripe_client import StripeClient
-    from datapulse.config import get_settings
-    from datapulse.core.db import get_session_factory
-
     settings = get_settings()
 
     if not stripe_signature:
@@ -105,17 +101,8 @@ async def stripe_webhook(
 
     session = get_session_factory()()
     try:
-        # Webhook uses raw session (no tenant RLS — it resolves tenant from Stripe customer)
         session.execute(text("SET LOCAL statement_timeout = '30s'"))
-        repo = BillingRepository(session)
-        client = StripeClient(settings.stripe_secret_key)
-        service = BillingService(
-            repo,
-            client,
-            price_to_plan=settings.stripe_price_to_plan_map,
-            base_url=settings.billing_base_url,
-        )
-
+        service = build_billing_webhook_service(session)
         result = service.handle_webhook_event(
             payload, stripe_signature, settings.stripe_webhook_secret
         )

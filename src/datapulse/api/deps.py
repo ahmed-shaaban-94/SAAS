@@ -230,6 +230,23 @@ def get_billing_service(
     )
 
 
+def build_billing_webhook_service(session: Session) -> BillingService:
+    """Wire a BillingService for the Stripe webhook path.
+
+    The webhook runs before tenant auth (it resolves the tenant from the
+    Stripe customer), so callers pass a raw session instead of the
+    tenant-RLS scoped one used by :func:`get_billing_service`. Session
+    lifecycle (commit/rollback/close) stays with the caller.
+    """
+    settings = get_settings()
+    return BillingService(
+        BillingRepository(session),
+        StripeClient(settings.stripe_secret_key),
+        price_to_plan=settings.stripe_price_to_plan_map,
+        base_url=settings.billing_base_url,
+    )
+
+
 # Alias for backwards compatibility — analytics.py and ai_light.py import this name
 verify_api_key = require_api_key
 
