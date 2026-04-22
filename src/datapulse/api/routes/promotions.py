@@ -28,6 +28,7 @@ from datapulse.pos.models import (
     PromotionStatusUpdate,
     PromotionUpdate,
 )
+from datapulse.pos.models.promotions import PreviewMatchesRequest, PreviewMatchesResponse
 from datapulse.pos.promotion_service import PromotionService
 from datapulse.rbac.dependencies import require_permission
 
@@ -163,3 +164,24 @@ def list_eligible_promotions(
     promotion would yield so the UI can show \"Save EGP X\".
     """
     return service.list_eligible(_tenant_id_of(user), payload)
+
+
+@router.post(
+    "/preview-matches",
+    response_model=PreviewMatchesResponse,
+    dependencies=[Depends(require_permission("pos:promotion:manage"))],
+)
+@limiter.limit("60/minute")
+def preview_promotion_matches(
+    request: Request,
+    payload: PreviewMatchesRequest,
+    service: ServiceDep,
+    user: CurrentUser,
+) -> PreviewMatchesResponse:
+    """Return the count of SKUs that match the given scope+values.
+
+    Used by the admin UI for live "matches N SKUs" feedback before saving
+    a brand or active_ingredient scope promotion. Returns 0 for scopes
+    where a catalog count is not meaningful (all, items, category).
+    """
+    return service.preview_matches(_tenant_id_of(user), payload)

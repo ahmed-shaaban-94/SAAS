@@ -22,17 +22,16 @@ class PromotionDiscountType(StrEnum):
 class PromotionScope(StrEnum):
     """Which cart items a promotion may be applied against.
 
-    ``brand`` matches against ``dim_product.drug_brand`` — added in
-    migration 104 as an extension of the original (091) scope enum.
-    ``active_ingredient`` is not yet supported — that scope needs the
-    product dimension to gain an ``active_ingredient`` column first
-    (tracked as a separate follow-up ticket).
+    ``brand`` matches against ``dim_product.drug_brand`` (migration 104).
+    ``active_ingredient`` matches against ``pos.product_catalog_meta.active_ingredient``
+    (migration 106); case-insensitive on both sides.
     """
 
     all = "all"
     items = "items"
     category = "category"
     brand = "brand"
+    active_ingredient = "active_ingredient"
 
 
 class PromotionStatus(StrEnum):
@@ -69,6 +68,7 @@ class PromotionCreate(BaseModel):
     scope_items: list[str] = Field(default_factory=list)
     scope_categories: list[str] = Field(default_factory=list)
     scope_brands: list[str] = Field(default_factory=list)
+    scope_active_ingredients: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _validate(self) -> PromotionCreate:
@@ -84,6 +84,8 @@ class PromotionCreate(BaseModel):
             raise ValueError("scope_categories required when scope='category'")
         if self.scope == PromotionScope.brand and not self.scope_brands:
             raise ValueError("scope_brands required when scope='brand'")
+        if self.scope == PromotionScope.active_ingredient and not self.scope_active_ingredients:
+            raise ValueError("scope_active_ingredients required when scope='active_ingredient'")
         if self.min_purchase is not None and self.min_purchase < 0:
             raise ValueError("min_purchase must be >= 0")
         if self.max_discount is not None and self.max_discount <= 0:
@@ -108,6 +110,7 @@ class PromotionUpdate(BaseModel):
     scope_items: list[str] | None = None
     scope_categories: list[str] | None = None
     scope_brands: list[str] | None = None
+    scope_active_ingredients: list[str] | None = None
 
 
 class PromotionStatusUpdate(BaseModel):
@@ -138,6 +141,7 @@ class PromotionResponse(BaseModel):
     scope_items: list[str] = Field(default_factory=list)
     scope_categories: list[str] = Field(default_factory=list)
     scope_brands: list[str] = Field(default_factory=list)
+    scope_active_ingredients: list[str] = Field(default_factory=list)
     usage_count: int = 0
     total_discount_given: JsonDecimal = Decimal("0")
     created_at: datetime
@@ -146,8 +150,9 @@ class PromotionResponse(BaseModel):
 class EligibleCartItem(BaseModel):
     """One cart line sent to ``POST /pos/promotions/eligible`` for scoring.
 
-    ``drug_brand`` is optional; when null the line simply cannot match a
-    ``scope='brand'`` promotion (added in migration 104).
+    ``drug_brand`` is optional; when null the line cannot match ``scope='brand'``.
+    ``active_ingredient`` is optional; when null the line cannot match
+    ``scope='active_ingredient'`` (added in migration 106).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -155,6 +160,7 @@ class EligibleCartItem(BaseModel):
     drug_code: str
     drug_cluster: str | None = None
     drug_brand: str | None = None
+    active_ingredient: str | None = None
     quantity: JsonDecimal
     unit_price: JsonDecimal
 
@@ -192,6 +198,29 @@ class EligiblePromotionsResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     promotions: list[EligiblePromotion]
+
+
+class PreviewMatchesRequest(BaseModel):
+    """Request body for ``POST /pos/promotions/preview-matches``.
+
+    Returns the number of SKUs in the product catalog whose ``scope``-matched
+    attribute contains any of the supplied ``values``.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    scope: PromotionScope
+    values: list[str] = Field(min_length=1)
+
+
+class PreviewMatchesResponse(BaseModel):
+    """Response for ``POST /pos/promotions/preview-matches``."""
+
+    model_config = ConfigDict(frozen=True)
+
+    scope: PromotionScope
+    values: list[str]
+    matched_sku_count: int
 
 
 class PromotionApplicationRow(BaseModel):

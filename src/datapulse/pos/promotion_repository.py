@@ -26,6 +26,7 @@ from datapulse.pos.models import (
     PromotionStatus,
     PromotionUpdate,
 )
+from datapulse.pos.models.promotions import PreviewMatchesResponse
 
 log = get_logger(__name__)
 
@@ -36,6 +37,7 @@ def _row_to_response(
     scope_items: list[str],
     scope_categories: list[str],
     scope_brands: list[str] | None = None,
+    scope_active_ingredients: list[str] | None = None,
     usage_count: int = 0,
     total_discount_given: Decimal = Decimal("0"),
 ) -> PromotionResponse:
@@ -60,6 +62,7 @@ def _row_to_response(
         scope_items=scope_items,
         scope_categories=scope_categories,
         scope_brands=scope_brands or [],
+        scope_active_ingredients=scope_active_ingredients or [],
         usage_count=usage_count,
         total_discount_given=total_discount_given,
         created_at=row["created_at"],
@@ -134,12 +137,14 @@ class PromotionRepository:
             scope_items=payload.scope_items,
             scope_categories=payload.scope_categories,
             scope_brands=payload.scope_brands,
+            scope_active_ingredients=payload.scope_active_ingredients,
         )
         return _row_to_response(
             dict(row),
             scope_items=list(payload.scope_items),
             scope_categories=list(payload.scope_categories),
             scope_brands=list(payload.scope_brands),
+            scope_active_ingredients=list(payload.scope_active_ingredients),
         )
 
     def update(
@@ -198,6 +203,8 @@ class PromotionRepository:
             self._delete_scope_categories(promotion_id)
         if payload.scope is not None or payload.scope_brands is not None:
             self._delete_scope_brands(promotion_id)
+        if payload.scope is not None or payload.scope_active_ingredients is not None:
+            self._delete_scope_active_ingredients(promotion_id)
         self._write_scope_joins(
             promotion_id,
             scope=effective_scope,
@@ -211,6 +218,11 @@ class PromotionRepository:
             ),
             scope_brands=(
                 payload.scope_brands if payload.scope_brands is not None else current.scope_brands
+            ),
+            scope_active_ingredients=(
+                payload.scope_active_ingredients
+                if payload.scope_active_ingredients is not None
+                else current.scope_active_ingredients
             ),
         )
         refreshed = self.get(tenant_id, promotion_id)
@@ -257,6 +269,7 @@ class PromotionRepository:
         scope_items: list[str],
         scope_categories: list[str],
         scope_brands: list[str],
+        scope_active_ingredients: list[str],
     ) -> None:
         if scope == PromotionScope.items:
             for drug_code in scope_items:
@@ -294,6 +307,19 @@ class PromotionRepository:
                     ),
                     {"pid": promotion_id, "br": brand},
                 )
+        elif scope == PromotionScope.active_ingredient:
+            for ingredient in scope_active_ingredients:
+                self._session.execute(
+                    text(
+                        """
+                        INSERT INTO pos.promotion_active_ingredients
+                            (promotion_id, active_ingredient)
+                        VALUES (:pid, :ai)
+                        ON CONFLICT DO NOTHING
+                        """
+                    ),
+                    {"pid": promotion_id, "ai": ingredient},
+                )
 
     def _delete_scope_items(self, promotion_id: int) -> None:
         self._session.execute(
@@ -310,6 +336,12 @@ class PromotionRepository:
     def _delete_scope_brands(self, promotion_id: int) -> None:
         self._session.execute(
             text("DELETE FROM pos.promotion_brands WHERE promotion_id = :pid"),
+            {"pid": promotion_id},
+        )
+
+    def _delete_scope_active_ingredients(self, promotion_id: int) -> None:
+        self._session.execute(
+            text("DELETE FROM pos.promotion_active_ingredients WHERE promotion_id = :pid"),
             {"pid": promotion_id},
         )
 
@@ -337,13 +369,14 @@ class PromotionRepository:
         )
         if row is None:
             return None
-        items, cats, brands = self._load_scope_joins(promotion_id)
+        items, cats, brands, ais = self._load_scope_joins(promotion_id)
         usage, total = self._load_usage_stats(tenant_id, promotion_id)
         return _row_to_response(
             dict(row),
             scope_items=items,
             scope_categories=cats,
             scope_brands=brands,
+            scope_active_ingredients=ais,
             usage_count=usage,
             total_discount_given=total,
         )
@@ -380,7 +413,7 @@ class PromotionRepository:
         result: list[PromotionResponse] = []
         for r in rows:
             pid = int(r["id"])
-            items, cats, brands = self._load_scope_joins(pid)
+            items, cats, brands, ais = self._load_scope_joins(pid)
             usage, total = self._load_usage_stats(tenant_id, pid)
             result.append(
                 _row_to_response(
@@ -388,6 +421,7 @@ class PromotionRepository:
                     scope_items=items,
                     scope_categories=cats,
                     scope_brands=brands,
+                    scope_active_ingredients=ais,
                     usage_count=usage,
                     total_discount_given=total,
                 )
@@ -402,6 +436,7 @@ class PromotionRepository:
         drug_codes: list[str],
         drug_clusters: list[str],
         drug_brands: list[str],
+        active_ingredients: list[str],
         subtotal: Decimal,
     ) -> list[PromotionResponse]:
         """Return currently-active promotions whose eligibility rules match the cart.
@@ -412,7 +447,8 @@ class PromotionRepository:
         * ``scope = 'all'`` OR
           (``scope = 'items'`` AND any drug_code matches) OR
           (``scope = 'category'`` AND any drug_cluster matches) OR
-          (``scope = 'brand'`` AND any drug_brand matches — case-insensitive)
+          (``scope = 'brand'`` AND any drug_brand matches — case-insensitive) OR
+          (``scope = 'active_ingredient'`` AND any active_ingredient matches — case-insensitive)
         * ``min_purchase`` is null or ``subtotal >= min_purchase``
         """
         rows = (
@@ -427,6 +463,8 @@ class PromotionRepository:
                  LEFT JOIN pos.promotion_items pi       ON pi.promotion_id = p.id
                  LEFT JOIN pos.promotion_categories pc  ON pc.promotion_id = p.id
                  LEFT JOIN pos.promotion_brands pb      ON pb.promotion_id = p.id
+                 LEFT JOIN pos.promotion_active_ingredients pai
+                                                        ON pai.promotion_id = p.id
                      WHERE p.tenant_id = :tid
                        AND p.status    = 'active'
                        AND :now BETWEEN p.starts_at AND p.ends_at
@@ -435,7 +473,10 @@ class PromotionRepository:
                               p.scope = 'all'
                            OR (p.scope = 'items'    AND pi.drug_code    = ANY(:codes))
                            OR (p.scope = 'category' AND pc.drug_cluster = ANY(:clusters))
-                           OR (p.scope = 'brand'    AND LOWER(pb.brand_name) = ANY(:brands))
+                           OR (p.scope = 'brand'
+                               AND LOWER(pb.brand_name) = ANY(:brands))
+                           OR (p.scope = 'active_ingredient'
+                               AND LOWER(pai.active_ingredient) = ANY(:ais))
                        )
                   ORDER BY p.created_at DESC
                     """
@@ -446,9 +487,8 @@ class PromotionRepository:
                     "sub": subtotal,
                     "codes": drug_codes or [""],
                     "clusters": drug_clusters or [""],
-                    # Lowercased on both sides for case-insensitive brand match
-                    # (dim_product.drug_brand is "Bayer"; admin may type "bayer").
                     "brands": [b.lower() for b in drug_brands] or [""],
+                    "ais": [a.lower() for a in active_ingredients] or [""],
                 },
             )
             .mappings()
@@ -457,7 +497,7 @@ class PromotionRepository:
         out: list[PromotionResponse] = []
         for r in rows:
             pid = int(r["id"])
-            items, cats, brands = self._load_scope_joins(pid)
+            items, cats, brands, ais = self._load_scope_joins(pid)
             # Omit usage stats here — eligibility is hot-path; admin detail
             # view re-queries via get() and pays the extra round-trip.
             out.append(
@@ -466,14 +506,17 @@ class PromotionRepository:
                     scope_items=items,
                     scope_categories=cats,
                     scope_brands=brands,
+                    scope_active_ingredients=ais,
                 )
             )
         return out
 
-    def _load_scope_joins(self, promotion_id: int) -> tuple[list[str], list[str], list[str]]:
-        """Return (scope_items, scope_categories, scope_brands) for a promotion.
+    def _load_scope_joins(
+        self, promotion_id: int
+    ) -> tuple[list[str], list[str], list[str], list[str]]:
+        """Return (scope_items, scope_categories, scope_brands, scope_active_ingredients).
 
-        Three round-trips — acceptable for admin CRUD paths. The hot-path
+        Four round-trips — acceptable for admin CRUD paths. The hot-path
         eligibility query above avoids calling this per-row beyond what's
         already needed for the response shape.
         """
@@ -513,7 +556,19 @@ class PromotionRepository:
             .mappings()
             .all()
         ]
-        return items, cats, brands
+        ais = [
+            str(r["active_ingredient"])
+            for r in self._session.execute(
+                text(
+                    "SELECT active_ingredient FROM pos.promotion_active_ingredients "
+                    "WHERE promotion_id = :pid ORDER BY active_ingredient"
+                ),
+                {"pid": promotion_id},
+            )
+            .mappings()
+            .all()
+        ]
+        return items, cats, brands, ais
 
     def _load_usage_stats(self, tenant_id: int, promotion_id: int) -> tuple[int, Decimal]:
         row = (
@@ -534,6 +589,58 @@ class PromotionRepository:
         if row is None:  # pragma: no cover — COUNT always returns a row
             return 0, Decimal("0")
         return int(row["n"]), Decimal(str(row["total"]))
+
+    # ------------------------------------------------------------------
+    # Preview-matches — admin UI live count
+    # ------------------------------------------------------------------
+
+    def preview_matches(
+        self, tenant_id: int, scope: PromotionScope, values: list[str]
+    ) -> PreviewMatchesResponse:
+        """Return the count of SKUs in the product catalog that match scope+values.
+
+        Used by the admin UI to show "matches N SKUs" before saving a promotion.
+        ``scope='brand'`` queries ``public_marts.dim_product.drug_brand``.
+        ``scope='active_ingredient'`` queries ``pos.product_catalog_meta.active_ingredient``.
+        Other scopes (``all``, ``items``, ``category``) return 0 — not meaningful
+        without a full cart context.
+        """
+        lowered = [v.lower() for v in values if v.strip()]
+        count = 0
+        if scope == PromotionScope.brand and lowered:
+            row = (
+                self._session.execute(
+                    text(
+                        """
+                        SELECT COUNT(DISTINCT drug_code)::INT AS n
+                          FROM public_marts.dim_product
+                         WHERE LOWER(drug_brand) = ANY(:vals)
+                        """
+                    ),
+                    {"vals": lowered},
+                )
+                .mappings()
+                .first()
+            )
+            count = int(row["n"]) if row else 0
+        elif scope == PromotionScope.active_ingredient and lowered:
+            row = (
+                self._session.execute(
+                    text(
+                        """
+                        SELECT COUNT(DISTINCT drug_code)::INT AS n
+                          FROM pos.product_catalog_meta
+                         WHERE tenant_id = :tid
+                           AND LOWER(active_ingredient) = ANY(:vals)
+                        """
+                    ),
+                    {"tid": tenant_id, "vals": lowered},
+                )
+                .mappings()
+                .first()
+            )
+            count = int(row["n"]) if row else 0
+        return PreviewMatchesResponse(scope=scope, values=values, matched_sku_count=count)
 
     # ------------------------------------------------------------------
     # Atomic application — called from commit.py
@@ -571,12 +678,13 @@ class PromotionRepository:
         )
         if row is None:
             raise HTTPException(status_code=400, detail="promotion_not_found")
-        items, cats, brands = self._load_scope_joins(promotion_id)
+        items, cats, brands, ais = self._load_scope_joins(promotion_id)
         promo = _row_to_response(
             dict(row),
             scope_items=items,
             scope_categories=cats,
             scope_brands=brands,
+            scope_active_ingredients=ais,
         )
         if promo.status != PromotionStatus.active:
             raise HTTPException(status_code=400, detail="promotion_inactive")

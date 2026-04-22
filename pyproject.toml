@@ -89,6 +89,17 @@ source = ["datapulse"]
 fail_under = 77
 show_missing = true
 
+# ── Per-module coverage gates — issue #607 ────────────────────────────────────
+# Enforced by scripts/check_coverage_gates.py in the CI unit-test job.
+# Security-critical modules are gated higher than the 77 % overall floor.
+# Raise these as coverage improves toward the 95 % target (issue #540).
+[tool.datapulse.coverage_gates]
+"datapulse/core/auth" = 90
+"datapulse/core/jwt"  = 90
+"datapulse/rbac"      = 90
+"datapulse/billing"   = 85
+"datapulse/pos"       = 80
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = false

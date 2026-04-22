@@ -31,6 +31,7 @@ from datapulse.api.routes import (
     _pos_catalog,
     _pos_clinical,
     _pos_customer_lookup,
+    _pos_delivery,
     _pos_offline,
     _pos_receipts,
     _pos_routes_deps,
@@ -86,6 +87,7 @@ for _sub in (
     _pos_void_returns,
     _pos_shifts,
     _pos_offline,
+    _pos_delivery,
 ):
     router.include_router(_sub.router)
 

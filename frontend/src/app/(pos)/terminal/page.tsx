@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Clock } from "lucide-react";
-import { OfflineBadge } from "@/components/pos/OfflineBadge";
+import { TopStatusStrip } from "@/components/pos/terminal/TopStatusStrip";
+import { useActiveShift } from "@/hooks/use-active-shift";
 import { PharmacistVerification } from "@/components/pos/PharmacistVerification";
 import { VoucherCodeModal } from "@/components/pos/VoucherCodeModal";
 import {
@@ -25,10 +25,13 @@ import { ScanDisambigPicker } from "@/components/pos/terminal/ScanDisambigPicker
 import { ProvisionalBanner } from "@/components/pos/terminal/ProvisionalBanner";
 import { productToQuickPick, type TilePaymentMethod } from "@/components/pos/terminal/types";
 import { CheckoutConfirmModal } from "@/components/pos/terminal/CheckoutConfirmModal";
-import { ClinicalPanelSkeleton } from "@/components/pos/terminal/ClinicalPanelSkeleton";
+import { ClinicalPanel } from "@/components/pos/terminal/ClinicalPanel";
 import { CustomerBar } from "@/components/pos/terminal/CustomerBar";
 import { ChurnAlertCard } from "@/components/pos/terminal/ChurnAlertCard";
+import { ShiftOpenModal } from "@/components/pos/terminal/ShiftOpenModal";
+import { ManagerPinOverrideModal } from "@/components/pos/terminal/ManagerPinOverrideModal";
 import { usePosCustomerLookup } from "@/hooks/use-pos-customer-lookup";
+import { useManagerOverride } from "@/hooks/use-manager-override";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
 import { usePosProducts } from "@/hooks/use-pos-products";
@@ -39,7 +42,7 @@ import { computeVoucherDiscount, type CartVoucher } from "@/contexts/pos-cart-co
 import { fmtEgp } from "@/components/pos/terminal/types";
 
 // ---- Terminal guard ----
-function useActiveTerminal(): TerminalSessionResponse | null {
+function useActiveTerminal(): [TerminalSessionResponse | null, (s: TerminalSessionResponse) => void] {
   const [terminal, setTerminal] = useState<TerminalSessionResponse | null>(null);
   useEffect(() => {
     const stored = localStorage.getItem("pos:active_terminal");
@@ -51,12 +54,16 @@ function useActiveTerminal(): TerminalSessionResponse | null {
       }
     }
   }, []);
-  return terminal;
+  // Wrap setter to narrow the type: callers only ever pass a full session object.
+  const updateTerminal = (s: TerminalSessionResponse) => setTerminal(s);
+  return [terminal, updateTerminal];
 }
 
 export default function PosTerminalPage() {
   const router = useRouter();
-  const terminal = useActiveTerminal();
+  const [terminal, setTerminal] = useActiveTerminal();
+  const { overrideOpen, overrideLabel, requestOverride, approveOverride, cancelOverride } =
+    useManagerOverride();
   const {
     items,
     appliedDiscount,
@@ -73,6 +80,7 @@ export default function PosTerminalPage() {
   } = usePosCart();
   const checkout = usePosCheckout();
   const offline = useOfflineState();
+  const { shift } = useActiveShift(terminal?.id);
 
   // Voucher presentation derived from the unified cart-discount slot. Promotions
   // live in the same slot but render through a different UI (PromotionsModal +
@@ -124,13 +132,11 @@ export default function PosTerminalPage() {
 
   const scanInputRef = useRef<HTMLInputElement>(null);
 
-  // If no terminal open, redirect to shift page
-  useEffect(() => {
-    if (terminal === null) {
-      const timer = setTimeout(() => router.push("/shift"), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [terminal, router]);
+  // D2 — active drug code for ClinicalPanel: track the most-recently-added
+  // item so the panel auto-updates as the cashier scans or quick-picks.
+  const [activeDrugCode, setActiveDrugCode] = useState<string | null>(null);
+
+  // No redirect — ShiftOpenModal blocks the page until a shift is opened.
 
   // Auto-focus scan bar on mount
   useEffect(() => {
@@ -172,6 +178,7 @@ export default function PosTerminalPage() {
       if (!offline.isOnline) {
         setUnsyncedCodes((prev) => new Set(prev).add(item.drug_code));
       }
+      setActiveDrugCode(item.drug_code);
       setScanToast(`${item.drug_name} added`);
       // Refocus scan bar
       scanInputRef.current?.focus();
@@ -242,14 +249,16 @@ export default function PosTerminalPage() {
 
   const handleRemove = useCallback(
     (drugCode: string) => {
-      removeItem(drugCode);
-      setUnsyncedCodes((prev) => {
-        const next = new Set(prev);
-        next.delete(drugCode);
-        return next;
+      requestOverride("حذف صنف من السلة", () => {
+        removeItem(drugCode);
+        setUnsyncedCodes((prev) => {
+          const next = new Set(prev);
+          next.delete(drugCode);
+          return next;
+        });
       });
     },
-    [removeItem],
+    [removeItem, requestOverride],
   );
 
   // ----- Voucher flow -----
@@ -431,16 +440,6 @@ export default function PosTerminalPage() {
 
   // ---- Render ----
 
-  if (!terminal) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center text-text-secondary">
-          <p className="text-sm">No terminal open. Redirecting to shift…</p>
-        </div>
-      </div>
-    );
-  }
-
   const isOffline = !offline.isOnline;
   const averageItem = itemCount > 0 ? grandTotal / itemCount : 0;
   const itemDiscountTotal = Math.max(0, discountTotal - voucherDiscount);
@@ -453,30 +452,12 @@ export default function PosTerminalPage() {
         isOffline && "pos-provisional-rail",
       )}
     >
-      {/* Header */}
-      <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
-        <div className="flex items-center gap-3">
-          <OfflineBadge />
-          <span className="text-sm font-semibold text-text-primary">DataPulse POS</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-            <Clock className="h-3.5 w-3.5" />
-            <span>{terminal.terminal_name}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push("/shift")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5",
-              "text-xs font-medium text-text-secondary hover:bg-surface-raised",
-            )}
-          >
-            <X className="h-3.5 w-3.5" />
-            Close
-          </button>
-        </div>
-      </header>
+      {/* D4 — TopStatusStrip (sync pill · commission · daily target · clock) */}
+      <TopStatusStrip
+        shift={shift}
+        terminalName={terminal?.terminal_name}
+        onClose={() => router.push("/shift")}
+      />
 
       {isOffline && <ProvisionalBanner pending={offline.pending} />}
 
@@ -611,7 +592,7 @@ export default function PosTerminalPage() {
             "xl:col-start-3 xl:col-span-1 xl:row-start-1",
           )}
         >
-          <ClinicalPanelSkeleton activeDrugCode={null} />
+          <ClinicalPanel activeDrugCode={activeDrugCode} />
         </section>
       </main>
 
@@ -683,6 +664,7 @@ export default function PosTerminalPage() {
               line_total: pendingDrug.unit_price,
               is_controlled: pendingDrug.is_controlled,
             });
+            setActiveDrugCode(pendingDrug.drug_code);
             setScanToast(`${pendingDrug.drug_name} added`);
           }
           setPendingDrug(null);
@@ -691,6 +673,21 @@ export default function PosTerminalPage() {
           setPharmacistOpen(false);
           setPendingDrug(null);
         }}
+      />
+
+      {/* D5 — shift-open gate (shown when there is no active terminal session) */}
+      {!terminal && (
+        <ShiftOpenModal
+          onOpened={(session) => setTerminal(session)}
+        />
+      )}
+
+      {/* D5 — manager PIN gate for destructive cart actions */}
+      <ManagerPinOverrideModal
+        open={overrideOpen}
+        actionLabel={overrideLabel}
+        onApproved={approveOverride}
+        onCancel={cancelOverride}
       />
     </div>
   );

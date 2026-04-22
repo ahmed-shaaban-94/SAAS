@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-bridge";
-import { ArrowLeft, FileText, Loader2, SkipForward } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Printer, SkipForward } from "lucide-react";
 import { PaymentPanel } from "@/components/pos/PaymentPanel";
-import { ReceiptPreview } from "@/components/pos/ReceiptPreview";
 import { InvoiceModal } from "@/components/pos/InvoiceModal";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
+import { SalesReceipt } from "@/components/pos/receipts/SalesReceipt";
+import { InsuranceReceipt } from "@/components/pos/receipts/InsuranceReceipt";
+import { DeliveryReceipt } from "@/components/pos/receipts/DeliveryReceipt";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
 import { fetchAPI, postAPI } from "@/lib/api-client";
@@ -17,10 +19,8 @@ import type {
   CheckoutResponse,
   TransactionDetailResponse,
 } from "@/types/pos";
+import type { ReceiptData } from "@/components/pos/receipts/receipt-mock";
 
-// Branch metadata for the A4 invoice header. These are display-only and
-// come from the design handoff; wire to a real tenant-settings endpoint
-// once the branding surface exposes them.
 const INVOICE_BRANCH_NAME = "Maadi branch · POS-03";
 const INVOICE_BRANCH_ADDRESS = "12 Sobhi Saleh St · Cairo";
 const INVOICE_TAX_NUMBER = "428-893-011";
@@ -28,9 +28,82 @@ const INVOICE_TAX_NUMBER = "428-893-011";
 interface PendingCheckout {
   transactionId: number;
   method: PaymentMethod;
-  /** Optional — present when the insurance payment flow captured a
-   * pre-auth / policy reference in the InsuranceModal. */
   insuranceNo?: string;
+  isDelivery?: boolean;
+  deliveryAddress?: string;
+  deliveryRider?: string;
+  deliveryRiderPhone?: string;
+  deliveryEta?: number;
+}
+
+function buildReceiptData(
+  txn: TransactionDetailResponse,
+  result: CheckoutResponse,
+  cashierName: string,
+  insuranceNo?: string,
+  pendingDelivery?: Pick<PendingCheckout, "deliveryAddress" | "deliveryRider" | "deliveryRiderPhone" | "deliveryEta">,
+): ReceiptData {
+  const ts = new Date(txn.created_at);
+  const data: ReceiptData = {
+    meta: {
+      invoice_number: result.receipt_number ?? `TXN-${txn.id}`,
+      date: ts.toLocaleDateString("ar-EG", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      time: ts.toLocaleTimeString("ar-EG", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      shift_id: "",
+      cashier_name: cashierName,
+      site_name_ar: txn.site_code,
+    },
+    customer: {
+      name_ar: txn.customer_id ?? "",
+    },
+    items: txn.items.map((i) => ({
+      drug_name: i.drug_name,
+      drug_name_ar: i.drug_name,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      line_total: i.line_total,
+      batch_number: i.batch_number ?? undefined,
+    })),
+    totals: {
+      subtotal: txn.subtotal,
+      discount: txn.discount_total,
+      vat: txn.tax_total,
+      grand_total: txn.grand_total,
+      payment_method: txn.payment_method ?? "",
+    },
+  };
+
+  if (txn.payment_method === "insurance" && insuranceNo) {
+    data.insurance = {
+      company_name: "Insurance",
+      plan_name: insuranceNo,
+      approval_code: insuranceNo,
+      auth_time: ts.toLocaleTimeString("ar-EG"),
+      insurer_pct: 0,
+      insurer_amount: 0,
+      patient_pct: 100,
+      patient_amount: txn.grand_total,
+    };
+  }
+
+  if (pendingDelivery?.deliveryAddress) {
+    data.delivery = {
+      address: pendingDelivery.deliveryAddress,
+      rider_name: pendingDelivery.deliveryRider ?? "",
+      rider_phone: pendingDelivery.deliveryRiderPhone ?? "",
+      eta_minutes: pendingDelivery.deliveryEta ?? 30,
+    };
+  }
+
+  return data;
 }
 
 export default function CheckoutPage() {
@@ -44,8 +117,8 @@ export default function CheckoutPage() {
   const [txnDetail, setTxnDetail] = useState<TransactionDetailResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const printedRef = useRef(false);
 
-  // Read pending checkout info set by terminal page
   useEffect(() => {
     const stored = localStorage.getItem("pos:pending_checkout");
     if (stored) {
@@ -59,12 +132,19 @@ export default function CheckoutPage() {
     }
   }, [router]);
 
-  // Auto-process when we have pending checkout info
   useEffect(() => {
     if (!pending || result) return;
     processCheckout(pending.method);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
+
+  // Auto-print on first success — 300ms DOM-settle delay
+  useEffect(() => {
+    if (!result || printedRef.current) return;
+    printedRef.current = true;
+    const id = setTimeout(() => window.print(), 300);
+    return () => clearTimeout(id);
+  }, [result]);
 
   async function processCheckout(method: PaymentMethod) {
     if (!pending || isProcessing) return;
@@ -77,30 +157,22 @@ export default function CheckoutPage() {
           ? { source: appliedDiscount.source, ref: appliedDiscount.ref }
           : undefined,
         insurance_no:
-          method === "insurance" && pending.insuranceNo
-            ? pending.insuranceNo
-            : undefined,
+          method === "insurance" && pending.insuranceNo ? pending.insuranceNo : undefined,
       });
 
-      // Fetch full transaction with items for receipt
       const detail = await fetchAPI<TransactionDetailResponse>(
         `/api/v1/pos/transactions/${pending.transactionId}`,
       );
 
       setResult(checkoutResult);
       setTxnDetail(detail);
-      // Audit §8 item 9 — skip-receipt flow: the success surface now
-      // offers three choices (A4 invoice / thermal receipt preview /
-      // skip & new sale) instead of auto-opening the A4 modal, so a
-      // busy cashier can clear walk-ins without generating unused
-      // receipts. "A4 invoice" button below restores the old behavior
-      // on demand.
       localStorage.removeItem("pos:pending_checkout");
     } catch {
-      // Error shown in UI
       setIsProcessing(false);
     }
   }
+
+  const handlePrint = useCallback(() => window.print(), []);
 
   async function handleEmail() {
     if (!result) return;
@@ -120,7 +192,6 @@ export default function CheckoutPage() {
     router.push("/terminal");
   }
 
-  // Loading state while processing
   if (isProcessing && !result) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4">
@@ -130,7 +201,6 @@ export default function CheckoutPage() {
     );
   }
 
-  // Error state
   if (checkout.error) {
     return (
       <div className="pos-root flex min-h-screen flex-col">
@@ -159,14 +229,26 @@ export default function CheckoutPage() {
     );
   }
 
-  // Success state
   if (result && txnDetail) {
-    const cashierName =
-      (session?.user?.name as string | undefined) ?? "Cashier";
+    const cashierName = (session?.user?.name as string | undefined) ?? "Cashier";
     const discountSource = appliedDiscount?.source;
+    const receiptData = buildReceiptData(
+      txnDetail,
+      result,
+      cashierName,
+      pending?.insuranceNo,
+      pending ?? undefined,
+    );
+    const isInsurance = txnDetail.payment_method === "insurance";
+    const isDelivery = pending?.isDelivery === true;
+
     return (
       <div className="pos-root flex min-h-screen flex-col">
-        <header className="flex h-14 items-center justify-between border-b border-[var(--pos-line)] bg-[var(--pos-card)] px-4">
+        {/* Header — hidden on print via data-no-print */}
+        <header
+          data-no-print="true"
+          className="flex h-14 items-center justify-between border-b border-[var(--pos-line)] bg-[var(--pos-card)] px-4"
+        >
           <OfflineBadge />
           <div className="flex flex-col items-center">
             <span
@@ -194,6 +276,18 @@ export default function CheckoutPage() {
             </button>
             <button
               type="button"
+              onClick={handlePrint}
+              data-testid="pos-checkout-reprint"
+              className={cn(
+                "flex items-center gap-2 rounded-lg border border-[var(--pos-line)] px-3 py-1.5",
+                "text-xs font-medium text-text-secondary hover:border-cyan-400/40 hover:bg-cyan-400/5",
+              )}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Reprint
+            </button>
+            <button
+              type="button"
               onClick={handleNewSale}
               data-testid="pos-checkout-skip-receipt"
               aria-label="Skip receipt and start a new sale"
@@ -207,14 +301,20 @@ export default function CheckoutPage() {
             </button>
           </div>
         </header>
+
+        {/* Receipt — wrapped in pos-print-root so @media print isolates it */}
         <main className="flex flex-1 items-center justify-center p-4">
-          <ReceiptPreview
-            transaction={txnDetail}
-            checkoutResult={result}
-            onEmail={handleEmail}
-            onClose={handleNewSale}
-          />
+          <div className="pos-print-root pos-omni">
+            {isInsurance ? (
+              <InsuranceReceipt data={receiptData} />
+            ) : isDelivery ? (
+              <DeliveryReceipt data={receiptData} />
+            ) : (
+              <SalesReceipt data={receiptData} />
+            )}
+          </div>
         </main>
+
         <InvoiceModal
           open={invoiceOpen}
           onClose={() => setInvoiceOpen(false)}
@@ -231,7 +331,7 @@ export default function CheckoutPage() {
     );
   }
 
-  // Fallback: manual payment selection (if auto-process skipped)
+  // Fallback: manual payment selection
   return (
     <div className="pos-root flex min-h-screen flex-col">
       <header className="flex h-14 items-center border-b border-border bg-surface px-4">
@@ -244,11 +344,13 @@ export default function CheckoutPage() {
           Back
         </button>
       </header>
-      <main className={cn("flex flex-1 flex-col items-center justify-center p-6", "max-w-sm mx-auto w-full")}>
-        <PaymentPanel
-          grandTotal={grandTotal}
-          onCheckout={processCheckout}
-        />
+      <main
+        className={cn(
+          "flex flex-1 flex-col items-center justify-center p-6",
+          "max-w-sm mx-auto w-full",
+        )}
+      >
+        <PaymentPanel grandTotal={grandTotal} onCheckout={processCheckout} />
       </main>
     </div>
   );

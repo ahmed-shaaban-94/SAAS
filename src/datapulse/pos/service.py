@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 from datapulse.pos._service_cart import CartOpsMixin
 from datapulse.pos._service_catalog import CatalogMixin
 from datapulse.pos._service_checkout import CheckoutMixin
+from datapulse.pos._service_delivery import DeliveryMixin
 from datapulse.pos._service_helpers import (
     build_receipt_number as _build_receipt_number,
 )
@@ -74,6 +75,7 @@ class PosService(
     VoidReturnMixin,
     CatalogMixin,
     ShiftCashMixin,
+    DeliveryMixin,
 ):
     """Business logic for POS terminal + transaction lifecycle.
 

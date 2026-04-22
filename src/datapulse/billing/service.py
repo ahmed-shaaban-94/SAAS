@@ -210,9 +210,11 @@ class BillingService:
         price_id: str,
         success_url: str | None = None,
         cancel_url: str | None = None,
+        currency: str = "USD",
     ) -> CheckoutResponse:
-        if not self._stripe.is_configured:
-            msg = "Stripe is not configured"
+        provider = self._provider_for(currency)
+        if not provider.is_configured:
+            msg = f"{provider.name} is not configured"
             raise RuntimeError(msg)
 
         _validate_callback_url(success_url, self._base_url)
@@ -220,19 +222,21 @@ class BillingService:
 
         customer_id = self._repo.get_stripe_customer_id(tenant_id)
         if not customer_id:
-            customer = self._stripe.create_customer(
+            customer = provider.create_customer(
                 email=email,
                 name=tenant_name,
                 metadata={"tenant_id": str(tenant_id)},
             )
-            # Stripe always returns a non-None id on successful create.
-            # cast() narrows the type for mypy; assert fails loudly if the
-            # SDK ever breaks that guarantee at runtime.
-            assert customer.id, "Stripe.Customer.create returned no id"
-            customer_id = cast(str, customer.id)
+            if isinstance(customer, dict):
+                raw_id = getattr(customer, "id", None) or customer.get("id", "")
+            else:
+                raw_id = getattr(customer, "id", "")
+            assert raw_id, f"{provider.name}.create_customer returned no id"
+            customer_id = cast(str, raw_id)
             self._repo.set_stripe_customer_id(tenant_id, customer_id)
             logger.info(
-                "stripe_customer_created",
+                "payment_customer_created",
+                provider=provider.name,
                 tenant_id=tenant_id,
                 customer_id=customer_id,
             )
@@ -240,14 +244,14 @@ class BillingService:
         success = success_url or f"{self._base_url}/billing?success=true"
         cancel = cancel_url or f"{self._base_url}/billing?canceled=true"
 
-        session = self._stripe.create_checkout_session(
+        session = provider.create_checkout_session(
             customer_id=customer_id,
             price_id=price_id,
             success_url=success,
             cancel_url=cancel,
         )
 
-        url: str = session.url or ""
+        url: str = getattr(session, "url", None) or ""
         return CheckoutResponse(checkout_url=url)
 
     def create_portal_session(self, tenant_id: int) -> PortalResponse:

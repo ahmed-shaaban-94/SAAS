@@ -8,7 +8,12 @@
 
 export type PromotionDiscountType = "amount" | "percent";
 
-export type PromotionScope = "all" | "items" | "category";
+export type PromotionScope =
+  | "all"
+  | "items"
+  | "category"
+  | "brand"
+  | "active_ingredient";
 
 export type PromotionStatus = "active" | "paused" | "expired";
 
@@ -34,6 +39,8 @@ export interface Promotion {
   status: PromotionStatus;
   scope_items: string[];
   scope_categories: string[];
+  scope_brands: string[];
+  scope_active_ingredients: string[];
   usage_count: number;
   total_discount_given: number;
   created_at: string;
@@ -51,6 +58,8 @@ export interface PromotionCreateInput {
   max_discount?: number | null;
   scope_items?: string[];
   scope_categories?: string[];
+  scope_brands?: string[];
+  scope_active_ingredients?: string[];
 }
 
 export interface PromotionUpdateInput {
@@ -65,11 +74,15 @@ export interface PromotionUpdateInput {
   max_discount?: number | null;
   scope_items?: string[];
   scope_categories?: string[];
+  scope_brands?: string[];
+  scope_active_ingredients?: string[];
 }
 
 export interface EligibleCartItem {
   drug_code: string;
   drug_cluster: string | null;
+  drug_brand: string | null;
+  active_ingredient: string | null;
   quantity: number;
   unit_price: number;
 }
@@ -94,4 +107,15 @@ export interface EligiblePromotion {
 
 export interface EligiblePromotionsResponse {
   promotions: EligiblePromotion[];
+}
+
+export interface PreviewMatchesRequest {
+  scope: PromotionScope;
+  values: string[];
+}
+
+export interface PreviewMatchesResponse {
+  scope: PromotionScope;
+  values: string[];
+  matched_sku_count: number;
 }

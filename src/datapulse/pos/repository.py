@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from datapulse.pos._repo_bronze import BronzeRepoMixin
 from datapulse.pos._repo_catalog import CatalogRepoMixin
+from datapulse.pos._repo_delivery import DeliveryRepoMixin
 from datapulse.pos._repo_shift import ShiftRepoMixin
 from datapulse.pos._repo_terminal import TerminalRepoMixin
 from datapulse.pos._repo_transaction import TransactionRepoMixin
@@ -31,6 +32,7 @@ class PosRepository(
     VoidReturnRepoMixin,
     CatalogRepoMixin,
     BronzeRepoMixin,
+    DeliveryRepoMixin,
 ):
     """Raw SQL access for all POS tables in the ``pos`` and ``bronze`` schemas.
 

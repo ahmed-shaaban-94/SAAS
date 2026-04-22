@@ -35,6 +35,25 @@ jobs:
         # Grandfathered offenders are listed in
         # scripts/.known-api-layer-violations. Uses stdlib only — no deps.
         run: python scripts/check_api_layer_imports.py
+      - name: Migration safety lint (PR-changed migrations only)
+        # Issue #608: flags dangerous DDL (ADD COLUMN NOT NULL, CREATE INDEX
+        # without CONCURRENTLY, ALTER COLUMN TYPE, TRUNCATE) on any migration
+        # file changed in this PR. Uses stdlib only — no deps.
+        # Runs on push to main too so unreviewed merges are still caught.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+              | grep '^migrations/.*\.sql$' || true)
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD \
+              | grep '^migrations/.*\.sql$' || true)
+          fi
+          if [ -z "$CHANGED" ]; then
+            echo "No migration files changed — skipping safety lint."
+          else
+            echo "Checking migrations: $CHANGED"
+            python scripts/check_migration_safety.py $CHANGED
+          fi
 
   typecheck:
     name: Type Check
@@ -75,7 +94,12 @@ jobs:
         # Coverage floor aligned with pyproject.toml and `make coverage`.
         # Current measured unit coverage on main is ~79%; gate is floor-2 to
         # allow normal variance without masking real regressions (issue #540).
-        run: pytest -m unit --timeout=120 --cov=datapulse --cov-report=term-missing --cov-fail-under=77 -x -q
+        run: pytest -m unit --timeout=120 --cov=datapulse --cov-report=term-missing --cov-report=xml --cov-fail-under=77 -x -q
+      - name: Per-module coverage gates (issue #607)
+        # Checks security-critical modules (core/auth, jwt, rbac, billing, pos)
+        # against higher individual thresholds defined in pyproject.toml.
+        # Reports which module fell below threshold, not just "overall dropped".
+        run: python scripts/check_coverage_gates.py coverage.xml
 
   test-integration:
     name: Integration Tests

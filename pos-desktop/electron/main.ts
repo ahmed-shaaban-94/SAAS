@@ -15,7 +15,10 @@ import { initSentry, isCrashReportingEnabled } from "./observability/sentry";
 
 // ── Configuration ──────────────────────────────────────────
 const PORT = 3847;
-const NEXTJS_URL = `http://localhost:${PORT}`;
+// In dev, set DATAPULSE_DEV_RENDERER_URL=http://localhost:3000 to connect to
+// `next dev` directly instead of starting a standalone server.
+const DEV_RENDERER_URL = process.env.DATAPULSE_DEV_RENDERER_URL;
+const NEXTJS_URL = DEV_RENDERER_URL ?? `http://localhost:${PORT}`;
 const POS_PATH = "/terminal";
 const APP_TITLE = "DataPulse POS";
 
@@ -172,11 +175,15 @@ function createWindow(): void {
     icon: path.join(getAssetsDir(), "icon.png"),
     backgroundColor: "#0a0e1a",
     show: false, // Show after content loads
+    // Hide menu bar in production; keep visible in dev for easy reload
+    autoHideMenuBar: app.isPackaged,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Disable devtools shortcuts in packaged builds
+      devTools: !app.isPackaged,
     },
   });
 
@@ -315,7 +322,7 @@ app.whenReady().then(async () => {
   // Initialise local SQLite database
   const dbPath = path.join(app.getPath("userData"), "pos.db");
   const db = openDb(dbPath);
-  applySchema(db);
+  applySchema(db, undefined, app.getVersion());
   log.info({ dbPath }, "SQLite database ready");
 
   // M3b hardening: upgrade any plaintext (v0 / legacy) secrets to DPAPI-wrapped
@@ -367,15 +374,28 @@ app.whenReady().then(async () => {
   // Register all IPC handlers before windows are created
   registerIpcHandlers(db, hw);
 
-  try {
-    await startNextServer();
-  } catch (err) {
-    log.fatal({ err }, "cannot start Next.js server");
-    app.quit();
-    return;
+  if (DEV_RENDERER_URL) {
+    // Dev mode: frontend is served by `next dev` — just wait for it to be ready.
+    log.info({ url: DEV_RENDERER_URL }, "dev mode: waiting for Next.js dev server");
+    await new Promise<void>((resolve, reject) =>
+      waitForServer(resolve, reject, 30_000),
+    );
+  } else {
+    try {
+      await startNextServer();
+    } catch (err) {
+      log.fatal({ err }, "cannot start Next.js server");
+      app.quit();
+      return;
+    }
   }
 
   createWindow();
+
+  // Dev: open DevTools immediately + enable hot-reload via webContents reload
+  if (!app.isPackaged && mainWindow) {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  }
   createTray();
 
   // Wire auto-updater after window is ready (only in packaged builds)
