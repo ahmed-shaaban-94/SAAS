@@ -21,15 +21,8 @@ CREATE TABLE IF NOT EXISTS public.resellers (
 -- ============================================================
 -- 2. Link tenants to resellers
 -- ============================================================
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'bronze' AND table_name = 'tenants' AND column_name = 'reseller_id'
-    ) THEN
-        ALTER TABLE bronze.tenants ADD COLUMN reseller_id INT REFERENCES public.resellers(reseller_id);
-    END IF;
-END $$;
+ALTER TABLE bronze.tenants
+    ADD COLUMN IF NOT EXISTS reseller_id INT REFERENCES public.resellers(reseller_id);
 
 -- ============================================================
 -- 3. Commissions — track earned commissions per reseller
