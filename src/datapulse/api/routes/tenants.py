@@ -30,7 +30,8 @@ def patch_tenant(
     session: Annotated[Session, Depends(get_tenant_session)],
 ) -> dict:
     """Update locale and/or currency for the calling tenant."""
-    updates, params = [], {"tid": int(user["tenant_id"])}
+    updates: list[str] = []
+    params: dict[str, str | int] = {"tid": int(user["tenant_id"])}
     if body.locale is not None:
         updates.append("locale = :locale")
         params["locale"] = body.locale
