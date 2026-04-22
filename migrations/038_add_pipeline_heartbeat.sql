@@ -9,10 +9,7 @@
 -- ============================================================
 -- 1. Add heartbeat_at column (nullable — old runs won't have it)
 -- ============================================================
-DO $$ BEGIN
-    ALTER TABLE public.pipeline_runs ADD COLUMN heartbeat_at TIMESTAMPTZ;
-EXCEPTION WHEN duplicate_column THEN NULL;
-END $$;
+ALTER TABLE public.pipeline_runs ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;
 
 -- ============================================================
 -- 2. Index for stale run detection query

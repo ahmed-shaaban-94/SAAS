@@ -14,20 +14,10 @@
 -- ============================================================
 -- 1. Extend bronze.tenants with billing columns
 -- ============================================================
-DO $$ BEGIN
-    ALTER TABLE bronze.tenants ADD COLUMN stripe_customer_id TEXT;
-EXCEPTION WHEN duplicate_column THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    ALTER TABLE bronze.tenants ADD COLUMN plan TEXT NOT NULL DEFAULT 'starter';
-EXCEPTION WHEN duplicate_column THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    ALTER TABLE bronze.tenants ADD COLUMN plan_limits JSONB NOT NULL DEFAULT '{}'::jsonb;
-EXCEPTION WHEN duplicate_column THEN NULL;
-END $$;
+-- Postgres 16+: ADD COLUMN IF NOT EXISTS is the canonical idempotent form.
+ALTER TABLE bronze.tenants ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE bronze.tenants ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'starter';
+ALTER TABLE bronze.tenants ADD COLUMN IF NOT EXISTS plan_limits JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- Unique index on stripe_customer_id (partial — only non-null values)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_stripe_customer_id

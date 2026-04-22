@@ -8,17 +8,7 @@
 --    Payouts are per-tenant; a reseller can have payouts to many tenants.
 --    Backfill from reseller_commissions, then enforce NOT NULL.
 -- ============================================================
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'reseller_payouts'
-          AND column_name = 'tenant_id'
-    ) THEN
-        ALTER TABLE public.reseller_payouts ADD COLUMN tenant_id INT;
-    END IF;
-END $$;
+ALTER TABLE public.reseller_payouts ADD COLUMN IF NOT EXISTS tenant_id INT;
 
 -- Backfill tenant_id from reseller_commissions.
 -- Safety: only backfill when a reseller has commissions for exactly ONE tenant.
