@@ -126,6 +126,23 @@ class TestSettings:
         )
         assert s.sentry_environment == "production"
 
+    def test_cors_wildcard_is_rejected(self):
+        """CORS_ORIGINS=['*'] with credentials is a CSRF cliff (#546)."""
+        with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+            _settings(cors_origins=["*"])
+
+    def test_cors_wildcard_rejected_even_when_mixed_with_real_origins(self):
+        with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+            _settings(cors_origins=["https://app.example.com", "*"])
+
+    def test_cors_empty_is_allowed(self):
+        s = _settings(cors_origins=[])
+        assert s.cors_origins == []
+
+    def test_cors_explicit_origins_are_allowed(self):
+        s = _settings(cors_origins=["https://app.example.com", "http://localhost:3000"])
+        assert s.cors_origins == ["https://app.example.com", "http://localhost:3000"]
+
 
 class TestGetSettings:
     """Tests for the get_settings() cached factory function."""
