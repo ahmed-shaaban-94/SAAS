@@ -53,7 +53,7 @@ def mock_stripe() -> MagicMock:
 def billing_service(mock_repo: MagicMock, mock_stripe: MagicMock) -> BillingService:
     return BillingService(
         repo=mock_repo,
-        stripe_client=mock_stripe,
+        providers={"USD": mock_stripe},
         price_to_plan=_PRICE_TO_PLAN,
         base_url=_BASE_URL,
     )

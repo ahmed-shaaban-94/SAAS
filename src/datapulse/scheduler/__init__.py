@@ -195,7 +195,7 @@ async def run_pipeline(
             client = StripeClient(settings.stripe_secret_key)
             billing_svc = BillingService(
                 billing_repo,
-                client,
+                providers={"USD": client},
                 price_to_plan=settings.stripe_price_to_plan_map,
                 base_url=settings.billing_base_url,
             )

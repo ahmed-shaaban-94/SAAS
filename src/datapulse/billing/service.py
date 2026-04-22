@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import cast
 from urllib.parse import urlparse
 
 import structlog
@@ -18,8 +19,8 @@ from datapulse.billing.plans import (
     get_plan_limits,
     resolve_plan_from_price,
 )
+from datapulse.billing.provider import PaymentProvider, ProviderUnavailableError
 from datapulse.billing.repository import BillingRepository
-from datapulse.billing.stripe_client import StripeClient
 
 logger = structlog.get_logger()
 
@@ -44,20 +45,38 @@ class PlanLimitExceededError(Exception):
 
 
 class BillingService:
-    """Coordinates billing operations between Stripe, DB, and plan enforcement."""
+    """Business logic for subscriptions, plans, usage, and provider routing."""
 
     def __init__(
         self,
         repo: BillingRepository,
-        stripe_client: StripeClient,
+        providers: dict[str, PaymentProvider],
         *,
         price_to_plan: dict[str, str],
         base_url: str = "https://smartdatapulse.tech",
     ) -> None:
         self._repo = repo
-        self._stripe = stripe_client
+        self._providers = providers
+        # Back-compat shim — checkout/portal/webhook code paths still reference
+        # self._stripe directly. Route all new access through _provider_for;
+        # existing call-sites migrate in a follow-up task (PR 2 keeps behaviour).
+        # USD provider is required — raises KeyError if missing, mirroring
+        # pre-refactor behaviour where BillingService always received a
+        # StripeClient. Post-Spec-2 the USD requirement may relax.
+        self._stripe: PaymentProvider = providers["USD"]
         self._price_to_plan = price_to_plan
         self._base_url = base_url
+
+    def _provider_for(self, currency: str) -> PaymentProvider:
+        """Return the PaymentProvider registered for *currency* (ISO-4217 uppercase).
+
+        Raises ProviderUnavailableError when no provider is configured for the
+        requested currency — surfaces as HTTP 503 in billing routes.
+        """
+        provider = self._providers.get(currency.upper())
+        if provider is None:
+            raise ProviderUnavailableError(currency)
+        return provider
 
     def check_plan_limits(
         self,
@@ -206,7 +225,11 @@ class BillingService:
                 name=tenant_name,
                 metadata={"tenant_id": str(tenant_id)},
             )
-            customer_id = customer.id
+            # Stripe always returns a non-None id on successful create.
+            # cast() narrows the type for mypy; assert fails loudly if the
+            # SDK ever breaks that guarantee at runtime.
+            assert customer.id, "Stripe.Customer.create returned no id"
+            customer_id = cast(str, customer.id)
             self._repo.set_stripe_customer_id(tenant_id, customer_id)
             logger.info(
                 "stripe_customer_created",
