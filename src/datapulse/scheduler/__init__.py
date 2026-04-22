@@ -35,6 +35,7 @@ from datapulse.scheduler.triggers import (
     _health_check,
     _make_sync_job_fn,
     _quality_digest,
+    _refresh_cross_sell_rules,
     _rls_audit,
 )
 
@@ -444,6 +445,14 @@ def start_scheduler() -> None:
     scheduler.add_job(
         _rls_audit, CronTrigger(hour=3, minute=0), id="rls_audit", replace_existing=True
     )
+    # Weekly Market Basket Analysis — update cross-sell rules from real POS sales.
+    # Sunday 02:00 UTC; zero external API calls (pure SQL on existing data).
+    scheduler.add_job(
+        _refresh_cross_sell_rules,
+        CronTrigger(day_of_week="sun", hour=2, minute=0),
+        id="mba_cross_sell",
+        replace_existing=True,
+    )
 
     # Load tenant sync schedules from DB
     n_schedules = _register_sync_schedules()
@@ -456,6 +465,7 @@ def start_scheduler() -> None:
             "quality_digest(18:00)",
             "ai_digest(09:00)",
             "rls_audit(03:00)",
+            "mba_cross_sell(Sun 02:00)",
         ],
         sync_schedules_loaded=n_schedules,
     )

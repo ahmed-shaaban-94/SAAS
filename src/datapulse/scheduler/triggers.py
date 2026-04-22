@@ -218,3 +218,51 @@ def _make_sync_job_fn(connection_id: int, tenant_id: int, schedule_id: int):  # 
             session.close()
 
     return _run
+
+
+async def _refresh_cross_sell_rules() -> None:
+    """Weekly Market Basket Analysis — update pos.cross_sell_rules from real sales.
+
+    Runs every Sunday at 02:00 UTC. Mines the last 90 days of completed POS
+    transactions per tenant and upserts learned cross-sell pairs.
+    Zero external API calls — pure SQL on existing data.
+    """
+    from datapulse.core.db import get_session_factory
+    from datapulse.pos.mba import run_mba
+
+    session_factory = get_session_factory()
+
+    # Fetch all active tenant IDs that have POS data
+    probe = session_factory()
+    try:
+        rows = probe.execute(
+            sa_text(
+                "SELECT DISTINCT tenant_id FROM pos.transactions "
+                "WHERE status = 'completed' LIMIT 200"
+            )
+        ).fetchall()
+        tenant_ids = [r[0] for r in rows]
+    except Exception as exc:
+        log.warning("mba_tenant_probe_failed", error=str(exc))
+        return
+    finally:
+        probe.close()
+
+    if not tenant_ids:
+        log.info("mba_skipped", reason="no completed POS transactions")
+        return
+
+    total_upserted = 0
+    for tenant_id in tenant_ids:
+        session = session_factory()
+        try:
+            result = run_mba(session, tenant_id)
+            total_upserted += result["rules_upserted"]
+            log.info("mba_tenant_done", tenant_id=tenant_id, **result)
+        except Exception as exc:
+            session.rollback()
+            log.error("mba_tenant_failed", tenant_id=tenant_id, error=str(exc))
+        finally:
+            session.close()
+
+    log.info("mba_run_complete", tenants=len(tenant_ids), total_upserted=total_upserted)
