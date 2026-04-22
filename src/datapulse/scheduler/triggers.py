@@ -133,6 +133,34 @@ async def _ai_digest() -> None:
         log.error("ai_digest_failed", error=str(exc))
 
 
+async def _rls_audit() -> None:
+    """Assert RLS + FORCE RLS on every marts/staging table (#546).
+
+    dbt post-hooks apply RLS after table creation — if a run crashes in
+    between, a table briefly lives without protection. This nightly job
+    is the safety net: any missing invariant triggers a Slack alert so
+    an operator can re-run dbt or apply RLS manually.
+    """
+    scheduler_jobs_executed.labels(job="rls_audit").inc()
+    from datapulse.core.db import get_session_factory
+    from datapulse.notifications import notify_rls_violation
+    from datapulse.pipeline.rls_audit import audit_rls_enforcement
+
+    session = get_session_factory()()
+    try:
+        violations = audit_rls_enforcement(session)
+        if violations:
+            fqns = [v.fqn for v in violations]
+            log.error("rls_audit_failed", violations=fqns, count=len(fqns))
+            notify_rls_violation(fqns)
+        else:
+            log.info("rls_audit_ok")
+    except Exception as exc:
+        log.error("rls_audit_error", error=str(exc), exc_info=True)
+    finally:
+        session.close()
+
+
 def _make_sync_job_fn(connection_id: int, tenant_id: int, schedule_id: int):  # type: ignore[return]
     """Return an async coroutine that triggers a scheduled sync and stamps last_run_at."""
 

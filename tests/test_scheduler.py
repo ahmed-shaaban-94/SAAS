@@ -195,7 +195,7 @@ async def test_quality_digest_no_runs():
 
 
 def test_start_scheduler_adds_jobs_and_starts():
-    """start_scheduler registers 3 jobs and starts the scheduler."""
+    """start_scheduler registers 4 jobs and starts the scheduler."""
     with (
         patch("datapulse.scheduler.scheduler") as mock_sched,
         patch("datapulse.scheduler._register_sync_schedules", return_value=0),
@@ -206,7 +206,10 @@ def test_start_scheduler_adds_jobs_and_starts():
 
         start_scheduler()
 
-        assert mock_sched.add_job.call_count == 3
+        # 4 static jobs: health_check, quality_digest, ai_digest, rls_audit (#546).
+        assert mock_sched.add_job.call_count == 4
+        registered_ids = {call.kwargs["id"] for call in mock_sched.add_job.call_args_list}
+        assert registered_ids == {"health_check", "quality_digest", "ai_digest", "rls_audit"}
         mock_sched.start.assert_called_once()
 
 
@@ -358,5 +361,6 @@ def test_start_scheduler_enabled_by_default():
 
         start_scheduler()
 
-        assert mock_sched.add_job.call_count == 3
+        # 4 static jobs incl. rls_audit (#546).
+        assert mock_sched.add_job.call_count == 4
         mock_sched.start.assert_called_once()

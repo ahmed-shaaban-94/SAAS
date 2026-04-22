@@ -35,6 +35,7 @@ from datapulse.scheduler.triggers import (
     _health_check,
     _make_sync_job_fn,
     _quality_digest,
+    _rls_audit,
 )
 
 log = get_logger(__name__)
@@ -439,6 +440,10 @@ def start_scheduler() -> None:
     scheduler.add_job(
         _ai_digest, CronTrigger(hour=9, minute=0), id="ai_digest", replace_existing=True
     )
+    # Nightly RLS audit — runs after dbt marts/staging refreshes finish (#546).
+    scheduler.add_job(
+        _rls_audit, CronTrigger(hour=3, minute=0), id="rls_audit", replace_existing=True
+    )
 
     # Load tenant sync schedules from DB
     n_schedules = _register_sync_schedules()
@@ -446,7 +451,12 @@ def start_scheduler() -> None:
     scheduler.start()
     log.info(
         "scheduler_started",
-        jobs=["health_check(5m)", "quality_digest(18:00)", "ai_digest(09:00)"],
+        jobs=[
+            "health_check(5m)",
+            "quality_digest(18:00)",
+            "ai_digest(09:00)",
+            "rls_audit(03:00)",
+        ],
         sync_schedules_loaded=n_schedules,
     )
 

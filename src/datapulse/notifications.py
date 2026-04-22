@@ -72,6 +72,26 @@ def notify_health_failure(status: str, details: str) -> None:
     _send_slack("#datapulse-alerts", text, ":warning:")
 
 
+def notify_rls_violation(violations: list[str]) -> None:
+    """Send RLS enforcement audit alert (#546).
+
+    ``violations`` is a list of fully-qualified table names
+    (``schema.table``) that lack ``relrowsecurity`` and/or
+    ``relforcerowsecurity``. A non-empty list means the owner role can
+    read cross-tenant data on those tables until the next dbt run fixes
+    them — treat as P1 pager-worthy.
+    """
+    if not violations:
+        return
+    bullets = "\n".join(f"• `{v}`" for v in violations)
+    text = (
+        f":rotating_light: <!channel> *RLS enforcement audit FAILED*\n"
+        f"{len(violations)} table(s) missing RLS or FORCE RLS:\n{bullets}\n"
+        f"Re-run dbt post-hooks or apply RLS manually immediately."
+    )
+    _send_slack("#datapulse-alerts", text, ":rotating_light:")
+
+
 def notify_quality_digest(
     run_id: str,
     status: str,
