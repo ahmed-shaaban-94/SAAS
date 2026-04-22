@@ -5,12 +5,13 @@
  *
  * Uses `.pos-omni` design tokens and the `.pos-receipt` CSS class shipped in
  * PR #615. Sub-components are exported here so variant files can compose them.
- *
- * QR and barcode blocks in this file are CSS placeholders only.
- * C2 replaces them with qrcode.react + bwip-js.
  */
 
 import type { CSSProperties, ReactNode } from "react";
+
+// Re-export real implementations (issue #635, C2)
+export { QrBlock } from "./QrBlock";
+export { BarcodeBlock } from "./BarcodeBlock";
 import type { ReceiptData, ReceiptItem, InsuranceInfo, DeliveryInfo } from "./receipt-mock";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
@@ -482,80 +483,6 @@ export function LoyaltyBand({ pointsEarned, balance }: LoyaltyBandProps) {
       <span style={{ color: "var(--pos-paper-ink-2)" }}>نقاط الولاء المكتسبة</span>
       <span style={{ color: "#4a9e4a", fontWeight: 700 }}>+{pointsEarned}</span>
       <span style={{ color: "var(--pos-paper-ink-2)" }}>الرصيد {balance} pts</span>
-    </div>
-  );
-}
-
-// ─── QrBlock (CSS placeholder — C2 replaces with qrcode.react) ───────────────
-
-interface QrBlockProps {
-  invoiceId: string;
-}
-
-export function QrBlock({ invoiceId }: QrBlockProps) {
-  return (
-    <div className="mb-3 flex flex-col items-center gap-1">
-      {/* Decorative CSS QR placeholder — NOT scannable. Replace in C2. */}
-      <div
-        aria-label="QR code placeholder"
-        data-invoice={invoiceId}
-        style={{
-          width: 80,
-          height: 80,
-          background:
-            "conic-gradient(var(--pos-paper-ink) 0deg 90deg, transparent 90deg 180deg, var(--pos-paper-ink) 180deg 270deg, transparent 270deg 360deg)",
-          opacity: 0.12,
-          borderRadius: 2,
-          outline: "2px solid var(--pos-paper-ink)",
-        }}
-      />
-      <div
-        style={{
-          fontFamily: "var(--font-plex-arabic, sans-serif)",
-          fontSize: 9,
-          color: "var(--pos-paper-ink-faint)",
-          textAlign: "center",
-        }}
-      >
-        امسح للحصول على الإيصال الرقمي
-      </div>
-    </div>
-  );
-}
-
-// ─── BarcodeBlock (font placeholder — C2 replaces with bwip-js) ──────────────
-
-interface BarcodeBlockProps {
-  value: string;
-}
-
-export function BarcodeBlock({ value }: BarcodeBlockProps) {
-  return (
-    <div className="mb-3 flex flex-col items-center gap-1">
-      {/* Barcode font placeholder — rendered visually but NOT scannable. Replace in C2. */}
-      <div
-        style={{
-          fontFamily: "'Libre Barcode 128', monospace",
-          fontSize: 56,
-          lineHeight: 1,
-          color: "var(--pos-paper-ink)",
-          letterSpacing: 0,
-        }}
-        dir="ltr"
-        aria-hidden="true"
-      >
-        {value}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-jetbrains-mono, monospace)",
-          fontSize: 10,
-          color: "var(--pos-paper-ink-2)",
-        }}
-        dir="ltr"
-      >
-        {value}
-      </div>
     </div>
   );
 }
