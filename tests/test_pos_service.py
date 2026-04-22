@@ -877,8 +877,10 @@ class TestCheckout:
             captured["pdf"] = payment
             return b"stub-pdf"
 
-        monkeypatch.setattr("datapulse.pos.service.generate_thermal_receipt", spy_thermal)
-        monkeypatch.setattr("datapulse.pos.service.generate_pdf_receipt", spy_pdf)
+        # Receipt generators live on the checkout mixin module after the
+        # service.py split (see PR #581); monkeypatch there, not on the facade.
+        monkeypatch.setattr("datapulse.pos._service_checkout.generate_thermal_receipt", spy_thermal)
+        monkeypatch.setattr("datapulse.pos._service_checkout.generate_pdf_receipt", spy_pdf)
 
         await service.checkout(
             transaction_id=100,
