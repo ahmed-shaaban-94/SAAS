@@ -322,7 +322,7 @@ app.whenReady().then(async () => {
   // Initialise local SQLite database
   const dbPath = path.join(app.getPath("userData"), "pos.db");
   const db = openDb(dbPath);
-  applySchema(db);
+  applySchema(db, undefined, app.getVersion());
   log.info({ dbPath }, "SQLite database ready");
 
   // M3b hardening: upgrade any plaintext (v0 / legacy) secrets to DPAPI-wrapped

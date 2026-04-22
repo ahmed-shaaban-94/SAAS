@@ -15,6 +15,9 @@ export function openDb(filePath: string): Database.Database {
   _db.pragma("journal_mode = WAL");
   _db.pragma("foreign_keys = ON");
   _db.pragma("synchronous = NORMAL");
+  // 32 MB page cache — reduces I/O on hot paths (product search, queue drain)
+  _db.pragma("cache_size = -32000");
+  _db.pragma("temp_store = MEMORY");
   return _db;
 }
 
