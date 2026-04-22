@@ -1,0 +1,267 @@
+"""Shifts + cash drawer events table access.
+
+Covers pos.shift_records and pos.cash_drawer_events.
+
+Extracted from the original 1,187-LOC ``repository.py`` facade (see #543).
+Methods preserve their SQL text and parameter order byte-for-byte.
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import text
+
+from datapulse.logging import get_logger
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+log = get_logger(__name__)
+
+
+class ShiftRepoMixin:
+    """Mixin for :class:`PosRepository` — requires ``self._session`` set by __init__."""
+
+    _session: Session
+
+    def create_shift_record(
+        self,
+        *,
+        terminal_id: int,
+        tenant_id: int,
+        staff_id: str,
+        shift_date: date,
+        opened_at: datetime,
+        opening_cash: Decimal,
+    ) -> dict[str, Any]:
+        """Open a new shift record for a terminal."""
+        row = (
+            self._session.execute(
+                text("""
+                    INSERT INTO pos.shift_records
+                        (terminal_id, tenant_id, staff_id, shift_date,
+                         opened_at, opening_cash)
+                    VALUES
+                        (:terminal_id, :tenant_id, :staff_id, :shift_date,
+                         :opened_at, :opening_cash)
+                    RETURNING
+                        id, terminal_id, tenant_id, staff_id, shift_date,
+                        opened_at, closed_at, opening_cash, closing_cash,
+                        expected_cash, variance
+                """),
+                {
+                    "terminal_id": terminal_id,
+                    "tenant_id": tenant_id,
+                    "staff_id": staff_id,
+                    "shift_date": shift_date,
+                    "opened_at": opened_at,
+                    "opening_cash": opening_cash,
+                },
+            )
+            .mappings()
+            .one()
+        )
+        log.info("pos.shift.created", shift_id=row["id"], terminal_id=terminal_id)
+        return dict(row)
+
+    def update_shift_record(
+        self,
+        shift_id: int,
+        *,
+        closing_cash: Decimal | None = None,
+        expected_cash: Decimal | None = None,
+        variance: Decimal | None = None,
+        closed_at: datetime | None = None,
+    ) -> dict[str, Any] | None:
+        """Update closing values for a shift."""
+        row = (
+            self._session.execute(
+                text("""
+                    UPDATE pos.shift_records
+                    SET    closing_cash  = COALESCE(:closing_cash,  closing_cash),
+                           expected_cash = COALESCE(:expected_cash, expected_cash),
+                           variance      = COALESCE(:variance,      variance),
+                           closed_at     = COALESCE(:closed_at,     closed_at)
+                    WHERE  id = :shift_id
+                    RETURNING
+                        id, terminal_id, tenant_id, staff_id, shift_date,
+                        opened_at, closed_at, opening_cash, closing_cash,
+                        expected_cash, variance
+                """),
+                {
+                    "shift_id": shift_id,
+                    "closing_cash": closing_cash,
+                    "expected_cash": expected_cash,
+                    "variance": variance,
+                    "closed_at": closed_at,
+                },
+            )
+            .mappings()
+            .first()
+        )
+        return dict(row) if row else None
+
+    def get_current_shift(self, terminal_id: int) -> dict[str, Any] | None:
+        """Return the currently open (unclosed) shift for a terminal."""
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT id, terminal_id, tenant_id, staff_id, shift_date,
+                           opened_at, closed_at, opening_cash, closing_cash,
+                           expected_cash, variance
+                    FROM   pos.shift_records
+                    WHERE  terminal_id = :terminal_id
+                    AND    closed_at   IS NULL
+                    ORDER  BY opened_at DESC
+                    LIMIT  1
+                """),
+                {"terminal_id": terminal_id},
+            )
+            .mappings()
+            .first()
+        )
+        return dict(row) if row else None
+
+    def list_shifts(
+        self,
+        tenant_id: int,
+        *,
+        terminal_id: int | None = None,
+        limit: int = 30,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """List shift records for a tenant, most recent first."""
+        rows = (
+            self._session.execute(
+                text("""
+                    SELECT id, terminal_id, tenant_id, staff_id, shift_date,
+                           opened_at, closed_at, opening_cash, closing_cash,
+                           expected_cash, variance
+                    FROM   pos.shift_records
+                    WHERE  tenant_id  = :tenant_id
+                    AND    (:terminal_id IS NULL OR terminal_id = :terminal_id)
+                    ORDER  BY opened_at DESC
+                    LIMIT  :limit OFFSET :offset
+                """),
+                {
+                    "tenant_id": tenant_id,
+                    "terminal_id": terminal_id,
+                    "limit": limit,
+                    "offset": offset,
+                },
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
+
+    def get_shift_by_id(self, shift_id: int) -> dict[str, Any] | None:
+        """Return a single shift record by ID."""
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT id, terminal_id, tenant_id, staff_id, shift_date,
+                           opened_at, closed_at, opening_cash, closing_cash,
+                           expected_cash, variance
+                    FROM   pos.shift_records
+                    WHERE  id = :shift_id
+                """),
+                {"shift_id": shift_id},
+            )
+            .mappings()
+            .first()
+        )
+        return dict(row) if row else None
+
+    def get_shift_summary_data(
+        self,
+        terminal_id: int,
+        *,
+        opened_at: datetime,
+        closed_at: datetime,
+    ) -> dict[str, Any]:
+        """Return transaction count + total completed sales for a shift time window."""
+        row = (
+            self._session.execute(
+                text("""
+                    SELECT
+                        COUNT(*)::INT                                        AS transaction_count,
+                        COALESCE(SUM(grand_total) FILTER (WHERE status = 'completed'), 0)
+                                                                             AS total_sales
+                    FROM pos.transactions
+                    WHERE terminal_id = :terminal_id
+                    AND   created_at >= :opened_at
+                    AND   created_at <= :closed_at
+                """),
+                {
+                    "terminal_id": terminal_id,
+                    "opened_at": opened_at,
+                    "closed_at": closed_at,
+                },
+            )
+            .mappings()
+            .first()
+        )
+        if row:
+            return dict(row)
+        return {"transaction_count": 0, "total_sales": Decimal("0")}
+
+    def record_cash_event(
+        self,
+        *,
+        terminal_id: int,
+        tenant_id: int,
+        event_type: str,
+        amount: Decimal,
+        reference_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Append an immutable cash drawer event."""
+        row = (
+            self._session.execute(
+                text("""
+                    INSERT INTO pos.cash_drawer_events
+                        (terminal_id, tenant_id, event_type, amount, reference_id)
+                    VALUES
+                        (:terminal_id, :tenant_id, :event_type, :amount, :reference_id)
+                    RETURNING id, terminal_id, tenant_id, event_type, amount,
+                              reference_id, timestamp
+                """),
+                {
+                    "terminal_id": terminal_id,
+                    "tenant_id": tenant_id,
+                    "event_type": event_type,
+                    "amount": amount,
+                    "reference_id": reference_id,
+                },
+            )
+            .mappings()
+            .one()
+        )
+        return dict(row)
+
+    def get_cash_events(
+        self,
+        terminal_id: int,
+        *,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Return cash drawer events for a terminal, most recent first."""
+        rows = (
+            self._session.execute(
+                text("""
+                    SELECT id, terminal_id, tenant_id, event_type, amount,
+                           reference_id, timestamp
+                    FROM   pos.cash_drawer_events
+                    WHERE  terminal_id = :terminal_id
+                    ORDER  BY timestamp DESC
+                    LIMIT  :limit
+                """),
+                {"terminal_id": terminal_id, "limit": limit},
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
