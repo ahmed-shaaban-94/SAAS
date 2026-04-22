@@ -34,7 +34,7 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession, signIn } from "@/lib/auth-bridge";
 import { Fraunces, JetBrains_Mono } from "next/font/google";
 
 import { Providers } from "@/components/providers";

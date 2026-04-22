@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 import structlog
 from pydantic import BaseModel, model_validator
@@ -108,11 +109,26 @@ class Settings(BaseSettings):
     # Embed token signing
     embed_secret: str = ""
 
+    # Auth provider discriminator — the single source of truth for which
+    # IdP verifies Bearer JWTs. Default is "auth0" so existing deployments
+    # keep their behavior; set AUTH_PROVIDER=clerk in .env to swap providers.
+    # Both provider configs coexist so switching back is a one-line env change.
+    auth_provider: Literal["auth0", "clerk"] = "auth0"
+
     # Auth0 OIDC
     auth0_domain: str = ""  # e.g. "datapulse.us.auth0.com"
     auth0_client_id: str = ""  # Application Client ID
     auth0_client_secret: str = ""  # Application Client Secret
     auth0_audience: str = ""  # API identifier, e.g. "https://api.datapulse.tech"
+
+    # Clerk — temporary replacement for Auth0 while clients are small.
+    # All CLERK_* fields are empty when AUTH_PROVIDER=auth0.
+    clerk_publishable_key: str = ""  # pk_test_... or pk_live_...
+    clerk_secret_key: str = ""  # sk_test_... or sk_live_... (backend admin ops)
+    clerk_frontend_api: str = ""  # e.g. "https://<slug>.clerk.accounts.dev"
+    clerk_jwt_issuer: str = ""  # JWT `iss` claim — usually == clerk_frontend_api
+    clerk_jwt_audience: str = ""  # Optional; empty == skip `aud` verification
+    clerk_jwt_template: str = "datapulse"  # Name of the JWT template (claim shape)
 
     # Redis cache
     redis_url: str = ""
@@ -224,13 +240,15 @@ class Settings(BaseSettings):
         if (
             is_non_dev_env(self.app_env, self.sentry_environment)
             and not self.api_key
-            and not self.auth0_domain
+            and not self._jwt_provider_configured
         ):
             raise ValueError(
                 "Auth must be configured in production/staging "
                 f"(app_env={self.app_env!r}, "
-                f"sentry_environment={self.sentry_environment!r}). "
-                "Set API_KEY or AUTH0_DOMAIN in the environment."
+                f"sentry_environment={self.sentry_environment!r}, "
+                f"auth_provider={self.auth_provider!r}). "
+                "Set API_KEY, or AUTH0_DOMAIN (auth_provider=auth0), "
+                "or CLERK_SECRET_KEY+CLERK_JWT_ISSUER (auth_provider=clerk)."
             )
         return self
 
@@ -258,8 +276,11 @@ class Settings(BaseSettings):
             return self
 
         missing: list[str] = []
-        if not self.api_key and not self.auth0_domain:
-            missing.append("API_KEY or AUTH0_DOMAIN")
+        if not self.api_key and not self._jwt_provider_configured:
+            if self.auth_provider == "clerk":
+                missing.append("API_KEY or CLERK_SECRET_KEY+CLERK_JWT_ISSUER")
+            else:
+                missing.append("API_KEY or AUTH0_DOMAIN")
         if not self.db_reader_password:
             missing.append("DB_READER_PASSWORD")
         if not self.pipeline_webhook_secret:
@@ -273,6 +294,29 @@ class Settings(BaseSettings):
 
         return self
 
+    @model_validator(mode="after")
+    def _warn_on_auth_provider_mismatch(self) -> "Settings":
+        """Catch the common foot-gun where only half of a provider swap lands.
+
+        If the operator fills CLERK_* secrets but leaves AUTH_PROVIDER=auth0
+        (or vice-versa), the backend happily reads the wrong JWKS/issuer and
+        every valid token 401s. We can't *correct* it (intent is ambiguous)
+        but we can log loudly so it shows up in the first startup line.
+        """
+        if self.auth_provider == "auth0" and self.clerk_secret_key:
+            logger.warning(
+                "auth_provider_mismatch",
+                detail="CLERK_SECRET_KEY is set but AUTH_PROVIDER=auth0 — "
+                "Clerk config is ignored. Set AUTH_PROVIDER=clerk to activate.",
+            )
+        if self.auth_provider == "clerk" and self.auth0_domain:
+            logger.warning(
+                "auth_provider_mismatch",
+                detail="AUTH0_DOMAIN is set but AUTH_PROVIDER=clerk — "
+                "Auth0 config is ignored. Set AUTH_PROVIDER=auth0 to revert.",
+            )
+        return self
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     @property
@@ -284,6 +328,56 @@ class Settings(BaseSettings):
     def auth0_jwks_url(self) -> str:
         """Auth0 JWKS endpoint for JWT signature verification."""
         return f"https://{self.auth0_domain}/.well-known/jwks.json"
+
+    @property
+    def clerk_jwks_url(self) -> str:
+        """Clerk JWKS endpoint — derived from ``clerk_frontend_api`` when set,
+        otherwise empty so the active-* selector can signal misconfiguration.
+        """
+        if not self.clerk_frontend_api:
+            return ""
+        return f"{self.clerk_frontend_api.rstrip('/')}/.well-known/jwks.json"
+
+    @property
+    def _jwt_provider_configured(self) -> bool:
+        """Whether the selected IdP has enough config to verify tokens."""
+        if self.auth_provider == "clerk":
+            return bool(self.clerk_jwt_issuer and self.clerk_frontend_api)
+        return bool(self.auth0_domain)
+
+    @property
+    def active_jwks_url(self) -> str:
+        """JWKS endpoint for the currently active IdP.
+
+        This is the *only* JWKS URL that ``core/jwt.py`` should read. Swapping
+        providers is a matter of flipping ``AUTH_PROVIDER`` in .env — neither
+        verification code nor call sites need to branch.
+        """
+        return self.clerk_jwks_url if self.auth_provider == "clerk" else self.auth0_jwks_url
+
+    @property
+    def active_issuer_url(self) -> str:
+        """Expected ``iss`` claim for the currently active IdP."""
+        return self.clerk_jwt_issuer if self.auth_provider == "clerk" else self.auth0_issuer_url
+
+    @property
+    def active_audience(self) -> str:
+        """Expected ``aud`` claim — empty string means skip ``aud`` verification.
+
+        Clerk's default JWT templates do not set ``aud``; only set
+        ``CLERK_JWT_AUDIENCE`` if you configured an audience on the template.
+        """
+        return self.clerk_jwt_audience if self.auth_provider == "clerk" else self.auth0_audience
+
+    @property
+    def active_expected_azp(self) -> str:
+        """Expected ``azp`` (authorized party) claim — empty means skip check.
+
+        Auth0 puts the application client_id in ``azp``. Clerk puts its
+        Frontend API URL there; we deliberately skip that check because the
+        issuer check already verifies the token came from our Clerk instance.
+        """
+        return self.auth0_client_id if self.auth_provider == "auth0" else ""
 
     def warn_if_auth_disabled(self) -> None:
         """Log warnings when authentication secrets are not configured."""
@@ -299,10 +393,16 @@ class Settings(BaseSettings):
                 "auth_disabled",
                 detail="PIPELINE_WEBHOOK_SECRET is empty — pipeline token auth is disabled",
             )
-        if not self.auth0_domain:
+        if not self._jwt_provider_configured:
+            missing = (
+                "CLERK_JWT_ISSUER+CLERK_FRONTEND_API"
+                if self.auth_provider == "clerk"
+                else "AUTH0_DOMAIN"
+            )
             logger.warning(
                 "auth_disabled",
-                detail="AUTH0_DOMAIN is empty — JWT authentication is disabled",
+                provider=self.auth_provider,
+                detail=f"{missing} is empty — JWT authentication is disabled",
             )
 
         # Warn about localhost CORS in non-dev environments

@@ -187,14 +187,30 @@ class TestH2DevModeProductionBlock:
     """H2: Dev mode auth fallback must raise 503 in production."""
 
     def test_blocked_in_production(self):
-        settings = MagicMock(api_key="", auth0_domain="", sentry_environment="production")
+        # Dev-fallback gate reads ``_jwt_provider_configured`` so the check
+        # is uniform for Auth0 or Clerk. MagicMock returns truthy for unset
+        # attrs, which would silently skip the gate — set it explicitly to
+        # match an unconfigured provider.
+        settings = MagicMock(
+            api_key="",
+            auth0_domain="",
+            auth_provider="auth0",
+            sentry_environment="production",
+        )
+        settings._jwt_provider_configured = False
         with pytest.raises(HTTPException) as exc_info:
             get_current_user(credentials=None, api_key=None, settings=settings)
         assert exc_info.value.status_code == 503
         assert "not configured" in exc_info.value.detail.lower()
 
     def test_blocked_in_staging(self):
-        settings = MagicMock(api_key="", auth0_domain="", sentry_environment="staging")
+        settings = MagicMock(
+            api_key="",
+            auth0_domain="",
+            auth_provider="auth0",
+            sentry_environment="staging",
+        )
+        settings._jwt_provider_configured = False
         with pytest.raises(HTTPException) as exc_info:
             get_current_user(credentials=None, api_key=None, settings=settings)
         assert exc_info.value.status_code == 503

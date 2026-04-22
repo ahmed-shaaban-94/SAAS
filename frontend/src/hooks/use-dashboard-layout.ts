@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { fetchAPI, swrKey } from "@/lib/api-client";
-import { getSession } from "next-auth/react";
+import { getSession } from "@/lib/auth-bridge";
 import { API_BASE_URL } from "@/lib/constants";
 
 export interface LayoutItem {

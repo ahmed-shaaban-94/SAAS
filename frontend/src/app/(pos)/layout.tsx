@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useCallback, type ReactNode } from "react";
-import { Fraunces, JetBrains_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
-import { useSession, signIn } from "next-auth/react";
+import { Fraunces, JetBrains_Mono } from "next/font/google";
+import { useSession, signIn } from "@/lib/auth-bridge";
 import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
 import { swrConfig } from "@/lib/swr-config";

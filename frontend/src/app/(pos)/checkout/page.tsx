@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/lib/auth-bridge";
 import { ArrowLeft, FileText, Loader2, SkipForward } from "lucide-react";
 import { PaymentPanel } from "@/components/pos/PaymentPanel";
 import { ReceiptPreview } from "@/components/pos/ReceiptPreview";

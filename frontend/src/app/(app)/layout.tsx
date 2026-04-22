@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession, signIn } from "@/lib/auth-bridge";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Providers } from "@/components/providers";
 import { ErrorBoundary } from "@/components/error-boundary";
