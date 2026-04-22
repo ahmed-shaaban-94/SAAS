@@ -122,4 +122,6 @@ class DeliveryMixin:
         full_row = self._repo.get_delivery_by_transaction(
             transaction_id=body.transaction_id, tenant_id=tenant_id
         )
+        if full_row is None:
+            raise ValueError(f"Delivery not found for transaction {body.transaction_id}")
         return _build_delivery(full_row)
