@@ -136,7 +136,7 @@ def main() -> int:
     print()
     print(f"  Email:    {args.email}")
     print(f"  User ID:  {user['id']}")
-    print(f"  Password: {password}")
+    print("  Password: [REDACTED]")
     print()
     print("Share both over a secure channel (not email if the mailbox is")
     print("a placeholder). The recipient signs in at /sign-in using email")
