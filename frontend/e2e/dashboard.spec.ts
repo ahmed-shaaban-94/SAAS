@@ -96,3 +96,27 @@ test.describe("Dashboard (new design)", () => {
     expect(errors, errors.join("\n")).toEqual([]);
   });
 });
+
+test.describe("dashboard — Arabic (#604 RTL)", () => {
+  test("renders with dir=rtl and lang=ar when locale cookie is ar", async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([
+      {
+        name: "NEXT_LOCALE",
+        value: "ar",
+        url: "http://localhost:3000",
+      },
+    ]);
+    await page.goto("/dashboard");
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+    // Note: Spec 1 (#604) ships RTL direction + critical-path Arabic copy
+    // only. NAV_GROUPS labels in the sidebar are still English-hardcoded
+    // (deep-dashboard translation is deliberately out-of-scope per
+    // docs/superpowers/specs/2026-04-22-egypt-foundation-design.md §4.6).
+    // Asserting on specific Arabic nav labels will be added when those
+    // NAV_GROUPS move to i18n — a separate PR.
+  });
+});

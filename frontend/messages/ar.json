@@ -340,5 +340,26 @@
       "lastYear": "السنة الماضية",
       "trendComparison": "مقارنة اتجاه الإيرادات"
     }
+  },
+  "billing": {
+    "upgrade_cta": "ترقية إلى Pro",
+    "currency": {
+      "unavailable_egp": "الدفع بالجنيه المصري قريبًا. تواصل مع الدعم."
+    },
+    "plan": {
+      "starter": { "title": "Starter", "tagline": "جرّب مجانًا" },
+      "pro":     { "title": "Pro",     "tagline": "للصيدليات النامية" },
+      "platform":{ "title": "Platform","tagline": "لسلاسل الصيدليات" },
+      "enterprise":{ "title": "Enterprise", "tagline": "أسعار مخصصة" }
+    }
+  },
+  "settings": {
+    "tenant": {
+      "title": "إعدادات المستأجر",
+      "locale_label": "اللغة",
+      "currency_label": "عملة الفواتير",
+      "save": "حفظ",
+      "saved": "تم الحفظ"
+    }
   }
 }
