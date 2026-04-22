@@ -35,6 +35,7 @@ def _row_to_response(
     *,
     scope_items: list[str],
     scope_categories: list[str],
+    scope_brands: list[str] | None = None,
     usage_count: int = 0,
     total_discount_given: Decimal = Decimal("0"),
 ) -> PromotionResponse:
@@ -58,6 +59,7 @@ def _row_to_response(
         status=PromotionStatus(row["status"]),
         scope_items=scope_items,
         scope_categories=scope_categories,
+        scope_brands=scope_brands or [],
         usage_count=usage_count,
         total_discount_given=total_discount_given,
         created_at=row["created_at"],
@@ -131,11 +133,13 @@ class PromotionRepository:
             scope=payload.scope,
             scope_items=payload.scope_items,
             scope_categories=payload.scope_categories,
+            scope_brands=payload.scope_brands,
         )
         return _row_to_response(
             dict(row),
             scope_items=list(payload.scope_items),
             scope_categories=list(payload.scope_categories),
+            scope_brands=list(payload.scope_brands),
         )
 
     def update(
@@ -186,12 +190,14 @@ class PromotionRepository:
                 params,
             )
 
-        # Rewrite scope joins if scope or either list changed.
+        # Rewrite scope joins if scope or any list changed.
         effective_scope = payload.scope or current.scope
         if payload.scope is not None or payload.scope_items is not None:
             self._delete_scope_items(promotion_id)
         if payload.scope is not None or payload.scope_categories is not None:
             self._delete_scope_categories(promotion_id)
+        if payload.scope is not None or payload.scope_brands is not None:
+            self._delete_scope_brands(promotion_id)
         self._write_scope_joins(
             promotion_id,
             scope=effective_scope,
@@ -202,6 +208,9 @@ class PromotionRepository:
                 payload.scope_categories
                 if payload.scope_categories is not None
                 else current.scope_categories
+            ),
+            scope_brands=(
+                payload.scope_brands if payload.scope_brands is not None else current.scope_brands
             ),
         )
         refreshed = self.get(tenant_id, promotion_id)
@@ -247,6 +256,7 @@ class PromotionRepository:
         scope: PromotionScope,
         scope_items: list[str],
         scope_categories: list[str],
+        scope_brands: list[str],
     ) -> None:
         if scope == PromotionScope.items:
             for drug_code in scope_items:
@@ -272,6 +282,18 @@ class PromotionRepository:
                     ),
                     {"pid": promotion_id, "dc": cluster},
                 )
+        elif scope == PromotionScope.brand:
+            for brand in scope_brands:
+                self._session.execute(
+                    text(
+                        """
+                        INSERT INTO pos.promotion_brands (promotion_id, brand_name)
+                        VALUES (:pid, :br)
+                        ON CONFLICT DO NOTHING
+                        """
+                    ),
+                    {"pid": promotion_id, "br": brand},
+                )
 
     def _delete_scope_items(self, promotion_id: int) -> None:
         self._session.execute(
@@ -282,6 +304,12 @@ class PromotionRepository:
     def _delete_scope_categories(self, promotion_id: int) -> None:
         self._session.execute(
             text("DELETE FROM pos.promotion_categories WHERE promotion_id = :pid"),
+            {"pid": promotion_id},
+        )
+
+    def _delete_scope_brands(self, promotion_id: int) -> None:
+        self._session.execute(
+            text("DELETE FROM pos.promotion_brands WHERE promotion_id = :pid"),
             {"pid": promotion_id},
         )
 
@@ -309,12 +337,13 @@ class PromotionRepository:
         )
         if row is None:
             return None
-        items, cats = self._load_scope_joins(promotion_id)
+        items, cats, brands = self._load_scope_joins(promotion_id)
         usage, total = self._load_usage_stats(tenant_id, promotion_id)
         return _row_to_response(
             dict(row),
             scope_items=items,
             scope_categories=cats,
+            scope_brands=brands,
             usage_count=usage,
             total_discount_given=total,
         )
@@ -351,13 +380,14 @@ class PromotionRepository:
         result: list[PromotionResponse] = []
         for r in rows:
             pid = int(r["id"])
-            items, cats = self._load_scope_joins(pid)
+            items, cats, brands = self._load_scope_joins(pid)
             usage, total = self._load_usage_stats(tenant_id, pid)
             result.append(
                 _row_to_response(
                     dict(r),
                     scope_items=items,
                     scope_categories=cats,
+                    scope_brands=brands,
                     usage_count=usage,
                     total_discount_given=total,
                 )
@@ -371,6 +401,7 @@ class PromotionRepository:
         now: datetime,
         drug_codes: list[str],
         drug_clusters: list[str],
+        drug_brands: list[str],
         subtotal: Decimal,
     ) -> list[PromotionResponse]:
         """Return currently-active promotions whose eligibility rules match the cart.
@@ -378,8 +409,10 @@ class PromotionRepository:
         A promotion is eligible when:
         * ``status = 'active'``
         * ``now`` is inside ``[starts_at, ends_at)``
-        * ``scope = 'all'`` OR (``scope = 'items'`` AND any drug_code matches)
-          OR (``scope = 'category'`` AND any drug_cluster matches)
+        * ``scope = 'all'`` OR
+          (``scope = 'items'`` AND any drug_code matches) OR
+          (``scope = 'category'`` AND any drug_cluster matches) OR
+          (``scope = 'brand'`` AND any drug_brand matches — case-insensitive)
         * ``min_purchase`` is null or ``subtotal >= min_purchase``
         """
         rows = (
@@ -393,6 +426,7 @@ class PromotionRepository:
                       FROM pos.promotions p
                  LEFT JOIN pos.promotion_items pi       ON pi.promotion_id = p.id
                  LEFT JOIN pos.promotion_categories pc  ON pc.promotion_id = p.id
+                 LEFT JOIN pos.promotion_brands pb      ON pb.promotion_id = p.id
                      WHERE p.tenant_id = :tid
                        AND p.status    = 'active'
                        AND :now BETWEEN p.starts_at AND p.ends_at
@@ -401,6 +435,7 @@ class PromotionRepository:
                               p.scope = 'all'
                            OR (p.scope = 'items'    AND pi.drug_code    = ANY(:codes))
                            OR (p.scope = 'category' AND pc.drug_cluster = ANY(:clusters))
+                           OR (p.scope = 'brand'    AND LOWER(pb.brand_name) = ANY(:brands))
                        )
                   ORDER BY p.created_at DESC
                     """
@@ -411,6 +446,9 @@ class PromotionRepository:
                     "sub": subtotal,
                     "codes": drug_codes or [""],
                     "clusters": drug_clusters or [""],
+                    # Lowercased on both sides for case-insensitive brand match
+                    # (dim_product.drug_brand is "Bayer"; admin may type "bayer").
+                    "brands": [b.lower() for b in drug_brands] or [""],
                 },
             )
             .mappings()
@@ -419,13 +457,26 @@ class PromotionRepository:
         out: list[PromotionResponse] = []
         for r in rows:
             pid = int(r["id"])
-            items, cats = self._load_scope_joins(pid)
+            items, cats, brands = self._load_scope_joins(pid)
             # Omit usage stats here — eligibility is hot-path; admin detail
             # view re-queries via get() and pays the extra round-trip.
-            out.append(_row_to_response(dict(r), scope_items=items, scope_categories=cats))
+            out.append(
+                _row_to_response(
+                    dict(r),
+                    scope_items=items,
+                    scope_categories=cats,
+                    scope_brands=brands,
+                )
+            )
         return out
 
-    def _load_scope_joins(self, promotion_id: int) -> tuple[list[str], list[str]]:
+    def _load_scope_joins(self, promotion_id: int) -> tuple[list[str], list[str], list[str]]:
+        """Return (scope_items, scope_categories, scope_brands) for a promotion.
+
+        Three round-trips — acceptable for admin CRUD paths. The hot-path
+        eligibility query above avoids calling this per-row beyond what's
+        already needed for the response shape.
+        """
         items = [
             str(r["drug_code"])
             for r in self._session.execute(
@@ -450,7 +501,19 @@ class PromotionRepository:
             .mappings()
             .all()
         ]
-        return items, cats
+        brands = [
+            str(r["brand_name"])
+            for r in self._session.execute(
+                text(
+                    "SELECT brand_name FROM pos.promotion_brands "
+                    "WHERE promotion_id = :pid ORDER BY brand_name"
+                ),
+                {"pid": promotion_id},
+            )
+            .mappings()
+            .all()
+        ]
+        return items, cats, brands
 
     def _load_usage_stats(self, tenant_id: int, promotion_id: int) -> tuple[int, Decimal]:
         row = (
@@ -508,8 +571,13 @@ class PromotionRepository:
         )
         if row is None:
             raise HTTPException(status_code=400, detail="promotion_not_found")
-        items, cats = self._load_scope_joins(promotion_id)
-        promo = _row_to_response(dict(row), scope_items=items, scope_categories=cats)
+        items, cats, brands = self._load_scope_joins(promotion_id)
+        promo = _row_to_response(
+            dict(row),
+            scope_items=items,
+            scope_categories=cats,
+            scope_brands=brands,
+        )
         if promo.status != PromotionStatus.active:
             raise HTTPException(status_code=400, detail="promotion_inactive")
         if now < promo.starts_at:

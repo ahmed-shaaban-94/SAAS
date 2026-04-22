@@ -20,11 +20,19 @@ class PromotionDiscountType(StrEnum):
 
 
 class PromotionScope(StrEnum):
-    """Which cart items a promotion may be applied against."""
+    """Which cart items a promotion may be applied against.
+
+    ``brand`` matches against ``dim_product.drug_brand`` — added in
+    migration 104 as an extension of the original (091) scope enum.
+    ``active_ingredient`` is not yet supported — that scope needs the
+    product dimension to gain an ``active_ingredient`` column first
+    (tracked as a separate follow-up ticket).
+    """
 
     all = "all"
     items = "items"
     category = "category"
+    brand = "brand"
 
 
 class PromotionStatus(StrEnum):
@@ -60,6 +68,7 @@ class PromotionCreate(BaseModel):
     max_discount: JsonDecimal | None = None
     scope_items: list[str] = Field(default_factory=list)
     scope_categories: list[str] = Field(default_factory=list)
+    scope_brands: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _validate(self) -> PromotionCreate:
@@ -73,6 +82,8 @@ class PromotionCreate(BaseModel):
             raise ValueError("scope_items required when scope='items'")
         if self.scope == PromotionScope.category and not self.scope_categories:
             raise ValueError("scope_categories required when scope='category'")
+        if self.scope == PromotionScope.brand and not self.scope_brands:
+            raise ValueError("scope_brands required when scope='brand'")
         if self.min_purchase is not None and self.min_purchase < 0:
             raise ValueError("min_purchase must be >= 0")
         if self.max_discount is not None and self.max_discount <= 0:
@@ -96,6 +107,7 @@ class PromotionUpdate(BaseModel):
     max_discount: JsonDecimal | None = None
     scope_items: list[str] | None = None
     scope_categories: list[str] | None = None
+    scope_brands: list[str] | None = None
 
 
 class PromotionStatusUpdate(BaseModel):
@@ -125,18 +137,24 @@ class PromotionResponse(BaseModel):
     status: PromotionStatus
     scope_items: list[str] = Field(default_factory=list)
     scope_categories: list[str] = Field(default_factory=list)
+    scope_brands: list[str] = Field(default_factory=list)
     usage_count: int = 0
     total_discount_given: JsonDecimal = Decimal("0")
     created_at: datetime
 
 
 class EligibleCartItem(BaseModel):
-    """One cart line sent to ``POST /pos/promotions/eligible`` for scoring."""
+    """One cart line sent to ``POST /pos/promotions/eligible`` for scoring.
+
+    ``drug_brand`` is optional; when null the line simply cannot match a
+    ``scope='brand'`` promotion (added in migration 104).
+    """
 
     model_config = ConfigDict(frozen=True)
 
     drug_code: str
     drug_cluster: str | None = None
+    drug_brand: str | None = None
     quantity: JsonDecimal
     unit_price: JsonDecimal
 

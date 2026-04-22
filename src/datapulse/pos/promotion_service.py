@@ -92,12 +92,14 @@ class PromotionService:
         drug_clusters = sorted(
             {item.drug_cluster for item in req.items if item.drug_cluster is not None}
         )
+        drug_brands = sorted({item.drug_brand for item in req.items if item.drug_brand is not None})
         now = datetime.now(UTC)
         candidates = self._repo.list_eligible(
             tenant_id,
             now=now,
             drug_codes=drug_codes,
             drug_clusters=drug_clusters,
+            drug_brands=drug_brands,
             subtotal=Decimal(str(req.subtotal)),
         )
         out: list[EligiblePromotion] = []
@@ -136,9 +138,11 @@ class PromotionService:
     ) -> Decimal:
         """Subtotal over only the cart lines that match the promotion's scope.
 
-        ``scope='all'`` uses the full cart subtotal. ``scope='items'`` and
-        ``scope='category'`` sum only matching lines so a percent promo is
-        applied to the eligible slice, not the whole cart.
+        ``scope='all'`` uses the full cart subtotal. The narrower scopes
+        (``items``, ``category``, ``brand``) sum only matching lines so a
+        percent promo is applied to the eligible slice, not the whole cart.
+        Brand matching is case-insensitive — the admin-entered list and the
+        catalog's ``drug_brand`` are both lowered on comparison.
         """
         if promo.scope == PromotionScope.all:
             return sum(
@@ -155,13 +159,23 @@ class PromotionService:
                 ),
                 Decimal("0"),
             )
-        # category
-        clusters = set(promo.scope_categories)
+        if promo.scope == PromotionScope.category:
+            clusters = set(promo.scope_categories)
+            return sum(
+                (
+                    Decimal(str(i.quantity)) * Decimal(str(i.unit_price))
+                    for i in items
+                    if i.drug_cluster in clusters
+                ),
+                Decimal("0"),
+            )
+        # brand (migration 104)
+        brands = {b.lower() for b in promo.scope_brands}
         return sum(
             (
                 Decimal(str(i.quantity)) * Decimal(str(i.unit_price))
                 for i in items
-                if i.drug_cluster in clusters
+                if i.drug_brand is not None and i.drug_brand.lower() in brands
             ),
             Decimal("0"),
         )

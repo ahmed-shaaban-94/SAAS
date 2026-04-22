@@ -32,6 +32,7 @@ def _promo(
     value: Decimal = Decimal("10"),
     scope_items: list[str] | None = None,
     scope_categories: list[str] | None = None,
+    scope_brands: list[str] | None = None,
     min_purchase: Decimal | None = None,
     max_discount: Decimal | None = None,
 ) -> PromotionResponse:
@@ -50,17 +51,41 @@ def _promo(
         status=PromotionStatus.active,
         scope_items=scope_items or [],
         scope_categories=scope_categories or [],
+        scope_brands=scope_brands or [],
         usage_count=0,
         total_discount_given=Decimal("0"),
         created_at=datetime.now(UTC),
     )
 
 
-def _items(*triples: tuple[str, str | None, Decimal, Decimal]) -> list[EligibleCartItem]:
-    return [
-        EligibleCartItem(drug_code=code, drug_cluster=cluster, quantity=qty, unit_price=price)
-        for code, cluster, qty, price in triples
-    ]
+def _items(
+    *triples: tuple[str, str | None, Decimal, Decimal]
+    | tuple[str, str | None, Decimal, Decimal, str | None],
+) -> list[EligibleCartItem]:
+    """Build EligibleCartItem list.
+
+    Each tuple is ``(drug_code, drug_cluster, qty, unit_price)`` or
+    ``(drug_code, drug_cluster, qty, unit_price, drug_brand)``. The
+    4-tuple form leaves drug_brand=None for backward-compatibility
+    with the pre-migration-101 tests.
+    """
+    out: list[EligibleCartItem] = []
+    for t in triples:
+        if len(t) == 4:
+            code, cluster, qty, price = t
+            brand = None
+        else:
+            code, cluster, qty, price, brand = t
+        out.append(
+            EligibleCartItem(
+                drug_code=code,
+                drug_cluster=cluster,
+                drug_brand=brand,
+                quantity=qty,
+                unit_price=price,
+            )
+        )
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +156,28 @@ def test_eligible_base_scope_category_sums_only_matching_clusters() -> None:
     )
     base = PromotionService.eligible_base(promo, items)
     assert base == Decimal("30")
+
+
+def test_eligible_base_scope_brand_sums_only_matching_brands() -> None:
+    """Brand scope (migration 104) — case-insensitive match on drug_brand."""
+    promo = _promo(scope=PromotionScope.brand, scope_brands=["Bayer", "GSK"])
+    items = _items(
+        ("A", None, Decimal("2"), Decimal("15"), "BAYER"),  # case-insensitive → 30
+        ("B", None, Decimal("1"), Decimal("20"), "Sanofi"),  # skipped
+        ("C", None, Decimal("3"), Decimal("10"), "gsk"),  # case-insensitive → 30
+        ("D", None, Decimal("1"), Decimal("5"), None),  # no brand → skipped
+    )
+    base = PromotionService.eligible_base(promo, items)
+    assert base == Decimal("60")
+
+
+def test_eligible_base_scope_brand_skips_when_no_brand_matches() -> None:
+    promo = _promo(scope=PromotionScope.brand, scope_brands=["Novartis"])
+    items = _items(
+        ("A", None, Decimal("1"), Decimal("10"), "Bayer"),
+        ("B", None, Decimal("1"), Decimal("10"), None),
+    )
+    assert PromotionService.eligible_base(promo, items) == Decimal("0")
 
 
 # ---------------------------------------------------------------------------
