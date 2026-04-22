@@ -18,7 +18,9 @@ test ``dependency_overrides`` setups that reference the old paths.
 from __future__ import annotations
 
 import re
+import time
 from collections.abc import Generator
+from functools import lru_cache
 from typing import Annotated, Any, TypedDict
 
 import structlog
@@ -60,6 +62,26 @@ class UserClaims(TypedDict):
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 _pipeline_token_header = APIKeyHeader(name="X-Pipeline-Token", auto_error=False)
 _bearer_scheme = HTTPBearer(auto_error=False)
+
+
+@lru_cache(maxsize=64)
+def _log_dev_tenant_fallback_once(minute_bucket: int) -> None:
+    """Warn once per minute when JWT lacks a tenant claim in dev mode.
+
+    ``lru_cache`` keyed on the monotonic-minute bucket means only the first
+    call inside a given minute actually logs; subsequent calls hit the cache
+    and are silent. ``maxsize=64`` keeps ~1h of bucket history before evicting
+    the oldest, which is far larger than any realistic concurrent-minute
+    window and avoids unbounded cache growth.
+    """
+    _auth_logger.warning(
+        "jwt_missing_tenant_id_dev_fallback",
+        detail=(
+            "JWT has no tenant claim; falling back to default_tenant_id in "
+            "dev mode. Add a 'tenant_id' claim to the Auth0 Action before "
+            "deploying to staging/production, or requests will be 401-rejected."
+        ),
+    )
 
 
 def require_api_key(
@@ -121,6 +143,20 @@ def get_current_user(
             or claims.get("tid")
         )
         if not tenant_id:
+            # Production: no fallback ever — a misconfigured Auth0 Action must
+            # not silently route users to ``default_tenant_id`` (#546).
+            if is_non_dev_env(settings.app_env, settings.sentry_environment):
+                _auth_logger.warning(
+                    "jwt_missing_tenant_id_production_rejected",
+                    sub=claims.get("sub"),
+                    app_env=settings.app_env,
+                    sentry_environment=settings.sentry_environment,
+                )
+                raise HTTPException(
+                    status_code=401,
+                    detail="JWT missing tenant context",
+                )
+            # Defense in depth: a cleared default in dev also rejects.
             if not settings.default_tenant_id:
                 _auth_logger.warning(
                     "jwt_missing_tenant_id_rejected",
@@ -130,12 +166,9 @@ def get_current_user(
                     status_code=401,
                     detail="JWT missing tenant context",
                 )
+            # Dev: rate-limited warning so the log isn't flooded under load.
             tenant_id = settings.default_tenant_id
-            _auth_logger.warning(
-                "jwt_missing_tenant_id",
-                sub=claims.get("sub"),
-                detail="Falling back to default_tenant_id; add tenant_id claim to Auth0 Action",
-            )
+            _log_dev_tenant_fallback_once(int(time.monotonic() // 60))
         tenant_id_str = str(tenant_id)
         if tenant_id_str and not _TENANT_ID_RE.match(tenant_id_str):
             _auth_logger.warning("invalid_tenant_id", raw=tenant_id)

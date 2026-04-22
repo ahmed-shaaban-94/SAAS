@@ -147,6 +147,75 @@ class TestGetCurrentUser:
             )
         assert result["tenant_id"] == "1"  # default_tenant_id
 
+    def test_jwt_missing_tenant_id_rejects_401_in_production(self):
+        """#546: production must not fall back to default_tenant_id silently."""
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {"sub": "user123"}
+        prod_settings = _settings(
+            app_env="production",
+            sentry_environment="production",
+            api_key="prod-key",
+            auth0_domain="example.auth0.com",
+            db_reader_password="reader-secret",
+            pipeline_webhook_secret="pipeline-secret",
+        )
+        with (
+            patch("datapulse.core.auth.verify_jwt", return_value=fake_claims),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            get_current_user(credentials=creds, api_key=None, settings=prod_settings)
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "JWT missing tenant context"
+
+    def test_jwt_missing_tenant_id_rejects_401_in_staging(self):
+        """#546: staging is also non-dev — same strict rejection as production."""
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {"sub": "user123"}
+        stage_settings = _settings(
+            app_env="staging",
+            sentry_environment="staging",
+            api_key="stage-key",
+            auth0_domain="example.auth0.com",
+            db_reader_password="reader-secret",
+            pipeline_webhook_secret="pipeline-secret",
+        )
+        with (
+            patch("datapulse.core.auth.verify_jwt", return_value=fake_claims),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            get_current_user(credentials=creds, api_key=None, settings=stage_settings)
+        assert exc_info.value.status_code == 401
+
+    def test_jwt_missing_tenant_id_dev_fallback_is_rate_limited(self):
+        """#546: dev warning fires once per minute, not on every request."""
+        from datapulse.core import auth as auth_mod
+
+        auth_mod._log_dev_tenant_fallback_once.cache_clear()
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {"sub": "user123"}
+        with (
+            patch("datapulse.core.auth.verify_jwt", return_value=fake_claims),
+            patch.object(auth_mod, "_auth_logger") as mock_logger,
+            patch("datapulse.core.auth.time.monotonic", return_value=60.0),
+        ):
+            for _ in range(5):
+                get_current_user(
+                    credentials=creds,
+                    api_key=None,
+                    settings=_settings(api_key="key"),
+                )
+        fallback_calls = [
+            c
+            for c in mock_logger.warning.call_args_list
+            if c.args and c.args[0] == "jwt_missing_tenant_id_dev_fallback"
+        ]
+        assert len(fallback_calls) == 1, (
+            f"Expected exactly one fallback warning per minute bucket, got {len(fallback_calls)}"
+        )
+
     def test_jwt_tid_claim_accepted(self):
         """When tenant_id is missing but 'tid' is present, it is used."""
         creds = MagicMock()
