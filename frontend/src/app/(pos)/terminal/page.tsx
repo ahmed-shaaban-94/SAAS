@@ -14,18 +14,17 @@ import { ScanBar } from "@/components/pos/terminal/ScanBar";
 import { QuickPickGrid } from "@/components/pos/terminal/QuickPickGrid";
 import { CartTable } from "@/components/pos/terminal/CartTable";
 import { TotalsHero } from "@/components/pos/terminal/TotalsHero";
-import { Keypad } from "@/components/pos/terminal/Keypad";
 import { ShortcutLegend } from "@/components/pos/terminal/ShortcutLegend";
-import { PaymentTiles } from "@/components/pos/terminal/PaymentTiles";
-import {
-  ActivePaymentStrip,
-  type InsuranceState,
-} from "@/components/pos/terminal/ActivePaymentStrip";
-import { ChargeButton } from "@/components/pos/terminal/ChargeButton";
+// ActivePaymentStrip owns the InsuranceState shape — we still import the
+// type for local state, but the component itself renders inside the
+// CheckoutConfirmModal now (D0). Same for Keypad, PaymentTiles,
+// ChargeButton — those are all re-composed inside the modal.
+import { type InsuranceState } from "@/components/pos/terminal/ActivePaymentStrip";
 import { ScanToast } from "@/components/pos/terminal/ScanToast";
 import { ScanDisambigPicker } from "@/components/pos/terminal/ScanDisambigPicker";
 import { ProvisionalBanner } from "@/components/pos/terminal/ProvisionalBanner";
 import { productToQuickPick, type TilePaymentMethod } from "@/components/pos/terminal/types";
+import { CheckoutConfirmModal } from "@/components/pos/terminal/CheckoutConfirmModal";
 import { usePosCart } from "@/hooks/use-pos-cart";
 import { usePosCheckout } from "@/hooks/use-pos-checkout";
 import { usePosProducts } from "@/hooks/use-pos-products";
@@ -33,6 +32,7 @@ import { useOfflineState } from "@/hooks/use-offline-state";
 import { cn } from "@/lib/utils";
 import type { PosProductResult, TerminalSessionResponse } from "@/types/pos";
 import { computeVoucherDiscount, type CartVoucher } from "@/contexts/pos-cart-context";
+import { fmtEgp } from "@/components/pos/terminal/types";
 
 // ---- Terminal guard ----
 function useActiveTerminal(): TerminalSessionResponse | null {
@@ -97,6 +97,10 @@ export default function PosTerminalPage() {
   const [voucherOpen, setVoucherOpen] = useState(false);
   const [insuranceOpen, setInsuranceOpen] = useState(false);
   const [pharmacistOpen, setPharmacistOpen] = useState(false);
+  // D0 — v9 design: the payment stack (tiles + strip + keypad + charge)
+  // lives inside a confirm modal, not inline on the right column. This
+  // frees the right column for the Clinical/AI panel in Phase D1.
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [pendingDrug, setPendingDrug] = useState<PosProductResult | null>(null);
   const [lastKeypadKey, setLastKeypadKey] = useState<string | null>(null);
   const [unsyncedCodes, setUnsyncedCodes] = useState<Set<string>>(() => new Set());
@@ -376,9 +380,18 @@ export default function PosTerminalPage() {
           });
           return;
         }
-        if (e.key === "Enter" && items.length > 0 && grandTotal > 0) {
+        if (
+          e.key === "Enter" &&
+          items.length > 0 &&
+          grandTotal > 0 &&
+          !checkoutOpen
+        ) {
+          // D0 — first Enter opens the confirm modal; second Enter
+          // (intercepted inside the modal) actually charges. This splits
+          // the "review" and "commit" gestures that used to collapse
+          // into a single keystroke.
           e.preventDefault();
-          handleCheckout();
+          setCheckoutOpen(true);
           return;
         }
       }
@@ -395,6 +408,7 @@ export default function PosTerminalPage() {
     handleCheckout,
     openVoucherModal,
     voucherOpen,
+    checkoutOpen,
   ]);
 
   // Hijack the legacy F2 layout shortcut (now = Sync).
@@ -483,7 +497,10 @@ export default function PosTerminalPage() {
           />
         </section>
 
-        {/* RIGHT column */}
+        {/* RIGHT column — D0 simplified: total + F-key legend + open-modal CTA.
+            Phase D1 will shrink this column to 2.5fr and add the Clinical/AI
+            panel; keypad + tiles + strip + charge all live inside
+            CheckoutConfirmModal (rendered at the bottom of this tree). */}
         <section className="flex min-h-0 flex-col gap-3 overflow-y-auto">
           <TotalsHero
             subtotal={subtotal}
@@ -495,52 +512,41 @@ export default function PosTerminalPage() {
             voucherCode={voucherCode}
             insuranceCoveragePct={insurance?.coveragePct ?? null}
           />
-          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-3">
-            <Keypad
-              value={cashTendered}
-              onChange={setCashTendered}
-              disabled={activePayment !== "cash"}
-              lastKey={lastKeypadKey}
-            />
-            <ShortcutLegend />
-          </div>
-          <PaymentTiles
-            active={activePayment}
-            onSelect={(m) => {
-              setActivePayment(m);
-              if (m === "voucher" && !voucherCode) setVoucherOpen(true);
-            }}
-            voucherCode={voucherCode}
-            voucherDiscount={voucherDiscount}
-            insuranceCoveragePct={insurance?.coveragePct ?? null}
-          />
-          <ActivePaymentStrip
-            method={activePayment}
-            grandTotal={grandTotal}
-            cashTendered={cashTendered}
-            onCashTenderedChange={setCashTendered}
-            cardLast4={cardLast4}
-            onCardLast4Change={setCardLast4}
-            insurance={insurance}
-            onInsuranceChange={(next) => {
-              setInsurance(next);
-              if (!next) setInsuranceNumber(null);
-            }}
-            onOpenInsuranceModal={() => setInsuranceOpen(true)}
-            voucherCode={voucherCode}
-            voucherDiscount={voucherDiscount}
-            onOpenVoucherModal={() => setVoucherOpen(true)}
-          />
-          <ChargeButton
-            grandTotal={grandTotal}
+          <ShortcutLegend />
+          <button
+            type="button"
+            onClick={() => setCheckoutOpen(true)}
             disabled={chargeDisabled}
-            onCharge={handleCheckout}
-          />
-          {checkout.error && (
-            <p role="alert" className="text-center text-xs text-destructive">
-              {checkout.error}
-            </p>
-          )}
+            aria-label={`Start checkout for EGP ${fmtEgp(grandTotal)} (Enter)`}
+            data-testid="start-checkout-button"
+            className={cn(
+              "grid items-center gap-3 rounded-xl px-5 py-4 transition-all duration-200",
+              "[grid-template-columns:auto_1fr_auto]",
+              chargeDisabled
+                ? "cursor-not-allowed border border-[var(--pos-line)] bg-white/[0.04] text-[var(--pos-ink-2)]"
+                : cn(
+                    "cursor-pointer border-0 text-[#021018]",
+                    "bg-gradient-to-b from-[#5cdfff] to-[#00a6cc]",
+                    "shadow-[0_0_24px_rgba(0,199,242,0.4),0_6px_16px_rgba(0,199,242,0.25),inset_0_1px_0_rgba(255,255,255,0.35)]",
+                    "hover:from-[#6be5ff] hover:to-[#00b5dd]",
+                  ),
+            )}
+          >
+            <span className="text-[18px] font-bold">Start Checkout</span>
+            <span className="text-center font-mono text-[22px] font-bold tabular-nums">
+              EGP {fmtEgp(grandTotal)}
+            </span>
+            <kbd
+              className={cn(
+                "rounded border px-2 py-0.5 font-mono text-[10px] font-semibold",
+                chargeDisabled
+                  ? "border-[var(--pos-line)] bg-white/[0.04] text-[var(--pos-ink-3)]"
+                  : "border-[rgba(2,16,24,0.3)] bg-[rgba(2,16,24,0.22)] text-[#021018]",
+              )}
+            >
+              Enter ↵
+            </kbd>
+          </button>
         </section>
       </main>
 
@@ -550,6 +556,37 @@ export default function PosTerminalPage() {
         candidates={disambigCandidates ?? []}
         onPick={handleDisambigPick}
         onCancel={() => setDisambigCandidates(null)}
+      />
+      {/* D0 — confirm-step checkout modal. Rendered before the voucher
+          and insurance modals so those two can layer on top when opened
+          from within the checkout flow. */}
+      <CheckoutConfirmModal
+        open={checkoutOpen}
+        itemCount={itemCount}
+        grandTotal={grandTotal}
+        activePayment={activePayment}
+        onActivePaymentChange={(m) => {
+          setActivePayment(m);
+          if (m === "voucher" && !voucherCode) setVoucherOpen(true);
+        }}
+        cashTendered={cashTendered}
+        onCashTenderedChange={setCashTendered}
+        cardLast4={cardLast4}
+        onCardLast4Change={setCardLast4}
+        insurance={insurance}
+        onInsuranceChange={(next) => {
+          setInsurance(next);
+          if (!next) setInsuranceNumber(null);
+        }}
+        onOpenInsuranceModal={() => setInsuranceOpen(true)}
+        voucherCode={voucherCode}
+        voucherDiscount={voucherDiscount}
+        onOpenVoucherModal={() => setVoucherOpen(true)}
+        lastKeypadKey={lastKeypadKey}
+        chargeDisabled={chargeDisabled}
+        onCharge={handleCheckout}
+        onClose={() => setCheckoutOpen(false)}
+        error={checkout.error ?? null}
       />
       <VoucherCodeModal
         open={voucherOpen}

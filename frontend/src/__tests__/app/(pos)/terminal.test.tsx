@@ -134,7 +134,15 @@ describe("Terminal v2 integration", () => {
   });
 
   it("F9 / F10 / F11 / F7 select the matching payment method", async () => {
+    // D0 — PaymentTiles now live inside CheckoutConfirmModal. We add an
+    // item + open the modal first so pay-tile-* are in the DOM. The F-key
+    // handler still fires on window.keydown regardless of where the tiles
+    // render, so the asserted behavior is unchanged.
+    const user = userEvent.setup();
     renderPage();
+    await waitFor(() => expect(screen.getByTestId("quick-pick-1")).toBeInTheDocument());
+    await user.click(screen.getByTestId("quick-pick-1"));
+    await user.click(screen.getByTestId("start-checkout-button"));
     await waitFor(() => expect(screen.getByTestId("pay-tile-cash")).toBeInTheDocument());
 
     // Initial: cash active
@@ -172,6 +180,11 @@ describe("Terminal v2 integration", () => {
     await user.click(screen.getByTestId("quick-pick-1"));
     await waitFor(() => expect(screen.getByTestId("cart-row-SKU-1")).toBeInTheDocument());
 
+    // D0 — pay-tile-voucher is inside the checkout modal now; open it.
+    await user.click(screen.getByTestId("start-checkout-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("checkout-confirm-modal")).toBeInTheDocument(),
+    );
     // Open the voucher modal via the voucher tile
     await user.click(screen.getByTestId("pay-tile-voucher"));
     const codeInput = await screen.findByLabelText(/voucher code/i);
@@ -192,7 +205,7 @@ describe("Terminal v2 integration", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "F9" }));
     });
 
-    // Click charge
+    // Click charge (inside the already-open checkout modal)
     await user.click(screen.getByTestId("charge-button"));
 
     // pending checkout in localStorage carries only the transaction + method.
@@ -208,10 +221,42 @@ describe("Terminal v2 integration", () => {
     });
   });
 
-  it("keeps the Charge button disabled while the cart is empty", async () => {
+  it("keeps the Start Checkout button disabled while the cart is empty", async () => {
+    // D0 — the right column shows start-checkout-button. The old
+    // charge-button lives inside the modal, which cannot be opened
+    // while the cart is empty.
     renderPage();
-    await waitFor(() => expect(screen.getByTestId("charge-button")).toBeInTheDocument());
-    expect(screen.getByTestId("charge-button")).toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByTestId("start-checkout-button")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("start-checkout-button")).toBeDisabled();
+    expect(screen.queryByTestId("checkout-confirm-modal")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("charge-button")).not.toBeInTheDocument();
+  });
+
+  it("opens CheckoutConfirmModal via Start Checkout and closes with Escape", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId("quick-pick-1")).toBeInTheDocument());
+    await user.click(screen.getByTestId("quick-pick-1"));
+
+    // Modal not yet open
+    expect(screen.queryByTestId("checkout-confirm-modal")).not.toBeInTheDocument();
+
+    // Click CTA → modal opens, charge-button appears inside it
+    await user.click(screen.getByTestId("start-checkout-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("checkout-confirm-modal")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("charge-button")).toBeInTheDocument();
+
+    // Escape closes
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId("checkout-confirm-modal")).not.toBeInTheDocument(),
+    );
   });
 
   it(
@@ -222,6 +267,15 @@ describe("Terminal v2 integration", () => {
 
       await waitFor(() => expect(screen.getByTestId("quick-pick-1")).toBeInTheDocument());
       await user.click(screen.getByTestId("quick-pick-1"));
+
+      // D0 — open the checkout modal first so the InsuranceStrip's
+      // "Configure…" button (which lives inside ActivePaymentStrip,
+      // which lives inside the modal) is in the DOM. F11 still switches
+      // activePayment state regardless of modal-open state.
+      await user.click(screen.getByTestId("start-checkout-button"));
+      await waitFor(() =>
+        expect(screen.getByTestId("checkout-confirm-modal")).toBeInTheDocument(),
+      );
 
       // Activate insurance payment strip (F11) and open the modal via Configure
       act(() => {
