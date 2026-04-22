@@ -16,12 +16,11 @@ from datapulse.analytics.models import (
 from datapulse.analytics.revenue_forecast_builder import compose_revenue_forecast
 from datapulse.api.auth import get_current_user
 from datapulse.api.cache_helpers import set_cache_headers
-from datapulse.api.deps import SessionDep, get_forecasting_service
+from datapulse.api.deps import get_forecasting_service, get_targets_service
 from datapulse.api.limiter import limiter
 from datapulse.api.routes.analytics._shared import ServiceDep
 from datapulse.forecasting.service import ForecastingService
 from datapulse.logging import get_logger
-from datapulse.targets.repository import TargetsRepository
 from datapulse.targets.service import TargetsService
 
 log = get_logger(__name__)
@@ -66,9 +65,9 @@ def _period_window(period: str, today: date) -> tuple[date, date, date, date]:
 def get_revenue_forecast(
     request: Request,
     response: Response,
-    session: SessionDep,
     analytics: ServiceDep,
     forecasting: Annotated[ForecastingService, Depends(get_forecasting_service)],
+    targets: Annotated[TargetsService, Depends(get_targets_service)],
     period: Annotated[str, Query(pattern="^(day|week|month|quarter|ytd)$")] = "month",
     target_date: Annotated[date | None, Query()] = None,
 ) -> RevenueForecast:
@@ -97,11 +96,10 @@ def get_revenue_forecast(
     except Exception as exc:  # pragma: no cover — defensive
         log.warning("revenue_forecast_fetch_failed", error=str(exc))
 
-    # Target — reuses TargetsRepository directly (RLS-scoped via session).
+    # Target — RLS-scoped via the injected TargetsService.
     target_summary = None
     try:
-        target_service = TargetsService(TargetsRepository(session))
-        target_summary = target_service.get_target_summary(today.year)
+        target_summary = targets.get_target_summary(today.year)
     except Exception as exc:  # pragma: no cover — defensive
         log.warning("revenue_forecast_target_failed", error=str(exc))
 

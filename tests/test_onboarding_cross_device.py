@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 
 from datapulse.api.app import create_app
 from datapulse.api.auth import get_current_user
-from datapulse.api.routes.onboarding import get_onboarding_service
+from datapulse.api.deps import get_onboarding_service
 from datapulse.onboarding.models import OnboardingStatus
 from datapulse.onboarding.repository import OnboardingRepository
 from datapulse.onboarding.service import OnboardingService

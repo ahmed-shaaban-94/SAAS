@@ -475,6 +475,35 @@ def get_reseller_service(
     return ResellerService(ResellerRepository(session))
 
 
+def get_onboarding_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+):
+    from datapulse.onboarding.repository import OnboardingRepository
+    from datapulse.onboarding.service import OnboardingService
+
+    return OnboardingService(OnboardingRepository(session))
+
+
+def get_sample_load_service(
+    session: Annotated[Session, Depends(get_tenant_session)],
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+):
+    """Factory for the onboarding sample-loader.
+
+    Reuses :func:`get_pipeline_service` so the same RLS-scoped session
+    backs both the pipeline_run record and the sample insert. The
+    quality-check seeder uses its own :class:`QualityRepository` bound to
+    the same session.
+    """
+    from datapulse.onboarding.sample_service import SampleLoadService
+
+    return SampleLoadService(
+        session=session,
+        pipeline_service=pipeline_service,
+        quality_repo=QualityRepository(session),
+    )
+
+
 def get_branding_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ):

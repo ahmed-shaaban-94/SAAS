@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_tenant_session
+from datapulse.api.deps import get_onboarding_service, get_sample_load_service
 from datapulse.api.limiter import limiter
 from datapulse.onboarding.models import (
     CompleteStepRequest,
@@ -20,42 +19,14 @@ from datapulse.onboarding.models import (
     OnboardingStatus,
     SampleLoadResult,
 )
-from datapulse.onboarding.repository import OnboardingRepository
 from datapulse.onboarding.sample_service import SampleLoadService
 from datapulse.onboarding.service import OnboardingService
-from datapulse.pipeline.quality_repository import QualityRepository
-from datapulse.pipeline.repository import PipelineRepository
-from datapulse.pipeline.service import PipelineService
 
 router = APIRouter(
     prefix="/onboarding",
     tags=["onboarding"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-# ------------------------------------------------------------------
-# Dependency injection (local factory — does not modify deps.py)
-# ------------------------------------------------------------------
-
-
-def get_onboarding_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> OnboardingService:
-    repo = OnboardingRepository(session)
-    return OnboardingService(repo)
-
-
-def get_sample_load_service(
-    session: Annotated[Session, Depends(get_tenant_session)],
-) -> SampleLoadService:
-    pipeline_service = PipelineService(PipelineRepository(session))
-    quality_repo = QualityRepository(session)
-    return SampleLoadService(
-        session=session,
-        pipeline_service=pipeline_service,
-        quality_repo=quality_repo,
-    )
 
 
 ServiceDep = Annotated[OnboardingService, Depends(get_onboarding_service)]
