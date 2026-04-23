@@ -100,6 +100,14 @@ jobs:
         # against higher individual thresholds defined in pyproject.toml.
         # Reports which module fell below threshold, not just "overall dropped".
         run: python scripts/check_coverage_gates.py coverage.xml
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unit
+          fail_ci_if_error: false
 
   test-integration:
     name: Integration Tests
@@ -172,6 +180,14 @@ jobs:
           name: coverage-report
           path: coverage.xml
           retention-days: 7
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: integration
+          fail_ci_if_error: false
 
   frontend:
     name: Frontend
