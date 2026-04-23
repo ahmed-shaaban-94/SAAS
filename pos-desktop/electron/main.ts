@@ -77,14 +77,25 @@ function startNextServer(): Promise<void> {
     log.info({ serverScript }, "starting Next.js server");
 
     // Set env vars for the Next.js server.
-    // All Auth0 + API vars are passed through from the Electron process env
-    // so a single .env file at the pos-desktop root controls everything.
+    // API vars are passed through from the Electron process env so a single
+    // .env file at the pos-desktop root controls everything.
+    //
+    // NEXTAUTH_SECRET note: the Clerk migration (#668) left behind a
+    // `/api/auth/[...nextauth]/route.ts` handler that still ships in the
+    // Next.js bundle. When NODE_ENV=production, next-auth's assertConfig
+    // refuses to boot without a secret — even though Clerk-based
+    // deployments never hit the route. Set a placeholder here so the
+    // server starts; the dead NextAuth path will be deleted in a
+    // separate cleanup PR.
     const env = {
       ...process.env,
       PORT: String(PORT),
       HOSTNAME: "localhost",
       NODE_ENV: "production",
       NEXTAUTH_URL: `http://localhost:${PORT}`,
+      NEXTAUTH_SECRET:
+        process.env.NEXTAUTH_SECRET ||
+        "clerk-deployment-nextauth-unused-placeholder",
       NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "https://smartdatapulse.tech",
       INTERNAL_API_URL: process.env.INTERNAL_API_URL || "https://smartdatapulse.tech",
     };
