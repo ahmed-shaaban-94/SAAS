@@ -367,6 +367,6 @@ def test_start_scheduler_enabled_by_default():
 
         start_scheduler()
 
-        # 4 static jobs incl. rls_audit (#546).
-        assert mock_sched.add_job.call_count == 4
+        # 5 static jobs incl. rls_audit (#546) + mba_cross_sell.
+        assert mock_sched.add_job.call_count == 5
         mock_sched.start.assert_called_once()
