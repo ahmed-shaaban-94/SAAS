@@ -49,6 +49,7 @@ from datapulse.pos._service_helpers import (
 from datapulse.pos._service_shift import ShiftCashMixin
 from datapulse.pos._service_terminal import TerminalOpsMixin
 from datapulse.pos._service_voidreturn import VoidReturnMixin
+from datapulse.pos._service_whatsapp import WhatsAppReceiptMixin
 
 if TYPE_CHECKING:
     from datapulse.pos.inventory_contract import InventoryServiceProtocol
@@ -56,6 +57,7 @@ if TYPE_CHECKING:
     from datapulse.pos.promotion_repository import PromotionRepository
     from datapulse.pos.repository import PosRepository
     from datapulse.pos.voucher_repository import VoucherRepository
+    from datapulse.pos.whatsapp import WhatsAppProvider
 
 
 __all__ = [
@@ -76,6 +78,7 @@ class PosService(
     CatalogMixin,
     ShiftCashMixin,
     DeliveryMixin,
+    WhatsAppReceiptMixin,
 ):
     """Business logic for POS terminal + transaction lifecycle.
 
@@ -97,6 +100,7 @@ class PosService(
         verifier: PharmacistVerifier | None = None,
         voucher_repo: VoucherRepository | None = None,
         promotion_repo: PromotionRepository | None = None,
+        whatsapp_provider: WhatsAppProvider | None = None,
     ) -> None:
         self._repo = repo
         self._inventory = inventory
@@ -107,3 +111,6 @@ class PosService(
         self._voucher_repo = voucher_repo
         # Promotions follow the same optional-wiring pattern as vouchers.
         self._promotion_repo = promotion_repo
+        # WhatsApp receipt delivery (#629). When None, send_receipt_whatsapp
+        # raises WhatsAppDisabledError -> 503 so the UI falls back to print.
+        self._whatsapp = whatsapp_provider

@@ -221,6 +221,18 @@ class Settings(BaseSettings):
     # Must be set when using Postgres/SQL Server connectors with stored passwords.
     control_center_creds_key: str = ""
 
+    # WhatsApp receipt delivery (#629) — off by default. Flip the flag and
+    # (optionally) swap the provider to "twilio" with real credentials to
+    # enable. Provider "mock" captures sends in-memory — safe for dev/demo
+    # where the UI wants the "sent" state without hitting a paid BSP.
+    whatsapp_receipts_enabled: bool = False
+    whatsapp_receipt_provider: str = "mock"  # "mock" | "twilio"
+    # Twilio WhatsApp Business API credentials — read only when
+    # whatsapp_receipt_provider == "twilio". Never logged.
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_whatsapp_from: str = ""  # E.164, e.g. "whatsapp:+14155238886"
+
     @model_validator(mode="after")
     def _reject_cors_wildcard_with_credentials(self) -> "Settings":
         """Reject ``CORS_ORIGINS=['*']`` because the CORS middleware always

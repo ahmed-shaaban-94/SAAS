@@ -50,6 +50,8 @@ def install_exception_handlers(app: FastAPI) -> None:
         ShiftNotOpenError,
         TerminalNotActiveError,
         VoidNotAllowedError,
+        WhatsAppDeliveryFailedError,
+        WhatsAppDisabledError,
     )
 
     @app.exception_handler(InsufficientStockError)
@@ -80,6 +82,19 @@ def install_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ShiftNotOpenError)
     async def pos_shift_not_open_handler(request: Request, exc: ShiftNotOpenError) -> JSONResponse:
         return JSONResponse(status_code=409, content={"detail": exc.message})
+
+    @app.exception_handler(WhatsAppDisabledError)
+    async def pos_whatsapp_disabled_handler(
+        request: Request, exc: WhatsAppDisabledError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=503, content={"detail": exc.message})
+
+    @app.exception_handler(WhatsAppDeliveryFailedError)
+    async def pos_whatsapp_delivery_failed_handler(
+        request: Request, exc: WhatsAppDeliveryFailedError
+    ) -> JSONResponse:
+        logger.warning("pos.whatsapp.delivery_failed", detail=exc.detail)
+        return JSONResponse(status_code=502, content={"detail": exc.message})
 
     @app.exception_handler(DataPulseError)
     async def datapulse_error_handler(request: Request, exc: DataPulseError) -> JSONResponse:

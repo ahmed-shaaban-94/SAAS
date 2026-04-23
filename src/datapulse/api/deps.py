@@ -349,6 +349,32 @@ def get_reorder_config_service(
     return ReorderConfigService(repo)
 
 
+def get_whatsapp_provider():
+    """Return the configured :class:`WhatsAppProvider`, or ``None`` when disabled.
+
+    ``None`` is the feature-off signal that :class:`PosService` surfaces as
+    :class:`WhatsAppDisabledError` -> HTTP 503 so the UI can fall back to
+    "Print instead" per issue #629.
+    """
+    from datapulse.pos.whatsapp import (
+        MockWhatsAppProvider,
+        TwilioCloudApiProvider,
+    )
+
+    settings = get_settings()
+    if not settings.whatsapp_receipts_enabled:
+        return None
+    if settings.whatsapp_receipt_provider == "mock":
+        return MockWhatsAppProvider()
+    if settings.whatsapp_receipt_provider == "twilio":
+        return TwilioCloudApiProvider(
+            account_sid=settings.twilio_account_sid,
+            auth_token=settings.twilio_auth_token,
+            from_number=settings.twilio_whatsapp_from,
+        )
+    return None
+
+
 def get_pos_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ):
@@ -394,6 +420,7 @@ def get_pos_service(
         verifier,
         voucher_repo=voucher_repo,
         promotion_repo=promotion_repo,
+        whatsapp_provider=get_whatsapp_provider(),
     )
 
 

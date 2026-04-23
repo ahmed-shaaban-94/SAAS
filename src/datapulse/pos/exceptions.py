@@ -148,3 +148,43 @@ class ShiftNotOpenError(PosError):
             detail=f"terminal_id={terminal_id}",
         )
         self.terminal_id = terminal_id
+
+
+class InvalidPhoneError(PosError):
+    """Raised when a caller-supplied phone fails E.164 normalization (#629).
+
+    Maps to HTTP 400 via the generic ``DataPulseError`` handler.
+    """
+
+    def __init__(self, message: str = "Invalid phone number.") -> None:
+        super().__init__(message=message, detail="phone_normalize_failed")
+
+
+class WhatsAppDisabledError(PosError):
+    """Raised when a WhatsApp endpoint is hit but the feature is off (#629).
+
+    Maps to HTTP 503 via a dedicated handler so the UI can fall back to
+    "Print instead" per the issue acceptance criteria.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            message="WhatsApp receipt delivery is not enabled on this deployment.",
+            detail="whatsapp_feature_disabled",
+        )
+
+
+class WhatsAppDeliveryFailedError(PosError):
+    """Raised when the WhatsApp provider fails after the retry budget (#629).
+
+    Maps to HTTP 502 via a dedicated handler. The detail carries a
+    provider-supplied reason so support can triage without leaking the
+    raw phone number.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(
+            message=f"Failed to send WhatsApp receipt: {reason}",
+            detail=f"whatsapp_provider_error reason={reason}",
+        )
+        self.reason = reason

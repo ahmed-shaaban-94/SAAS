@@ -67,3 +67,29 @@ def send_receipt_email(
     _ = service.get_receipt_pdf(transaction_id, _tenant_id_of(user))
     log.info("pos.receipt.email_queued", transaction_id=transaction_id, email=body.email)
     return {"sent": True, "email": body.email}
+
+
+class _WhatsAppReceiptRequest(BaseModel):
+    phone: str
+
+
+@router.post("/receipts/{transaction_id}/whatsapp")
+@limiter.limit("10/minute")
+def send_receipt_whatsapp(
+    request: Request,
+    transaction_id: Annotated[int, Path(ge=1)],
+    body: _WhatsAppReceiptRequest,
+    service: ServiceDep,
+    user: CurrentUser,
+) -> dict:
+    """Send the PDF receipt to the given phone via WhatsApp (#629).
+
+    Feature-flag gated. When disabled the service raises
+    :class:`WhatsAppDisabledError` -> 503 so the UI can fall back to print.
+    The raw phone is never logged — only a truncated sha256 hash.
+    """
+    return service.send_receipt_whatsapp(
+        transaction_id,
+        body.phone,
+        _tenant_id_of(user),
+    )
