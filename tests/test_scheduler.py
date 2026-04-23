@@ -97,6 +97,7 @@ async def test_run_pipeline_stage_failure_stops_pipeline():
 @pytest.mark.asyncio
 async def test_health_check_all_ok():
     """No notification when DB and Redis are healthy."""
+    mock_session = MagicMock()
     with (
         patch("datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}),
         patch(
@@ -104,12 +105,9 @@ async def test_health_check_all_ok():
             return_value={"status": "ok", "latency_ms": 2},
         ),
         patch("datapulse.notifications.notify_health_failure") as mock_notify,
-        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.core.db_session.open_tenant_session", return_value=mock_session),
         patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
     ):
-        # Stale run detection — no stale runs
-        mock_session = MagicMock()
-        mock_sf.return_value = MagicMock(return_value=mock_session)
         mock_repo_cls.return_value.mark_stale_runs_failed.return_value = []
 
         from datapulse.scheduler import _health_check
@@ -121,6 +119,7 @@ async def test_health_check_all_ok():
 @pytest.mark.asyncio
 async def test_health_check_db_failure_notifies():
     """Notification sent when DB is down."""
+    mock_session = MagicMock()
     with (
         patch(
             "datapulse.checks.check_db",
@@ -128,11 +127,9 @@ async def test_health_check_db_failure_notifies():
         ),
         patch("datapulse.checks.check_redis", return_value={"status": "ok"}),
         patch("datapulse.notifications.notify_health_failure") as mock_notify,
-        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.core.db_session.open_tenant_session", return_value=mock_session),
         patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
     ):
-        mock_session = MagicMock()
-        mock_sf.return_value = MagicMock(return_value=mock_session)
         mock_repo_cls.return_value.mark_stale_runs_failed.return_value = []
 
         from datapulse.scheduler import _health_check
@@ -144,6 +141,7 @@ async def test_health_check_db_failure_notifies():
 @pytest.mark.asyncio
 async def test_health_check_detects_stale_pipeline():
     """Stale pipeline runs are marked failed and notified."""
+    mock_session = MagicMock()
     with (
         patch("datapulse.checks.check_db", return_value={"status": "ok", "latency_ms": 5}),
         patch(
@@ -152,11 +150,9 @@ async def test_health_check_detects_stale_pipeline():
         ),
         patch("datapulse.notifications.notify_health_failure"),
         patch("datapulse.notifications.notify_pipeline_failure") as mock_pipe_fail,
-        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.core.db_session.open_tenant_session", return_value=mock_session),
         patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
     ):
-        mock_session = MagicMock()
-        mock_sf.return_value = MagicMock(return_value=mock_session)
         stale_id = str(uuid4())
         mock_repo_cls.return_value.mark_stale_runs_failed.return_value = [stale_id]
 
@@ -174,13 +170,12 @@ async def test_health_check_detects_stale_pipeline():
 @pytest.mark.asyncio
 async def test_quality_digest_no_runs():
     """No notification when no pipeline runs exist."""
+    mock_session = MagicMock()
     with (
-        patch("datapulse.core.db.get_session_factory") as mock_sf,
+        patch("datapulse.core.db_session.open_tenant_session", return_value=mock_session),
         patch("datapulse.pipeline.repository.PipelineRepository") as mock_repo_cls,
         patch("datapulse.notifications.notify_quality_digest") as mock_notify,
     ):
-        mock_session = MagicMock()
-        mock_sf.return_value = MagicMock(return_value=mock_session)
         mock_repo_cls.return_value.get_latest_run.return_value = None
 
         from datapulse.scheduler import _quality_digest
