@@ -22,6 +22,9 @@ const projects = [
 
 export default defineConfig({
   testDir: "./e2e",
+  // Exclude real-backend smoke tests — they need a live API and run in the
+  // dedicated e2e-real-backend CI job (playwright.real-backend.config.ts).
+  testIgnore: ["**/api-smoke.spec.ts"],
   fullyParallel: true,
   forbidOnly: isCi,
   retries: isCi ? 1 : 0,

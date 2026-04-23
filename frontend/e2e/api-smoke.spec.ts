@@ -24,11 +24,15 @@ const authHeaders = { "X-API-Key": API_KEY };
 // ─── Health ──────────────────────────────────────────────────────────────────
 
 test("health endpoint returns 200 and db_status ok", async ({ request }) => {
-  const res = await request.get(`${API_URL}/health`);
+  const res = await request.get(`${API_URL}/health`, { headers: authHeaders });
   expect(res.status()).toBe(200);
   const body = await res.json();
-  expect(body.status).toBe("ok");
-  expect(body.db_status).toBe("ok");
+  // /health returns "healthy" or "degraded" (503 = "unhealthy", which would
+  // have already failed the status assertion above).
+  expect(body.status).toMatch(/^(healthy|degraded)$/);
+  // Authenticated callers (X-API-Key header is injected globally via
+  // extraHTTPHeaders in the config) get the full checks breakdown.
+  expect(body.checks?.database?.status).toBe("ok");
 });
 
 // ─── Golden path: sample load → pipeline run ─────────────────────────────────
@@ -64,7 +68,7 @@ test.describe("golden path — load-sample to pipeline run", () => {
   });
 
   /**
-   * GET /api/v1/pipeline/latest
+   * GET /api/v1/pipeline/runs/latest
    *
    * Verifies that the pipeline_run record created by load-sample is
    * retrievable — proves DB read-path works after the write.
@@ -80,7 +84,7 @@ test.describe("golden path — load-sample to pipeline run", () => {
     expect(loadRes.status()).toBe(200);
     const { pipeline_run_id } = await loadRes.json();
 
-    const latestRes = await request.get(`${API_URL}/api/v1/pipeline/latest`, {
+    const latestRes = await request.get(`${API_URL}/api/v1/pipeline/runs/latest`, {
       headers: authHeaders,
     });
     expect(latestRes.status()).toBe(200);
@@ -99,7 +103,7 @@ test("missing auth returns 401 not 500", async ({ request }) => {
   // No X-API-Key header and no Bearer token → must get 401 (auth error),
   // not 500 (unhandled exception). Verifies the auth guard is active in
   // the CI backend even in dev mode when API_KEY is set.
-  const res = await request.get(`${API_URL}/api/v1/pipeline/latest`);
+  const res = await request.get(`${API_URL}/api/v1/pipeline/runs/latest`);
   // 401 = auth rejected cleanly; anything 5xx = backend crash (bad)
   expect(res.status()).toBeLessThan(500);
   expect(res.status()).toBe(401);

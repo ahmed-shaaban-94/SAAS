@@ -24,10 +24,11 @@ export default defineConfig({
   use: {
     baseURL:
       process.env.E2E_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000",
-    extraHTTPHeaders: {
-      "X-API-Key":
-        process.env.E2E_API_KEY ?? "ci-e2e-test-key-for-ci-only",
-    },
+    // No extraHTTPHeaders — each test passes authHeaders explicitly.
+    // The auth-sanity test must make an *unauthenticated* request to verify
+    // that 401 is returned; a global X-API-Key would authenticate every call
+    // and cause that test to receive 200 instead.
+    //
     // Longer timeout: load-sample inserts 5 000 rows — allow up to 60 s.
     actionTimeout: 60_000,
     navigationTimeout: 60_000,
