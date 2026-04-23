@@ -54,6 +54,11 @@ jobs:
             echo "Checking migrations: $CHANGED"
             python scripts/check_migration_safety.py $CHANGED
           fi
+      - name: Canonical docs drift check
+        # Issue #660: README.md + docs/ARCHITECTURE.md must stay aligned with the
+        # current auth provider (Clerk) and frontend major (Next.js 15). Stdlib
+        # only — no deps.
+        run: python scripts/check_docs_truth_sources.py
 
   typecheck:
     name: Type Check
