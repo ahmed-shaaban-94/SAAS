@@ -411,7 +411,8 @@ jobs:
         run: |
           uvicorn datapulse.api.app:create_app \
             --factory --host 0.0.0.0 --port 8000 \
-            --workers 1 --no-access-log &
+            --workers 1 --no-access-log \
+            > /tmp/uvicorn.log 2>&1 &
           echo "API PID=$!" >> "$GITHUB_ENV"
       - name: Wait for API to be ready
         run: |
@@ -446,6 +447,11 @@ jobs:
           npx playwright test
           --config playwright.real-backend.config.ts
           --reporter=html
+      - name: Dump uvicorn log on failure
+        if: failure()
+        run: |
+          echo "──────── uvicorn stdout+stderr ────────"
+          tail -n 400 /tmp/uvicorn.log || echo "(log file missing)"
       - name: Upload real-backend E2E report
         if: always()
         uses: actions/upload-artifact@v7
