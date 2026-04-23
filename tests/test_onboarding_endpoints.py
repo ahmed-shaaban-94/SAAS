@@ -155,7 +155,10 @@ class TestLoadSample:
         client.post("/api/v1/onboarding/load-sample")
 
         kwargs = mock_sample_service.load.call_args.kwargs
-        assert kwargs["tenant_id"] == "1"
+        # Route coerces tenant_id to int before calling the service (auth
+        # returns it as a string, but SampleLoadService + sample_data format
+        # it as %d).
+        assert kwargs["tenant_id"] == 1
         assert kwargs["user_id"] == "test-user"
 
     def test_load_sample_requires_auth(self, client):
