@@ -7,6 +7,7 @@ Provides endpoints for:
 
 from __future__ import annotations
 
+import re
 from typing import Annotated, Any
 
 import jwt
@@ -25,6 +26,22 @@ from datapulse.explore.sql_builder import build_sql
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
+
+_DISALLOWED_SQL_TOKENS = re.compile(
+    r"(;|--|/\*|\*/|\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|MERGE|CALL|EXECUTE)\b)",
+    re.IGNORECASE,
+)
+
+
+def _assert_safe_select_sql(sql: str) -> None:
+    """Defense-in-depth guard for dynamically generated SQL."""
+    normalized = sql.strip()
+    if not normalized:
+        raise ValueError("Generated SQL is empty")
+    if not normalized.upper().startswith("SELECT "):
+        raise ValueError("Only SELECT queries are allowed")
+    if _DISALLOWED_SQL_TOKENS.search(normalized):
+        raise ValueError("Generated SQL contains disallowed tokens")
 
 
 # ------------------------------------------------------------------
@@ -120,6 +137,7 @@ def embed_query(
             catalog = build_catalog(f"{settings.dbt_project_dir}/models")
 
             sql, params = build_sql(body, catalog)
+            _assert_safe_select_sql(sql)
 
             start = time.perf_counter()
             # sql_builder validates identifiers via _SAFE_IDENT whitelist
