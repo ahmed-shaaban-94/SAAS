@@ -5,7 +5,7 @@
 ```mermaid
 graph TB
     subgraph External
-        AUTH0[Auth0 OIDC]
+        CLERK[Clerk OIDC]
         OPENROUTER[OpenRouter AI]
         SLACK[Slack Webhooks]
     end
@@ -27,7 +27,7 @@ graph TB
     FE -->|Next.js rewrites| API
     API --> PG
     API --> REDIS
-    API --> AUTH0
+    API --> CLERK
     API --> OPENROUTER
     CELERY --> REDIS
     CELERY --> PG
@@ -61,7 +61,7 @@ sequenceDiagram
     participant Browser
     participant NextJS as Next.js (SSR)
     participant FastAPI
-    participant Auth0
+    participant Clerk
     participant Redis
     participant PostgreSQL
 
@@ -69,8 +69,8 @@ sequenceDiagram
     NextJS->>Browser: HTML (SSR shell)
     Browser->>NextJS: GET /api/v1/analytics/dashboard
     NextJS->>FastAPI: Proxy (INTERNAL_API_URL)
-    FastAPI->>Auth0: Verify JWT (JWKS cache)
-    Auth0-->>FastAPI: Valid claims
+    FastAPI->>Clerk: Verify JWT (JWKS cache)
+    Clerk-->>FastAPI: Valid claims
     FastAPI->>FastAPI: SET LOCAL app.tenant_id
     FastAPI->>Redis: Cache lookup
     alt Cache hit
@@ -228,7 +228,7 @@ graph TB
 
     subgraph "External SaaS"
         CF[Cloudflare CDN]
-        AUTH0[Auth0]
+        CLERK[Clerk]
         SENTRY[Sentry]
         OR[OpenRouter]
     end
@@ -240,7 +240,7 @@ graph TB
     API --> PG & REDIS
     CELERY --> PG & REDIS
     N8N --> API
-    API --> AUTH0 & SENTRY & OR
+    API --> CLERK & SENTRY & OR
 ```
 
 ## Security Architecture
@@ -260,8 +260,8 @@ CREATE POLICY tenant_isolation ON <table>
 ```
 
 ### Auth Flow
-1. **Browser** → Auth0 login → JWT token
-2. **Next.js** → NextAuth session → Bearer header
+1. **Browser** → Clerk login → JWT token (template `datapulse` emits `tenant_id` + `roles`)
+2. **Next.js** → `@clerk/nextjs` session → Bearer header
 3. **FastAPI** → Verify JWT (JWKS) → Extract tenant_id
 4. **PostgreSQL** → `SET LOCAL app.tenant_id` → RLS filters all queries
 
@@ -286,8 +286,8 @@ CREATE POLICY tenant_isolation ON <table>
 | Data Pipeline | Polars + PyArrow + dbt | ≥1.0, ≥1.8 |
 | Forecasting | statsmodels | ≥0.14 |
 | AI | OpenRouter (free tier) | - |
-| Auth | Auth0 OIDC + PyJWT | - |
-| Frontend | Next.js 14 + TypeScript | 14.2.35 |
+| Auth | Clerk OIDC + PyJWT | - |
+| Frontend | Next.js 15 + TypeScript | ^15.3.0 |
 | State | SWR + React Context | 2.3.3 |
 | Charts | Recharts | 2.15.3 |
 | Styling | Tailwind CSS | 3.4.17 |

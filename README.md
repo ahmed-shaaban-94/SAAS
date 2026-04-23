@@ -34,7 +34,7 @@
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/dbt-1.8-FF694B?style=for-the-badge&logo=dbt&logoColor=white" alt="dbt" />
 </p>
@@ -45,7 +45,7 @@
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.x-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind" />
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/Redis-Cache-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
-  <img src="https://img.shields.io/badge/Auth0-OIDC-EB5424?style=for-the-badge&logo=auth0&logoColor=white" alt="Auth0" />
+  <img src="https://img.shields.io/badge/Clerk-OIDC-6C47FF?style=for-the-badge&logo=clerk&logoColor=white" alt="Clerk" />
 </p>
 
 <p align="center">
@@ -123,7 +123,7 @@ flowchart TB
 
     subgraph API_LAYER["<b>API Layer</b>"]
         FASTAPI["FastAPI<br/>~100 endpoints | 20 route modules"]
-        AUTH["Auth0 OIDC<br/>JWT + API Key"]
+        AUTH["Clerk OIDC<br/>JWT + API Key"]
         RATE["Rate Limiter<br/>60/min read | 5/min write"]
         CACHE["Redis Cache"]
     end
@@ -214,7 +214,7 @@ make demo
 |:--------|:----|:------------|
 | <img src="https://img.shields.io/badge/-Dashboard-000000?style=flat-square&logo=next.js&logoColor=white" /> | [`localhost:3000`](http://localhost:3000) | Interactive analytics dashboard |
 | <img src="https://img.shields.io/badge/-API-009688?style=flat-square&logo=fastapi&logoColor=white" /> | [`localhost:8000/docs`](http://localhost:8000/docs) | FastAPI with Swagger docs |
-| <img src="https://img.shields.io/badge/-Auth-EB5424?style=flat-square&logo=auth0&logoColor=white" /> | Auth0 (managed) | Authentication & SSO |
+| <img src="https://img.shields.io/badge/-Auth-6C47FF?style=flat-square&logo=clerk&logoColor=white" /> | Clerk (managed) | Authentication & SSO |
 | <img src="https://img.shields.io/badge/-PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white" /> | `localhost:5432` | Database (internal) |
 | <img src="https://img.shields.io/badge/-Redis-DC382D?style=flat-square&logo=redis&logoColor=white" /> | internal | Cache layer |
 
@@ -284,9 +284,9 @@ erDiagram
 | <img src="https://img.shields.io/badge/-DB-336791?style=flat-square" /> | PostgreSQL 16 + RLS | Tenant-scoped relational storage |
 | <img src="https://img.shields.io/badge/-Transform-FF694B?style=flat-square" /> | dbt-core + dbt-postgres | SQL-first data transformation |
 | <img src="https://img.shields.io/badge/-API-009688?style=flat-square" /> | FastAPI + SQLAlchemy 2.0 + Pydantic | REST API with validation |
-| <img src="https://img.shields.io/badge/-Frontend-000000?style=flat-square" /> | Next.js 14 + TypeScript + Tailwind | Server-rendered dashboard |
+| <img src="https://img.shields.io/badge/-Frontend-000000?style=flat-square" /> | Next.js 15 + TypeScript + Tailwind | Server-rendered dashboard |
 | <img src="https://img.shields.io/badge/-Charts-22B5BF?style=flat-square" /> | Recharts | Interactive data visualization |
-| <img src="https://img.shields.io/badge/-Auth-EB5424?style=flat-square" /> | Auth0 + NextAuth + PyJWT | OAuth2/OIDC authentication |
+| <img src="https://img.shields.io/badge/-Auth-6C47FF?style=flat-square" /> | Clerk + PyJWT | OAuth2/OIDC authentication |
 | <img src="https://img.shields.io/badge/-AI-7C3AED?style=flat-square" /> | OpenRouter + anomaly detection | AI insights and forecasting |
 | <img src="https://img.shields.io/badge/-BI-F2C811?style=flat-square" /> | Power BI (99 DAX measures) | Advanced business intelligence |
 | <img src="https://img.shields.io/badge/-Cache-DC382D?style=flat-square" /> | Redis | Response caching layer |
@@ -325,7 +325,7 @@ erDiagram
 │   └── api/                     #   FastAPI REST API
 │       └── routes/              #     20 route files (~100 endpoints)
 │
-├── frontend/                    # Next.js 14 dashboard + marketing site
+├── frontend/                    # Next.js 15 dashboard + marketing site
 │   ├── src/app/
 │   │   ├── (marketing)/         #   Landing page, pricing, legal
 │   │   └── (app)/               #   Dashboard (14 analytics pages)
@@ -508,7 +508,7 @@ make clean               # Stop services, remove volumes
 
 ## <img src="https://img.shields.io/badge/-Security-dc2626?style=for-the-badge" alt="Security" />
 
-- **Authentication**: Auth0 OIDC with JWT validation (multi-strategy: Bearer JWT + API Key + dev fallback)
+- **Authentication**: Clerk OIDC with JWT validation (multi-strategy: Bearer JWT + API Key + dev fallback)
 - **Authorization**: Tenant-scoped Row Level Security (RLS) on all data layers
 - **API Security**: Rate limiting (60/min analytics, 5/min mutations), CORS whitelist
 - **Data Protection**: SQL column whitelist, `NUMERIC(18,4)` for financials
@@ -528,7 +528,7 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 | **1.2** Bronze Layer | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | 1.1M rows loaded into PostgreSQL |
 | **1.3** Silver Layer | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Cleaned, normalized, 7 dbt tests |
 | **1.4** Gold Layer | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Star schema, 6 dims + 1 fact + 8 aggs |
-| **1.5** Dashboard | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Next.js 14, 22 pages, Recharts, E2E |
+| **1.5** Dashboard | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Next.js 15, 22 pages, Recharts, E2E |
 | **1.6** Polish | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | Security audit, 95%+ coverage |
 | **2.0-2.7** Automation | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | n8n, pipeline tracking, quality gates |
 | **2.8** AI-Light | ![Done](https://img.shields.io/badge/-Done-22c55e?style=flat-square) | OpenRouter insights, anomaly detection |
