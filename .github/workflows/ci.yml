@@ -343,6 +343,128 @@ jobs:
           DBT_HOST: localhost
           POSTGRES_PASSWORD: datapulse
 
+  # ── Real-backend E2E gate (issue #656) ──────────────────────────────────────
+  # Boots the full FastAPI + PostgreSQL + Redis stack and exercises the
+  # golden-path API calls without any page.route() mocks. This is the
+  # release-gating lane the UI-only E2E job cannot provide.
+  #
+  # Auth: X-API-Key (no Clerk required — safe for CI). FastAPI runs in
+  # development mode so JWT issuer is optional; API_KEY enforces tenant scope.
+  e2e-real-backend:
+    name: E2E Real Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: datapulse
+          POSTGRES_PASSWORD: datapulse
+          POSTGRES_DB: datapulse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
+          PGPASSWORD: datapulse
+        run: |
+          set -euo pipefail
+          for f in migrations/*.sql; do
+            psql -h localhost -U datapulse -d datapulse \
+              -v ON_ERROR_STOP=1 \
+              -c "SET app.db_reader_password = 'ci_reader_pass';" \
+              -f "$f"
+          done
+      - name: Start FastAPI (background, dev + API-key mode)
+        env:
+          DATABASE_URL: postgresql://datapulse:datapulse@localhost:5432/datapulse
+          REDIS_URL: redis://localhost:6379/0
+          APP_ENV: development
+          SENTRY_ENVIRONMENT: development
+          # API key authenticates E2E tests; DEFAULT_TENANT_ID routes them to
+          # tenant 1, seeded by migration 003.
+          API_KEY: ci-e2e-test-key-for-ci-only
+          DEFAULT_TENANT_ID: "1"
+          DB_READER_PASSWORD: ci_reader_pass
+          # Disable the APScheduler background scheduler so the lifespan
+          # startup is instant. Scheduled jobs are not needed for smoke tests
+          # and the sync DB calls inside start_scheduler() would block the
+          # asyncio event loop, delaying uvicorn startup by 10–15 s.
+          SCHEDULER_ENABLED: "false"
+          # No CLERK_JWT_ISSUER — dev mode; JWT bearer validation is skipped.
+        run: |
+          uvicorn datapulse.api.app:create_app \
+            --factory --host 0.0.0.0 --port 8000 \
+            --workers 1 --no-access-log \
+            > /tmp/uvicorn.log 2>&1 &
+          echo "API PID=$!" >> "$GITHUB_ENV"
+      - name: Wait for API to be ready
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health/live > /dev/null 2>&1; then
+              echo "API ready after ${i}s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::API did not become ready within 60 s"
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Node dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run real-backend API smoke tests
+        working-directory: frontend
+        timeout-minutes: 15
+        env:
+          E2E_API_URL: "http://localhost:8000"
+          E2E_API_KEY: "ci-e2e-test-key-for-ci-only"
+        run: >
+          npx playwright test
+          --config playwright.real-backend.config.ts
+          --reporter=html
+      - name: Dump uvicorn log on failure
+        if: failure()
+        run: |
+          echo "──────── uvicorn stdout+stderr ────────"
+          tail -n 400 /tmp/uvicorn.log || echo "(log file missing)"
+      - name: Upload real-backend E2E report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-real-backend
+          path: frontend/playwright-report/
+          retention-days: 14
+
   # ── Merge gate ──────────────────────────────────────────────────────────
   # Single required status check for branch protection.
   # Add "CI Gate" as a required check in GitHub Settings > Branch protection.
@@ -350,20 +472,21 @@ jobs:
   ci-gate:
     name: CI Gate
     if: always()
-    needs: [lint, typecheck, test-unit, test-integration, frontend, e2e, docker-build, dbt-validate]
+    needs: [lint, typecheck, test-unit, test-integration, frontend, e2e, e2e-real-backend, docker-build, dbt-validate]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
         run: |
           echo "Job results:"
-          echo "  lint:             ${{ needs.lint.result }}"
-          echo "  typecheck:        ${{ needs.typecheck.result }}"
-          echo "  test-unit:        ${{ needs.test-unit.result }}"
-          echo "  test-integration: ${{ needs.test-integration.result }}"
-          echo "  frontend:         ${{ needs.frontend.result }}"
-          echo "  e2e:              ${{ needs.e2e.result }}"
-          echo "  docker-build:     ${{ needs.docker-build.result }}"
-          echo "  dbt-validate:     ${{ needs.dbt-validate.result }}"
+          echo "  lint:                ${{ needs.lint.result }}"
+          echo "  typecheck:           ${{ needs.typecheck.result }}"
+          echo "  test-unit:           ${{ needs.test-unit.result }}"
+          echo "  test-integration:    ${{ needs.test-integration.result }}"
+          echo "  frontend:            ${{ needs.frontend.result }}"
+          echo "  e2e:                 ${{ needs.e2e.result }}"
+          echo "  e2e-real-backend:    ${{ needs.e2e-real-backend.result }}"
+          echo "  docker-build:        ${{ needs.docker-build.result }}"
+          echo "  dbt-validate:        ${{ needs.dbt-validate.result }}"
 
           # Fail if ANY upstream job did not succeed
           if [[ "${{ needs.lint.result }}" != "success" ]] || \
@@ -372,6 +495,7 @@ jobs:
              [[ "${{ needs.test-integration.result }}" != "success" ]] || \
              [[ "${{ needs.frontend.result }}" != "success" ]] || \
              [[ "${{ needs.e2e.result }}" != "success" ]] || \
+             [[ "${{ needs.e2e-real-backend.result }}" != "success" ]] || \
              [[ "${{ needs.docker-build.result }}" != "success" ]] || \
              [[ "${{ needs.dbt-validate.result }}" != "success" ]]; then
             echo ""

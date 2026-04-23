@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
@@ -165,6 +165,13 @@ def load_sample_dataset(
     and `duration_seconds`. Intended for the onboarding wizard's
     "Use sample pharma data" CTA (Phase 2 Task 1 / #400).
     """
-    tenant_id = user.get("tenant_id", 1)
+    # tenant_id arrives as a string from both paths — Clerk JWT claims are
+    # always strings, and the API-key path returns ``settings.default_tenant_id``
+    # (also str). The downstream SampleLoadService + sample_data row builder
+    # expect int (they format it as ``f"{tenant_id:03d}"``).
+    try:
+        tenant_id = int(user.get("tenant_id", 1))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="invalid tenant_id") from exc
     user_id = user.get("sub", user.get("user_id", "anonymous"))
     return sample_service.load(tenant_id=tenant_id, user_id=user_id)

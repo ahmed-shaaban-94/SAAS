@@ -88,7 +88,7 @@ class PipelineRepository:
             INSERT INTO public.pipeline_runs
                 (run_type, trigger_source, metadata, tenant_id)
             VALUES
-                (:run_type, :trigger_source, :metadata::jsonb, :tenant_id)
+                (:run_type, :trigger_source, CAST(:metadata AS jsonb), :tenant_id)
             RETURNING {_COLUMNS}
         """)
         row = self._session.execute(
@@ -121,7 +121,7 @@ class PipelineRepository:
             if not _SAFE_IDENTIFIER_RE.match(key):
                 raise ValueError(f"Unsafe column name: {key!r}")
             if key == "metadata":
-                set_parts.append("metadata = :metadata::jsonb")
+                set_parts.append("metadata = CAST(:metadata AS jsonb)")
                 params["metadata"] = json.dumps(value)
             elif key == "duration_seconds":
                 set_parts.append("duration_seconds = :duration_seconds")

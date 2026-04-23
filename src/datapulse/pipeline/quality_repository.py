@@ -78,7 +78,7 @@ class QualityRepository:
                  severity, passed, message, details)
             VALUES
                 (:tenant_id, :pipeline_run_id, :check_name, :stage,
-                 :severity, :passed, :message, :details::jsonb)
+                 :severity, :passed, :message, CAST(:details AS jsonb))
             RETURNING id, tenant_id, pipeline_run_id, check_name, stage,
                       severity, passed, message, details, checked_at
         """)
