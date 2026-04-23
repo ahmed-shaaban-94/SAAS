@@ -32,12 +32,13 @@ function CashInput({
         </span>
         <input
           type="number"
+          dir="ltr"
           min="0"
           step="0.01"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cn(
-            "w-full rounded-xl border border-[var(--pos-line)] bg-[var(--pos-card)] py-3 pl-12 pr-4",
+            "w-full rounded-xl border border-[var(--pos-line)] bg-[var(--pos-card)] py-3 ps-12 pe-4",
             "font-mono tabular-nums text-base text-text-primary",
             "focus:border-[var(--pos-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--pos-accent)]",
           )}

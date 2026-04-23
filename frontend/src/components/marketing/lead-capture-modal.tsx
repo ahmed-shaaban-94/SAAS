@@ -35,7 +35,7 @@ export function LeadCaptureModal({ trigger, tier, triggerClassName }: Props) {
 
     setFormState("loading");
     try {
-      const res = await fetch("/api/waitlist", {
+      const res = await fetch("/api/v1/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, tier: tier ?? data.tier }),

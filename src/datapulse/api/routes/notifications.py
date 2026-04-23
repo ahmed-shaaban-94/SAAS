@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.deps import CurrentUser, get_notification_service
@@ -13,6 +14,7 @@ from datapulse.api.limiter import limiter
 from datapulse.notifications_center.models import NotificationCount, NotificationResponse
 from datapulse.notifications_center.service import NotificationService
 from datapulse.notifications_center.streaming import iter_unread_count_events
+from datapulse.rbac.dependencies import require_role
 
 router = APIRouter(
     prefix="/notifications",
@@ -57,6 +59,36 @@ def mark_read(
 @limiter.limit("10/minute")
 def mark_all_read(request: Request, service: ServiceDep, user: CurrentUser):
     service.mark_all_read(user["sub"])
+
+
+class BroadcastRequest(BaseModel):
+    title: str
+    message: str
+    link: str | None = None
+
+
+@router.post(
+    "/broadcast",
+    response_model=NotificationResponse,
+    dependencies=[Depends(require_role("owner", "admin"))],
+)
+@limiter.limit("10/minute")
+def broadcast_product_update(
+    request: Request,
+    body: BroadcastRequest,
+    service: ServiceDep,
+    user: CurrentUser,
+):
+    """Create a global product-update notification visible to all users (admin/owner only)."""
+    tenant_id = int(user.get("tenant_id", 1))
+    return service.create_notification(
+        tenant_id=tenant_id,
+        type_="product_update",
+        title=body.title,
+        message=body.message,
+        link=body.link,
+        user_id=None,
+    )
 
 
 @router.get("/stream")

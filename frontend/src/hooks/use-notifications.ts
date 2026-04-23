@@ -5,7 +5,7 @@ import { fetchAPI, postAPI, swrKey } from "@/lib/api-client";
 
 export interface Notification {
   id: number;
-  type: "urgent" | "info" | "success";
+  type: "urgent" | "info" | "success" | "product_update";
   title: string;
   message: string;
   link: string | null;

@@ -155,6 +155,10 @@ class Settings(BaseSettings):
     sentry_environment: str = "development"
     sentry_traces_sample_rate: float = 0.1  # 10% performance monitoring
 
+    # Lead capture — optional webhook for HubSpot / Pipedrive / Zapier CRM sync.
+    # Leave empty to disable. Set LEAD_NOTIFY_URL=https://hooks.zapier.com/... to enable.
+    lead_notify_url: str = ""
+
     # Logging
     log_format: str = "console"
 

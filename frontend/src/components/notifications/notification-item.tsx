@@ -1,13 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, Sparkles } from "lucide-react";
 import type { Notification } from "@/hooks/use-notifications";
 
 const TYPE_CONFIG = {
   urgent: { icon: AlertCircle, color: "text-growth-red", bg: "bg-growth-red/10" },
   success: { icon: CheckCircle2, color: "text-growth-green", bg: "bg-growth-green/10" },
   info: { icon: Info, color: "text-chart-blue", bg: "bg-chart-blue/10" },
+  product_update: { icon: Sparkles, color: "text-accent", bg: "bg-accent/10" },
 } as const;
 
 interface NotificationItemProps {

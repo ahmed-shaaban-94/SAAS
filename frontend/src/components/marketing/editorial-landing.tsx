@@ -174,7 +174,7 @@ function Hero() {
               <path d="M5 12h14M13 5l7 7-7 7" />
             </svg>
           </Link>
-          <a href="#pipeline" className="btn btn-outline">How the pipeline works</a>
+          <LeadCaptureModal trigger="Request a demo" triggerClassName="btn btn-outline" />
           <span className="hero-meta"><b>14-day pilot</b> · no credit card · Egypt-hosted</span>
         </div>
 

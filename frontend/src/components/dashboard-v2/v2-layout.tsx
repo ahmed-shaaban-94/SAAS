@@ -45,6 +45,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationCenter } from "@/components/notifications/notification-center";
+import { WhatsNewBanner } from "@/components/notifications/whats-new-banner";
 import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
@@ -91,6 +92,7 @@ function V2Shell({ children }: { children: ReactNode }) {
     <>
       <CommandPalette />
       <OnboardingOverlay />
+      <WhatsNewBanner />
       <KeyboardShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <div className="fixed right-3 top-3.5 z-50 flex items-center gap-2 sm:right-4 sm:top-4 lg:right-6 lg:top-4">
         <div className="relative">
