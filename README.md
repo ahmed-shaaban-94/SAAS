@@ -116,9 +116,11 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph CLIENT["<b>Client Layer</b>"]
-        WEB["Next.js Dashboard<br/>22 pages | 49 hooks"]
-        MOBILE["Android App<br/>Kotlin + Compose"]
-        PBI["Power BI Desktop<br/>99 DAX measures"]
+        WEB["Next.js Dashboard<br/>Canonical"]
+        POS["Electron POS<br/>Canonical"]
+        PBI["Power BI Desktop<br/>Supported"]
+        RN["React Native<br/>Incubating"]
+        MOBILE["Android Kotlin<br/>Legacy"]
     end
 
     subgraph API_LAYER["<b>API Layer</b>"]
@@ -145,7 +147,9 @@ flowchart TB
     end
 
     WEB --> FASTAPI
-    MOBILE --> FASTAPI
+    POS --> FASTAPI
+    RN -.-> FASTAPI
+    MOBILE -.-> FASTAPI
     FASTAPI --> AUTH
     FASTAPI --> RATE
     FASTAPI --> CACHE
@@ -168,6 +172,17 @@ flowchart TB
     style BACKEND fill:#1e40af,stroke:#3b82f6,color:#dbeafe
     style DATA fill:#166534,stroke:#22c55e,color:#dcfce7
 ```
+
+### Platforms
+
+The client layer above spans five surfaces with explicit status. **Canonical**
+surfaces ship in every release and gate CI; **Supported** is an accessory;
+**Incubating** is declared but not yet built; **Legacy** is frozen. Future
+native mobile work ships as **React Native**, not a continuation of
+`android/`.
+
+See [docs/PLATFORM_MATRIX.md](docs/PLATFORM_MATRIX.md) for the full matrix
+and [ADR 007](docs/adr/007-platform-matrix.md) for the rationale.
 
 ---
 
@@ -338,11 +353,12 @@ erDiagram
 │   ├── staging/                 #   Silver layer (cleaned, 7 tests)
 │   └── marts/                   #   Gold layer (dims + facts + aggs, ~40 tests)
 │
-├── android/                     # Android app (Kotlin + Jetpack Compose)
+├── pos-desktop/                 # Electron POS (Canonical — wraps frontend/)
+├── android/                     # Android Kotlin + Compose (Legacy — see PLATFORM_MATRIX.md)
 ├── migrations/                  # SQL migrations (22 files)
 ├── n8n/workflows/               # n8n workflow definitions (7 workflows)
 ├── nginx/                       # Nginx reverse proxy config
-├── powerbi/                     # Power BI report + theme
+├── powerbi/                     # Power BI report + theme (Supported)
 ├── tests/                       # Python unit tests (98 files, 1,342 functions)
 ├── docs/                        # Architecture, plans, reports
 │
