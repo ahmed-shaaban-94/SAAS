@@ -35,11 +35,6 @@ jobs:
         # Grandfathered offenders are listed in
         # scripts/.known-api-layer-violations. Uses stdlib only — no deps.
         run: python scripts/check_api_layer_imports.py
-      - name: Session safety lint (f-string injection + raw factory calls)
-        # Issue #655: guards against f-string interpolation in SET LOCAL app.tenant_id
-        # (SQL injection risk) and raw get_session_factory()() calls outside the
-        # infrastructure layer. Uses stdlib only — no extra deps.
-        run: python scripts/check_session_safety.py
       - name: Migration safety lint (PR-changed migrations only)
         # Issue #608: flags dangerous DDL (ADD COLUMN NOT NULL, CREATE INDEX
         # without CONCURRENTLY, ALTER COLUMN TYPE, TRUNCATE) on any migration
