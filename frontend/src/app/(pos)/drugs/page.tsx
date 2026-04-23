@@ -16,12 +16,12 @@ import { useDrugSearch } from "@/hooks/use-drug-search";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TerminalSessionResponse } from "@/types/pos";
+import { getPosBranding } from "@/lib/pos-branding";
 
-// Stocktaking worksheet letterhead (display-only; source from tenant
-// settings once the branding surface exposes CR + address).
-const STOCKTAKING_BRANCH_NAME = "DataPulse Pharmacy — Maadi";
-const STOCKTAKING_BRANCH_ADDRESS = "12 Sobhi Saleh St · Maadi · Cairo";
-const STOCKTAKING_CR_NUMBER = "428893";
+// Stocktaking worksheet letterhead — pulled from getPosBranding() so the
+// values can be set per-deployment via NEXT_PUBLIC_POS_* env vars without
+// editing page code. Multi-tenant fetch from tenant_branding is a follow-up.
+const { branchName: STOCKTAKING_BRANCH_NAME, branchAddress: STOCKTAKING_BRANCH_ADDRESS, crNumber: STOCKTAKING_CR_NUMBER } = getPosBranding();
 
 function useActiveTerminal(): TerminalSessionResponse | null {
   const [terminal, setTerminal] = useState<TerminalSessionResponse | null>(null);

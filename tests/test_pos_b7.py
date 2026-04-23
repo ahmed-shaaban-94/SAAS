@@ -69,6 +69,18 @@ def test_hash_pin_differs_for_different_pins() -> None:
     assert hash_pin("1234") != hash_pin("5678")
 
 
+def test_hash_pin_is_peppered_not_plain_sha256() -> None:
+    """Regression guard: a PIN hash must never equal plain SHA-256 of the PIN.
+
+    Unsalted SHA-256 of a 4–6 digit PIN is rainbow-tableable in milliseconds,
+    so this test ensures the peppered-HMAC upgrade sticks.
+    """
+    import hashlib
+
+    plain = hashlib.sha256(b"1234").hexdigest()
+    assert hash_pin("1234") != plain
+
+
 def test_verify_and_issue_returns_token_on_correct_pin() -> None:
     verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)

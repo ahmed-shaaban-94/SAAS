@@ -20,10 +20,9 @@ import type {
   TransactionDetailResponse,
 } from "@/types/pos";
 import type { ReceiptData } from "@/components/pos/receipts/receipt-mock";
+import { getPosBranding } from "@/lib/pos-branding";
 
-const INVOICE_BRANCH_NAME = "Maadi branch · POS-03";
-const INVOICE_BRANCH_ADDRESS = "12 Sobhi Saleh St · Cairo";
-const INVOICE_TAX_NUMBER = "428-893-011";
+const { invoiceLabel: INVOICE_BRANCH_NAME, branchAddress: INVOICE_BRANCH_ADDRESS, taxNumber: INVOICE_TAX_NUMBER } = getPosBranding();
 
 interface PendingCheckout {
   transactionId: number;

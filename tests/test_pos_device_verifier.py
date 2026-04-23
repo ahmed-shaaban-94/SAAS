@@ -79,6 +79,15 @@ def _make_app(
     app = FastAPI()
     app.dependency_overrides[get_tenant_session] = lambda: MagicMock()
 
+    # Stand in for the production auth middleware that populates
+    # request.state.tenant_id from the Clerk JWT. device_token_verifier now
+    # fails-closed with 401 if tenant context is missing (was: silent
+    # fallback to tenant_id=1), so tests must set it explicitly.
+    @app.middleware("http")
+    async def _inject_tenant(request, call_next):
+        request.state.tenant_id = 1
+        return await call_next(request)
+
     @app.post("/verify")
     async def _verify(proof: DeviceProof = Depends(device_token_verifier)):  # noqa: B008
         return {

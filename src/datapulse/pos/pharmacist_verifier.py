@@ -2,18 +2,30 @@
 
 Design
 ------
-* The pharmacist's PIN is stored as a SHA-256 hex digest in
-  ``tenant_members.pharmacist_pin_hash`` (added by migration 076).
+* The pharmacist's PIN is stored as a peppered HMAC-SHA256 hex digest in
+  ``tenant_members.pharmacist_pin_hash`` (column added by migration 076).
+* The pepper is ``settings.secret_key`` — the same secret used to sign JWTs,
+  so compromising it already breaks auth globally; PIN exfil is no worse.
 * Verification issues a short-lived HMAC-signed token (5 min TTL).
 * The token is opaque to the client: ``{ts}:{pharmacist_id}:{drug_code}:{sig}``.
 * Subsequent ``add_item`` calls pass this token as ``pharmacist_id``; the
   service calls ``validate_token`` before accepting the controlled-substance item.
 * Uses ``hmac.compare_digest`` throughout for timing-safe comparison.
+
+Why HMAC, not plain SHA-256
+---------------------------
+4–6 digit PINs yield 10k–1M possible values. Unsalted SHA-256 is rainbow-
+tableable in milliseconds, so an attacker who reads a PIN hash column can
+recover the PIN trivially. Peppering with the server secret raises the
+precomputation cost to "attacker must also hold the server secret" — at
+which point the PIN is the least of anyone's problems.
+
+For multi-tenant production (customer #2+), migrate to scrypt + per-user
+random salt — tracked as follow-up.
 """
 
 from __future__ import annotations
 
-import hashlib
 import hmac
 import time
 from collections.abc import Callable
@@ -28,15 +40,34 @@ log = get_logger(__name__)
 TOKEN_TTL_SECONDS: int = 300
 _SEP = ":"
 
+# Fallback pepper for unit tests / early boot. Production MUST set
+# ``settings.secret_key`` to override.
+_DEV_PIN_PEPPER = "dev-pos-pin-pepper-not-for-production"
+
 
 # ---------------------------------------------------------------------------
 # Helpers — pure functions, no I/O
 # ---------------------------------------------------------------------------
 
 
+def _get_pepper() -> bytes:
+    """Return the application-wide PIN-hashing pepper.
+
+    Uses ``settings.secret_key`` in production; falls back to a stable dev
+    string when the settings module cannot be imported (early-boot tests).
+    """
+    try:
+        from datapulse.core.config import settings
+
+        secret = settings.secret_key or ""
+    except Exception:  # pragma: no cover — settings unavailable during unit tests
+        secret = ""
+    return (secret or _DEV_PIN_PEPPER).encode("utf-8")
+
+
 def hash_pin(pin: str) -> str:
-    """Return the SHA-256 hex digest of a PIN string."""
-    return hashlib.sha256(pin.encode("utf-8")).hexdigest()
+    """Return the peppered HMAC-SHA256 hex digest of a PIN string."""
+    return hmac.new(_get_pepper(), pin.encode("utf-8"), "sha256").hexdigest()
 
 
 def _sign(secret: str, message: str) -> str:

@@ -204,7 +204,13 @@ async def device_token_verifier(
       * If the tenant has crossed the v1 deprecation cut-off, v1-only
         requests (no v2 header) are rejected.
     """
-    tenant_id = int(getattr(request.state, "tenant_id", 1))
+    # Fail fast on missing tenant context. A silent fallback to tenant_id=1
+    # would let a device-fingerprint-v2 check run against the wrong tenant's
+    # terminal_devices row on a middleware regression.
+    try:
+        tenant_id = int(request.state.tenant_id)
+    except AttributeError as exc:  # pragma: no cover — guarded by middleware
+        raise HTTPException(status_code=401, detail="request missing tenant context") from exc
 
     device = load_active_device(session, x_terminal_id, tenant_id)
     if device is None:
