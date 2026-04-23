@@ -102,23 +102,37 @@ class TestCardGateway:
 
 
 class TestInsuranceGateway:
-    def test_requires_insurance_no(self):
+    """Insurance stub fails closed — no authorization path until real insurer API.
+
+    The prior stub returned success for any non-empty insurance number, which
+    was a cash-register fraud vector (cashier types any string → sale marked
+    paid). For pilot, every insurance attempt fails and the cashier must
+    collect cash/card or capture the claim out-of-band.
+    """
+
+    def test_returns_failure_for_none(self):
         gw = InsuranceGateway()
         result = gw.process_payment(Decimal("50"), insurance_no=None)
         assert result.success is False
-        assert "Insurance number" in result.message
+        assert result.amount_charged == Decimal("0")
 
-    def test_empty_insurance_no_rejected(self):
+    def test_returns_failure_for_empty(self):
         gw = InsuranceGateway()
         result = gw.process_payment(Decimal("50"), insurance_no="  ")
         assert result.success is False
 
-    def test_valid_insurance_no_accepted(self):
+    def test_returns_failure_even_for_valid_looking_number(self):
         gw = InsuranceGateway()
         result = gw.process_payment(Decimal("50"), insurance_no="INS-123456")
-        assert result.success is True
-        assert result.amount_charged == Decimal("50")
-        assert result.authorization_code is not None
+        assert result.success is False
+        assert result.amount_charged == Decimal("0")
+        assert "not yet configured" in result.message.lower()
+
+    def test_no_authorization_code_emitted(self):
+        """Prevents leaking the insurance number into the auth code field."""
+        gw = InsuranceGateway()
+        result = gw.process_payment(Decimal("50"), insurance_no="INS-123456")
+        assert result.authorization_code is None
 
     def test_method_is_insurance(self):
         gw = InsuranceGateway()
@@ -132,7 +146,11 @@ class TestInsuranceGateway:
 
 
 class TestSplitPaymentProcessor:
-    def test_cash_plus_insurance_split(self):
+    def test_cash_plus_insurance_split_fails_closed(self):
+        """Insurance leg fails closed until the real insurer API is wired —
+        any split that includes insurance must fail overall, preventing the
+        fraud path where a cashier splits a sale with a fake insurance leg.
+        """
         proc = SplitPaymentProcessor()
         result = proc.process(
             grand_total=Decimal("135.50"),
@@ -141,9 +159,8 @@ class TestSplitPaymentProcessor:
                 {"method": "insurance", "amount": Decimal("35.50"), "insurance_no": "INS-123"},
             ],
         )
-        assert result.success is True
-        assert result.total_charged == Decimal("135.5000")
-        assert len(result.parts) == 2
+        assert result.success is False
+        assert "insurance" in result.message.lower()
 
     def test_mismatched_totals_fail(self):
         proc = SplitPaymentProcessor()
@@ -164,7 +181,7 @@ class TestSplitPaymentProcessor:
             splits=[
                 # underpay — cash split only covers 30 of required 50
                 {"method": "cash", "amount": Decimal("50.00"), "tendered": Decimal("30.00")},
-                {"method": "insurance", "amount": Decimal("50.00"), "insurance_no": "INS-X"},
+                {"method": "cash", "amount": Decimal("50.00"), "tendered": Decimal("50.00")},
             ],
         )
         assert result.success is False

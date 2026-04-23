@@ -83,6 +83,15 @@ def _make_app(service: MagicMock) -> FastAPI:
     app.dependency_overrides[get_pos_service] = lambda: service
     app.dependency_overrides[get_tenant_plan_limits] = lambda: PLAN_LIMITS["platform"]
     app.dependency_overrides[get_access_context] = lambda: _ctx
+
+    # Stand in for production auth middleware that sets request.state.tenant_id
+    # from the Clerk JWT. The POS idempotency dependency now fails-closed with
+    # 401 when tenant context is missing (was: silent fallback to tenant_id=1).
+    @app.middleware("http")
+    async def _inject_tenant(request, call_next):
+        request.state.tenant_id = 1
+        return await call_next(request)
+
     # POS checkout now enforces idempotency; unit tests don't hit the real DB.
     # Override the session dep with a mock whose execute() short-circuits the
     # check_and_claim SELECT to "no prior row" (first() returns None) so the

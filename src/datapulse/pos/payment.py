@@ -139,9 +139,13 @@ class CardGateway(PaymentGateway):
 
 
 class InsuranceGateway(PaymentGateway):
-    """Insurance payment stub — validates insurance_no present, returns pending.
+    """Insurance payment — fails closed until a real insurer-API is wired.
 
-    A real implementation would call the insurer's API to authorise the claim.
+    The original stub returned ``success=True`` for any non-empty insurance
+    number, which let a cashier complete any-value sale with an arbitrary
+    string. For pilot we fail closed: cashier must use cash or card. A live
+    insurer integration (authorization call + claim persistence) replaces
+    this.
     """
 
     def process_payment(
@@ -153,19 +157,14 @@ class InsuranceGateway(PaymentGateway):
         card_token: str | None = None,
         **kwargs,
     ) -> PaymentResult:
-        if not insurance_no or not insurance_no.strip():
-            return PaymentResult(
-                success=False,
-                method="insurance",
-                amount_charged=Decimal("0"),
-                message="Insurance number is required for insurance payment.",
-            )
         return PaymentResult(
-            success=True,
+            success=False,
             method="insurance",
-            amount_charged=amount,
-            authorization_code=f"INS-PENDING-{insurance_no.upper()}",
-            message=f"Insurance payment pending authorisation for {insurance_no}",
+            amount_charged=Decimal("0"),
+            message=(
+                "Insurance payment gateway not yet configured. "
+                "Use cash or card, or capture the claim manually."
+            ),
         )
 
 

@@ -69,6 +69,53 @@ def test_hash_pin_differs_for_different_pins() -> None:
     assert hash_pin("1234") != hash_pin("5678")
 
 
+def test_hash_pin_is_peppered_not_plain_sha256() -> None:
+    """Regression guard: a PIN hash must never equal plain SHA-256 of the PIN.
+
+    Unsalted SHA-256 of a 4–6 digit PIN is rainbow-tableable in milliseconds,
+    so this test ensures the peppered-HMAC upgrade sticks.
+    """
+    import hashlib
+
+    plain = hashlib.sha256(b"1234").hexdigest()
+    assert hash_pin("1234") != plain
+
+
+def test_get_pepper_raises_when_secret_empty_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Empty secret_key in non-dev environments must NOT silently fall back
+    to the public dev pepper — that would leave PIN hashes with the rainbow-
+    table resistance of plain SHA-256.
+    """
+    from datapulse.core.config import get_settings
+    from datapulse.pos.pharmacist_verifier import _get_pepper
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "pipeline_webhook_secret", "")
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "sentry_environment", "production")
+
+    with pytest.raises(RuntimeError, match="pipeline_webhook_secret is empty"):
+        _get_pepper()
+
+
+def test_get_pepper_allows_dev_fallback_in_dev_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Dev/test environments may use the fallback pepper so unit tests and
+    local boot don't require a real secret_key. Ensures the guard doesn't
+    over-reach.
+    """
+    from datapulse.core.config import get_settings
+    from datapulse.pos.pharmacist_verifier import _get_pepper
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "pipeline_webhook_secret", "")
+    monkeypatch.setattr(settings, "app_env", "development")
+    monkeypatch.setattr(settings, "sentry_environment", "development")
+
+    pepper = _get_pepper()
+    assert isinstance(pepper, bytes)
+    assert len(pepper) > 0
+
+
 def test_verify_and_issue_returns_token_on_correct_pin() -> None:
     verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
