@@ -14,7 +14,6 @@ from uuid import UUID
 
 from datapulse.bronze import loader as bronze_loader
 from datapulse.config import Settings
-from datapulse.core.db import get_session_factory
 from datapulse.logging import get_logger
 from datapulse.pipeline.models import ExecutionResult
 from datapulse.pipeline.retry import with_retry
@@ -180,7 +179,6 @@ class PipelineExecutor:
         Executes in-process (like bronze), not as a subprocess.
         Creates its own DB session with tenant isolation.
         """
-        from sqlalchemy import text as sa_text
 
         from datapulse.forecasting.repository import ForecastingRepository
         from datapulse.forecasting.service import ForecastingService
@@ -188,9 +186,10 @@ class PipelineExecutor:
         log.info("executor_forecasting_start", run_id=str(run_id))
         t0 = time.perf_counter()
 
-        session = get_session_factory()()
+        from datapulse.core.db_session import open_tenant_session
+
+        session = open_tenant_session(tenant_id, timeout_s=600)
         try:
-            session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
             repo = ForecastingRepository(session)
             service = ForecastingService(repo)
             stats = service.run_all_forecasts()

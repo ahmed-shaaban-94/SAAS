@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.limiter import limiter
-from datapulse.core.db import get_session_factory
 from datapulse.core.serializers import serialise_value as _serialise
 from datapulse.embed.token import create_embed_token, validate_embed_token
 from datapulse.explore.manifest_parser import build_catalog
@@ -84,11 +83,10 @@ public_router = APIRouter(
 
 def _get_embed_session(token_payload: dict) -> Session:
     """Create a DB session scoped to the embed token's tenant."""
+    from datapulse.core.db_session import open_tenant_session
+
     tenant_id = token_payload.get("tenant_id", "1")
-    session = get_session_factory()()
-    session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-    session.execute(text("SET LOCAL statement_timeout = '30s'"))
-    return session
+    return open_tenant_session(tenant_id)
 
 
 @public_router.post("/{token}/query", response_model=ExploreResult)

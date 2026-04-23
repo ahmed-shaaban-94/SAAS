@@ -56,12 +56,12 @@ class TestGenerateEmbedToken:
 
 
 class TestEmbedQuery:
-    @patch("datapulse.api.routes.embed.get_session_factory")
+    @patch("datapulse.core.db_session.open_tenant_session")
     @patch("datapulse.api.routes.embed.validate_embed_token")
     @patch("datapulse.api.routes.embed.build_catalog")
     @patch("datapulse.api.routes.embed.build_sql")
     def test_embed_query_success(
-        self, mock_build_sql, mock_build_catalog, mock_validate, mock_factory
+        self, mock_build_sql, mock_build_catalog, mock_validate, mock_open_session
     ):
         client = _make_embed_client()
         mock_validate.return_value = {"tenant_id": "1"}
@@ -71,7 +71,7 @@ class TestEmbedQuery:
         mock_build_sql.return_value = ("SELECT 1 AS val", {})
 
         mock_session = MagicMock()
-        mock_factory.return_value = lambda: mock_session
+        mock_open_session.return_value = mock_session
         mock_result = MagicMock()
         mock_result.keys.return_value = ["val"]
         mock_result.__iter__ = lambda self: iter([(1,)])
@@ -98,12 +98,12 @@ class TestEmbedQuery:
         assert resp.status_code == 401
         assert "Invalid or expired" in resp.json()["detail"]
 
-    @patch("datapulse.api.routes.embed.get_session_factory")
+    @patch("datapulse.core.db_session.open_tenant_session")
     @patch("datapulse.api.routes.embed.validate_embed_token")
     @patch("datapulse.api.routes.embed.build_catalog")
     @patch("datapulse.api.routes.embed.build_sql")
     def test_embed_query_value_error(
-        self, mock_build_sql, mock_build_catalog, mock_validate, mock_factory
+        self, mock_build_sql, mock_build_catalog, mock_validate, mock_open_session
     ):
         client = _make_embed_client()
         mock_validate.return_value = {"tenant_id": "1"}
@@ -111,7 +111,7 @@ class TestEmbedQuery:
         mock_build_sql.side_effect = ValueError("Unknown model")
 
         mock_session = MagicMock()
-        mock_factory.return_value = lambda: mock_session
+        mock_open_session.return_value = mock_session
 
         resp = client.post(
             "/api/v1/embed/tok/query",
@@ -119,12 +119,12 @@ class TestEmbedQuery:
         )
         assert resp.status_code == 422
 
-    @patch("datapulse.api.routes.embed.get_session_factory")
+    @patch("datapulse.core.db_session.open_tenant_session")
     @patch("datapulse.api.routes.embed.validate_embed_token")
     @patch("datapulse.api.routes.embed.build_catalog")
     @patch("datapulse.api.routes.embed.build_sql")
     def test_embed_query_execution_error(
-        self, mock_build_sql, mock_build_catalog, mock_validate, mock_factory
+        self, mock_build_sql, mock_build_catalog, mock_validate, mock_open_session
     ):
         client = _make_embed_client()
         mock_validate.return_value = {"tenant_id": "1"}
@@ -132,17 +132,8 @@ class TestEmbedQuery:
         mock_build_sql.return_value = ("SELECT 1", {})
 
         mock_session = MagicMock()
-        mock_factory.return_value = lambda: mock_session
-        # execute is called for SET LOCAL (succeeds), then for the query (fails)
-        call_count = {"n": 0}
-
-        def _side_effect(*a, **kw):
-            call_count["n"] += 1
-            if call_count["n"] > 1:
-                raise OSError("DB down")
-            return MagicMock()
-
-        mock_session.execute.side_effect = _side_effect
+        mock_open_session.return_value = mock_session
+        mock_session.execute.side_effect = OSError("DB down")
 
         resp = client.post(
             "/api/v1/embed/tok/query",
@@ -151,12 +142,12 @@ class TestEmbedQuery:
         assert resp.status_code == 500
         assert "Query execution failed" in resp.json()["detail"]
 
-    @patch("datapulse.api.routes.embed.get_session_factory")
+    @patch("datapulse.core.db_session.open_tenant_session")
     @patch("datapulse.api.routes.embed.validate_embed_token")
     @patch("datapulse.api.routes.embed.build_catalog")
     @patch("datapulse.api.routes.embed.build_sql")
     def test_embed_query_truncated(
-        self, mock_build_sql, mock_build_catalog, mock_validate, mock_factory
+        self, mock_build_sql, mock_build_catalog, mock_validate, mock_open_session
     ):
         """Test that results are truncated when exceeding the limit."""
         client = _make_embed_client()
@@ -165,7 +156,7 @@ class TestEmbedQuery:
         mock_build_sql.return_value = ("SELECT 1", {})
 
         mock_session = MagicMock()
-        mock_factory.return_value = lambda: mock_session
+        mock_open_session.return_value = mock_session
         # Return more rows than limit (default 500)
         rows = [(i,) for i in range(600)]
         mock_result = MagicMock()

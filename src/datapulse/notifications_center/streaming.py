@@ -10,9 +10,6 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
-from sqlalchemy import text as sa_text
-
-from datapulse.core.db import get_session_factory
 from datapulse.notifications_center.repository import NotificationRepository
 
 
@@ -34,10 +31,10 @@ async def iter_unread_count_events(
         if await is_disconnected():
             break
         try:
-            session = get_session_factory()()
+            from datapulse.core.db_session import open_tenant_session
+
+            session = open_tenant_session(tenant_id, timeout_s=10)
             try:
-                session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-                session.execute(sa_text("SET LOCAL statement_timeout = '10s'"))
                 repo = NotificationRepository(session)
                 count = repo.unread_count(user_id)
                 if count != last_count:

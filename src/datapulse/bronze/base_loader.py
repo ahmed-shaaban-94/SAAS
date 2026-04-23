@@ -155,7 +155,7 @@ class BronzeLoader(ABC):
             insert_sql = f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"  # noqa: S608
 
             with engine.begin() as conn:
-                conn.execute(text(f"SET LOCAL app.tenant_id = '{tenant_id}'"))
+                conn.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
                 for i in range(0, len(rows), batch_size):
                     batch = rows[i : i + batch_size]
                     conn.execute(text(insert_sql), batch)

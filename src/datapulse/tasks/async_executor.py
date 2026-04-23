@@ -22,7 +22,6 @@ import redis
 from sqlalchemy import text
 
 from datapulse.config import get_settings
-from datapulse.core.db import get_session_factory
 from datapulse.core.serializers import serialise_value as _serialise
 from datapulse.logging import get_logger
 
@@ -137,11 +136,10 @@ def _run_query_sync(
     _set_job(client, job_id, {"status": "running", "submitted_at": time.time()})
 
     start = time.perf_counter()
-    session = get_session_factory()()
-    try:
-        session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-        session.execute(text(f"SET LOCAL statement_timeout = '{_query_timeout()}s'"))
+    from datapulse.core.db_session import open_tenant_session
 
+    session = open_tenant_session(tenant_id, timeout_s=_query_timeout())
+    try:
         result = session.execute(text(sql), params or {})
         columns = list(result.keys())
         rows = []

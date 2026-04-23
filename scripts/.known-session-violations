@@ -1,0 +1,26 @@
+# Known raw get_session_factory()() call sites that are grandfathered pending migration.
+# Each line is "relative/path/to/file.py:lineno" — these will be skipped by
+# scripts/check_session_safety.py so CI doesn't block existing tech debt.
+#
+# Do NOT add new entries here without a matching GitHub issue.
+# Remove entries as the code is migrated to tenant_session() / open_tenant_session().
+
+# Billing webhooks — Stripe/Paymob have no JWT so they can't use get_tenant_session().
+# They intentionally use a plain session with timeout only (no RLS needed).
+# TODO: migrate to get_plain_session() via FastAPI Depends (issue #655).
+src/datapulse/api/routes/billing.py:106
+src/datapulse/api/routes/billing.py:159
+
+# RBAC session — intentionally *not* RLS-scoped; reads from public role tables.
+# The SET LOCAL app.tenant_id here is a belt-and-suspenders precaution, not RLS.
+# TODO: extract a shared rbac_session() helper (issue #655).
+src/datapulse/rbac/dependencies.py:62
+
+# Scheduler orchestrator — three distinct patterns that need a dedicated refactor:
+#   __init__.py:97  — inner _get_session() factory for pipeline tenants (needs audit)
+#   __init__.py:229 — advisory lock session (no tenant scope — intentional)
+#   __init__.py:350 — startup schedule registration (no tenant scope — intentional)
+# TODO: refactor in a dedicated scheduler-session PR (issue #655).
+src/datapulse/scheduler/__init__.py:97
+src/datapulse/scheduler/__init__.py:229
+src/datapulse/scheduler/__init__.py:350

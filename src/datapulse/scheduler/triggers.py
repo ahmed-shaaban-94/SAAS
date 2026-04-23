@@ -38,13 +38,12 @@ async def _health_check() -> None:
 
     # Detect and clean up stale pipeline runs (heartbeat > 10 min old)
     try:
-        from datapulse.core.db import get_session_factory
+        from datapulse.core.db_session import open_tenant_session
         from datapulse.notifications import notify_pipeline_failure
         from datapulse.pipeline.repository import PipelineRepository
 
-        session = get_session_factory()()
+        session = open_tenant_session("1")
         try:
-            session.execute(sa_text("SET LOCAL app.tenant_id = '1'"))
             repo = PipelineRepository(session)
             stale_ids = repo.mark_stale_runs_failed(stale_minutes=10)
             if stale_ids:
@@ -61,14 +60,13 @@ async def _health_check() -> None:
 async def _quality_digest() -> None:
     """Send daily quality digest at 18:00 UTC (replaces n8n 2.6.3)."""
     scheduler_jobs_executed.labels(job="quality_digest").inc()
-    from datapulse.core.db import get_session_factory
+    from datapulse.core.db_session import open_tenant_session
     from datapulse.notifications import notify_quality_digest
     from datapulse.pipeline.quality_repository import QualityRepository
     from datapulse.pipeline.repository import PipelineRepository
 
-    session = get_session_factory()()
+    session = open_tenant_session("1")
     try:
-        session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": "1"})
         repo = PipelineRepository(session)
         latest = repo.get_latest_run()
         if not latest:
@@ -142,11 +140,11 @@ async def _rls_audit() -> None:
     an operator can re-run dbt or apply RLS manually.
     """
     scheduler_jobs_executed.labels(job="rls_audit").inc()
-    from datapulse.core.db import get_session_factory
+    from datapulse.core.db_session import open_tenant_session  # noqa: PLC0415
     from datapulse.notifications import notify_rls_violation
     from datapulse.pipeline.rls_audit import audit_rls_enforcement
 
-    session = get_session_factory()()
+    session = open_tenant_session("1")
     try:
         violations = audit_rls_enforcement(session)
         if violations:
@@ -175,11 +173,10 @@ def _make_sync_job_fn(connection_id: int, tenant_id: int, schedule_id: int):  # 
             SyncScheduleRepository,
         )
         from datapulse.control_center.service import ControlCenterService  # noqa: PLC0415
-        from datapulse.core.db import get_session_factory  # noqa: PLC0415
+        from datapulse.core.db_session import open_tenant_session  # noqa: PLC0415
 
-        session = get_session_factory()()
+        session = open_tenant_session(str(tenant_id))
         try:
-            session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
             svc = ControlCenterService(
                 session,
                 connections=SourceConnectionRepository(session),

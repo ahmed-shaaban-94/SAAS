@@ -179,7 +179,7 @@ class ExcelPOLoader(BronzeLoader):
             )
 
             with engine.begin() as conn:
-                conn.execute(text(f"SET LOCAL app.tenant_id = '{tenant_id}'"))
+                conn.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
                 rows = headers_df.to_dicts()
                 for i in range(0, len(rows), batch_size):
                     conn.execute(text(insert_headers), rows[i : i + batch_size])
@@ -206,7 +206,7 @@ class ExcelPOLoader(BronzeLoader):
             )
 
             with engine.begin() as conn:
-                conn.execute(text(f"SET LOCAL app.tenant_id = '{tenant_id}'"))
+                conn.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
                 line_rows = lines_df.to_dicts()
                 for i in range(0, len(line_rows), batch_size):
                     conn.execute(text(insert_lines), line_rows[i : i + batch_size])
