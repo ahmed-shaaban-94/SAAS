@@ -31,6 +31,10 @@ _DISALLOWED_SQL_TOKENS = re.compile(
     r"(;|--|/\*|\*/|\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|MERGE|CALL|EXECUTE)\b)",
     re.IGNORECASE,
 )
+_ALLOWED_SELECT_SQL_SHAPE = re.compile(
+    r"^[\s\w\.\,\(\)\:\=\>\<\!\+\-\*/'%\n]+$",
+    re.IGNORECASE,
+)
 
 
 def _assert_safe_select_sql(sql: str) -> None:
@@ -42,6 +46,8 @@ def _assert_safe_select_sql(sql: str) -> None:
         raise ValueError("Only SELECT queries are allowed")
     if _DISALLOWED_SQL_TOKENS.search(normalized):
         raise ValueError("Generated SQL contains disallowed tokens")
+    if not _ALLOWED_SELECT_SQL_SHAPE.fullmatch(normalized):
+        raise ValueError("Generated SQL contains unexpected characters")
 
 
 # ------------------------------------------------------------------
