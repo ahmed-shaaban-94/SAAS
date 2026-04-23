@@ -402,6 +402,11 @@ jobs:
           API_KEY: ci-e2e-test-key-for-ci-only
           DEFAULT_TENANT_ID: "1"
           DB_READER_PASSWORD: ci_reader_pass
+          # Disable the APScheduler background scheduler so the lifespan
+          # startup is instant. Scheduled jobs are not needed for smoke tests
+          # and the sync DB calls inside start_scheduler() would block the
+          # asyncio event loop, delaying uvicorn startup by 10–15 s.
+          SCHEDULER_ENABLED: "false"
           # No CLERK_JWT_ISSUER — dev mode; JWT bearer validation is skipped.
         run: |
           uvicorn datapulse.api.app:create_app \
