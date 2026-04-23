@@ -19,8 +19,6 @@ if TYPE_CHECKING:
 
 import structlog
 from fastapi import Depends
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from datapulse.ai_light.service import AILightService
@@ -61,6 +59,8 @@ from datapulse.core.auth import (  # noqa: F401 (re-exported for routes + tests)
 from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
     get_engine,
     get_session_factory,
+    plain_session_scope,
+    tenant_session_scope,
 )
 from datapulse.forecasting.repository import ForecastingRepository
 from datapulse.forecasting.service import ForecastingService
@@ -84,20 +84,8 @@ def get_plain_session() -> Generator[Session, None, None]:
     Intended for public endpoints that do not require authentication or
     row-level security (e.g. lead capture).  Does NOT set app.tenant_id.
     """
-    session = get_session_factory()()
-    try:
-        session.execute(text("SET LOCAL statement_timeout = '30s'"))
+    with plain_session_scope(statement_timeout="30s", session_type="plain") as session:
         yield session
-        session.commit()
-    except SQLAlchemyError:
-        logger.exception("db_session_error", session_type="plain")
-        session.rollback()
-        raise
-    except BaseException:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -126,23 +114,12 @@ def get_db_session() -> Generator[Session, None, None]:
         stacklevel=2,
     )
 
-    structlog.contextvars.bind_contextvars(tenant_id="1")
-    session = get_session_factory()()
-    try:
-        session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": "1"})
-        session.execute(text("SET LOCAL statement_timeout = '30s'"))
+    with tenant_session_scope(
+        "1",
+        statement_timeout="30s",
+        session_type="legacy",
+    ) as session:
         yield session
-        session.commit()
-    except SQLAlchemyError:
-        logger.exception("db_session_error", session_type="legacy")
-        session.rollback()
-        raise
-    except BaseException:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-        structlog.contextvars.unbind_contextvars("tenant_id")
 
 
 def get_analytics_service(
@@ -511,19 +488,8 @@ def get_public_plain_session() -> Generator[Session, None, None]:
     cannot be abused as a DoS vector. Use :func:`get_plain_session` (30s)
     for authenticated plain-session paths instead.
     """
-    session = get_session_factory()()
-    try:
-        session.execute(text("SET LOCAL statement_timeout = '10s'"))
+    with plain_session_scope(statement_timeout="10s", session_type="public_plain") as session:
         yield session
-    except SQLAlchemyError:
-        logger.exception("db_session_error", session_type="public_plain")
-        session.rollback()
-        raise
-    except BaseException:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 
 
 def get_public_branding_service(

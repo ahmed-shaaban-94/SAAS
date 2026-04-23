@@ -16,6 +16,8 @@ import polars as pl
 import structlog
 from sqlalchemy import Engine, text
 
+from datapulse.core.db import apply_session_locals
+
 logger = structlog.get_logger(__name__)
 
 
@@ -155,7 +157,7 @@ class BronzeLoader(ABC):
             insert_sql = f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"  # noqa: S608
 
             with engine.begin() as conn:
-                conn.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                apply_session_locals(conn, tenant_id=tenant_id, statement_timeout=None)
                 for i in range(0, len(rows), batch_size):
                     batch = rows[i : i + batch_size]
                     conn.execute(text(insert_sql), batch)

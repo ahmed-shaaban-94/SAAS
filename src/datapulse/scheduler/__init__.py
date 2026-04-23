@@ -25,6 +25,7 @@ from sqlalchemy import text as sa_text
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from datapulse.config import get_settings
+from datapulse.core.db import plain_session_scope, tenant_session_scope
 from datapulse.logging import get_logger
 from datapulse.metrics import (
     pipeline_duration_seconds,
@@ -79,7 +80,6 @@ async def run_pipeline(
             Valid values: "bronze", "dbt-staging", "dbt-marts", "forecasting".
     """
     from datapulse.cache import cache_invalidate_pattern
-    from datapulse.core.db import get_session_factory
     from datapulse.notifications import notify_pipeline_failure, notify_pipeline_success
     from datapulse.pipeline.executor import PipelineExecutor
     from datapulse.pipeline.models import PipelineRunUpdate
@@ -93,11 +93,12 @@ async def run_pipeline(
     t0 = time.perf_counter()
     bind_contextvars(run_id=run_id_str, tenant_id=str(tenant_id))
 
-    def _get_session():
-        session = get_session_factory()()
-        session.execute(sa_text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
-        session.execute(sa_text("SET LOCAL statement_timeout = '600s'"))
-        return session
+    def _tenant_session():
+        return tenant_session_scope(
+            tenant_id,
+            statement_timeout="600s",
+            session_type="pipeline",
+        )
 
     def _update_status(
         status: str,
@@ -105,8 +106,7 @@ async def run_pipeline(
         rows: int | None = None,
         last_completed_stage: str | None = None,
     ) -> None:
-        session = _get_session()
-        try:
+        with _tenant_session() as session:
             repo = PipelineRepository(session)
             update = PipelineRunUpdate(
                 status=status,
@@ -115,31 +115,22 @@ async def run_pipeline(
                 last_completed_stage=last_completed_stage,
             )
             repo.update_run(run_id, update)
-            session.commit()
-        finally:
-            session.close()
 
     def _quality_check(stage: str) -> bool:
-        session = _get_session()
-        try:
+        with _tenant_session() as session:
             q_repo = QualityRepository(session)
             q_svc = QualityService(q_repo, session, settings)
             report = q_svc.run_checks_for_stage(run_id=run_id, stage=stage, tenant_id=tenant_id)
-            session.commit()
             return report.gate_passed
-        finally:
-            session.close()
 
     def _heartbeat() -> None:
         """Update heartbeat_at to signal the pipeline is still alive."""
-        session = _get_session()
         try:
-            repo = PipelineRepository(session)
-            repo.update_heartbeat(run_id)
+            with _tenant_session() as session:
+                repo = PipelineRepository(session)
+                repo.update_heartbeat(run_id)
         except Exception:
             log.warning("pipeline_heartbeat_failed", run_id=run_id_str, exc_info=True)
-        finally:
-            session.close()
 
     def _update_usage(tid: int, rows_loaded: int) -> None:
         """Update usage_metrics after a successful pipeline run."""
@@ -147,39 +138,36 @@ async def run_pipeline(
 
         from datapulse.billing.repository import BillingRepository
 
-        session = _get_session()
         try:
-            billing_repo = BillingRepository(session)
-            # Count distinct data sources for this tenant
-            source_count_row = session.execute(
-                sa_text(
-                    "SELECT COUNT(DISTINCT source_file) FROM bronze.sales WHERE tenant_id = :tid"
-                ),
-                {"tid": tid},
-            ).scalar()
-            # Count total rows for this tenant
-            row_count = session.execute(
-                sa_text("SELECT COUNT(*) FROM bronze.sales WHERE tenant_id = :tid"),
-                {"tid": tid},
-            ).scalar()
+            with _tenant_session() as session:
+                billing_repo = BillingRepository(session)
+                # Count distinct data sources for this tenant
+                source_count_row = session.execute(
+                    sa_text(
+                        "SELECT COUNT(DISTINCT source_file) "
+                        "FROM bronze.sales WHERE tenant_id = :tid"
+                    ),
+                    {"tid": tid},
+                ).scalar()
+                # Count total rows for this tenant
+                row_count = session.execute(
+                    sa_text("SELECT COUNT(*) FROM bronze.sales WHERE tenant_id = :tid"),
+                    {"tid": tid},
+                ).scalar()
 
-            billing_repo.upsert_usage(
-                tid,
-                data_sources_count=source_count_row or 0,
-                total_rows=row_count or rows_loaded,
-            )
-            session.commit()
-            log.info(
-                "usage_metrics_updated",
-                tenant_id=tid,
-                data_sources=source_count_row,
-                total_rows=row_count or rows_loaded,
-            )
+                billing_repo.upsert_usage(
+                    tid,
+                    data_sources_count=source_count_row or 0,
+                    total_rows=row_count or rows_loaded,
+                )
+                log.info(
+                    "usage_metrics_updated",
+                    tenant_id=tid,
+                    data_sources=source_count_row,
+                    total_rows=row_count or rows_loaded,
+                )
         except SQLAlchemyError:
-            session.rollback()
             log.error("usage_metrics_update_failed", tenant_id=tid, exc_info=True)
-        finally:
-            session.close()
 
     def _check_plan_limits_under_lock(tid: int) -> str | None:
         """Re-validate plan limits under advisory lock (TOCTOU defense).
@@ -190,22 +178,20 @@ async def run_pipeline(
         from datapulse.billing.service import BillingService, PlanLimitExceededError
         from datapulse.billing.stripe_client import StripeClient
 
-        session = _get_session()
         try:
-            billing_repo = BillingRepository(session)
-            client = StripeClient(settings.stripe_secret_key)
-            billing_svc = BillingService(
-                billing_repo,
-                providers={"USD": client},
-                price_to_plan=settings.stripe_price_to_plan_map,
-                base_url=settings.billing_base_url,
-            )
-            billing_svc.check_plan_limits(tid)
-            return None
+            with _tenant_session() as session:
+                billing_repo = BillingRepository(session)
+                client = StripeClient(settings.stripe_secret_key)
+                billing_svc = BillingService(
+                    billing_repo,
+                    providers={"USD": client},
+                    price_to_plan=settings.stripe_price_to_plan_map,
+                    base_url=settings.billing_base_url,
+                )
+                billing_svc.check_plan_limits(tid)
+                return None
         except PlanLimitExceededError as e:
             return str(e)
-        finally:
-            session.close()
 
     stages = [
         ("running", "bronze", lambda: executor.run_bronze(run_id=run_id, source_dir=source_dir)),
@@ -223,90 +209,119 @@ async def run_pipeline(
 
     log.info("pipeline_start", run_id=run_id_str)
 
-    # Acquire advisory lock to prevent concurrent pipeline runs.
-    # Single try/finally ensures lock_session is ALWAYS closed — even on
-    # early returns (lock-not-acquired, plan-limit-exceeded, stage failure).
-    lock_session = get_session_factory()()
     lock_acquired = False
     try:
-        lock_result = lock_session.execute(sa_text("SELECT pg_try_advisory_lock(42)")).scalar()
-        if not lock_result:
-            log.warning("pipeline_already_running", run_id=run_id_str)
-            _update_status("failed", error_message="Another pipeline is already running")
-            notify_pipeline_failure(run_id_str, "lock", "Another pipeline is already running")
-            return
-        lock_acquired = True
-
-        # Re-validate plan limits under lock (TOCTOU defense)
-        limit_error = await asyncio.to_thread(_check_plan_limits_under_lock, tenant_id)
-        if limit_error:
-            _update_status("failed", error_message=f"Plan limit exceeded: {limit_error}")
-            notify_pipeline_failure(run_id_str, "plan_check", limit_error)
-            log.warning("pipeline_plan_limit_exceeded", run_id=run_id_str, tenant_id=tenant_id)
-            return
-
-        _update_status("running")
-        await asyncio.to_thread(_heartbeat)  # initial heartbeat
-        total_rows = 0
-        resume_idx = _stage_index(resume_from) if resume_from else -1
-
-        for status_name, stage, execute_fn in stages:
-            # Skip stages before resume_from when resuming a partial run
-            if resume_from and _stage_index(stage) < resume_idx:
-                log.info(
-                    "pipeline_stage_skipped",
-                    run_id=run_id_str,
-                    stage=stage,
-                    reason=f"resume_from={resume_from}",
-                )
-                continue
-
-            # Heartbeat between stages so stale-detection knows we're alive
-            await asyncio.to_thread(_heartbeat)
-
-            if execute_fn:
-                # Execute stage in thread
-                result = await asyncio.to_thread(execute_fn)
-                if not result.success:
-                    _update_status("failed", error_message=result.error)
-                    notify_pipeline_failure(run_id_str, stage, result.error or "Unknown error")
-                    log.error(
-                        "pipeline_stage_failed", run_id=run_id_str, stage=stage, error=result.error
+        with plain_session_scope(
+            statement_timeout="600s",
+            session_type="pipeline_lock",
+        ) as lock_session:
+            try:
+                lock_result = lock_session.execute(
+                    sa_text("SELECT pg_try_advisory_lock(42)")
+                ).scalar()
+                if not lock_result:
+                    log.warning("pipeline_already_running", run_id=run_id_str)
+                    _update_status("failed", error_message="Another pipeline is already running")
+                    notify_pipeline_failure(
+                        run_id_str,
+                        "lock",
+                        "Another pipeline is already running",
                     )
                     return
-                if result.rows_loaded:
-                    total_rows = result.rows_loaded
-                _update_status("running", last_completed_stage=stage)
-                log.info(
-                    "pipeline_stage_done",
-                    run_id=run_id_str,
-                    stage=stage,
-                    duration=result.duration_seconds,
-                )
-            elif status_name:
-                # Update status + run quality check
-                _update_status(status_name)
-                gate_passed = await asyncio.to_thread(_quality_check, stage)
-                if not gate_passed:
-                    error_msg = f"Quality gate failed at {stage} stage"
-                    _update_status("failed", error_message=error_msg)
-                    notify_pipeline_failure(run_id_str, stage, error_msg)
-                    log.error("pipeline_quality_gate_failed", run_id=run_id_str, stage=stage)
+                lock_acquired = True
+
+                # Re-validate plan limits under lock (TOCTOU defense)
+                limit_error = await asyncio.to_thread(_check_plan_limits_under_lock, tenant_id)
+                if limit_error:
+                    _update_status("failed", error_message=f"Plan limit exceeded: {limit_error}")
+                    notify_pipeline_failure(run_id_str, "plan_check", limit_error)
+                    log.warning(
+                        "pipeline_plan_limit_exceeded",
+                        run_id=run_id_str,
+                        tenant_id=tenant_id,
+                    )
                     return
-                log.info("pipeline_quality_gate_passed", run_id=run_id_str, stage=stage)
 
-        # All stages complete
-        elapsed = round(time.perf_counter() - t0, 2)
-        _update_status("success", rows=total_rows)
-        cache_invalidate_pattern("datapulse:analytics:*")
+                _update_status("running")
+                await asyncio.to_thread(_heartbeat)  # initial heartbeat
+                total_rows = 0
+                resume_idx = _stage_index(resume_from) if resume_from else -1
 
-        # Update usage metrics for billing enforcement (in thread — avoids blocking event loop)
-        await asyncio.to_thread(_update_usage, tenant_id, total_rows)
+                for status_name, stage, execute_fn in stages:
+                    # Skip stages before resume_from when resuming a partial run
+                    if resume_from and _stage_index(stage) < resume_idx:
+                        log.info(
+                            "pipeline_stage_skipped",
+                            run_id=run_id_str,
+                            stage=stage,
+                            reason=f"resume_from={resume_from}",
+                        )
+                        continue
 
-        notify_pipeline_success(run_id_str, elapsed, total_rows)
-        pipeline_runs_total.labels(status="success").inc()
-        pipeline_duration_seconds.observe(elapsed)
-        log.info("pipeline_complete", run_id=run_id_str, duration=elapsed, rows=total_rows)
+                    # Heartbeat between stages so stale-detection knows we're alive
+                    await asyncio.to_thread(_heartbeat)
+
+                    if execute_fn:
+                        # Execute stage in thread
+                        result = await asyncio.to_thread(execute_fn)
+                        if not result.success:
+                            _update_status("failed", error_message=result.error)
+                            notify_pipeline_failure(
+                                run_id_str,
+                                stage,
+                                result.error or "Unknown error",
+                            )
+                            log.error(
+                                "pipeline_stage_failed",
+                                run_id=run_id_str,
+                                stage=stage,
+                                error=result.error,
+                            )
+                            return
+                        if result.rows_loaded:
+                            total_rows = result.rows_loaded
+                        _update_status("running", last_completed_stage=stage)
+                        log.info(
+                            "pipeline_stage_done",
+                            run_id=run_id_str,
+                            stage=stage,
+                            duration=result.duration_seconds,
+                        )
+                    elif status_name:
+                        # Update status + run quality check
+                        _update_status(status_name)
+                        gate_passed = await asyncio.to_thread(_quality_check, stage)
+                        if not gate_passed:
+                            error_msg = f"Quality gate failed at {stage} stage"
+                            _update_status("failed", error_message=error_msg)
+                            notify_pipeline_failure(run_id_str, stage, error_msg)
+                            log.error(
+                                "pipeline_quality_gate_failed",
+                                run_id=run_id_str,
+                                stage=stage,
+                            )
+                            return
+                        log.info("pipeline_quality_gate_passed", run_id=run_id_str, stage=stage)
+
+                # All stages complete
+                elapsed = round(time.perf_counter() - t0, 2)
+                _update_status("success", rows=total_rows)
+                cache_invalidate_pattern("datapulse:analytics:*")
+
+                # Update usage metrics in a worker thread so the event loop
+                # stays free while the post-run accounting queries execute.
+                await asyncio.to_thread(_update_usage, tenant_id, total_rows)
+
+                notify_pipeline_success(run_id_str, elapsed, total_rows)
+                pipeline_runs_total.labels(status="success").inc()
+                pipeline_duration_seconds.observe(elapsed)
+                log.info("pipeline_complete", run_id=run_id_str, duration=elapsed, rows=total_rows)
+            finally:
+                if lock_acquired:
+                    try:
+                        lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
+                    except Exception as exc:
+                        log.warning("advisory_lock_release_failed", error=str(exc))
 
     except Exception as exc:
         elapsed = round(time.perf_counter() - t0, 2)
@@ -317,14 +332,6 @@ async def run_pipeline(
         pipeline_duration_seconds.observe(elapsed)
         log.error("pipeline_crashed", run_id=run_id_str, error=error_msg, duration=elapsed)
     finally:
-        # Release advisory lock if acquired, then ALWAYS close session
-        if lock_acquired:
-            try:
-                lock_session.execute(sa_text("SELECT pg_advisory_unlock(42)"))
-                lock_session.commit()
-            except Exception as exc:
-                log.warning("advisory_lock_release_failed", error=str(exc))
-        lock_session.close()
         clear_contextvars()
 
 
@@ -341,25 +348,20 @@ def _register_sync_schedules() -> int:
     """
     try:
         from datapulse.control_center.repository import SyncScheduleRepository  # noqa: PLC0415
-        from datapulse.core.db import get_session_factory  # noqa: PLC0415
     except ImportError:
         log.warning("sync_schedule_registration_skipped", reason="control_center not installed")
         return 0
 
     try:
-        session = get_session_factory()()
-    except Exception:  # noqa: BLE001
-        log.warning("sync_schedule_db_unavailable", exc_info=True)
-        return 0
-
-    try:
-        repo = SyncScheduleRepository(session)
-        schedules = repo.list_all_active()
+        with plain_session_scope(
+            statement_timeout="30s",
+            session_type="scheduler_registry",
+        ) as session:
+            repo = SyncScheduleRepository(session)
+            schedules = repo.list_all_active()
     except Exception:  # noqa: BLE001
         log.warning("sync_schedule_load_failed", exc_info=True)
         return 0
-    finally:
-        session.close()
 
     registered = 0
     for sched in schedules:

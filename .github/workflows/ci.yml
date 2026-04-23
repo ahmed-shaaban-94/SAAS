@@ -54,6 +54,11 @@ jobs:
             echo "Checking migrations: $CHANGED"
             python scripts/check_migration_safety.py $CHANGED
           fi
+      - name: Check session-scope usage (no raw RLS setup)
+        # Issue #655: new code must use datapulse.core.db session helpers
+        # instead of calling get_session_factory()() or SET LOCAL app.tenant_id
+        # directly in application modules.
+        run: python scripts/check_session_scope_usage.py
 
   typecheck:
     name: Type Check

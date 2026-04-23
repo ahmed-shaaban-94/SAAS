@@ -14,6 +14,7 @@ from uuid import UUID
 
 from datapulse.bronze import loader as bronze_loader
 from datapulse.config import Settings
+from datapulse.core.db import tenant_session_scope
 from datapulse.logging import get_logger
 from datapulse.pipeline.models import ExecutionResult
 from datapulse.pipeline.retry import with_retry
@@ -179,21 +180,21 @@ class PipelineExecutor:
         Executes in-process (like bronze), not as a subprocess.
         Creates its own DB session with tenant isolation.
         """
-
         from datapulse.forecasting.repository import ForecastingRepository
         from datapulse.forecasting.service import ForecastingService
 
         log.info("executor_forecasting_start", run_id=str(run_id))
         t0 = time.perf_counter()
 
-        from datapulse.core.db_session import open_tenant_session
-
-        session = open_tenant_session(tenant_id, timeout_s=600)
         try:
-            repo = ForecastingRepository(session)
-            service = ForecastingService(repo)
-            stats = service.run_all_forecasts()
-            session.commit()
+            with tenant_session_scope(
+                tenant_id,
+                statement_timeout="30s",
+                session_type="forecasting",
+            ) as session:
+                repo = ForecastingRepository(session)
+                service = ForecastingService(repo)
+                stats = service.run_all_forecasts()
 
             elapsed = round(time.perf_counter() - t0, 2)
             rows = stats.get("rows_written", 0)
@@ -209,7 +210,6 @@ class PipelineExecutor:
                 duration_seconds=elapsed,
             )
         except Exception as exc:
-            session.rollback()
             elapsed = round(time.perf_counter() - t0, 2)
             log.error("executor_forecasting_failed", run_id=str(run_id), error=str(exc))
             return ExecutionResult(
@@ -217,5 +217,3 @@ class PipelineExecutor:
                 error=_sanitize_error(str(exc)),
                 duration_seconds=elapsed,
             )
-        finally:
-            session.close()

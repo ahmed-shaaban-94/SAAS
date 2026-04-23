@@ -26,19 +26,15 @@ from typing import Annotated, Any, TypedDict
 import structlog
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from datapulse.cache import current_tenant_id
 from datapulse.config import Settings, get_settings
 from datapulse.core.config import is_non_dev_env
-from datapulse.core.db import get_session_factory
+from datapulse.core.db import tenant_session_scope
 from datapulse.core.jwt import verify_jwt
 from datapulse.core.security import compare_secrets
 
 _auth_logger = structlog.get_logger()
-_db_logger = structlog.get_logger()
 _TENANT_ID_RE = re.compile(r"^\d{1,10}$")
 
 # Sentinel user_id used when a caller authenticates with a shared X-API-Key.
@@ -289,24 +285,12 @@ def get_tenant_session(
     that PostgreSQL RLS policies filter data automatically.
     """
     tenant_id = user.get("tenant_id") or "1"
-    current_tenant_id.set(str(tenant_id))
-    structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
-    session = get_session_factory()()
-    try:
-        session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-        session.execute(text("SET LOCAL statement_timeout = '30s'"))
+    with tenant_session_scope(
+        tenant_id,
+        statement_timeout="30s",
+        session_type="tenant",
+    ) as session:
         yield session
-        session.commit()
-    except SQLAlchemyError:
-        _db_logger.exception("db_session_error", session_type="tenant", tenant_id=str(tenant_id))
-        session.rollback()
-        raise
-    except BaseException:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-        structlog.contextvars.unbind_contextvars("tenant_id")
 
 
 # Type aliases for FastAPI dependency injection

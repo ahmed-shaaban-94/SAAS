@@ -1,5 +1,6 @@
 """Tests for RBAC FastAPI dependencies — require_role, require_permission."""
 
+from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -124,7 +125,7 @@ class TestGetAccessContextApiKeyBypass:
         with (
             patch(
                 "datapulse.rbac.dependencies._get_rbac_session",
-                return_value=fake_session,
+                return_value=nullcontext(fake_session),
             ),
             patch("datapulse.rbac.dependencies.RBACRepository") as repo_cls,
             patch("datapulse.rbac.dependencies._build_rbac_service") as build_service,
@@ -135,7 +136,6 @@ class TestGetAccessContextApiKeyBypass:
         # No service construction, no ensure_member_exists, no INSERT path.
         build_service.assert_not_called()
         fake_session.commit.assert_not_called()
-        fake_session.close.assert_called_once()
 
         assert ctx.user_id == API_KEY_USER_ID
         assert ctx.tenant_id == 1
@@ -157,13 +157,10 @@ class TestGetAccessContextApiKeyBypass:
         with (
             patch(
                 "datapulse.rbac.dependencies._get_rbac_session",
-                return_value=fake_session,
+                return_value=nullcontext(fake_session),
             ),
             patch("datapulse.rbac.dependencies.RBACRepository") as repo_cls,
         ):
             repo_cls.return_value.get_role_permissions.side_effect = RuntimeError("boom")
             with pytest.raises(RuntimeError, match="boom"):
                 get_access_context(user)
-
-        fake_session.rollback.assert_called_once()
-        fake_session.close.assert_called_once()

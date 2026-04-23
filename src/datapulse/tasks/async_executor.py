@@ -22,6 +22,7 @@ import redis
 from sqlalchemy import text
 
 from datapulse.config import get_settings
+from datapulse.core.db import tenant_session_scope
 from datapulse.core.serializers import serialise_value as _serialise
 from datapulse.logging import get_logger
 
@@ -136,45 +137,46 @@ def _run_query_sync(
     _set_job(client, job_id, {"status": "running", "submitted_at": time.time()})
 
     start = time.perf_counter()
-    from datapulse.core.db_session import open_tenant_session
-
-    session = open_tenant_session(tenant_id, timeout_s=_query_timeout())
     try:
-        result = session.execute(text(sql), params or {})
-        columns = list(result.keys())
-        rows = []
-        truncated = False
+        with tenant_session_scope(
+            tenant_id,
+            statement_timeout=f"{_query_timeout()}s",
+            session_type="async_query",
+        ) as session:
+            result = session.execute(text(sql), params or {})
+            columns = list(result.keys())
+            rows = []
+            truncated = False
 
-        for i, row in enumerate(result):
-            if i >= _effective_row_limit(row_limit):
-                truncated = True
-                break
-            rows.append([_serialise(v) for v in row])
+            for i, row in enumerate(result):
+                if i >= _effective_row_limit(row_limit):
+                    truncated = True
+                    break
+                rows.append([_serialise(v) for v in row])
 
-        duration_ms = round((time.perf_counter() - start) * 1000, 1)
+            duration_ms = round((time.perf_counter() - start) * 1000, 1)
 
-        log.info(
-            "query_executed",
-            job_id=job_id,
-            row_count=len(rows),
-            truncated=truncated,
-            duration_ms=duration_ms,
-        )
+            log.info(
+                "query_executed",
+                job_id=job_id,
+                row_count=len(rows),
+                truncated=truncated,
+                duration_ms=duration_ms,
+            )
 
-        _set_job(
-            client,
-            job_id,
-            {
-                "status": "complete",
-                "columns": columns,
-                "rows": rows,
-                "row_count": len(rows),
-                "truncated": truncated,
-                "duration_ms": duration_ms,
-            },
-        )
+            _set_job(
+                client,
+                job_id,
+                {
+                    "status": "complete",
+                    "columns": columns,
+                    "rows": rows,
+                    "row_count": len(rows),
+                    "truncated": truncated,
+                    "duration_ms": duration_ms,
+                },
+            )
     except Exception as exc:
-        session.rollback()
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
         error_msg = str(exc)
         if "canceling statement due to statement timeout" in error_msg:
@@ -197,8 +199,6 @@ def _run_query_sync(
                 job_id=job_id,
                 error=str(redis_exc),
             )
-    finally:
-        session.close()
 
 
 def _run_query_job_sync(

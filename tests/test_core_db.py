@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import datapulse.core.db as db_mod
 
@@ -88,3 +91,35 @@ class TestGetSessionFactory:
         assert f1 is fake_factory
         assert f2 is fake_factory
         mock_sm.assert_called_once_with(bind=fake_engine)
+
+
+class TestSessionHelpers:
+    @patch("datapulse.core.db.get_session_factory")
+    def test_tenant_session_scope_sets_tenant_and_timeout(self, mock_factory):
+        mock_session = MagicMock()
+        mock_factory.return_value = MagicMock(return_value=mock_session)
+
+        with db_mod.tenant_session_scope("42", statement_timeout="10s") as session:
+            assert session is mock_session
+
+        tenant_call = mock_session.execute.call_args_list[0]
+        timeout_call = mock_session.execute.call_args_list[1]
+        assert tenant_call.args[1] == {"tid": "42"}
+        assert "statement_timeout" in timeout_call.args[0].text
+        mock_session.commit.assert_called_once()
+        mock_session.close.assert_called_once()
+
+    @patch("datapulse.core.db.get_session_factory")
+    def test_plain_session_scope_rolls_back_on_error(self, mock_factory):
+        mock_session = MagicMock()
+        mock_factory.return_value = MagicMock(return_value=mock_session)
+
+        with contextlib.suppress(RuntimeError), db_mod.plain_session_scope(statement_timeout="10s"):
+            raise RuntimeError("boom")
+
+        mock_session.rollback.assert_called_once()
+        mock_session.close.assert_called_once()
+
+    def test_apply_session_locals_rejects_bad_timeout(self):
+        with pytest.raises(ValueError, match="statement_timeout"):
+            db_mod.apply_session_locals(MagicMock(), statement_timeout="thirty")

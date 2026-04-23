@@ -19,6 +19,7 @@ from sqlalchemy import Engine, text
 from datapulse.bronze.base_loader import BronzeLoader, LoadResult
 from datapulse.bronze.po_column_map import PO_HEADER_MAP, PO_LINE_MAP
 from datapulse.bronze.registry import LOADER_REGISTRY
+from datapulse.core.db import apply_session_locals
 
 logger = structlog.get_logger(__name__)
 
@@ -179,7 +180,7 @@ class ExcelPOLoader(BronzeLoader):
             )
 
             with engine.begin() as conn:
-                conn.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                apply_session_locals(conn, tenant_id=tenant_id, statement_timeout=None)
                 rows = headers_df.to_dicts()
                 for i in range(0, len(rows), batch_size):
                     conn.execute(text(insert_headers), rows[i : i + batch_size])
@@ -206,7 +207,7 @@ class ExcelPOLoader(BronzeLoader):
             )
 
             with engine.begin() as conn:
-                conn.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                apply_session_locals(conn, tenant_id=tenant_id, statement_timeout=None)
                 line_rows = lines_df.to_dicts()
                 for i in range(0, len(line_rows), batch_size):
                     conn.execute(text(insert_lines), line_rows[i : i + batch_size])

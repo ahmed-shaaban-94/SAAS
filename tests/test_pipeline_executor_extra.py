@@ -83,11 +83,11 @@ class TestRunForecasting:
         settings.database_url = "postgresql://test:test@localhost/test"
         return PipelineExecutor(settings=settings)
 
-    @patch("datapulse.core.db_session.open_tenant_session")
+    @patch("datapulse.core.db.get_session_factory")
     @patch("datapulse.forecasting.service.ForecastingService.run_all_forecasts")
-    def test_forecasting_success(self, mock_run, mock_open_session):
+    def test_forecasting_success(self, mock_run, mock_factory):
         mock_session = MagicMock()
-        mock_open_session.return_value = mock_session
+        mock_factory.return_value = MagicMock(return_value=mock_session)
         mock_run.return_value = {"rows_written": 100}
 
         executor = self._make_executor()
@@ -98,11 +98,11 @@ class TestRunForecasting:
         mock_session.commit.assert_called_once()
         mock_session.close.assert_called_once()
 
-    @patch("datapulse.core.db_session.open_tenant_session")
+    @patch("datapulse.core.db.get_session_factory")
     @patch("datapulse.forecasting.service.ForecastingService.run_all_forecasts")
-    def test_forecasting_failure(self, mock_run, mock_open_session):
+    def test_forecasting_failure(self, mock_run, mock_factory):
         mock_session = MagicMock()
-        mock_open_session.return_value = mock_session
+        mock_factory.return_value = MagicMock(return_value=mock_session)
         mock_run.side_effect = RuntimeError("forecast error")
 
         executor = self._make_executor()

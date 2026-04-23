@@ -162,8 +162,10 @@ def test_run_query_sync_stores_result_in_redis():
 
     with (
         patch("datapulse.tasks.async_executor._get_job_client", return_value=mock_client),
-        patch("datapulse.core.db_session.open_tenant_session", return_value=mock_session),
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
     ):
+        mock_sf.return_value = lambda: mock_session
+
         from datapulse.tasks.async_executor import _run_query_sync
 
         _run_query_sync("j1", "SELECT 1", None, "1", 100)
@@ -181,14 +183,18 @@ def test_run_query_sync_handles_query_error():
 
     mock_client = MagicMock()
     mock_session = MagicMock()
-    mock_session.execute.side_effect = sqlalchemy.exc.OperationalError(
-        "SELECT bad", {}, Exception("column not found")
-    )
+    mock_session.execute.side_effect = [
+        None,
+        None,
+        sqlalchemy.exc.OperationalError("SELECT bad", {}, Exception("column not found")),
+    ]
 
     with (
         patch("datapulse.tasks.async_executor._get_job_client", return_value=mock_client),
-        patch("datapulse.core.db_session.open_tenant_session", return_value=mock_session),
+        patch("datapulse.core.db.get_session_factory") as mock_sf,
     ):
+        mock_sf.return_value = lambda: mock_session
+
         from datapulse.tasks.async_executor import _run_query_sync
 
         _run_query_sync("j-err", "SELECT bad", None, "1", 100)

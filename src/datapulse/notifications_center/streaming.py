@@ -10,6 +10,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
+from datapulse.core.db import tenant_session_scope
 from datapulse.notifications_center.repository import NotificationRepository
 
 
@@ -31,19 +32,17 @@ async def iter_unread_count_events(
         if await is_disconnected():
             break
         try:
-            from datapulse.core.db_session import open_tenant_session
-
-            session = open_tenant_session(tenant_id, timeout_s=10)
-            try:
+            with tenant_session_scope(
+                tenant_id,
+                statement_timeout="10s",
+                session_type="notifications_stream",
+            ) as session:
                 repo = NotificationRepository(session)
                 count = repo.unread_count(user_id)
                 if count != last_count:
                     last_count = count
                     data = json.dumps({"unread": count})
                     yield f"event: count\ndata: {data}\n\n"
-                session.commit()
-            finally:
-                session.close()
         except Exception:
             yield "event: error\ndata: {}\n\n"
         await asyncio.sleep(poll_interval)

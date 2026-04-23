@@ -13,10 +13,10 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from datapulse.api.auth import get_current_user
 from datapulse.api.limiter import limiter
+from datapulse.core.db import tenant_session_scope
 from datapulse.core.serializers import serialise_value as _serialise
 from datapulse.embed.token import create_embed_token, validate_embed_token
 from datapulse.explore.manifest_parser import build_catalog
@@ -81,14 +81,6 @@ public_router = APIRouter(
 )
 
 
-def _get_embed_session(token_payload: dict) -> Session:
-    """Create a DB session scoped to the embed token's tenant."""
-    from datapulse.core.db_session import open_tenant_session
-
-    tenant_id = token_payload.get("tenant_id", "1")
-    return open_tenant_session(tenant_id)
-
-
 @public_router.post("/{token}/query", response_model=ExploreResult)
 @limiter.limit("60/minute")
 def embed_query(
@@ -118,46 +110,44 @@ def embed_query(
             detail="Token is not authorized for this resource",
         )
 
-    session = None
     try:
-        session = _get_embed_session(payload)
-        settings = get_settings()
-        catalog = build_catalog(f"{settings.dbt_project_dir}/models")
+        with tenant_session_scope(
+            payload.get("tenant_id", "1"),
+            statement_timeout="30s",
+            session_type="embed",
+        ) as session:
+            settings = get_settings()
+            catalog = build_catalog(f"{settings.dbt_project_dir}/models")
 
-        sql, params = build_sql(body, catalog)
+            sql, params = build_sql(body, catalog)
 
-        start = time.perf_counter()
-        # sql_builder validates identifiers via _SAFE_IDENT whitelist
-        # and binds all user values as :param parameters (not interpolated).
-        result = session.execute(text(sql), params)
-        columns = list(result.keys())
-        rows: list[list] = []
-        truncated = False
+            start = time.perf_counter()
+            # sql_builder validates identifiers via _SAFE_IDENT whitelist
+            # and binds all user values as :param parameters (not interpolated).
+            result = session.execute(text(sql), params)
+            columns = list(result.keys())
+            rows: list[list] = []
+            truncated = False
 
-        for i, row in enumerate(result):
-            if i >= body.limit:
-                truncated = True
-                break
-            rows.append([_serialise(v) for v in row])
+            for i, row in enumerate(result):
+                if i >= body.limit:
+                    truncated = True
+                    break
+                rows.append([_serialise(v) for v in row])
 
-        duration_ms = round((time.perf_counter() - start) * 1000, 1)
-        log.info("embed_query_executed", row_count=len(rows), duration_ms=duration_ms)
+            duration_ms = round((time.perf_counter() - start) * 1000, 1)
+            log.info("embed_query_executed", row_count=len(rows), duration_ms=duration_ms)
 
-        # Never expose SQL in embed responses — these are public-facing
-        return ExploreResult(
-            columns=columns,
-            rows=rows,
-            row_count=len(rows),
-            sql="",
-            truncated=truncated,
-        )
+            # Never expose SQL in embed responses — these are public-facing
+            return ExploreResult(
+                columns=columns,
+                rows=rows,
+                row_count=len(rows),
+                sql="",
+                truncated=truncated,
+            )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        if session is not None:
-            session.rollback()
         log.error("embed_query_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Query execution failed") from exc
-    finally:
-        if session is not None:
-            session.close()

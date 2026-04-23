@@ -3,21 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from contextlib import AbstractContextManager
 from typing import Annotated
 
-import structlog
 from fastapi import Depends, HTTPException
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from datapulse.config import get_settings
 from datapulse.core.auth import API_KEY_USER_ID, UserClaims, get_current_user
-from datapulse.core.db import get_session_factory
+from datapulse.core.db import tenant_session_scope
 from datapulse.rbac.models import AccessContext, RoleKey
 from datapulse.rbac.repository import RBACRepository
 from datapulse.rbac.service import RBACService
-
-logger = structlog.get_logger()
 
 # Synthetic member_id for API-key callers. Never matches a real
 # tenant_members.member_id (which is SERIAL, starts at 1).
@@ -52,18 +49,19 @@ def _synthesize_api_key_context(tenant_id: int, session: Session) -> AccessConte
 
 def _get_rbac_session(
     user: Annotated[UserClaims, Depends(get_current_user)],
-) -> Session:
+) -> AbstractContextManager[Session]:
     """Create a raw (non-RLS) session for RBAC lookups.
 
     RBAC resolution happens before RLS scoping — we need to read
     tenant_members to determine the user's role, then use that role
     to decide what data to show.
     """
-    session = get_session_factory()()
     tenant_id = user.get("tenant_id", "1")
-    session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
-    session.execute(text("SET LOCAL statement_timeout = '10s'"))
-    return session
+    return tenant_session_scope(
+        tenant_id,
+        statement_timeout="10s",
+        session_type="rbac",
+    )
 
 
 def _build_rbac_service(session: Session) -> RBACService:
@@ -80,11 +78,8 @@ def get_rbac_service(
     user: Annotated[UserClaims, Depends(get_current_user)],
 ) -> Generator[RBACService, None, None]:
     """Yield an RBACService and guarantee the underlying session is closed."""
-    session = _get_rbac_session(user)
-    try:
+    with _get_rbac_session(user) as session:
         yield _build_rbac_service(session)
-    finally:
-        session.close()
 
 
 def get_access_context(
@@ -97,37 +92,31 @@ def get_access_context(
     2. Loads their role, permissions, and sector access
     3. Returns an AccessContext used by routes and sector filters
     """
-    session = _get_rbac_session(user)
     try:
-        tenant_id = int(user.get("tenant_id", "1"))
-        user_id = user.get("sub", "")
+        with _get_rbac_session(user) as session:
+            tenant_id = int(user.get("tenant_id", "1"))
+            user_id = user.get("sub", "")
 
-        # API-key callers are service credentials — never tenant_members
-        # rows. Short-circuit to a synthetic admin context so we don't
-        # attempt to INSERT a duplicate row with empty email (issue:
-        # tenant_members_tenant_id_email_key unique violation).
-        if user_id == API_KEY_USER_ID:
-            return _synthesize_api_key_context(tenant_id, session)
+            # API-key callers are service credentials — never tenant_members
+            # rows. Short-circuit to a synthetic admin context so we don't
+            # attempt to INSERT a duplicate row with empty email (issue:
+            # tenant_members_tenant_id_email_key unique violation).
+            if user_id == API_KEY_USER_ID:
+                return _synthesize_api_key_context(tenant_id, session)
 
-        service = _build_rbac_service(session)
-        email = user.get("email", "")
-        name = user.get("preferred_username", "") or email.split("@")[0]
+            service = _build_rbac_service(session)
+            email = user.get("email", "")
+            name = user.get("preferred_username", "") or email.split("@")[0]
 
-        # Auto-register if first login
-        service.ensure_member_exists(tenant_id, user_id, email, name)
-        session.commit()
+            # Auto-register if first login
+            service.ensure_member_exists(tenant_id, user_id, email, name)
+            session.commit()
 
-        # Resolve full access context
-        ctx = service.resolve_access(tenant_id, user_id)
-        return ctx
+            # Resolve full access context
+            ctx = service.resolve_access(tenant_id, user_id)
+            return ctx
     except ValueError as e:
-        session.rollback()
         raise HTTPException(status_code=403, detail=str(e)) from e
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 
 
 # Type alias for convenience

@@ -163,7 +163,7 @@ class TestC3DeprecatedDbSession:
         mock_factory = MagicMock(return_value=mock_session)
 
         with (
-            patch("datapulse.api.deps.get_session_factory", return_value=mock_factory),
+            patch("datapulse.core.db.get_session_factory", return_value=mock_factory),
             warnings.catch_warnings(record=True) as w,
         ):
             warnings.simplefilter("always")

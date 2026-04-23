@@ -18,6 +18,7 @@ from datapulse.api.auth import get_optional_user_for_health
 from datapulse.api.deps import get_engine
 from datapulse.api.limiter import limiter
 from datapulse.checks import check_db, check_redis
+from datapulse.core.db import apply_session_locals
 
 router = APIRouter(tags=["health"])
 logger = structlog.get_logger()
@@ -239,10 +240,7 @@ def auth_check() -> JSONResponse:
         )
     try:
         with get_engine().connect() as conn:
-            conn.execute(
-                text("SET LOCAL app.tenant_id = :tid"),
-                {"tid": str(settings.default_tenant_id)},
-            )
+            apply_session_locals(conn, tenant_id=settings.default_tenant_id)
         return JSONResponse(
             status_code=200,
             content={

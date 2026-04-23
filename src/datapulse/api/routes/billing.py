@@ -7,7 +7,6 @@ from typing import Annotated
 import stripe
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from sqlalchemy import text
 
 from datapulse.api.deps import CurrentUser, build_billing_webhook_service, get_billing_service
 from datapulse.api.limiter import limiter
@@ -21,7 +20,7 @@ from datapulse.billing.models import (
 )
 from datapulse.billing.service import BillingService
 from datapulse.config import get_settings
-from datapulse.core.db import get_session_factory
+from datapulse.core.db import plain_session_scope
 from datapulse.rbac.dependencies import require_permission
 
 logger = structlog.get_logger()
@@ -103,29 +102,25 @@ async def stripe_webhook(
 
     payload = await request.body()
 
-    session = get_session_factory()()
     try:
-        session.execute(text("SET LOCAL statement_timeout = '30s'"))
-        service = build_billing_webhook_service(session)
-        result = service.handle_webhook_event(
-            payload, stripe_signature, settings.stripe_webhook_secret
-        )
-        session.commit()
-        return {"status": result.status, "event_type": result.event_type}
+        with plain_session_scope(
+            statement_timeout="30s",
+            session_type="billing_webhook",
+        ) as session:
+            service = build_billing_webhook_service(session)
+            result = service.handle_webhook_event(
+                payload, stripe_signature, settings.stripe_webhook_secret
+            )
+            return {"status": result.status, "event_type": result.event_type}
     except stripe.error.SignatureVerificationError as e:
-        session.rollback()
         logger.warning("webhook_signature_invalid", error=str(e))
         raise HTTPException(status_code=400, detail="Invalid signature") from e
     except ValueError as e:
-        session.rollback()
         logger.warning("webhook_bad_payload", error=str(e))
         raise HTTPException(status_code=400, detail="Invalid payload") from e
     except Exception as e:
-        session.rollback()
         logger.error("webhook_operational_error", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Webhook processing failed") from e
-    finally:
-        session.close()
 
 
 # ── Paymob webhook ────────────────────────────────────────────────────────────
@@ -156,25 +151,19 @@ async def paymob_webhook(
         hmac_secret=settings.paymob_hmac_secret,
     )
 
-    session = get_session_factory()()
     try:
-        session.execute(text("SET LOCAL statement_timeout = '30s'"))
-        result = client.handle_webhook_event(payload, hmac_value, settings.paymob_hmac_secret)
-        if result.status == "completed" and result.plan and result.tenant_id:
-            service = build_billing_webhook_service(session)
-            service._repo.update_tenant_plan(result.tenant_id, result.plan)
-        session.commit()
-        return {"status": result.status, "event_type": result.event_type}
+        with plain_session_scope(statement_timeout="30s", session_type="paymob_webhook") as session:
+            result = client.handle_webhook_event(payload, hmac_value, settings.paymob_hmac_secret)
+            if result.status == "completed" and result.plan and result.tenant_id:
+                service = build_billing_webhook_service(session)
+                service._repo.update_tenant_plan(result.tenant_id, result.plan)
+            return {"status": result.status, "event_type": result.event_type}
     except ValueError as e:
-        session.rollback()
         logger.warning("paymob_webhook_invalid", error=str(e))
         raise HTTPException(status_code=400, detail="Invalid payload or HMAC") from e
     except Exception as e:
-        session.rollback()
         logger.error("paymob_webhook_error", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Webhook processing failed") from e
-    finally:
-        session.close()
 
 
 # ── InstaPay manual reconciliation ───────────────────────────────────────────
