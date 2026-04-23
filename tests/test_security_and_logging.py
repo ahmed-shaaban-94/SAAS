@@ -49,14 +49,14 @@ def test_setup_logging_console():
     setup_logging(log_level="INFO", log_format="console")
 
 
-def test_auth0_issuer_url():
-    s = _settings(auth0_domain="test.us.auth0.com")
-    assert s.auth0_issuer_url == "https://test.us.auth0.com/"
+def test_clerk_jwks_url_derived_from_frontend_api():
+    s = _settings(clerk_frontend_api="https://test.clerk.accounts.dev")
+    assert s.clerk_jwks_url == "https://test.clerk.accounts.dev/.well-known/jwks.json"
 
 
-def test_auth0_jwks_url():
-    s = _settings(auth0_domain="test.us.auth0.com")
-    assert s.auth0_jwks_url == "https://test.us.auth0.com/.well-known/jwks.json"
+def test_clerk_jwks_url_empty_when_unconfigured():
+    s = _settings(clerk_frontend_api="")
+    assert s.clerk_jwks_url == ""
 
 
 def test_pipeline_run_create_invalid_run_type():

@@ -79,7 +79,7 @@ def _log_dev_tenant_fallback_once(minute_bucket: int) -> None:
         "jwt_missing_tenant_id_dev_fallback",
         detail=(
             "JWT has no tenant claim; falling back to default_tenant_id in "
-            "dev mode. Add a 'tenant_id' claim to the Auth0 Action before "
+            "dev mode. Add a 'tenant_id' claim to the Clerk JWT template before "
             "deploying to staging/production, or requests will be 401-rejected."
         ),
     )
@@ -144,7 +144,7 @@ def get_current_user(
             or claims.get("tid")
         )
         if not tenant_id:
-            # Production: no fallback ever — a misconfigured Auth0 Action must
+            # Production: no fallback ever — a misconfigured Clerk JWT template must
             # not silently route users to ``default_tenant_id`` (#546).
             if is_non_dev_env(settings.app_env, settings.sentry_environment):
                 _auth_logger.warning(
@@ -209,15 +209,14 @@ def get_current_user(
     # SECURITY: defense-in-depth gate. Refuse the fallback whenever *either*
     # app_env or sentry_environment indicates a non-dev deployment, so a single
     # misconfigured env var cannot leak admin-adjacent claims (issue #537).
-    # ``_jwt_provider_configured`` reflects the active provider (Auth0 or
-    # Clerk); swapping providers via AUTH_PROVIDER does not weaken this gate.
+    # ``_jwt_provider_configured`` confirms Clerk is configured.
     if not settings.api_key and not settings._jwt_provider_configured:
         if is_non_dev_env(settings.app_env, settings.sentry_environment):
             _auth_logger.error(
                 "auth_not_configured_in_production",
                 app_env=settings.app_env,
                 sentry_environment=settings.sentry_environment,
-                detail="API_KEY and AUTH0_DOMAIN are both empty in a non-dev "
+                detail="API_KEY and CLERK_JWT_ISSUER are both empty in a non-dev "
                 "environment — refusing to return dev fallback claims",
             )
             raise HTTPException(
@@ -250,7 +249,7 @@ def get_optional_user(
     """Same as get_current_user but returns None on missing/invalid auth.
 
     Only silences 401/403 (unauthenticated / forbidden). Other HTTP errors
-    (e.g. 503 Auth0 outage) are re-raised so callers receive a truthful
+    (e.g. 503 Clerk outage) are re-raised so callers receive a truthful
     error instead of silent anonymous access.
     """
     try:
@@ -270,9 +269,9 @@ def get_optional_user_for_health(
 ) -> UserClaims | None:
     """Optional-user resolver for ``/health`` only — silences ALL exceptions.
 
-    The regular :func:`get_optional_user` re-raises Auth0 outages (503) so
+    The regular :func:`get_optional_user` re-raises Clerk outages (503) so
     normal routes surface a truthful error. For ``/health`` we want the
-    opposite: DB / Redis health must be reportable even when Auth0 is down.
+    opposite: DB / Redis health must be reportable even when Clerk is down.
     """
     try:
         return get_current_user(credentials, api_key, settings)

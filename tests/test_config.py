@@ -120,7 +120,8 @@ class TestSettings:
         s = _settings(
             sentry_environment="production",
             api_key="secret123",
-            auth0_domain="example.auth0.com",
+            clerk_frontend_api="https://example.clerk.accounts.dev",
+            clerk_jwt_issuer="https://example.clerk.accounts.dev",
             db_reader_password="reader-secret",
             pipeline_webhook_secret="pipeline-secret",
         )

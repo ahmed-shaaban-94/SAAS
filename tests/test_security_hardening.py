@@ -193,8 +193,8 @@ class TestH2DevModeProductionBlock:
         # match an unconfigured provider.
         settings = MagicMock(
             api_key="",
-            auth0_domain="",
-            auth_provider="auth0",
+            clerk_jwt_issuer="",
+            auth_provider="clerk",
             sentry_environment="production",
         )
         settings._jwt_provider_configured = False
@@ -206,8 +206,8 @@ class TestH2DevModeProductionBlock:
     def test_blocked_in_staging(self):
         settings = MagicMock(
             api_key="",
-            auth0_domain="",
-            auth_provider="auth0",
+            clerk_jwt_issuer="",
+            auth_provider="clerk",
             sentry_environment="staging",
         )
         settings._jwt_provider_configured = False
@@ -216,14 +216,14 @@ class TestH2DevModeProductionBlock:
         assert exc_info.value.status_code == 503
 
     def test_allowed_in_development(self):
-        settings = _settings(api_key="", auth0_domain="")
+        settings = _settings(api_key="")
         with patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "development"}):
             result = get_current_user(credentials=None, api_key=None, settings=settings)
         assert result["sub"] == "dev-user"
         assert "viewer" in result["roles"]
 
     def test_allowed_in_test(self):
-        settings = _settings(api_key="", auth0_domain="")
+        settings = _settings(api_key="")
         with patch.dict(os.environ, {"SENTRY_ENVIRONMENT": "test"}):
             result = get_current_user(credentials=None, api_key=None, settings=settings)
         assert result["sub"] == "dev-user"
@@ -314,8 +314,8 @@ class TestPIILeakPrevention:
         from datapulse.api.jwt import verify_jwt
 
         fake_settings = _settings(
-            auth0_domain="test.auth0.com",
-            auth0_audience="https://api.test.com",
+            clerk_frontend_api="https://test.clerk.accounts.dev",
+            clerk_jwt_issuer="https://test.clerk.accounts.dev",
         )
         with (
             patch("datapulse.core.jwt.httpx.get", side_effect=Exception("connection refused")),

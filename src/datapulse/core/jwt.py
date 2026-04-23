@@ -1,11 +1,7 @@
-"""JWT verification using the active IdP's JWKS endpoint.
+"""JWT verification using Clerk's JWKS endpoint.
 
 Reads the JWKS URL, issuer, audience, and expected ``azp`` from
-:class:`Settings`' ``active_*`` properties so the same code path verifies
-Auth0 tokens (``AUTH_PROVIDER=auth0``) or Clerk tokens
-(``AUTH_PROVIDER=clerk``) without branching. Keys are cached per URL with
-a TTL so swapping providers via env does not stomp a stale Auth0 cache
-onto a Clerk deployment.
+:class:`Settings`' ``active_*`` properties. Keys are cached per URL with a TTL.
 """
 
 from __future__ import annotations
@@ -57,9 +53,7 @@ def _fetch_jwks(settings: Settings) -> dict[str, Any]:
             resp.raise_for_status()
             data = resp.json()
             _jwks_cache[jwks_url] = (data, time.monotonic())
-            logger.info(
-                "jwks_fetched", url=jwks_url, attempt=attempt, provider=settings.auth_provider
-            )
+            logger.info("jwks_fetched", url=jwks_url, attempt=attempt)
             return data
         except httpx.HTTPStatusError as exc:
             # 4xx errors are not transient — don't retry

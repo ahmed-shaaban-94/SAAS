@@ -21,20 +21,15 @@ def _clear_cache():
 
 @pytest.fixture()
 def mock_settings() -> MagicMock:
-    """Settings stub mimicking AUTH_PROVIDER=auth0 — active_* properties
-    resolve to the Auth0 values so the dual-provider verify_jwt reads them
-    the same way a real Settings instance would.
+    """Default Settings stub — Clerk values with explicit audience + azp for
+    tests that exercise aud/azp verification paths.
     """
     s = MagicMock()
-    s.auth_provider = "auth0"
-    s.auth0_jwks_url = "https://test.auth0.com/.well-known/jwks.json"
-    s.auth0_issuer_url = "https://test.auth0.com/"
-    s.auth0_audience = "https://api.test.com"
-    s.auth0_client_id = "test-client-id"
-    s.active_jwks_url = s.auth0_jwks_url
-    s.active_issuer_url = s.auth0_issuer_url
-    s.active_audience = s.auth0_audience
-    s.active_expected_azp = s.auth0_client_id
+    s.auth_provider = "clerk"
+    s.active_jwks_url = "https://test.clerk.accounts.dev/.well-known/jwks.json"
+    s.active_issuer_url = "https://test.clerk.accounts.dev"
+    s.active_audience = "https://api.test.com"
+    s.active_expected_azp = "test-client-id"
     return s
 
 
@@ -173,23 +168,21 @@ class TestVerifyJWT:
         assert claims["sub"] == "user-1"
 
 
-class TestVerifyJWTAuth0EdgeCases:
-    """Lock in pre-existing Auth0 behaviour across the dual-provider refactor."""
+class TestVerifyJWTAzpEdgeCase:
+    """Lock in the azp-skipped-when-empty behaviour."""
 
     @patch("datapulse.core.jwt._get_signing_key")
     @patch("datapulse.core.jwt.jwt.decode")
-    def test_azp_check_skipped_when_client_id_empty(self, mock_decode, mock_key):
-        """If AUTH0_CLIENT_ID is unset, ``active_expected_azp`` is empty, and
-        the azp check is skipped — matching the original ``if azp and azp !=
-        auth0_client_id`` behaviour. Prevents a future refactor from
-        accidentally tightening (or loosening) this gate.
+    def test_azp_check_skipped_when_expected_azp_empty(self, mock_decode, mock_key):
+        """When ``active_expected_azp`` is empty, the azp check is skipped —
+        prevents a future refactor from accidentally tightening this gate.
         """
         s = MagicMock()
-        s.auth_provider = "auth0"
-        s.active_jwks_url = "https://test.auth0.com/.well-known/jwks.json"
-        s.active_issuer_url = "https://test.auth0.com/"
+        s.auth_provider = "clerk"
+        s.active_jwks_url = "https://test.clerk.accounts.dev/.well-known/jwks.json"
+        s.active_issuer_url = "https://test.clerk.accounts.dev"
         s.active_audience = ""
-        s.active_expected_azp = ""  # client_id was empty
+        s.active_expected_azp = ""
         mock_key.return_value = MagicMock(key="fake")
         mock_decode.return_value = {"sub": "user-1", "azp": "anything"}
         claims = verify_jwt("token", settings=s)
