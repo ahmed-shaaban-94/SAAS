@@ -12,7 +12,9 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import type { RevenueForecast } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
+
+type RevenueForecast = ApiGet<"/api/v1/analytics/revenue-forecast">;
 
 type Mode = "Revenue" | "Orders" | "AOV";
 
@@ -49,10 +51,10 @@ export function RevenueChart({
       };
     }
     const merged = new Map<string, { date: string; actual?: number; forecast?: number; lo?: number; hi?: number }>();
-    data.actual.forEach((p) => {
+    (data.actual ?? []).forEach((p) => {
       merged.set(p.period, { date: p.period, actual: p.value });
     });
-    data.forecast.forEach((p) => {
+    (data.forecast ?? []).forEach((p) => {
       const existing = merged.get(p.date) ?? { date: p.date };
       merged.set(p.date, {
         ...existing,
@@ -66,15 +68,15 @@ export function RevenueChart({
       series: sorted,
       targetValue: data.target?.value ?? null,
       todayDate: data.today,
-      stats: data.stats,
+      stats: data.stats ?? null,
       targetStatus: data.target?.status ?? "unknown",
-      confidence: data.stats.confidence,
+      confidence: data.stats?.confidence ?? null,
     };
   }, [data]);
 
   const thisMonthLabel = stats ? formatEgp(stats.this_period_egp) : "—";
   const deltaPct = stats?.delta_pct;
-  const forecastLast = data?.forecast[data.forecast.length - 1]?.value ?? null;
+  const forecastLast = data?.forecast?.[(data.forecast?.length ?? 0) - 1]?.value ?? null;
   const forecastLabel = forecastLast ? formatEgp(forecastLast) : "—";
   const targetLabel = targetValue ? formatEgp(targetValue) : "—";
   const targetStatusLabel =

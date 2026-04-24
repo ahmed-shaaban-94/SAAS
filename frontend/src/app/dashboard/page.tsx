@@ -41,14 +41,18 @@ import { usePipelineHealth } from "@/hooks/use-pipeline-health";
 import { useSites } from "@/hooks/use-sites";
 import { buildBranchRollup } from "@/lib/branch-rollup";
 import { trackFirstDashboardView } from "@/lib/analytics-events";
+import type { ApiGet } from "@/lib/api-types";
 import type {
   AnomalyCard,
   ExpiryExposureTier,
   KPISparkline,
-  KPISummary,
   PipelineHealth,
   TimeSeriesPoint,
 } from "@/types/api";
+
+// Composite dashboard KPI — sourced from the generated schema so optional
+// fields carry `| undefined` exactly as the API emits them.
+type DashboardKpi = ApiGet<"/api/v1/analytics/dashboard">["kpi"];
 import type { ReorderAlert } from "@/types/inventory";
 
 type Period = "Day" | "Week" | "Month" | "Quarter" | "YTD";
@@ -74,7 +78,7 @@ function formatInt(value: number): string {
 
 function sparklineFor(
   metric: KPISparkline["metric"],
-  summary: KPISummary | undefined,
+  summary: DashboardKpi | undefined,
 ): number[] {
   const series =
     summary?.sparklines?.find((s) => s.metric === metric)?.points ??

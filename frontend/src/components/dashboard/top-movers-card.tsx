@@ -9,7 +9,9 @@ import { ErrorRetry } from "@/components/error-retry";
 import { formatCurrency } from "@/lib/formatters";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MoverItem } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
+
+type MoverItem = ApiGet<"/api/v1/analytics/top-movers">["gainers"][number];
 
 const ENTITY_TABS = [
   { key: "product" as const, label: "Products" },

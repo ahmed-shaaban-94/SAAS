@@ -27,17 +27,17 @@ function getTimeGreeting(): string | null {
 
 function buildFallbackNarrative(kpi: {
   period_gross: number;
-  mom_growth_pct: number | null;
+  mom_growth_pct?: number | null;
   period_transactions: number;
   daily_returns: number;
 }): string {
-  const direction = kpi.mom_growth_pct !== null
+  const direction = kpi.mom_growth_pct != null
     ? kpi.mom_growth_pct > 0 ? "up" : kpi.mom_growth_pct < 0 ? "down" : "flat"
     : null;
 
   const parts: string[] = [];
 
-  if (direction && kpi.mom_growth_pct !== null) {
+  if (direction && kpi.mom_growth_pct != null) {
     parts.push(`Revenue is ${direction} ${formatPercent(Math.abs(kpi.mom_growth_pct))} compared to the prior period`);
   } else {
     parts.push(`Revenue stands at ${formatCurrency(kpi.period_gross)} for the selected period`);

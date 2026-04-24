@@ -2,6 +2,10 @@ import useSWR from "swr";
 import { fetchAPI, swrKey } from "@/lib/api-client";
 import type { FilterParams } from "@/types/filters";
 
+// Not migrated to ApiGet yet: the backend route declares the response as a
+// plain `list[dict]` (no Pydantic response_model), so the generated schema
+// resolves to `{ [key: string]: unknown }[]`. Follow-up: type the Python
+// side, then flip this hook to ApiGet.
 interface OriginBreakdownItem {
   origin: string;
   value: number;

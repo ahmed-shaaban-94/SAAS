@@ -1,6 +1,6 @@
 import useSWR from "swr";
 import { fetchAPI, swrKey } from "@/lib/api-client";
-import type { RevenueForecast } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
 
 export type RevenueForecastPeriod =
   | "day"
@@ -8,6 +8,8 @@ export type RevenueForecastPeriod =
   | "month"
   | "quarter"
   | "ytd";
+
+type RevenueForecastResponse = ApiGet<"/api/v1/analytics/revenue-forecast">;
 
 /**
  * Composite actual + forecast + target + stats for the dashboard
@@ -21,7 +23,7 @@ export function useRevenueForecast(period: RevenueForecastPeriod = "month") {
   const key = swrKey("/api/v1/analytics/revenue-forecast", params);
 
   const { data, error, isLoading } = useSWR(key, () =>
-    fetchAPI<RevenueForecast>("/api/v1/analytics/revenue-forecast", params),
+    fetchAPI<RevenueForecastResponse>("/api/v1/analytics/revenue-forecast", params),
   );
   return { data, error, isLoading };
 }

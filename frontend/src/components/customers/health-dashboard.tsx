@@ -3,8 +3,11 @@
 import { useHealthDistribution, useAtRiskCustomers } from "@/hooks/use-customer-health";
 import { formatCurrency } from "@/lib/formatters";
 import { ErrorRetry } from "@/components/error-retry";
-import type { CustomerHealthScore, HealthDistribution } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
+import type { HealthDistribution } from "@/types/api";
 import { EmptyState } from "@/components/empty-state";
+
+type CustomerHealthScore = ApiGet<"/api/v1/analytics/customer-health/at-risk">[number];
 
 const BAND_COLORS: Record<string, string> = {
   Thriving: "bg-emerald-500",

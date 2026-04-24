@@ -19,7 +19,7 @@ import type { WhyChangedData } from "./why-changed";
  */
 export function buildMtdRevenueWhy(
   mtdGross: number,
-  momGrowthPct: number | null,
+  momGrowthPct: number | null | undefined,
 ): WhyChangedData {
   const sign: WhyChangedData["totalSign"] =
     momGrowthPct == null ? "flat" : momGrowthPct >= 0 ? "up" : "dn";

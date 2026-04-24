@@ -62,7 +62,7 @@ export function QuotaTable({ data }: Props) {
                 {q.target_revenue != null ? formatCurrency(q.target_revenue) : "-"}
               </td>
               <td className="px-4 py-2">
-                <ProgressBar pct={q.revenue_achievement_pct} />
+                <ProgressBar pct={q.revenue_achievement_pct ?? null} />
               </td>
               <td className="px-4 py-2 text-right text-xs font-mono">
                 {q.revenue_variance != null ? (

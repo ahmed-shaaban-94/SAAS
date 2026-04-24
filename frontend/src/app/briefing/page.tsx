@@ -32,7 +32,11 @@ import { DashboardShell } from "@/components/dashboard-v2/shell";
 import { KpiCard, type KpiColor, type KpiDir } from "@/components/dashboard/new";
 import { LoadingCard } from "@/components/loading-card";
 import { fetchAPI } from "@/lib/api-client";
-import type { KPISummary, AISummary, TopMovers } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
+import type { AISummary } from "@/types/api";
+
+type KPISummaryResponse = ApiGet<"/api/v1/analytics/summary">;
+type TopMoversResponse = ApiGet<"/api/v1/analytics/top-movers">;
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -88,9 +92,9 @@ export default function BriefingPage() {
     data: kpi,
     isLoading: kpiLoading,
     mutate: refreshKpi,
-  } = useSWR<KPISummary>(
+  } = useSWR<KPISummaryResponse>(
     "/api/v1/analytics/summary",
-    () => fetchAPI<KPISummary>("/api/v1/analytics/summary"),
+    () => fetchAPI<KPISummaryResponse>("/api/v1/analytics/summary"),
     { refreshInterval: REFRESH_INTERVAL_MS },
   );
 
@@ -108,10 +112,10 @@ export default function BriefingPage() {
     data: movers,
     isLoading: moversLoading,
     mutate: refreshMovers,
-  } = useSWR<TopMovers>(
+  } = useSWR<TopMoversResponse>(
     ["/api/v1/analytics/top-movers", "product"],
     () =>
-      fetchAPI<TopMovers>("/api/v1/analytics/top-movers", {
+      fetchAPI<TopMoversResponse>("/api/v1/analytics/top-movers", {
         entity_type: "product",
       }),
     { refreshInterval: REFRESH_INTERVAL_MS },
@@ -205,7 +209,7 @@ export default function BriefingPage() {
                 value={`EGP ${fmt(kpi.period_gross, 0)}`}
                 delta={{
                   dir: momDir,
-                  text: kpi.mom_growth_pct !== null ? fmtPct(kpi.mom_growth_pct) : "—",
+                  text: kpi.mom_growth_pct != null ? fmtPct(kpi.mom_growth_pct) : "—",
                 }}
                 sub="selected period, MoM change"
                 color="accent"
@@ -217,7 +221,7 @@ export default function BriefingPage() {
                 value={`EGP ${fmt(kpi.mtd_gross, 0)}`}
                 delta={{
                   dir: yoyDir,
-                  text: kpi.yoy_growth_pct !== null ? fmtPct(kpi.yoy_growth_pct) : "—",
+                  text: kpi.yoy_growth_pct != null ? fmtPct(kpi.yoy_growth_pct) : "—",
                 }}
                 sub="month-to-date vs same period last year"
                 color="purple"

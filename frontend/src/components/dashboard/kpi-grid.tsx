@@ -68,21 +68,21 @@ export const KPIGrid = memo(function KPIGrid() {
         tooltip: TOOLTIPS.periodRevenue,
         sparkline: data.sparkline,
         hero: true,
-        comparisonLine: data.mom_growth_pct !== null
+        comparisonLine: data.mom_growth_pct != null
           ? `${formatPercent(data.mom_growth_pct)} vs previous period`
           : undefined,
         whyChanged: buildMtdRevenueWhy(data.period_gross, data.mom_growth_pct),
       },
       {
         label: "Growth",
-        value: data.mom_growth_pct !== null ? `${data.mom_growth_pct.toFixed(1)}%` : "N/A",
+        value: data.mom_growth_pct != null ? `${data.mom_growth_pct.toFixed(1)}%` : "N/A",
         numericValue: data.mom_growth_pct ?? undefined,
         isPercent: true,
         trend: data.mom_growth_pct,
         trendLabel: "vs previous period",
         icon: TrendingUp,
         tooltip: TOOLTIPS.momGrowth,
-        comparisonLine: getGrowthStatus(data.mom_growth_pct),
+        comparisonLine: getGrowthStatus(data.mom_growth_pct ?? null),
       },
       {
         label: "Transactions",

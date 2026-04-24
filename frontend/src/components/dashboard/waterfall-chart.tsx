@@ -15,7 +15,9 @@ import {
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import type { WaterfallAnalysis } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
+
+type WaterfallAnalysis = ApiGet<"/api/v1/analytics/why-changed">;
 
 const DIM_TABS = [
   { key: "product", label: "Products" },

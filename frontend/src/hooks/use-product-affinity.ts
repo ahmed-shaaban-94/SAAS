@@ -2,19 +2,14 @@
 
 import useSWR from "swr";
 import { fetchAPI, swrKey } from "@/lib/api-client";
+import type { ApiGet } from "@/lib/api-types";
 
-export interface AffinityPair {
-  related_key: number;
-  related_name: string;
-  co_occurrence_count: number;
-  support_pct: number;
-  confidence: number;
-}
+type AffinityResponse = ApiGet<"/api/v1/analytics/products/{product_key}/affinity">;
 
 export function useProductAffinity(productKey: number | undefined) {
-  const { data, error, isLoading } = useSWR<AffinityPair[]>(
+  const { data, error, isLoading } = useSWR<AffinityResponse>(
     productKey ? swrKey(`/api/v1/analytics/products/${productKey}/affinity`, {}) : null,
-    () => fetchAPI<AffinityPair[]>(`/api/v1/analytics/products/${productKey}/affinity`),
+    () => fetchAPI<AffinityResponse>(`/api/v1/analytics/products/${productKey}/affinity`),
   );
 
   return { data: data ?? [], error, isLoading };

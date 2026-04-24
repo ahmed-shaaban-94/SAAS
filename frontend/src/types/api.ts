@@ -258,31 +258,6 @@ export interface StaffPerformance {
 
 // --- Phase 2: Billing & Customer Type ---
 
-export interface BillingBreakdownItem {
-  billing_group: string;
-  transaction_count: number;
-  total_net_amount: number;
-  pct_of_total: number;
-}
-
-export interface BillingBreakdown {
-  items: BillingBreakdownItem[];
-  total_transactions: number;
-  total_net_amount: number;
-}
-
-export interface CustomerTypeBreakdownItem {
-  period: string;
-  walk_in_count: number;
-  insurance_count: number;
-  other_count: number;
-  total_count: number;
-}
-
-export interface CustomerTypeBreakdown {
-  items: CustomerTypeBreakdownItem[];
-}
-
 // --- Phase 3: Comparative Analytics ---
 
 export interface MoverItem {
@@ -315,29 +290,6 @@ export interface SiteDetail {
   insurance_ratio: number;
   return_rate: number;
   monthly_trend?: TimeSeriesPoint[];
-}
-
-export interface ProductInCategory {
-  product_key: number;
-  drug_name: string;
-  total_net_amount: number;
-  transaction_count: number;
-}
-
-export interface BrandGroup {
-  brand: string;
-  total_net_amount: number;
-  products: ProductInCategory[];
-}
-
-export interface CategoryGroup {
-  category: string;
-  total_net_amount: number;
-  brands: BrandGroup[];
-}
-
-export interface ProductHierarchy {
-  categories: CategoryGroup[];
 }
 
 // --- Explore types (Phase 3: Self-serve analytics) ---
@@ -407,60 +359,6 @@ export interface ExploreResult {
 }
 
 // --- Phase 5: CEO Review — Advanced Analytics ---
-
-export interface ABCItem {
-  rank: number;
-  key: number;
-  name: string;
-  value: number;
-  cumulative_pct: number;
-  abc_class: "A" | "B" | "C";
-}
-
-export interface ABCAnalysis {
-  items: ABCItem[];
-  total: number;
-  class_a_count: number;
-  class_b_count: number;
-  class_c_count: number;
-  class_a_pct: number;
-  class_b_pct: number;
-  class_c_pct: number;
-}
-
-export interface HeatmapCell {
-  date: string;
-  value: number;
-}
-
-export interface HeatmapData {
-  cells: HeatmapCell[];
-  min_value: number;
-  max_value: number;
-}
-
-export interface ReturnsTrendPoint {
-  period: string;
-  return_count: number;
-  return_amount: number;
-  return_rate: number;
-}
-
-export interface ReturnsTrend {
-  points: ReturnsTrendPoint[];
-  total_returns: number;
-  total_return_amount: number;
-  avg_return_rate: number;
-}
-
-export interface SegmentSummary {
-  segment: string;
-  count: number;
-  total_revenue: number;
-  avg_monetary: number;
-  avg_frequency: number;
-  pct_of_customers: number;
-}
 
 export interface CustomerSegment {
   customer_key: number;
@@ -563,26 +461,6 @@ export interface AlertLogItem {
 
 // --- Enhancement 4: Analytics Intelligence ---
 
-export interface RevenueDriver {
-  dimension: string;
-  entity_key: number;
-  entity_name: string;
-  current_value: number;
-  previous_value: number;
-  impact: number;
-  impact_pct: number;
-  direction: "positive" | "negative";
-}
-
-export interface WaterfallAnalysis {
-  current_total: number;
-  previous_total: number;
-  total_change: number;
-  total_change_pct: number | null;
-  drivers: RevenueDriver[];
-  unexplained: number;
-}
-
 export interface CustomerHealthScore {
   customer_key: number;
   customer_name: string;
@@ -630,21 +508,6 @@ export interface ExpiryExposureTier {
   total_egp: number;
   batch_count: number;
   tone: "red" | "amber" | "green";
-}
-
-/** #505 — single sales-channel segment of the donut. */
-export interface ChannelShare {
-  channel: "retail" | "wholesale" | "institution" | "online";
-  label: string;
-  value_egp: number;
-  pct_of_total: number;
-  source: "derived" | "unavailable";
-}
-
-export interface ChannelsBreakdown {
-  items: ChannelShare[];
-  total_egp: number;
-  data_coverage: "partial" | "full";
 }
 
 /** #508 — display projection for the dashboard anomaly feed. */
@@ -700,31 +563,3 @@ export interface PipelineHealth {
   history_7d: PipelineHealthHistoryPoint[];
 }
 
-/** #504 — composite /analytics/revenue-forecast payload. */
-export interface ForecastBandPoint {
-  date: string;
-  value: number;
-  ci_low: number;
-  ci_high: number;
-}
-
-export interface RevenueTarget {
-  period_end: string;
-  value: number;
-  status: "on_track" | "behind" | "ahead" | "unknown";
-}
-
-export interface RevenueForecastStats {
-  this_period_egp: number;
-  delta_pct: number | null;
-  confidence: number | null;
-}
-
-export interface RevenueForecast {
-  actual: TimeSeriesPoint[];
-  forecast: ForecastBandPoint[];
-  target: RevenueTarget | null;
-  today: string;
-  period: "day" | "week" | "month" | "quarter" | "ytd";
-  stats: RevenueForecastStats;
-}

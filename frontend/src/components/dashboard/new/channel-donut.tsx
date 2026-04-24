@@ -1,7 +1,10 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
-import type { ChannelsBreakdown, ChannelShare } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
+
+type ChannelsBreakdown = ApiGet<"/api/v1/analytics/channels">;
+type ChannelShare = ChannelsBreakdown["items"][number];
 
 interface ChannelDonutProps {
   data?: ChannelsBreakdown;

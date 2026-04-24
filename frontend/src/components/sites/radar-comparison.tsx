@@ -13,7 +13,9 @@ import { useChartTheme } from "@/hooks/use-chart-theme";
 import { CHART_COLORS } from "@/lib/constants";
 import { useEffect, useState } from "react";
 import { fetchAPI } from "@/lib/api-client";
-import type { SiteDetail } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
+
+type SiteDetail = ApiGet<"/api/v1/analytics/sites/{site_key}">;
 
 export function RadarComparison() {
   const { filters } = useFilters();

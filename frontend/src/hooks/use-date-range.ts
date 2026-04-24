@@ -1,10 +1,8 @@
 import useSWR from "swr";
 import { fetchAPI } from "@/lib/api-client";
+import type { ApiGet } from "@/lib/api-types";
 
-interface DataDateRange {
-  min_date: string; // "YYYY-MM-DD"
-  max_date: string; // "YYYY-MM-DD"
-}
+type DataDateRange = ApiGet<"/api/v1/analytics/date-range">;
 
 export function useDateRange() {
   const { data, error, isLoading } = useSWR(
