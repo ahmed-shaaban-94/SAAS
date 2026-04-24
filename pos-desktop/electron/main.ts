@@ -236,7 +236,20 @@ function createWindow(): void {
 
   // POS navigation guard — after auth callback, redirect back to POS
   // instead of landing on the dashboard or marketing page.
-  const POS_ROUTES = ["/terminal", "/checkout", "/shift", "/history", "/pos-returns", "/login", "/api/auth"];
+  // `/sign-in` + `/sign-up` are Clerk's hosted routes (catch-all
+  // `[[...sign-in]]`); they must be allow-listed so SessionGuard's
+  // `signIn()` redirect isn't bounced back to /terminal in a loop.
+  const POS_ROUTES = [
+    "/terminal",
+    "/checkout",
+    "/shift",
+    "/history",
+    "/pos-returns",
+    "/login",
+    "/sign-in",
+    "/sign-up",
+    "/api/auth",
+  ];
   mainWindow.webContents.on("did-navigate", (_event, url) => {
     try {
       const parsed = new URL(url);

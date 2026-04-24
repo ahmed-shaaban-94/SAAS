@@ -41,17 +41,32 @@ const plexArabic = Cairo({
   display: "swap",
 });
 
-/** Block children until session is resolved; redirect on refresh failure. */
+/** Block children until the user is authenticated; redirect anonymous
+ *  visitors to the IdP sign-in page.
+ *
+ *  POS desktop context: the embedded Next.js server runs with
+ *  ``POS_DESKTOP_MODE=1`` which short-circuits ``middleware.ts`` (#692,
+ *  to avoid baking ``CLERK_SECRET_KEY`` into the installer). That leaves
+ *  the browser as the only auth gate. Without this guard, anonymous
+ *  users reach ``/terminal`` → ``<ShiftOpenModal>`` → ``postAPI(...)``
+ *  with no ``Authorization`` header, and the backend responds
+ *  ``401 Authentication required`` — surfaced as a red error banner on
+ *  the shift-open modal (incident 2026-04-24).
+ */
 function SessionGuard({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
-      signIn("auth0");
+    if (status === "unauthenticated") {
+      void signIn(undefined, { callbackUrl: "/terminal" });
+      return;
     }
-  }, [session]);
+    if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
+      void signIn(undefined, { callbackUrl: "/terminal" });
+    }
+  }, [status, session]);
 
-  if (status === "loading") {
+  if (status !== "authenticated") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
