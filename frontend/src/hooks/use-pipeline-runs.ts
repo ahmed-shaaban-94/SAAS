@@ -2,27 +2,10 @@
 
 import useSWR from "swr";
 import { fetchAPI, swrKey } from "@/lib/api-client";
+import type { ApiGet } from "@/lib/api-types";
 
-export interface PipelineRun {
-  id: string;
-  tenant_id: number;
-  run_type: string;
-  status: string;
-  trigger_source: string | null;
-  started_at: string;
-  finished_at: string | null;
-  duration_seconds: number | null;
-  rows_loaded: number | null;
-  error_message: string | null;
-  metadata: Record<string, unknown>;
-}
-
-interface PipelineRunList {
-  items: PipelineRun[];
-  total: number;
-  offset: number;
-  limit: number;
-}
+type PipelineRunList = ApiGet<"/api/v1/pipeline/runs">;
+export type PipelineRun = PipelineRunList["items"][number];
 
 export function usePipelineRuns(limit = 5) {
   const { data, error, isLoading, mutate } = useSWR<PipelineRunList>(

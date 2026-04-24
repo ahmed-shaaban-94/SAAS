@@ -2,24 +2,10 @@
 
 import useSWR from "swr";
 import { fetchAPI, swrKey } from "@/lib/api-client";
+import type { ApiGet } from "@/lib/api-types";
 
-export interface QualityCheck {
-  check_name: string;
-  stage: string;
-  severity: "error" | "warn";
-  passed: boolean;
-  message: string;
-  details: Record<string, unknown> | null;
-}
-
-export interface QualityRunDetail {
-  run_id: string;
-  checks: QualityCheck[];
-  total_checks: number;
-  passed: number;
-  failed: number;
-  warned: number;
-}
+export type QualityRunDetail = ApiGet<"/api/v1/pipeline/runs/{run_id}/quality">;
+export type QualityCheck = QualityRunDetail["checks"][number];
 
 export function useQualityRunDetail(runId: string | null, stage?: string) {
   const params: Record<string, string | number> = {};

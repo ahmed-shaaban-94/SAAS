@@ -100,47 +100,6 @@ export interface HealthStatus {
   db: "connected" | "disconnected";
 }
 
-// --- Pipeline types (Phase 2.7) ---
-
-export interface PipelineRun {
-  id: string;
-  tenant_id: number;
-  run_type: string;
-  status: string;
-  trigger_source: string | null;
-  started_at: string;
-  finished_at: string | null;
-  duration_seconds: number | null;
-  rows_loaded: number | null;
-  error_message: string | null;
-  metadata: Record<string, unknown>;
-}
-
-export interface PipelineRunList {
-  items: PipelineRun[];
-  total: number;
-  offset: number;
-  limit: number;
-}
-
-export interface QualityCheck {
-  id: number;
-  tenant_id: number;
-  pipeline_run_id: string;
-  check_name: string;
-  stage: string;
-  severity: string;
-  passed: boolean;
-  message: string | null;
-  details: Record<string, unknown>;
-  checked_at: string;
-}
-
-export interface QualityCheckList {
-  items: QualityCheck[];
-  total: number;
-}
-
 export type FirstInsightKind =
   | "mom_change"
   | "expiry_risk"
@@ -159,19 +118,6 @@ export interface FirstInsightResponse {
   insight: FirstInsight | null;
 }
 
-export interface QualityRunDetail {
-  run_id: string;
-  checks: QualityCheck[];
-  total_checks: number;
-  passed: number;
-  failed: number;
-  warned: number;
-}
-
-export interface TriggerResponse {
-  run_id: string;
-  status: string;
-}
 
 // --- AI-Light types (Phase 2.8) ---
 
@@ -529,37 +475,5 @@ export interface TopInsight {
   action_target: string;
   confidence: "high" | "medium" | "low" | "info";
   generated_at: string;
-}
-
-/** #509 — composite /pipeline/health payload. */
-export interface PipelineHealthNode {
-  label: "Bronze" | "Silver" | "Gold";
-  value: string;
-  status: "ok" | "running" | "pending" | "failed";
-}
-
-export interface PipelineHealthRun {
-  at: string;
-  duration_seconds: number | null;
-}
-
-export interface PipelineHealthCounter {
-  passed: number;
-  total: number;
-}
-
-export interface PipelineHealthHistoryPoint {
-  date: string;
-  duration_seconds: number | null;
-  status: "ok" | "warning" | "fail" | "none";
-}
-
-export interface PipelineHealth {
-  nodes: PipelineHealthNode[];
-  last_run: PipelineHealthRun | null;
-  next_run_at: string | null;
-  gates: PipelineHealthCounter;
-  tests: PipelineHealthCounter;
-  history_7d: PipelineHealthHistoryPoint[];
 }
 

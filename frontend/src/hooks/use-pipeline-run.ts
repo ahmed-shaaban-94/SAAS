@@ -3,11 +3,10 @@
 import { useState, useCallback, useRef } from "react";
 import { postAPI } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/constants";
+import type { ApiPost } from "@/lib/api-types";
 
-interface TriggerResponse {
-  run_id: string;
-  status: string;
-}
+// Response shape sourced from the OpenAPI schema (issue #658).
+type TriggerResponse = ApiPost<"/api/v1/pipeline/trigger">;
 
 interface RunProgress {
   run_id: string;

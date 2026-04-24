@@ -14,7 +14,19 @@
 import type { paths } from "@/generated/api";
 
 type JsonContent<T> = T extends { content: { "application/json": infer R } } ? R : never;
-type Ok<R> = R extends { 200: infer T } ? T : R extends { 201: infer T } ? T : never;
+
+// Pick the first 2xx response shape the route exposes. FastAPI emits 200 for
+// reads, 201 for creates, 202 for accepted-but-async jobs (pipeline trigger),
+// and 204 for no-content deletes — cover the common ones in priority order.
+type Ok<R> = R extends { 200: infer T }
+  ? T
+  : R extends { 201: infer T }
+    ? T
+    : R extends { 202: infer T }
+      ? T
+      : R extends { 204: infer T }
+        ? T
+        : never;
 
 /** Response body for GET `P` (2xx). */
 export type ApiGet<P extends keyof paths> = paths[P] extends {

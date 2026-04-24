@@ -42,11 +42,11 @@ import { useSites } from "@/hooks/use-sites";
 import { buildBranchRollup } from "@/lib/branch-rollup";
 import { trackFirstDashboardView } from "@/lib/analytics-events";
 import type { ApiGet } from "@/lib/api-types";
+import type { PipelineHealth } from "@/hooks/use-pipeline-health";
 import type {
   AnomalyCard,
   ExpiryExposureTier,
   KPISparkline,
-  PipelineHealth,
   TimeSeriesPoint,
 } from "@/types/api";
 

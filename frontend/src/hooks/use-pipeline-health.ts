@@ -1,6 +1,6 @@
 import useSWR from "swr";
 import { fetchAPI } from "@/lib/api-client";
-import type { PipelineHealth } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
 
 /**
  * Composite pipeline health payload for the dashboard card (#509).
@@ -9,6 +9,8 @@ import type { PipelineHealth } from "@/types/api";
  * scheduler next-run). Refreshes every 60s while the tab is focused so
  * the "Running..." node updates without a manual reload.
  */
+export type PipelineHealth = ApiGet<"/api/v1/pipeline/health">;
+
 export function usePipelineHealth() {
   const { data, error, isLoading } = useSWR<PipelineHealth>(
     "/api/v1/pipeline/health",
