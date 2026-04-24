@@ -325,7 +325,9 @@ async def run_pipeline(
             finally:
                 _wh_session.close()
         except Exception as _wh_exc:
-            log.warning("webhook_fire_failed", event="pipeline.completed", error=str(_wh_exc))
+            log.warning(
+                "webhook_fire_failed", webhook_event="pipeline.completed", error=str(_wh_exc)
+            )
 
     except Exception as exc:
         elapsed = round(time.perf_counter() - t0, 2)
@@ -350,7 +352,7 @@ async def run_pipeline(
             finally:
                 _wh_session.close()
         except Exception as _wh_exc:
-            log.warning("webhook_fire_failed", event="pipeline.failed", error=str(_wh_exc))
+            log.warning("webhook_fire_failed", webhook_event="pipeline.failed", error=str(_wh_exc))
         pipeline_duration_seconds.observe(elapsed)
         log.error("pipeline_crashed", run_id=run_id_str, error=error_msg, duration=elapsed)
     finally:

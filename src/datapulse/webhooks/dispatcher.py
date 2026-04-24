@@ -48,4 +48,6 @@ def dispatch(target_url: str, secret: str, event_type: str, payload: dict) -> No
             },
         )
         response.raise_for_status()
-    log.info("webhook_dispatched", url=target_url, event=event_type, status=response.status_code)
+    log.info(
+        "webhook_dispatched", url=target_url, webhook_event=event_type, status=response.status_code
+    )

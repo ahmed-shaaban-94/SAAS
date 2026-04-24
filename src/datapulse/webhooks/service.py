@@ -51,9 +51,7 @@ class WebhookService:
 
     # ── Fire event ────────────────────────────────────────────────────────────
 
-    def fire_event(
-        self, event_type: str, tenant_id: int, payload: dict[str, Any]
-    ) -> None:
+    def fire_event(self, event_type: str, tenant_id: int, payload: dict[str, Any]) -> None:
         """Enqueue delivery for all active subscribers and attempt dispatch in background.
 
         This method is safe to call from within a request handler or service —
