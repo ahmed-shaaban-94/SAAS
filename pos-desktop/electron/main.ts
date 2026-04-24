@@ -121,6 +121,15 @@ function startNextServer(): Promise<void> {
       // the installer would leak it to every pilot machine.
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "",
       NEXT_PUBLIC_CLERK_JWT_TEMPLATE: process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || "datapulse",
+      // Comma-separated JWT templates tried when the primary throws or
+      // returns null. Observed 2026-04-24: Clerk's session-token endpoint
+      // intermittently 404-s our primary template even though it exists
+      // per Backend API + Dashboard. The sibling `datapulse-pos` template
+      // carries the same `tenant_id`/`roles` claims the backend reads,
+      // so falling through to it keeps the pilot unblocked while we
+      // chase the root cause with Clerk support.
+      NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES:
+        process.env.NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES || "datapulse-pos",
       // Tells middleware.ts to skip server-side auth checks. The browser-
       // side Clerk SDK still handles session display using the public
       // key; API calls still go to the backend with the JWT attached.

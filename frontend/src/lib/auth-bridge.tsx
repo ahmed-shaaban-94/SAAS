@@ -37,6 +37,29 @@ const CLERK_JWT_TEMPLATE =
   process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || "datapulse";
 
 /**
+ * Fallback JWT templates tried when the primary template returns null or
+ * throws (observed during the 2026-04-24 smoke run: the ``datapulse``
+ * template intermittently returned ``No JWT template exists with name:
+ * datapulse`` from Clerk's session-token endpoint even though the Backend
+ * API + Dashboard both confirmed it existed).
+ *
+ * Order matters: first token that resolves to a non-null JWT wins.
+ * All listed templates must emit ``tenant_id`` + ``roles`` claims
+ * (backend ``core/auth.py`` reads them in that order).
+ *
+ * The literal default here (``datapulse-pos``) is a sibling template that
+ * was already provisioned on the Clerk instance as a manual workaround.
+ * Set ``NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES`` (comma-separated) to
+ * override per deployment.
+ */
+const CLERK_JWT_FALLBACK_TEMPLATES: readonly string[] = (
+  process.env.NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES || "datapulse-pos"
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter((s) => s && s !== CLERK_JWT_TEMPLATE);
+
+/**
  * Most recent Clerk ``getToken`` failure, exposed to the rest of the app.
  *
  * ``getSession`` used to silently ``catch → return null``, which meant
@@ -69,6 +92,75 @@ function clearClerkAuthError(): void {
   if (typeof window !== "undefined") {
     (window as unknown as { __clerkAuthError?: string }).__clerkAuthError = undefined;
   }
+}
+
+/** Shape of either source of Clerk's token fetcher — ``useAuth().getToken``
+ *  (React hook) or ``window.Clerk.session.getToken`` (global). Both accept
+ *  the same options object. */
+type ClerkGetToken = (opts?: { template?: string }) => Promise<string | null>;
+
+/**
+ * Walk the template cascade (primary → fallbacks → no-template default) and
+ * return the first non-null token. Records the reason-of-last-resort on
+ * exhaustion so the UI can surface it.
+ *
+ * The ``source`` string (e.g. ``"useAuth"`` / ``"window.Clerk.session"``) is
+ * only used to make the error log tell us which call path broke — the
+ * behaviour is identical either way.
+ */
+async function getClerkTokenWithFallback(
+  getToken: ClerkGetToken,
+  source: string,
+): Promise<string | null> {
+  const candidates = [CLERK_JWT_TEMPLATE, ...CLERK_JWT_FALLBACK_TEMPLATES];
+  const failures: string[] = [];
+  for (const template of candidates) {
+    try {
+      const t = await getToken({ template });
+      if (t) {
+        if (failures.length > 0) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[auth-bridge] (${source}) primary template(s) ${failures
+              .map((f) => `"${f.split("|")[0]}"`)
+              .join(", ")} failed — using fallback template "${template}".`,
+          );
+        }
+        clearClerkAuthError();
+        return t;
+      }
+      failures.push(`${template}|null token`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      failures.push(`${template}|${msg}`);
+    }
+  }
+
+  // Last-resort: fetch the *default* session token (no template). Backend
+  // will reject it with "JWT missing tenant context" rather than
+  // "Authentication required" — worse claims, but a different 4xx that
+  // tells us Clerk issuance itself is not the blocker.
+  try {
+    const t = await getToken();
+    if (t) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[auth-bridge] (${source}) every templated token failed — falling back to default session token. Backend will likely reject for missing tenant context.`,
+      );
+      recordClerkAuthError(
+        `All JWT templates failed via ${source}: ${failures.join("; ")}. ` +
+          `Falling back to default session token — backend will reject for missing tenant_id.`,
+      );
+      return t;
+    }
+  } catch {
+    // fallthrough
+  }
+
+  recordClerkAuthError(
+    `All Clerk token fetchers failed via ${source}: ${failures.join("; ")}`,
+  );
+  return null;
 }
 
 // ----------------------------------------------------------------------
@@ -171,25 +263,11 @@ function useClerkSession(): UseSessionReturn {
         clearClerkAuthError();
         return;
       }
-      try {
-        const t = await getToken({ template: CLERK_JWT_TEMPLATE });
-        if (!t) {
-          recordClerkAuthError(
-            `Clerk issued a null token for template "${CLERK_JWT_TEMPLATE}". ` +
-              `Verify the JWT template exists in the Clerk dashboard and the ` +
-              `signed-in user has public_metadata.tenant_id populated.`,
-          );
-        } else {
-          clearClerkAuthError();
-        }
-        if (!cancelled) setToken(t ?? null);
-      } catch (err) {
-        recordClerkAuthError(
-          `useAuth().getToken({template:"${CLERK_JWT_TEMPLATE}"}) threw`,
-          err,
-        );
-        if (!cancelled) setToken(null);
-      }
+      const t = await getClerkTokenWithFallback(
+        getToken as ClerkGetToken,
+        "useAuth",
+      );
+      if (!cancelled) setToken(t);
     }
     pull();
     return () => {
@@ -259,20 +337,14 @@ export async function getSession(): Promise<AuthSession | null> {
   }
 
   try {
-    const token = await clerk.session.getToken({ template: CLERK_JWT_TEMPLATE });
-    if (!token) {
-      recordClerkAuthError(
-        `window.Clerk.session.getToken({template:"${CLERK_JWT_TEMPLATE}"}) returned null. ` +
-          `Likely cause: JWT template "${CLERK_JWT_TEMPLATE}" is missing or the ` +
-          `signed-in Clerk user has no public_metadata.tenant_id.`,
-      );
-    } else {
-      clearClerkAuthError();
-    }
+    const token = await getClerkTokenWithFallback(
+      clerk.session.getToken.bind(clerk.session) as ClerkGetToken,
+      "window.Clerk.session",
+    );
     return clerkToBridgeSession(clerk.user as never, token ?? null);
   } catch (err) {
     recordClerkAuthError(
-      `window.Clerk.session.getToken({template:"${CLERK_JWT_TEMPLATE}"}) threw`,
+      `window.Clerk.session.getToken cascade threw unexpectedly`,
       err,
     );
     return null;

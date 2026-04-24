@@ -46,6 +46,10 @@ export NEXT_PUBLIC_AUTH_PROVIDER="clerk"
 # runtime when it tries to initialise. That is acceptable for draft PRs.
 export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}"
 export NEXT_PUBLIC_CLERK_JWT_TEMPLATE="${NEXT_PUBLIC_CLERK_JWT_TEMPLATE:-datapulse}"
+# Cascade fallback — see auth-bridge.tsx and electron/main.ts for context.
+# Must be baked in at build time (NEXT_PUBLIC_*) so the client bundle can
+# iterate candidates without relying on the Next.js server env.
+export NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES="${NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES:-datapulse-pos}"
 export NEXT_PUBLIC_CLERK_SIGN_IN_URL="${NEXT_PUBLIC_CLERK_SIGN_IN_URL:-/sign-in}"
 export NEXT_PUBLIC_CLERK_SIGN_UP_URL="${NEXT_PUBLIC_CLERK_SIGN_UP_URL:-/sign-up}"
 
