@@ -102,12 +102,28 @@ function applyCommonHeaders(
   const auth0Domain = process.env.AUTH0_DOMAIN || "";
   const auth0Origin = auth0Domain ? `https://${auth0Domain}` : "";
   const clerkOrigin = AUTH_PROVIDER === "clerk" ? clerkFrontendOrigin() : "";
+  // The frontend makes API calls to the backend on a different origin
+  // (NEXT_PUBLIC_API_URL). That origin MUST be in `connect-src` or every
+  // `fetch()` from the browser fails silently with `TypeError: Failed to
+  // fetch`. Web deploys on `datapulse.tech` happen to be same-origin so
+  // they never hit this, but the POS desktop (localhost:3847 → remote
+  // smartdatapulse.tech) always does. Caught at the shift-open smoke step.
+  let apiOrigin = "";
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    if (apiUrl) apiOrigin = new URL(apiUrl).origin;
+  } catch {
+    // Malformed NEXT_PUBLIC_API_URL — leave empty; CSP remains restrictive.
+  }
   const isDev = process.env.NODE_ENV === "development";
 
   // Allow scripts from Clerk when active — Clerk injects its JS from its
   // own CDN (e.g. https://oriented-lark-68.clerk.accounts.dev/). Keep the
   // Auth0 additions for the return path.
   const scriptExtras = [auth0Origin, clerkOrigin].filter(Boolean).join(" ");
+  // `connect-src` additionally needs the API backend origin so browser-
+  // initiated fetches (useSWR / fetchAPI / etc.) succeed.
+  const connectExtras = [auth0Origin, clerkOrigin, apiOrigin].filter(Boolean).join(" ");
 
   const scriptSrc = isDev
     ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${scriptExtras}`.trim()
@@ -121,7 +137,7 @@ function applyCommonHeaders(
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self'",
-      `connect-src 'self' ${scriptExtras}`.trim(),
+      `connect-src 'self' ${connectExtras}`.trim(),
       "frame-ancestors 'none'",
       "base-uri 'self'",
       `form-action 'self' ${scriptExtras}`.trim(),
