@@ -162,12 +162,22 @@ function startNextServer(): Promise<void> {
     });
 
     nextServer.on("exit", (code) => {
-      log.info({ code }, "Next.js server exited");
       nextServer = null;
-      if (!isQuitting) {
-        // Server crashed — show error and quit
-        app.quit();
+      if (isQuitting) {
+        // Electron tears down Node worker threads during quit, so pino's
+        // `thread-stream` file transport may already be gone by the time
+        // this handler fires on SIGTERM. `log.info()` would throw
+        // "Error: the worker is ending" from `thread-stream/index.js` and
+        // surface as an "Uncaught Exception" dialog the user sees when
+        // closing the app (reported 2026-04-24). Skipping the log here is
+        // safe — the user-initiated quit is the canonical exit path and
+        // we already logged intent in `stopNextServer()`.
+        return;
       }
+      log.info({ code }, "Next.js server exited");
+      // Server crashed unexpectedly — escalate to a full app quit so the
+      // tray/window state stays consistent with the absent renderer.
+      app.quit();
     });
 
     // Poll until the server is ready
