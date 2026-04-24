@@ -1,7 +1,10 @@
 import useSWR from "swr";
 import { fetchAPI, swrKey } from "@/lib/api-client";
-import type { KPISummary } from "@/types/api";
+import type { ApiGet } from "@/lib/api-types";
 import type { FilterParams } from "@/types/filters";
+
+// Response shape sourced from the OpenAPI schema (issue #658 pilot).
+type SummaryResponse = ApiGet<"/api/v1/analytics/summary">;
 
 export function useSummary(filters?: FilterParams) {
   // The /summary endpoint accepts `target_date` (not start_date/end_date).
@@ -14,7 +17,7 @@ export function useSummary(filters?: FilterParams) {
   const key = swrKey("/api/v1/analytics/summary", params);
 
   const { data, error, isLoading } = useSWR(key, () =>
-    fetchAPI<KPISummary>("/api/v1/analytics/summary", params),
+    fetchAPI<SummaryResponse>("/api/v1/analytics/summary", params),
   );
   return { data, error, isLoading };
 }

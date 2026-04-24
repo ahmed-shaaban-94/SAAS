@@ -1,4 +1,4 @@
-.PHONY: up down build test coverage coverage-pos lint fmt dbt logs clean dev status pipeline demo help setup backup restore
+.PHONY: up down build test coverage coverage-pos lint fmt dbt logs clean dev status pipeline demo help setup backup restore openapi openapi-check
 
 ## Compose file shortcuts
 DEV_COMPOSE  = docker compose -f docker-compose.yml -f docker-compose.dev.yml
@@ -108,6 +108,10 @@ help:
 	@echo "  backup    Create compressed PostgreSQL backup"
 	@echo "  restore   Restore from backup (BACKUP_FILE=path)"
 	@echo ""
+	@echo "API contract (issue #658):"
+	@echo "  openapi         Dump FastAPI schema → contracts/openapi.json"
+	@echo "  openapi-check   Fail if contracts/openapi.json is stale"
+	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean     Stop services, remove volumes and caches"
 
@@ -156,6 +160,19 @@ dbt-lock:
 ## Data
 load:
 	docker exec -it datapulse-api python -m datapulse.bronze.loader --source /app/data/raw/sales
+
+## API contract (issue #658)
+# Dump the FastAPI OpenAPI schema to contracts/openapi.json. Re-run after
+# changing any route or Pydantic response model, then run
+# `cd frontend && npm run codegen` to refresh the TypeScript client.
+openapi:
+	python scripts/dump_openapi.py
+
+# Verify contracts/openapi.json matches what the current FastAPI app emits.
+# CI runs this in the typecheck job; a non-zero exit means the committed
+# schema is stale and a PR must regenerate it.
+openapi-check:
+	python scripts/dump_openapi.py --check
 
 ## Backup / Restore
 backup:

@@ -75,6 +75,17 @@ jobs:
           pip install "mypy>=1.14,<2" types-redis types-passlib types-python-jose
       - name: Run mypy
         run: mypy src/datapulse/
+      - name: Check OpenAPI contract is up to date
+        # Issue #658: regenerates contracts/openapi.json from the live FastAPI
+        # app and diffs it against the committed copy. Fails the PR when a
+        # route or Pydantic response model changed without `make openapi`.
+        # Runs here (not in lint) because it needs the full app install that
+        # typecheck already pays for.
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          REDIS_URL: ""
+          SENTRY_ENVIRONMENT: test
+        run: python scripts/dump_openapi.py --check
 
   test-unit:
     name: Unit Tests
@@ -207,6 +218,12 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
+      - name: Check generated TS client is up to date
+        # Issue #658: regenerates src/generated/api.ts from contracts/openapi.json
+        # and diffs it against the committed copy. Fails if the schema changed
+        # but the generated client was not refreshed via `npm run codegen`.
+        working-directory: frontend
+        run: npm run codegen:check
       - name: Lint
         working-directory: frontend
         run: npm run lint

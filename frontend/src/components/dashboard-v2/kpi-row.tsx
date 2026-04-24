@@ -148,7 +148,7 @@ export function KpiRow() {
           summary.mom_growth_pct != null
             ? { text: `${fmtPct(summary.mom_growth_pct)} MoM`, tone: momTone }
             : undefined,
-        why: buildMtdRevenueWhy(summary.mtd_gross, summary.mom_growth_pct),
+        why: buildMtdRevenueWhy(summary.mtd_gross, summary.mom_growth_pct ?? null),
       },
       {
         label: "Transactions · MTD",

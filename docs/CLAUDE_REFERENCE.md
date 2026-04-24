@@ -129,6 +129,23 @@ tests/                  # pytest: 237 test files, unit coverage ≥77% in CI
 - **Print report**: `/dashboard/report` with `@media print` styles in globals.css.
 - **Mobile**: touch swipe-to-close on sidebar drawer (60px threshold).
 
+## API contract (issue #658)
+
+Shared source of truth at `contracts/openapi.json`, generated from the
+FastAPI app by `scripts/dump_openapi.py`. The frontend reads it via
+`openapi-typescript` into `frontend/src/generated/api.ts`.
+
+- After any route / Pydantic response model change: `make openapi` then
+  `cd frontend && npm run codegen`. Commit both files.
+- Reference a response shape by endpoint path in hooks:
+  `fetchAPI<ApiGet<"/api/v1/analytics/summary">>(...)` — helper lives in
+  `frontend/src/lib/api-types.ts`.
+- CI gates the drift in two places: `typecheck` job runs
+  `make openapi-check`; `frontend` job runs `npm run codegen:check`.
+- Pilot hooks on the generated types: `use-summary`, `use-top-products`,
+  `use-daily-trend`. Full migration of the remaining ~100 hooks is
+  follow-up work tracked per domain.
+
 ## Testing
 
 - pytest + pytest-cov: 237 test files, ~865 test functions, `@pytest.mark.unit` / `@pytest.mark.integration` split
