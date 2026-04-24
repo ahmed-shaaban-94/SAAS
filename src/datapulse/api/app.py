@@ -21,6 +21,7 @@ from datapulse.api.bootstrap import (
 from datapulse.api.limiter import limiter
 from datapulse.config import get_settings
 from datapulse.logging import setup_logging
+from datapulse.tracing import init_tracing
 
 logger = structlog.get_logger()
 
@@ -47,4 +48,8 @@ def create_app() -> FastAPI:
     install_middleware(app, settings)
     register_routers(app, settings)
     install_prometheus(app)
+    # OpenTelemetry tracing (#607). No-op unless OTEL_EXPORTER_OTLP_ENDPOINT
+    # is set AND the 'tracing' extra is installed — keeps default deploys
+    # lightweight while giving ops a single env-var switch to turn it on.
+    init_tracing(app)
     return app
