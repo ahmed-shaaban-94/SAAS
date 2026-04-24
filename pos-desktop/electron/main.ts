@@ -150,15 +150,15 @@ function waitForServer(
       reject(new Error("Next.js server did not start within timeout"));
       return;
     }
+    // Probe the POS terminal route the app actually loads (line 208).
+    // Any HTTP response — even a 500 — proves the server is listening;
+    // the prior probe against `/api/auth/session` required < 500, which
+    // hung forever whenever the dead-NextAuth route (see #682) errored.
     http
-      .get(`${NEXTJS_URL}/api/auth/session`, (res) => {
-        if (res.statusCode && res.statusCode < 500) {
-          log.info({ status: res.statusCode }, "Next.js server ready");
-          resolve();
-        } else {
-          setTimeout(check, 500);
-        }
-        res.resume(); // Consume response data
+      .get(`${NEXTJS_URL}${POS_PATH}`, (res) => {
+        log.info({ status: res.statusCode }, "Next.js server ready");
+        resolve();
+        res.resume();
       })
       .on("error", () => {
         setTimeout(check, 500);
