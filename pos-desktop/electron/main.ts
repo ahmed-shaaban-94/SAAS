@@ -36,8 +36,19 @@ let isQuitting = false;
 const RESOLVED_RELEASE = app.getVersion();
 const RESOLVED_ENVIRONMENT =
   process.env.DATAPULSE_ENV ?? (app.isPackaged ? "production" : "development");
+// Pre-ready logger: stdout only (no worker thread, no file lock).
+// `app.getPath('logs')` is not resolvable yet, so we can't start the
+// rotating file logger here. A second `createLogger({ reinit: true })`
+// call inside `app.whenReady()` swaps in the real file-backed instance.
+//
+// We MUST force `pretty: true` for this pre-ready call. If we used
+// `!app.isPackaged` here, production builds would create a worker-backed
+// pino-roll transport at module load, then another one at reinit — both
+// pointed at the same log file. The two workers race for the file lock,
+// one ends, and the next `log.info()` crashes the main process with
+// "Error: the worker is ending". (Reproduced on the v3 smoke build.)
 let log = createLogger({
-  pretty: !app.isPackaged,
+  pretty: true,
   release: RESOLVED_RELEASE,
   environment: RESOLVED_ENVIRONMENT,
 });
