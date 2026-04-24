@@ -1,4 +1,4 @@
-.PHONY: up down build test coverage coverage-pos lint fmt dbt logs clean dev status pipeline demo help setup backup restore openapi openapi-check loadtest-dashboard loadtest-checkout loadtest-analytics-mixed loadtest-all
+.PHONY: up down build test coverage coverage-pos diff-cover lint fmt dbt logs clean dev status pipeline demo help setup backup restore openapi openapi-check loadtest-dashboard loadtest-checkout loadtest-analytics-mixed loadtest-all
 
 ## Compose file shortcuts
 DEV_COMPOSE  = docker compose -f docker-compose.yml -f docker-compose.dev.yml
@@ -135,6 +135,16 @@ coverage-pos:
 	    pytest tests/test_pos_*.py -m unit \
 	        --cov=datapulse.pos --cov=datapulse.api.routes.pos \
 	        --cov-report=term-missing --cov-fail-under=85 -q
+
+# Patch coverage — fails if the lines YOU CHANGED aren't tested to
+# threshold (defaults to 81, matching codecov/patch). Catches the
+# "CI fails on patch coverage after push" loop. Env overrides:
+#   DIFF_COVER_THRESHOLD=90    bump the bar for a hardening change
+#   DIFF_COVER_BASE=origin/X   compare against a non-main base
+#   SKIP_DIFF_COVER=1          emergency bypass (use sparingly)
+diff-cover:
+	DATABASE_URL="sqlite:///:memory:" REDIS_URL="" SENTRY_ENVIRONMENT=test \
+	    bash scripts/check_diff_coverage.sh
 
 test-e2e:
 	docker compose exec frontend npx playwright test

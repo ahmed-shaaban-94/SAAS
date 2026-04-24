@@ -104,6 +104,10 @@ chore: update Docker base images
    - `make lint` — no linting errors
    - `make test` — all tests pass
    - `make test-e2e` — E2E specs pass
+   - `make diff-cover` — your patch meets the 81% coverage target
+     (same bar as CI's `codecov/patch` check; install once with
+     `pip install -e '.[dev]'`). Use `SKIP_DIFF_COVER=1 git push`
+     only in emergencies — the signal erodes fast when ignored.
 4. Submit a PR with a clear description
 5. Wait for CI checks and review
 
