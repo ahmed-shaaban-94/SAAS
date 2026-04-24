@@ -140,18 +140,32 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 // --- Clerk path --------------------------------------------------------
-const clerkMw = clerkMiddleware(async (auth, request) => {
-  const tenantDomain = resolveTenantDomain(request);
-  if (isProtectedRoute(request)) {
-    const { userId } = await auth();
-    if (!userId) {
-      const loginUrl = new URL("/sign-in", request.url);
-      loginUrl.searchParams.set("redirect_url", request.url);
-      return NextResponse.redirect(loginUrl);
+// Lazy factory: `clerkMiddleware()` invokes Clerk SDK initialisation
+// synchronously and throws on missing CLERK_SECRET_KEY. We defer the
+// factory call to first request so the middleware module loads cleanly
+// on hosts that never reach this branch (e.g. the POS desktop's
+// embedded Next.js server — see `POS_DESKTOP_MODE` short-circuit below).
+// Typed as the function shape `clerkMiddleware()` returns; the SDK's
+// complex generic signature makes `ReturnType<typeof clerkMiddleware>`
+// tricky to store in a nullable, so we use the invocation form directly.
+type ClerkHandler = (req: NextRequest, evt: unknown) => Promise<NextResponse> | NextResponse;
+let _clerkMw: ClerkHandler | null = null;
+function getClerkMw(): ClerkHandler {
+  if (_clerkMw) return _clerkMw;
+  _clerkMw = clerkMiddleware(async (auth, request) => {
+    const tenantDomain = resolveTenantDomain(request);
+    if (isProtectedRoute(request)) {
+      const { userId } = await auth();
+      if (!userId) {
+        const loginUrl = new URL("/sign-in", request.url);
+        loginUrl.searchParams.set("redirect_url", request.url);
+        return NextResponse.redirect(loginUrl);
+      }
     }
-  }
-  return applyCommonHeaders(NextResponse.next(), tenantDomain);
-});
+    return applyCommonHeaders(NextResponse.next(), tenantDomain);
+  }) as unknown as ClerkHandler;
+  return _clerkMw;
+}
 
 // --- Auth0 / NextAuth path --------------------------------------------
 async function nextAuthMiddleware(request: NextRequest): Promise<NextResponse> {
@@ -176,9 +190,22 @@ async function nextAuthMiddleware(request: NextRequest): Promise<NextResponse> {
 
 // Single exported middleware — branches on the active provider so flipping
 // NEXT_PUBLIC_AUTH_PROVIDER does not require swapping import paths.
+//
+// `POS_DESKTOP_MODE=1` short-circuits all auth middleware. The POS
+// desktop's embedded Next.js server is a local presentation layer; the
+// REAL auth boundary is the `smartdatapulse.tech` backend which enforces
+// its own Clerk policy with a properly-secured server key. Baking a
+// server secret into the distributed installer so this middleware could
+// run on the pilot's laptop would be credential leakage. Instead, we
+// skip the enforcement here — browser-side Clerk components (<SignedIn>,
+// useAuth, etc.) handle session display using only the public key.
 export function middleware(request: NextRequest) {
+  if (process.env.POS_DESKTOP_MODE === "1") {
+    const tenantDomain = resolveTenantDomain(request);
+    return applyCommonHeaders(NextResponse.next(), tenantDomain);
+  }
   if (AUTH_PROVIDER === "clerk") {
-    return clerkMw(request, {} as never);
+    return getClerkMw()(request, {} as never);
   }
   return nextAuthMiddleware(request);
 }
