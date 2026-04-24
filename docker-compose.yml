@@ -35,6 +35,17 @@ services:
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-}
       AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET:-}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
+      # Clerk — sole IdP post-#668. Missing here meant `_fetch_jwks` in
+      # core/jwt.py hit its `if not jwks_url` hard-fail branch on EVERY
+      # Bearer request, returning 503 "Authentication service unavailable"
+      # and breaking the POS shift-open (reported 2026-04-24). The values
+      # are supplied via the deploy-prod.yml workflow's `envs:` list so
+      # they never live in the repo or in shell history.
+      CLERK_FRONTEND_API: ${CLERK_FRONTEND_API:-}
+      CLERK_JWT_ISSUER: ${CLERK_JWT_ISSUER:-}
+      CLERK_JWT_AUDIENCE: ${CLERK_JWT_AUDIENCE:-}
+      CLERK_JWT_TEMPLATE: ${CLERK_JWT_TEMPLATE:-datapulse}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
       API_KEY: ${API_KEY:-}
       # NOTE: API_KEY, AUTH0_CLIENT_SECRET, and PIPELINE_WEBHOOK_SECRET default
       # to empty for local dev. In production, set them explicitly or use

@@ -150,17 +150,32 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           DB_READER_PASSWORD: ${{ secrets.DB_READER_PASSWORD }}
+          # Clerk — sole IdP post-#668. Without these the api container's
+          # `settings.clerk_frontend_api` is empty, `clerk_jwks_url` resolves
+          # to "", and `_fetch_jwks` in core/jwt.py raises 503
+          # "Authentication service unavailable" on every Bearer request.
+          # Reported 2026-04-24 during POS shift-open smoke run.
+          CLERK_FRONTEND_API: ${{ secrets.CLERK_FRONTEND_API }}
+          CLERK_JWT_ISSUER: ${{ secrets.CLERK_JWT_ISSUER }}
+          CLERK_JWT_AUDIENCE: ${{ secrets.CLERK_JWT_AUDIENCE }}
+          CLERK_JWT_TEMPLATE: ${{ secrets.CLERK_JWT_TEMPLATE }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD
+          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD,CLERK_FRONTEND_API,CLERK_JWT_ISSUER,CLERK_JWT_AUDIENCE,CLERK_JWT_TEMPLATE,CLERK_SECRET_KEY
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
             export IMAGE_TAG="${{ needs.build-push.outputs.image_tag }}"
             # Secrets are available as env vars (passed via envs: — not in shell history)
             export API_KEY PIPELINE_WEBHOOK_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
+            # Clerk env — docker-compose interpolates these into the api
+            # service's environment block (see docker-compose.yml). Without
+            # the export, compose would substitute empty strings and the
+            # backend's `_fetch_jwks` would 503 on every Bearer request.
+            export CLERK_FRONTEND_API CLERK_JWT_ISSUER CLERK_JWT_AUDIENCE CLERK_JWT_TEMPLATE CLERK_SECRET_KEY
 
             # Save current state for rollback
             echo "=== Saving rollback state ==="
