@@ -1,4 +1,4 @@
-.PHONY: up down build test coverage coverage-pos lint fmt dbt logs clean dev status pipeline demo help setup backup restore openapi openapi-check
+.PHONY: up down build test coverage coverage-pos lint fmt dbt logs clean dev status pipeline demo help setup backup restore openapi openapi-check loadtest-dashboard loadtest-checkout loadtest-analytics-mixed loadtest-all
 
 ## Compose file shortcuts
 DEV_COMPOSE  = docker compose -f docker-compose.yml -f docker-compose.dev.yml
@@ -173,6 +173,20 @@ openapi:
 # schema is stale and a PR must regenerate it.
 openapi-check:
 	python scripts/dump_openapi.py --check
+
+## Load testing — k6 scenarios (#607). Requires k6 on $PATH, and
+## BASE_URL + AUTH_TOKEN (+ TENANT_ID + POS_PIN for checkout) in env.
+## See scripts/loadtest/README.md for provisioning.
+loadtest-dashboard:
+	k6 run scripts/loadtest/scenarios/dashboard.js
+
+loadtest-checkout:
+	k6 run scripts/loadtest/scenarios/pos_checkout.js
+
+loadtest-analytics-mixed:
+	k6 run scripts/loadtest/scenarios/analytics_mixed.js
+
+loadtest-all: loadtest-dashboard loadtest-checkout loadtest-analytics-mixed
 
 ## Backup / Restore
 backup:
