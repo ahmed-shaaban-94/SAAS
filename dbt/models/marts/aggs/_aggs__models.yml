@@ -1,6 +1,43 @@
 version: 2
 
 models:
+  # ── agg_basket_margin ────────────────────────────────────────────────
+  - name: agg_basket_margin
+    description: "Per-cashier × per-shift × per-basket gross margin from POS transactions. Grain: one row per completed transaction."
+    meta:
+      label: "Basket Margin"
+    columns:
+      - name: tenant_id
+        tests:
+          - not_null
+      - name: shift_id
+        description: "FK to pos.shift_records — the shift this basket belongs to"
+      - name: staff_id
+        description: "Cashier who processed the transaction"
+        tests:
+          - not_null
+      - name: transaction_id
+        description: "PK of pos.transactions"
+        tests:
+          - not_null
+          - unique
+      - name: txn_date
+        description: "Calendar date the transaction was completed (day-truncated)"
+        tests:
+          - not_null
+      - name: revenue
+        description: "Sum of unit_price * quantity for all items in the basket"
+        tests:
+          - not_null
+      - name: cost
+        description: "Sum of cost_per_unit * quantity (NULL items treated as 0 cost)"
+      - name: gross_margin
+        description: "Revenue minus cost (COALESCE(cost_per_unit, 0) so NULL cost rows contribute 100% margin)"
+        tests:
+          - not_null
+      - name: margin_pct
+        description: "gross_margin / revenue (NULL when revenue = 0)"
+
   # ── agg_margin_analysis ──────────────────────────────────────────────
   - name: agg_margin_analysis
     description: "Margin analysis per product per month. Revenue from fct_sales, COGS from weighted average PO unit prices."

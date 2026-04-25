@@ -183,6 +183,14 @@ class CartOpsMixin:
         )
         line_total = (unit_price * quantity).quantize(Decimal("0.0001"))
 
+        # Capture cost_per_unit from catalog data for margin tracking.
+        # Falls back to None when the product has no cost data so existing
+        # records (pre-migration 119) are never blocked. A follow-up migration
+        # can backfill / add NOT NULL after all rows are populated.
+        # TODO: surface cost_price in dim_product/drug_catalog to populate this reliably.
+        raw_cost = product.get("cost_price") or product.get("cost_per_unit")
+        cost_per_unit: Decimal | None = to_decimal(raw_cost) if raw_cost is not None else None
+
         row = self._repo.add_transaction_item(
             transaction_id=transaction_id,
             tenant_id=tenant_id,
@@ -195,6 +203,7 @@ class CartOpsMixin:
             expiry_date=expiry_date,
             is_controlled=controlled,
             pharmacist_id=resolved_pharmacist_id,
+            cost_per_unit=cost_per_unit,
         )
         return PosCartItem.model_validate(row)
 

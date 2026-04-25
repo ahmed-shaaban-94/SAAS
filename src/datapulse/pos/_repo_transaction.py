@@ -199,6 +199,7 @@ class TransactionRepoMixin:
         expiry_date: date | None = None,
         is_controlled: bool = False,
         pharmacist_id: str | None = None,
+        cost_per_unit: Decimal | None = None,
     ) -> dict[str, Any]:
         """Insert a single line item into a draft transaction."""
         row = (
@@ -207,15 +208,18 @@ class TransactionRepoMixin:
                     INSERT INTO pos.transaction_items
                         (transaction_id, tenant_id, drug_code, drug_name,
                          quantity, unit_price, discount, line_total,
-                         batch_number, expiry_date, is_controlled, pharmacist_id)
+                         batch_number, expiry_date, is_controlled, pharmacist_id,
+                         cost_per_unit)
                     VALUES
                         (:transaction_id, :tenant_id, :drug_code, :drug_name,
                          :quantity, :unit_price, :discount, :line_total,
-                         :batch_number, :expiry_date, :is_controlled, :pharmacist_id)
+                         :batch_number, :expiry_date, :is_controlled, :pharmacist_id,
+                         :cost_per_unit)
                     RETURNING
                         id, transaction_id, tenant_id, drug_code, drug_name,
                         batch_number, expiry_date, quantity, unit_price,
-                        discount, line_total, is_controlled, pharmacist_id
+                        discount, line_total, is_controlled, pharmacist_id,
+                        cost_per_unit
                 """),
                 {
                     "transaction_id": transaction_id,
@@ -230,6 +234,7 @@ class TransactionRepoMixin:
                     "expiry_date": expiry_date,
                     "is_controlled": is_controlled,
                     "pharmacist_id": pharmacist_id,
+                    "cost_per_unit": cost_per_unit,
                 },
             )
             .mappings()
@@ -244,7 +249,8 @@ class TransactionRepoMixin:
                 text("""
                     SELECT id, transaction_id, tenant_id, drug_code, drug_name,
                            batch_number, expiry_date, quantity, unit_price,
-                           discount, line_total, is_controlled, pharmacist_id
+                           discount, line_total, is_controlled, pharmacist_id,
+                           cost_per_unit
                     FROM   pos.transaction_items
                     WHERE  id = :item_id
                 """),
@@ -367,7 +373,8 @@ class TransactionRepoMixin:
                 text("""
                     SELECT id, transaction_id, tenant_id, drug_code, drug_name,
                            batch_number, expiry_date, quantity, unit_price,
-                           discount, line_total, is_controlled, pharmacist_id
+                           discount, line_total, is_controlled, pharmacist_id,
+                           cost_per_unit
                     FROM   pos.transaction_items
                     WHERE  transaction_id = :txn_id
                     ORDER  BY id ASC

@@ -29,3 +29,4 @@ class PosCartItem(BaseModel):
     line_total: JsonDecimal
     is_controlled: bool = False
     pharmacist_id: str | None = None
+    cost_per_unit: JsonDecimal | None = None
