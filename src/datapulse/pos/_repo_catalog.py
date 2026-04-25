@@ -39,13 +39,11 @@ class CatalogRepoMixin:
         catalog (no tenant column) and is visible to every tenant for now;
         revisit when ``pharma.drug_alias`` lands.
 
-        ``unit_price`` is 0 for ``dim_product`` rows here. The previous
-        correlated subquery against ``public_marts.fct_sales`` (1.38M rows,
-        no per-product index) caused statement timeouts on the search path.
-        A proper "latest price" feature will need a materialized view; for
-        now, prices come only from ``drug_catalog.price_egp``. dim_product
-        still wins when the same code exists in both — see the
-        ``NOT EXISTS`` filter on the catalog leg.
+        ``unit_price`` is sourced from ``public_marts.mv_latest_unit_price``
+        (a materialized view over ``fct_sales``, created in migration 117).
+        A LEFT JOIN is used so products with no sales history still appear
+        with ``unit_price = 0``. dim_product still wins when the same code
+        exists in both — see the ``NOT EXISTS`` filter on the catalog leg.
         """
         pattern = f"%{query}%"
         rows = (
@@ -57,8 +55,11 @@ class CatalogRepoMixin:
                         p.drug_brand,
                         p.drug_cluster,
                         p.drug_category,
-                        0::numeric AS unit_price
+                        COALESCE(lp.unit_price, 0) AS unit_price
                     FROM   public_marts.dim_product p
+                    LEFT   JOIN public_marts.mv_latest_unit_price lp
+                           ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                           AND lp.product_key = p.product_key
                     WHERE  (
                            p.drug_name  ILIKE :pattern
                         OR p.drug_code  ILIKE :pattern
@@ -108,8 +109,11 @@ class CatalogRepoMixin:
                         p.drug_brand,
                         p.drug_cluster,
                         p.drug_category,
-                        0::numeric AS unit_price
+                        COALESCE(lp.unit_price, 0) AS unit_price
                     FROM   public_marts.dim_product p
+                    LEFT   JOIN public_marts.mv_latest_unit_price lp
+                           ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                           AND lp.product_key = p.product_key
                     WHERE  p.drug_code = :drug_code
                     UNION ALL
                     SELECT
@@ -151,13 +155,16 @@ class CatalogRepoMixin:
                         p.drug_brand,
                         p.drug_cluster,
                         p.drug_category,
-                        0::numeric AS unit_price,
+                        COALESCE(lp.unit_price, 0) AS unit_price,
                         m.counseling_text,
                         m.active_ingredient
                     FROM   public_marts.dim_product p
                     LEFT   JOIN pos.product_catalog_meta m
                            ON m.tenant_id = p.tenant_id
                           AND m.drug_code = p.drug_code
+                    LEFT   JOIN public_marts.mv_latest_unit_price lp
+                           ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                           AND lp.product_key = p.product_key
                     WHERE  p.drug_code = :drug_code
                     LIMIT  1
                 """),
@@ -256,11 +263,10 @@ class CatalogRepoMixin:
         rows are excluded when the same code is already in ``dim_product``
         to keep precedence intact.
 
-        ``unit_price`` is 0 for ``dim_product`` rows here — the previous
-        ``DISTINCT ON`` over ``fct_sales`` (1.38M rows) caused statement
-        timeouts at the search endpoint. A proper "latest price" feature
-        will need a per-product materialized view; for now, prices come
-        only from ``drug_catalog.price_egp``.
+        ``unit_price`` for ``dim_product`` rows is sourced from
+        ``public_marts.mv_latest_unit_price`` (migration 117) via a LEFT JOIN,
+        so products with no sales history still appear with ``unit_price = 0``.
+        Prices for the global SAP catalog leg come from ``drug_catalog.price_egp``.
         """
         rows = (
             self._session.execute(
@@ -272,8 +278,11 @@ class CatalogRepoMixin:
                             p.drug_brand,
                             p.drug_cluster,
                             p.drug_category,
-                            0::numeric AS unit_price
+                            COALESCE(lp.unit_price, 0) AS unit_price
                         FROM   public_marts.dim_product p
+                        LEFT   JOIN public_marts.mv_latest_unit_price lp
+                               ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                               AND lp.product_key = p.product_key
                         UNION ALL
                         SELECT
                             c.material_code AS drug_code,
