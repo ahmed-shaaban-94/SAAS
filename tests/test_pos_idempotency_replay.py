@@ -83,7 +83,7 @@ def _make_replay_app(service: MagicMock, replay_after_first: bool = True) -> Fas
         pharmacist_id=None,
     ).model_dump(mode="json")
 
-    original = pos_module._add_item_idempotency_dep
+    original = pos_module._commit_idempotency_dep
 
     async def _stateful_dep(request: Request) -> IdempotencyContext:  # noqa: ARG001
         _call_count[0] += 1
@@ -96,7 +96,7 @@ def _make_replay_app(service: MagicMock, replay_after_first: bool = True) -> Fas
             cached_body=_cached_body if is_replay else None,
         )
 
-    pos_module._add_item_idempotency_dep = _stateful_dep
+    pos_module._commit_idempotency_dep = _stateful_dep
     app.state._original_dep = original  # store for cleanup
     return app
 
@@ -158,7 +158,7 @@ def test_offline_queue_replay_five_calls_idempotent(mock_service: MagicMock) -> 
                 responses.append(resp)
     finally:
         # Restore original dep
-        pos_module._add_item_idempotency_dep = app.state._original_dep
+        pos_module._commit_idempotency_dep = app.state._original_dep
 
     # All 5 should succeed
     for resp in responses:

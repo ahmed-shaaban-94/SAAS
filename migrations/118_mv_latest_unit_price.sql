@@ -1,4 +1,4 @@
--- Migration 117 — Materialized view: latest unit price per product per tenant
+-- Migration 118 — Materialized view: latest unit price per product per tenant
 -- Provides a fast, predictable-latency price lookup for the POS catalog
 -- after the correlated subquery was removed in #719.
 -- Date: 2026-04-26

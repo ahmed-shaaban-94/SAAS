@@ -270,7 +270,7 @@ def test_migration_is_idempotent() -> None:
     import pathlib
 
     migration_path = (
-        pathlib.Path(__file__).parent.parent / "migrations" / "117_mv_latest_unit_price.sql"
+        pathlib.Path(__file__).parent.parent / "migrations" / "118_mv_latest_unit_price.sql"
     )
     assert migration_path.exists(), f"Migration file not found: {migration_path}"
 
