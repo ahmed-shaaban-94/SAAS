@@ -56,11 +56,11 @@ class CatalogRepoMixin:
                         p.drug_category,
                         COALESCE(
                             (
-                                SELECT f.unit_price
+                                SELECT (f.sales / NULLIF(f.quantity, 0))
                                 FROM   public_marts.fct_sales f
                                 WHERE  f.tenant_id = p.tenant_id
-                                AND    f.drug_code = p.drug_code
-                                ORDER  BY f.invoice_date DESC
+                                AND    f.product_key = p.product_key
+                                ORDER  BY f.date_key DESC
                                 LIMIT  1
                             ),
                             0
@@ -117,11 +117,11 @@ class CatalogRepoMixin:
                         p.drug_category,
                         COALESCE(
                             (
-                                SELECT f.unit_price
+                                SELECT (f.sales / NULLIF(f.quantity, 0))
                                 FROM   public_marts.fct_sales f
                                 WHERE  f.tenant_id = p.tenant_id
-                                AND    f.drug_code = p.drug_code
-                                ORDER  BY f.invoice_date DESC
+                                AND    f.product_key = p.product_key
+                                ORDER  BY f.date_key DESC
                                 LIMIT  1
                             ),
                             0
@@ -170,11 +170,11 @@ class CatalogRepoMixin:
                         p.drug_category,
                         COALESCE(
                             (
-                                SELECT f.unit_price
+                                SELECT (f.sales / NULLIF(f.quantity, 0))
                                 FROM   public_marts.fct_sales f
                                 WHERE  f.tenant_id = p.tenant_id
-                                AND    f.drug_code = p.drug_code
-                                ORDER  BY f.invoice_date DESC
+                                AND    f.product_key = p.product_key
+                                ORDER  BY f.date_key DESC
                                 LIMIT  1
                             ),
                             0
@@ -213,11 +213,11 @@ class CatalogRepoMixin:
                         r.reason_tag,
                         COALESCE(
                             (
-                                SELECT f.unit_price
+                                SELECT (f.sales / NULLIF(f.quantity, 0))
                                 FROM   public_marts.fct_sales f
                                 WHERE  f.tenant_id = p.tenant_id
-                                AND    f.drug_code = p.drug_code
-                                ORDER  BY f.invoice_date DESC
+                                AND    f.product_key = p.product_key
+                                ORDER  BY f.date_key DESC
                                 LIMIT  1
                             ),
                             0
@@ -256,11 +256,14 @@ class CatalogRepoMixin:
                             m.active_ingredient,
                             COALESCE(
                                 (
-                                    SELECT f.unit_price
+                                    SELECT (f.sales / NULLIF(f.quantity, 0))
                                     FROM   public_marts.fct_sales f
+                                    JOIN   public_marts.dim_product dp
+                                           ON dp.product_key = f.product_key
+                                          AND dp.tenant_id = f.tenant_id
                                     WHERE  f.tenant_id = m.tenant_id
-                                    AND    f.drug_code = m.drug_code
-                                    ORDER  BY f.invoice_date DESC
+                                    AND    dp.drug_code = m.drug_code
+                                    ORDER  BY f.date_key DESC
                                     LIMIT  1
                                 ),
                                 0
@@ -274,11 +277,11 @@ class CatalogRepoMixin:
                         p.drug_name,
                         COALESCE(
                             (
-                                SELECT f.unit_price
+                                SELECT (f.sales / NULLIF(f.quantity, 0))
                                 FROM   public_marts.fct_sales f
                                 WHERE  f.tenant_id = p.tenant_id
-                                AND    f.drug_code = p.drug_code
-                                ORDER  BY f.invoice_date DESC
+                                AND    f.product_key = p.product_key
+                                ORDER  BY f.date_key DESC
                                 LIMIT  1
                             ),
                             0
@@ -319,11 +322,11 @@ class CatalogRepoMixin:
             self._session.execute(
                 text("""
                     WITH latest_price AS (
-                        SELECT DISTINCT ON (drug_code)
-                            drug_code,
-                            unit_price
+                        SELECT DISTINCT ON (product_key)
+                            product_key,
+                            (sales / NULLIF(quantity, 0)) AS unit_price
                         FROM   public_marts.fct_sales
-                        ORDER  BY drug_code, invoice_date DESC
+                        ORDER  BY product_key, date_key DESC
                     ),
                     combined AS (
                         SELECT
@@ -334,7 +337,7 @@ class CatalogRepoMixin:
                             p.drug_category,
                             COALESCE(lp.unit_price, 0) AS unit_price
                         FROM   public_marts.dim_product p
-                        LEFT   JOIN latest_price lp USING (drug_code)
+                        LEFT   JOIN latest_price lp ON lp.product_key = p.product_key
                         UNION ALL
                         SELECT
                             c.material_code AS drug_code,
