@@ -42,11 +42,16 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Install Python dependencies
-        run: pip install -e "."
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "."
       - name: Audit Python dependencies
+        # CVE-2026-3219 is a vulnerability in pip itself, not in our deps.
+        # No patched pip release is published yet (latest = 26.0.1, the
+        # affected one). Remove --ignore-vuln once a patched pip ships.
         run: |
           pip install pip-audit
-          pip-audit
+          pip-audit --ignore-vuln CVE-2026-3219
 
       - uses: actions/setup-node@v4
         with:
