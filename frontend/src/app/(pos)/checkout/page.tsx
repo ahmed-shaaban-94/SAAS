@@ -21,6 +21,7 @@ import type {
 } from "@/types/pos";
 import type { ReceiptData } from "@/components/pos/receipts/receipt-mock";
 import { getPosBranding } from "@/lib/pos-branding";
+import { buildReceiptPayload, printReceipt } from "@/lib/pos/print-bridge";
 
 const { invoiceLabel: INVOICE_BRANCH_NAME, branchAddress: INVOICE_BRANCH_ADDRESS, taxNumber: INVOICE_TAX_NUMBER } = getPosBranding();
 
@@ -137,13 +138,25 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
 
-  // Auto-print on first success — 300ms DOM-settle delay
+  // Auto-print on first success — 300ms DOM-settle delay.
+  // Routes to native ESC/POS thermal printer when running inside Electron
+  // and `printer_interface` is configured; falls back to window.print() in
+  // the browser or when the thermal adapter fails. See issue #711.
   useEffect(() => {
-    if (!result || printedRef.current) return;
+    if (!result || !txnDetail || printedRef.current) return;
     printedRef.current = true;
-    const id = setTimeout(() => window.print(), 300);
+    const id = setTimeout(() => {
+      const payload = buildReceiptPayload({
+        txn: txnDetail,
+        result,
+        staffName: session?.user?.name ?? "",
+        storeName: INVOICE_BRANCH_NAME,
+        storeAddress: INVOICE_BRANCH_ADDRESS,
+      });
+      void printReceipt(payload);
+    }, 300);
     return () => clearTimeout(id);
-  }, [result]);
+  }, [result, txnDetail, session]);
 
   async function processCheckout(method: PaymentMethod) {
     if (!pending || isProcessing) return;
@@ -171,7 +184,20 @@ export default function CheckoutPage() {
     }
   }
 
-  const handlePrint = useCallback(() => window.print(), []);
+  const handlePrint = useCallback(() => {
+    if (!txnDetail || !result) {
+      if (typeof window !== "undefined") window.print();
+      return;
+    }
+    const payload = buildReceiptPayload({
+      txn: txnDetail,
+      result,
+      staffName: session?.user?.name ?? "",
+      storeName: INVOICE_BRANCH_NAME,
+      storeAddress: INVOICE_BRANCH_ADDRESS,
+    });
+    void printReceipt(payload);
+  }, [txnDetail, result, session]);
 
   async function handleEmail() {
     if (!result) return;
