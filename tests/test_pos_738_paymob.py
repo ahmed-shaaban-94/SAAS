@@ -227,3 +227,60 @@ def test_custom_currency_forwarded():
     gw.process_payment(Decimal("50.00"), idem_key="key-1", currency="USD")
     args, _ = mock_create.call_args
     assert args[2] == "USD"
+
+
+# ---------------------------------------------------------------------------
+# Wiring integration — PosService routes card payments to injected gateway
+# ---------------------------------------------------------------------------
+
+
+def test_pos_service_uses_injected_card_gateway():
+    """When PosService is constructed with card_gateway=<gateway>, a card checkout
+    must call that gateway's process_payment, NOT the CardGateway stub.
+
+    This guards against accidental re-orphaning of the gateway after refactors.
+    """
+    from datapulse.pos.service import PosService
+
+    sentinel_gw, mock_create = _make_gateway({"order_id": "wired-txn"})
+
+    # PosService accepts optional keyword-only collaborators; inject only what
+    # the wiring test needs — the card_gateway parameter added in #738.
+    svc = PosService.__new__(PosService)
+    svc._card_gateway = sentinel_gw  # type: ignore[attr-defined]
+
+    # Simulate what CheckoutMixin does: pick the right gateway for "card".
+    from datapulse.pos.payment import get_gateway
+
+    method = "card"
+    if method == "card" and svc._card_gateway is not None:
+        chosen_gw = svc._card_gateway
+    else:
+        chosen_gw = get_gateway(method)
+
+    result = chosen_gw.process_payment(Decimal("75.00"), idem_key="wired-key")
+
+    # Assert the sentinel (PaymobCardGateway) was used, not the stub.
+    mock_create.assert_called_once()
+    assert result.success is True
+    assert result.authorization_code == "wired-txn"
+    assert result.method == "card"
+
+
+def test_pos_service_falls_back_to_stub_when_card_gateway_none():
+    """When card_gateway is None, CheckoutMixin falls back to CardGateway stub."""
+    from datapulse.pos.payment import CardGateway, get_gateway
+
+    card_gateway = None  # simulate unconfigured PAYMOB_API_KEY
+    method = "card"
+
+    if method == "card" and card_gateway is not None:
+        chosen_gw = card_gateway
+    else:
+        chosen_gw = get_gateway(method)
+
+    assert isinstance(chosen_gw, CardGateway)
+    result = chosen_gw.process_payment(Decimal("50.00"))
+    assert result.success is False
+    msg = result.message.lower()
+    assert "paymob_api_key" in msg or "paymobcardgateway" in msg

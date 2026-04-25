@@ -17,7 +17,7 @@ from datapulse.pos.constants import TransactionStatus
 from datapulse.pos.exceptions import PosError
 from datapulse.pos.inventory_contract import StockMovement
 from datapulse.pos.models import CheckoutRequest, CheckoutResponse
-from datapulse.pos.payment import get_gateway
+from datapulse.pos.payment import PaymentGateway, get_gateway
 from datapulse.pos.promotion_service import PromotionService
 from datapulse.pos.receipt import generate_pdf_receipt, generate_thermal_receipt
 from datapulse.pos.voucher_service import VoucherService
@@ -42,6 +42,7 @@ class CheckoutMixin:
     _inventory: InventoryServiceProtocol
     _voucher_repo: VoucherRepository | None
     _promotion_repo: PromotionRepository | None
+    _card_gateway: PaymentGateway | None
 
     async def checkout(
         self,
@@ -167,7 +168,13 @@ class CheckoutMixin:
         grand_total = grand_total.quantize(Decimal("0.0001"))
 
         # ── Payment (B4: gateway delegation) ───────────────────────
-        gateway = get_gateway(request.payment_method.value)
+        # Use the injected card gateway when present (Paymob, #738);
+        # otherwise fall back to get_gateway() which returns CardGateway stub.
+        _method = request.payment_method.value
+        if _method == "card" and self._card_gateway is not None:
+            gateway: PaymentGateway = self._card_gateway
+        else:
+            gateway = get_gateway(_method)
         payment_result = gateway.process_payment(
             grand_total,
             tendered=to_decimal(request.cash_tendered or 0),

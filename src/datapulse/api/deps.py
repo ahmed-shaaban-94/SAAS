@@ -460,6 +460,7 @@ def get_pos_service(
         voucher_repo=voucher_repo,
         promotion_repo=promotion_repo,
         whatsapp_provider=get_whatsapp_provider(),
+        card_gateway=get_paymob_gateway(),
     )
 
 
