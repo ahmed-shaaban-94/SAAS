@@ -2,13 +2,13 @@
 
 import { cn } from "@/lib/utils";
 
-interface Shortcut {
+export interface Shortcut {
   key: string;
   label: string;
   tone?: "cyan" | "amber" | "purple" | "green" | "default";
 }
 
-const TONE_COLOR: Record<NonNullable<Shortcut["tone"]>, string> = {
+export const TONE_COLOR: Record<NonNullable<Shortcut["tone"]>, string> = {
   default: "text-text-primary",
   cyan: "text-cyan-300",
   amber: "text-amber-300",
@@ -18,7 +18,7 @@ const TONE_COLOR: Record<NonNullable<Shortcut["tone"]>, string> = {
 
 // F12 removed — was a duplicate of F7 (voucher) and collided with the
 // layout-level void-transaction dispatch. Single shortcut per function.
-const SHORTCUTS: Shortcut[] = [
+export const SHORTCUTS: Shortcut[] = [
   { key: "F1", label: "Terminal", tone: "cyan" },
   { key: "F2", label: "Sync", tone: "amber" },
   { key: "F7", label: "Voucher", tone: "amber" },
