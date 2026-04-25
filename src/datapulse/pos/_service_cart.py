@@ -60,7 +60,7 @@ class CartOpsMixin:
         customer_id: str | None = None,
     ) -> TransactionResponse:
         """Open a draft transaction on an active/open terminal."""
-        terminal = self._repo.get_terminal_session(terminal_id)
+        terminal = self._repo.get_terminal_session(terminal_id, tenant_id=tenant_id)
         if terminal is None:
             raise PosError(
                 message=f"Terminal {terminal_id} does not exist",
@@ -70,7 +70,9 @@ class CartOpsMixin:
 
         # Lazily promote ``open`` -> ``active`` on first transaction
         if terminal["status"] == TerminalStatus.open.value:
-            self._repo.update_terminal_status(terminal_id, TerminalStatus.active.value)
+            self._repo.update_terminal_status(
+                terminal_id, TerminalStatus.active.value, tenant_id=tenant_id
+            )
 
         row = self._repo.create_transaction(
             tenant_id=tenant_id,
@@ -82,12 +84,14 @@ class CartOpsMixin:
         )
         return TransactionResponse.model_validate(row)
 
-    def get_transaction_detail(self, transaction_id: int) -> TransactionDetailResponse | None:
+    def get_transaction_detail(
+        self, transaction_id: int, *, tenant_id: int
+    ) -> TransactionDetailResponse | None:
         """Full transaction with line items hydrated."""
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             return None
-        item_rows = self._repo.get_transaction_items(transaction_id)
+        item_rows = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         items = [PosCartItem.model_validate(r) for r in item_rows]
         return TransactionDetailResponse.model_validate({**header, "items": items})
 
@@ -202,6 +206,7 @@ class CartOpsMixin:
         self,
         item_id: int,
         *,
+        tenant_id: int,
         quantity: Decimal,
         unit_price: Decimal | None = None,
         discount: Decimal | None = None,
@@ -219,7 +224,7 @@ class CartOpsMixin:
         gets a clear ``PosError`` (vs. a silent no-op when the SQL
         WHERE clause filters everything out).
         """
-        existing = self._repo.get_transaction_item(item_id)
+        existing = self._repo.get_transaction_item(item_id, tenant_id=tenant_id)
         if existing is None:
             raise PosError(
                 message=f"Item {item_id} not found",
@@ -232,7 +237,7 @@ class CartOpsMixin:
                 detail=f"item_id={item_id} transaction_id={transaction_id}",
             )
 
-        header = self._repo.get_transaction(existing_transaction_id)
+        header = self._repo.get_transaction(existing_transaction_id, tenant_id=tenant_id)
         if header is None:
             raise PosError(
                 message=f"Transaction {existing_transaction_id} not found",
@@ -246,6 +251,7 @@ class CartOpsMixin:
 
         row = self._repo.update_item_quantity(
             item_id,
+            tenant_id=tenant_id,
             quantity=quantity,
             unit_price=to_decimal(unit_price) if unit_price is not None else None,
             discount=to_decimal(discount) if discount is not None else None,
@@ -261,15 +267,17 @@ class CartOpsMixin:
         # straight from the row — no client-side merge needed.
         return PosCartItem.model_validate({**row, "drug_name": row.get("drug_name", "")})
 
-    def remove_item(self, item_id: int, *, transaction_id: int | None = None) -> bool:
+    def remove_item(
+        self, item_id: int, *, tenant_id: int, transaction_id: int | None = None
+    ) -> bool:
         """Delete a single item from a draft transaction."""
-        existing = self._repo.get_transaction_item(item_id)
+        existing = self._repo.get_transaction_item(item_id, tenant_id=tenant_id)
         if existing is None:
             return False
         existing_transaction_id = int(existing["transaction_id"])
         if transaction_id is not None and existing_transaction_id != transaction_id:
             return False
-        header = self._repo.get_transaction(existing_transaction_id)
+        header = self._repo.get_transaction(existing_transaction_id, tenant_id=tenant_id)
         if header is not None and header["status"] != TransactionStatus.draft.value:
             raise PosError(
                 message=(f"Only draft transactions can be edited (current: {header['status']})."),
@@ -277,6 +285,7 @@ class CartOpsMixin:
             )
         return self._repo.remove_item(
             item_id,
+            tenant_id=tenant_id,
             transaction_id=existing_transaction_id,
             expected_status=TransactionStatus.draft.value,
         )

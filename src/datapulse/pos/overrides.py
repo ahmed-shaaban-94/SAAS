@@ -71,9 +71,10 @@ def override_token_verifier(expected_action: str):
             session.execute(
                 text(
                     """SELECT code_ids, offline_expires_at
-                     FROM pos.grants_issued WHERE grant_id = :g"""
+                     FROM pos.grants_issued
+                     WHERE grant_id = :g AND tenant_id = :tid"""
                 ),
-                {"g": claim.grant_id},
+                {"g": claim.grant_id, "tid": claim.tenant_id},
             )
             .mappings()
             .first()

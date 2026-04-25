@@ -55,7 +55,7 @@ class VoidReturnMixin:
 
         Raises :class:`PosError` for not-found or wrong-state.
         """
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             raise PosError(
                 message=f"Transaction {transaction_id} not found",
@@ -71,6 +71,7 @@ class VoidReturnMixin:
 
         updated = self._repo.update_transaction_status(
             transaction_id,
+            tenant_id=tenant_id,
             status=TransactionStatus.voided.value,
             expected_status=TransactionStatus.completed.value,
         )
@@ -80,14 +81,16 @@ class VoidReturnMixin:
                 detail=f"transaction_id={transaction_id} status_race=completed_to_other",
             )
 
-        returned = self._repo.get_returned_quantities_for_transaction(transaction_id)
+        returned = self._repo.get_returned_quantities_for_transaction(
+            transaction_id, tenant_id=tenant_id
+        )
         if any(to_decimal(row["returned_qty"]) > 0 for row in returned):
             raise PosError(
                 message="Transaction has existing returns and cannot be voided.",
                 detail=f"transaction_id={transaction_id} existing_returns=true",
             )
 
-        items = self._repo.get_transaction_items(transaction_id)
+        items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         for item in items:
             await self._inventory.record_movement(
                 StockMovement(
@@ -137,7 +140,9 @@ class VoidReturnMixin:
         Raises :class:`PosError` for not-found, wrong-state, empty items,
         non-matching lines, or quantity over-return.
         """
-        original = self._repo.get_transaction_for_update(original_transaction_id)
+        original = self._repo.get_transaction_for_update(
+            original_transaction_id, tenant_id=tenant_id
+        )
         if original is None:
             raise PosError(
                 message=f"Transaction {original_transaction_id} not found",
@@ -160,13 +165,17 @@ class VoidReturnMixin:
             )
 
         # ── Authoritative original lines, keyed by (drug_code, batch_number) ──
-        original_items = self._repo.get_transaction_items(original_transaction_id)
+        original_items = self._repo.get_transaction_items(
+            original_transaction_id, tenant_id=tenant_id
+        )
         orig_index: dict[tuple[str, str], dict[str, Any]] = {
             (oi["drug_code"], oi.get("batch_number") or ""): oi for oi in original_items
         }
 
         # ── Sum of already-returned quantities per line ───────────────────────
-        prior_returns = self._repo.get_returned_quantities_for_transaction(original_transaction_id)
+        prior_returns = self._repo.get_returned_quantities_for_transaction(
+            original_transaction_id, tenant_id=tenant_id
+        )
         returned_index: dict[tuple[str, str], Decimal] = {
             (r["drug_code"], r.get("batch_number") or ""): to_decimal(r["returned_qty"])
             for r in prior_returns
@@ -292,6 +301,7 @@ class VoidReturnMixin:
 
         self._repo.update_transaction_status(
             return_txn_id,
+            tenant_id=tenant_id,
             status=TransactionStatus.returned.value,
         )
 
@@ -315,24 +325,28 @@ class VoidReturnMixin:
         )
         return ReturnResponse.model_validate(return_row)
 
-    def get_return(self, return_id: int) -> ReturnDetailResponse | None:
+    def get_return(self, return_id: int, *, tenant_id: int) -> ReturnDetailResponse | None:
         """Return the full detail of a return record, including its items."""
-        row = self._repo.get_return(return_id)
+        row = self._repo.get_return(return_id, tenant_id=tenant_id)
         if row is None:
             return None
         # Items come from the linked return transaction
         items: list[PosCartItem] = []
         if row.get("return_transaction_id"):
-            item_rows = self._repo.get_transaction_items(int(row["return_transaction_id"]))
+            item_rows = self._repo.get_transaction_items(
+                int(row["return_transaction_id"]), tenant_id=tenant_id
+            )
             items = [PosCartItem.model_validate(r) for r in item_rows]
         return ReturnDetailResponse.model_validate({**row, "items": items})
 
     def list_returns_for_transaction(
         self,
         original_transaction_id: int,
+        *,
+        tenant_id: int,
     ) -> list[ReturnResponse]:
         """List all return records linked to an original transaction."""
-        rows = self._repo.list_returns_for_transaction(original_transaction_id)
+        rows = self._repo.list_returns_for_transaction(original_transaction_id, tenant_id=tenant_id)
         return [ReturnResponse.model_validate(r) for r in rows]
 
     def list_returns(

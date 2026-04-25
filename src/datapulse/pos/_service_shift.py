@@ -53,7 +53,7 @@ class ShiftCashMixin:
         Raises :class:`PosError` if the terminal already has an open shift —
         the current shift must be closed before starting a new one.
         """
-        existing = self._repo.get_current_shift(terminal_id)
+        existing = self._repo.get_current_shift(terminal_id, tenant_id=tenant_id)
         if existing is not None:
             raise PosError(
                 message=(
@@ -79,6 +79,7 @@ class ShiftCashMixin:
         self,
         *,
         shift_id: int,
+        tenant_id: int,
         closing_cash: Decimal,
     ) -> ShiftSummaryResponse:
         """Close a shift — computes expected cash and variance from drawer events.
@@ -88,7 +89,7 @@ class ShiftCashMixin:
         """
         from datapulse.pos.terminal import compute_expected_cash, compute_variance
 
-        shift = self._repo.get_shift_by_id(shift_id)
+        shift = self._repo.get_shift_by_id(shift_id, tenant_id=tenant_id)
         if shift is None:
             raise PosError(
                 message=f"Shift {shift_id} not found",
@@ -102,7 +103,9 @@ class ShiftCashMixin:
 
         # Aggregate cash drawer events since shift opened
         shift_opened = shift["opened_at"]
-        cash_events = self._repo.get_cash_events(int(shift["terminal_id"]), limit=10000)
+        cash_events = self._repo.get_cash_events(
+            int(shift["terminal_id"]), tenant_id=tenant_id, limit=10000
+        )
         events_in_shift = [e for e in cash_events if e["timestamp"] >= shift_opened]
 
         cash_sales = sum(
@@ -138,6 +141,7 @@ class ShiftCashMixin:
         now = datetime.now(tz=UTC)
         updated = self._repo.update_shift_record(
             shift_id,
+            tenant_id=tenant_id,
             closing_cash=closing_cash,
             expected_cash=expected,
             variance=variance,
@@ -151,6 +155,7 @@ class ShiftCashMixin:
 
         summary_data = self._repo.get_shift_summary_data(
             int(shift["terminal_id"]),
+            tenant_id=tenant_id,
             opened_at=shift_opened,
             closed_at=now,
         )
@@ -170,9 +175,9 @@ class ShiftCashMixin:
             }
         )
 
-    def get_current_shift(self, terminal_id: int) -> ShiftRecord | None:
+    def get_current_shift(self, terminal_id: int, *, tenant_id: int) -> ShiftRecord | None:
         """Return the currently open shift for a terminal (None if no open shift)."""
-        row = self._repo.get_current_shift(terminal_id)
+        row = self._repo.get_current_shift(terminal_id, tenant_id=tenant_id)
         return ShiftRecord.model_validate(row) if row else None
 
     def get_active_shift_for_staff(
@@ -213,9 +218,9 @@ class ShiftCashMixin:
             sales_so_far_egp=to_decimal(summary.get("sales_so_far_egp", 0)),
         )
 
-    def get_shift_by_id(self, shift_id: int) -> ShiftRecord | None:
+    def get_shift_by_id(self, shift_id: int, *, tenant_id: int) -> ShiftRecord | None:
         """Return a shift by its primary key (None if not found)."""
-        row = self._repo.get_shift_by_id(shift_id)
+        row = self._repo.get_shift_by_id(shift_id, tenant_id=tenant_id)
         return ShiftRecord.model_validate(row) if row else None
 
     def list_shifts(
@@ -258,10 +263,11 @@ class ShiftCashMixin:
         self,
         terminal_id: int,
         *,
+        tenant_id: int,
         limit: int = 100,
     ) -> list[CashDrawerEventResponse]:
         """Return cash drawer events for a terminal, most recent first."""
-        rows = self._repo.get_cash_events(terminal_id, limit=limit)
+        rows = self._repo.get_cash_events(terminal_id, tenant_id=tenant_id, limit=limit)
         return [CashDrawerEventResponse.model_validate(r) for r in rows]
 
     def verify_pharmacist_pin(

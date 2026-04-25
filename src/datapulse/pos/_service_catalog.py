@@ -223,14 +223,14 @@ class CatalogMixin:
 
     def get_receipt_pdf(self, transaction_id: int, tenant_id: int) -> bytes:
         """Return stored PDF receipt bytes; regenerate on demand if missing."""
-        row = self._repo.get_receipt(transaction_id, "pdf")
+        row = self._repo.get_receipt(transaction_id, "pdf", tenant_id=tenant_id)
         if row and row.get("content"):
             return bytes(row["content"])
         return self._regenerate_receipt(transaction_id, tenant_id, "pdf")
 
     def get_receipt_thermal(self, transaction_id: int, tenant_id: int) -> bytes:
         """Return stored thermal ESC/POS bytes; regenerate on demand if missing."""
-        row = self._repo.get_receipt(transaction_id, "thermal")
+        row = self._repo.get_receipt(transaction_id, "thermal", tenant_id=tenant_id)
         if row and row.get("content"):
             return bytes(row["content"])
         return self._regenerate_receipt(transaction_id, tenant_id, "thermal")
@@ -239,10 +239,10 @@ class CatalogMixin:
         """Regenerate a receipt on demand (fallback when no stored receipt exists)."""
         from fastapi import HTTPException  # local import avoids circular dependency
 
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
-        items = self._repo.get_transaction_items(transaction_id)
+        items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         payment_info = {
             "method": header.get("payment_method", "cash"),
             "amount_charged": to_decimal(header.get("grand_total", 0)),

@@ -64,6 +64,7 @@ class TerminalRepoMixin:
         terminal_id: int,
         status: str,
         *,
+        tenant_id: int,
         closing_cash: Decimal | None = None,
     ) -> dict[str, Any] | None:
         """Update terminal status (and optionally closing_cash). Returns updated row or None."""
@@ -74,19 +75,25 @@ class TerminalRepoMixin:
                     SET    status       = :status,
                            closing_cash = COALESCE(:closing_cash, closing_cash),
                            closed_at    = CASE WHEN :status = 'closed' THEN now() ELSE closed_at END
-                    WHERE  id = :terminal_id
+                    WHERE  id        = :terminal_id
+                    AND    tenant_id = :tenant_id
                     RETURNING
                         id, tenant_id, site_code, staff_id, terminal_name,
                         status, opened_at, closed_at, opening_cash, closing_cash
                 """),
-                {"terminal_id": terminal_id, "status": status, "closing_cash": closing_cash},
+                {
+                    "terminal_id": terminal_id,
+                    "tenant_id": tenant_id,
+                    "status": status,
+                    "closing_cash": closing_cash,
+                },
             )
             .mappings()
             .first()
         )
         return dict(row) if row else None
 
-    def get_terminal_session(self, terminal_id: int) -> dict[str, Any] | None:
+    def get_terminal_session(self, terminal_id: int, *, tenant_id: int) -> dict[str, Any] | None:
         """Return a single terminal session by ID or None if not found."""
         row = (
             self._session.execute(
@@ -94,9 +101,10 @@ class TerminalRepoMixin:
                     SELECT id, tenant_id, site_code, staff_id, terminal_name,
                            status, opened_at, closed_at, opening_cash, closing_cash
                     FROM   pos.terminal_sessions
-                    WHERE  id = :terminal_id
+                    WHERE  id        = :terminal_id
+                    AND    tenant_id = :tenant_id
                 """),
-                {"terminal_id": terminal_id},
+                {"terminal_id": terminal_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()

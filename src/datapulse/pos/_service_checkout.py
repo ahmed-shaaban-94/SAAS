@@ -54,7 +54,7 @@ class CheckoutMixin:
 
         Payment processing is gateway-delegated (see :mod:`datapulse.pos.payment`).
         """
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             raise PosError(
                 message=f"Transaction {transaction_id} not found",
@@ -67,7 +67,7 @@ class CheckoutMixin:
                 detail=f"transaction_id={transaction_id} status={header['status']}",
             )
 
-        items = self._repo.get_transaction_items(transaction_id)
+        items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         if not items:
             raise PosError(
                 message=f"Transaction {transaction_id} has no items to check out",
@@ -185,6 +185,7 @@ class CheckoutMixin:
         # inventory movements fire.
         updated = self._repo.update_transaction_status(
             transaction_id,
+            tenant_id=tenant_id,
             status=TransactionStatus.completed.value,
             payment_method=request.payment_method.value,
             receipt_number=receipt_number,

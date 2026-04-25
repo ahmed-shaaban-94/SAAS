@@ -54,10 +54,11 @@ class TerminalOpsMixin:
         terminal_id: int,
         target: TerminalStatus,
         *,
+        tenant_id: int,
         closing_cash: Decimal | None = None,
     ) -> TerminalSession:
         """Validate + apply a terminal status change. Raises if illegal."""
-        current = self._repo.get_terminal_session(terminal_id)
+        current = self._repo.get_terminal_session(terminal_id, tenant_id=tenant_id)
         if current is None:
             raise PosError(
                 message=f"Terminal {terminal_id} does not exist",
@@ -65,7 +66,7 @@ class TerminalOpsMixin:
             )
         assert_can_transition(terminal_id, current["status"], target)
         updated = self._repo.update_terminal_status(
-            terminal_id, target.value, closing_cash=closing_cash
+            terminal_id, target.value, tenant_id=tenant_id, closing_cash=closing_cash
         )
         if updated is None:
             raise PosError(
@@ -74,23 +75,24 @@ class TerminalOpsMixin:
             )
         return TerminalSession.model_validate(updated)
 
-    def pause_terminal(self, terminal_id: int) -> TerminalSession:
+    def pause_terminal(self, terminal_id: int, *, tenant_id: int) -> TerminalSession:
         """Move ``active`` -> ``paused``."""
-        return self._transition_terminal(terminal_id, TerminalStatus.paused)
+        return self._transition_terminal(terminal_id, TerminalStatus.paused, tenant_id=tenant_id)
 
-    def resume_terminal(self, terminal_id: int) -> TerminalSession:
+    def resume_terminal(self, terminal_id: int, *, tenant_id: int) -> TerminalSession:
         """Move ``paused`` -> ``active``."""
-        return self._transition_terminal(terminal_id, TerminalStatus.active)
+        return self._transition_terminal(terminal_id, TerminalStatus.active, tenant_id=tenant_id)
 
     def close_terminal(
         self,
         terminal_id: int,
         *,
+        tenant_id: int,
         closing_cash: Decimal,
     ) -> TerminalSession:
         """Close a terminal session and record the closing cash drawer total."""
         return self._transition_terminal(
-            terminal_id, TerminalStatus.closed, closing_cash=closing_cash
+            terminal_id, TerminalStatus.closed, tenant_id=tenant_id, closing_cash=closing_cash
         )
 
     def list_active_terminals(self, tenant_id: int) -> list[TerminalSession]:
@@ -98,6 +100,6 @@ class TerminalOpsMixin:
         rows = self._repo.get_active_terminals(tenant_id)
         return [TerminalSession.model_validate(r) for r in rows]
 
-    def get_terminal(self, terminal_id: int) -> TerminalSession | None:
-        row = self._repo.get_terminal_session(terminal_id)
+    def get_terminal(self, terminal_id: int, *, tenant_id: int) -> TerminalSession | None:
+        row = self._repo.get_terminal_session(terminal_id, tenant_id=tenant_id)
         return TerminalSession.model_validate(row) if row else None
