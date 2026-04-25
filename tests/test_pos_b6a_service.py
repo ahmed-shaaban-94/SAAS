@@ -350,7 +350,7 @@ async def test_process_return_success(
     assert result.original_transaction_id == 1
     assert result.return_transaction_id == 20
     assert result.refund_amount == Decimal("50")
-    mock_repo.get_transaction_for_update.assert_called_once_with(1)
+    mock_repo.get_transaction_for_update.assert_called_once_with(1, tenant_id=1)
 
     # Inventory restocked
     mock_inventory.record_movement.assert_awaited_once()

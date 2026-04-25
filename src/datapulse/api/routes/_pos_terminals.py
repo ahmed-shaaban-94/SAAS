@@ -145,8 +145,8 @@ def get_terminal(
     user: CurrentUser,
 ) -> TerminalSessionResponse:
     """Fetch a single terminal session by ID."""
-    _ = user  # tenant scoped via RLS
-    session = service.get_terminal(terminal_id)
+    tenant_id = _tenant_id_of(user)
+    session = service.get_terminal(terminal_id, tenant_id=tenant_id)
     if session is None:
         raise HTTPException(status_code=404, detail=f"Terminal {terminal_id} not found")
     return TerminalSessionResponse.model_validate(session.model_dump())
@@ -165,8 +165,8 @@ def pause_terminal(
     user: CurrentUser,
 ) -> TerminalSessionResponse:
     """Pause a terminal — operator stepped away; blocks new transactions."""
-    _ = user
-    session = service.pause_terminal(terminal_id)
+    tenant_id = _tenant_id_of(user)
+    session = service.pause_terminal(terminal_id, tenant_id=tenant_id)
     return TerminalSessionResponse.model_validate(session.model_dump())
 
 
@@ -183,8 +183,8 @@ def resume_terminal(
     user: CurrentUser,
 ) -> TerminalSessionResponse:
     """Resume a paused terminal back to ``active`` state."""
-    _ = user
-    session = service.resume_terminal(terminal_id)
+    tenant_id = _tenant_id_of(user)
+    session = service.resume_terminal(terminal_id, tenant_id=tenant_id)
     return TerminalSessionResponse.model_validate(session.model_dump())
 
 
@@ -210,11 +210,15 @@ def close_terminal(
     close another cashier's active terminal. The permission is already
     seeded — just was never required by the route.
     """
-    _ = user
     if idem.replay:
         return TerminalSessionResponse.model_validate(idem.cached_body)
 
-    session = service.close_terminal(terminal_id, closing_cash=Decimal(str(body.closing_cash)))
+    tenant_id = _tenant_id_of(user)
+    session = service.close_terminal(
+        terminal_id,
+        closing_cash=Decimal(str(body.closing_cash)),
+        tenant_id=tenant_id,
+    )
     result = TerminalSessionResponse.model_validate(session.model_dump())
     record_response(
         db_session,

@@ -110,8 +110,8 @@ def get_current_shift(
     user: CurrentUser,
 ) -> ShiftRecord:
     """Return the currently open shift for a terminal."""
-    _ = user
-    shift = service.get_current_shift(terminal_id)
+    tenant_id = _tenant_id_of(user)
+    shift = service.get_current_shift(terminal_id, tenant_id=tenant_id)
     if shift is None:
         raise HTTPException(
             status_code=404,
@@ -156,7 +156,7 @@ def close_shift(
         return ShiftSummaryResponse.model_validate(idem.cached_body)
 
     tenant_id = _tenant_id_of(user)
-    shift = service.get_shift_by_id(shift_id)
+    shift = service.get_shift_by_id(shift_id, tenant_id=tenant_id)
     if shift is None:
         raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found")
     try:
@@ -182,6 +182,7 @@ def close_shift(
     result = service.close_shift(
         shift_id=shift_id,
         closing_cash=Decimal(str(body.closing_cash)),
+        tenant_id=tenant_id,
     )
     record_response(
         db_session,
@@ -231,5 +232,5 @@ def list_cash_events(
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> list[CashDrawerEventResponse]:
     """List cash drawer events for a terminal, most recent first."""
-    _ = user
-    return service.get_cash_events(terminal_id, limit=limit)
+    tenant_id = _tenant_id_of(user)
+    return service.get_cash_events(terminal_id, tenant_id=tenant_id, limit=limit)

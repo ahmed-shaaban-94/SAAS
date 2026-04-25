@@ -174,10 +174,11 @@ async def update_item(
     """
     if idem.replay:
         return PosCartItem.model_validate(idem.cached_body)
-    _ = user
+    tenant_id = _tenant_id_of(user)
     result = service.update_item(
         item_id,
         transaction_id=transaction_id,
+        tenant_id=tenant_id,
         quantity=Decimal(str(body.quantity)),
         unit_price=(Decimal(str(body.override_price)) if body.override_price is not None else None),
         discount=Decimal(str(body.discount)) if body.discount is not None else None,
@@ -205,8 +206,8 @@ async def remove_item(
     """Remove a single line item from a draft transaction."""
     if idem.replay:
         return Response(status_code=204)
-    _ = user
-    deleted = service.remove_item(item_id, transaction_id=transaction_id)
+    tenant_id = _tenant_id_of(user)
+    deleted = service.remove_item(item_id, transaction_id=transaction_id, tenant_id=tenant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
     record_response(db_session, idem.key, 204, None)
