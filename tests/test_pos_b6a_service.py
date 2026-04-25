@@ -680,7 +680,7 @@ def test_close_shift_success(service: PosService, mock_repo: MagicMock) -> None:
         "total_sales": Decimal("300"),
     }
 
-    result = service.close_shift(shift_id=1, closing_cash=Decimal("750"))
+    result = service.close_shift(shift_id=1, tenant_id=1, closing_cash=Decimal("750"))
 
     assert result.transaction_count == 5
     assert result.total_sales == Decimal("300")
@@ -694,24 +694,24 @@ def test_close_shift_success(service: PosService, mock_repo: MagicMock) -> None:
 def test_close_shift_not_found(service: PosService, mock_repo: MagicMock) -> None:
     mock_repo.get_shift_by_id.return_value = None
     with pytest.raises(PosError, match="not found"):
-        service.close_shift(shift_id=999, closing_cash=Decimal("0"))
+        service.close_shift(shift_id=999, tenant_id=1, closing_cash=Decimal("0"))
 
 
 def test_close_shift_already_closed(service: PosService, mock_repo: MagicMock) -> None:
     shift = _shift_row(closed_at=datetime(2026, 4, 15, 18, 0, 0, tzinfo=UTC))
     mock_repo.get_shift_by_id.return_value = shift
     with pytest.raises(PosError, match="already closed"):
-        service.close_shift(shift_id=1, closing_cash=Decimal("750"))
+        service.close_shift(shift_id=1, tenant_id=1, closing_cash=Decimal("750"))
 
 
 def test_get_current_shift_none(service: PosService, mock_repo: MagicMock) -> None:
     mock_repo.get_current_shift.return_value = None
-    assert service.get_current_shift(10) is None
+    assert service.get_current_shift(10, tenant_id=1) is None
 
 
 def test_get_current_shift_found(service: PosService, mock_repo: MagicMock) -> None:
     mock_repo.get_current_shift.return_value = _shift_row()
-    result = service.get_current_shift(10)
+    result = service.get_current_shift(10, tenant_id=1)
     assert result is not None
     assert result.id == 1
 
@@ -758,6 +758,6 @@ def test_get_cash_events(service: PosService, mock_repo: MagicMock) -> None:
             "timestamp": datetime(2026, 4, 15, 9, 0, 0, tzinfo=UTC),
         }
     ]
-    results = service.get_cash_events(terminal_id=10, limit=50)
+    results = service.get_cash_events(terminal_id=10, tenant_id=1, limit=50)
     assert len(results) == 1
     assert results[0].event_type == CashDrawerEventType.sale
