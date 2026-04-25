@@ -88,18 +88,21 @@ export default function PosTerminalPage() {
   const voucherCode =
     appliedDiscount?.source === "voucher" ? appliedDiscount.ref : null;
 
-  // Browse catalog for Quick Pick (top 9). usePosProducts only fires when
-  // query.length >= 2, so we use a broad two-letter seed ("ab") so the
-  // search endpoint returns *some* products — when a Favorites API lands
-  // this will switch to `/pos/terminals/{id}/favorites`.
+  // UI state — declared early so the catalog SWR can drive off scanQuery.
+  const [scanQuery, setScanQuery] = useState("");
+
+  // Catalog SWR drives both the Quick Pick tiles AND handleScanSubmit's
+  // exact-match lookup. When the cashier is actively typing (2+ chars),
+  // we hit /pos/products/search?q={typed} so any code/name they enter
+  // resolves against live API results — previously the lookup only
+  // searched a hardcoded "ab" prefetch and would silently "no-match"
+  // anything outside that 20-row slice. When the scan bar is idle
+  // (empty), we fall back to the seed query so QuickPick stays useful.
   const { products: catalog } = usePosProducts({
-    query: terminal ? "ab" : "",
+    query: scanQuery.trim().length >= 2 ? scanQuery.trim() : terminal ? "ab" : "",
     siteCode: terminal?.site_code ?? "",
   });
   const quickPick = useMemo(() => catalog.slice(0, 9).map(productToQuickPick), [catalog]);
-
-  // UI state
-  const [scanQuery, setScanQuery] = useState("");
   const [scanToast, setScanToast] = useState<string | null>(null);
   const [activePayment, setActivePayment] = useState<TilePaymentMethod>("cash");
   const [cashTendered, setCashTendered] = useState("");
