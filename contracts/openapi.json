@@ -9637,6 +9637,37 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerifyPinRequest": {
+        "description": "Body of ``POST /rbac/verify-pin``.",
+        "properties": {
+          "pin": {
+            "description": "4-10 digit numeric PIN",
+            "maxLength": 10,
+            "minLength": 4,
+            "title": "Pin",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pin"
+        ],
+        "title": "VerifyPinRequest",
+        "type": "object"
+      },
+      "VerifyPinResponse": {
+        "description": "Response of ``POST /rbac/verify-pin``.",
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "approved"
+        ],
+        "title": "VerifyPinResponse",
+        "type": "object"
+      },
       "WaterfallAnalysis": {
         "description": "Revenue change decomposition across dimensions.",
         "properties": {
@@ -18872,6 +18903,56 @@
         "summary": "Get Query Result Endpoint",
         "tags": [
           "queries"
+        ]
+      }
+    },
+    "/api/v1/rbac/verify-pin": {
+      "post": {
+        "description": "Approve a manager-PIN override for the current tenant.\n\nBody: ``{\"pin\": \"1234\"}``. Returns ``{\"approved\": true}`` when the\npeppered hash of ``pin`` matches at least one active member's\n``pharmacist_pin_hash`` in the same tenant; ``{\"approved\": false}``\notherwise. A `false` is NOT a 401 — the modal lets the cashier\nretry with a different PIN.\n\nRate-limited to 10/min per IP to slow brute-force; combine with the\nfront-end's 3-strikes lockout once that lands.",
+        "operationId": "verify_pin_api_v1_rbac_verify_pin_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyPinRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyPinResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Verify Pin",
+        "tags": [
+          "rbac"
         ]
       }
     },
