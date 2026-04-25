@@ -29,6 +29,11 @@ from datapulse.api.deps import get_pos_service, get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.billing.pos_guard import require_pos_plan
 from datapulse.logging import get_logger
+from datapulse.pos.idempotency import (
+    IdempotencyContext,
+    idempotency_dependency,
+    record_response,
+)
 from datapulse.pos.models import (
     AddItemRequest,
     CashCountRequest,
@@ -74,6 +79,15 @@ router = APIRouter(
 ServiceDep = Annotated[PosService, Depends(get_pos_service)]
 CurrentUser = Annotated[dict, Depends(get_current_user)]
 SessionDep = Annotated[Session, Depends(get_tenant_session)]
+
+# B008-safe: pre-construct idempotency dependencies at module load time.
+_add_item_idempotency_dep = idempotency_dependency("POST /pos/transactions/{id}/items")
+_update_item_idempotency_dep = idempotency_dependency(
+    "PATCH /pos/transactions/{id}/items/{item_id}"
+)
+_remove_item_idempotency_dep = idempotency_dependency(
+    "DELETE /pos/transactions/{id}/items/{item_id}"
+)
 
 
 def _tenant_id_of(user: CurrentUser) -> int:
@@ -353,12 +367,16 @@ async def add_item(
     body: AddItemRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_add_item_idempotency_dep)],
 ) -> PosCartItem:
     """Add a drug to the active draft transaction (FEFO batch + stock check)."""
+    if idem.replay:
+        return PosCartItem.model_validate(idem.cached_body)
     txn = service.get_transaction_detail(transaction_id)
     if txn is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
-    return await service.add_item(
+    result = await service.add_item(
         transaction_id=transaction_id,
         tenant_id=_tenant_id_of(user),
         site_code=txn.site_code,
@@ -369,6 +387,9 @@ async def add_item(
         ),
         pharmacist_id=body.pharmacist_id,
     )
+    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
+    db_session.commit()
+    return result
 
 
 @router.patch(
@@ -376,23 +397,30 @@ async def add_item(
     response_model=PosCartItem,
 )
 @limiter.limit("30/minute")
-def update_item(
+async def update_item(
     request: Request,
     transaction_id: Annotated[int, Path(ge=1)],
     item_id: Annotated[int, Path(ge=1)],
     body: UpdateItemRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_update_item_idempotency_dep)],
 ) -> PosCartItem:
     """Update an existing line item's quantity / price / discount."""
+    if idem.replay:
+        return PosCartItem.model_validate(idem.cached_body)
     _ = user
     _ = transaction_id  # routing-only; item_id is unique
-    return service.update_item(
+    result = service.update_item(
         item_id,
         quantity=Decimal(str(body.quantity)),
         unit_price=Decimal(str(body.override_price)) if body.override_price else Decimal("0"),
         discount=Decimal(str(body.discount)) if body.discount is not None else None,
     )
+    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
+    db_session.commit()
+    return result
 
 
 @router.delete(
@@ -400,19 +428,26 @@ def update_item(
     status_code=204,
 )
 @limiter.limit("30/minute")
-def remove_item(
+async def remove_item(
     request: Request,
     transaction_id: Annotated[int, Path(ge=1)],
     item_id: Annotated[int, Path(ge=1)],
     service: ServiceDep,
     user: CurrentUser,
-) -> None:
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_remove_item_idempotency_dep)],
+) -> Response:
     """Remove a single line item from a draft transaction."""
+    if idem.replay:
+        return Response(status_code=204)
     _ = user
     _ = transaction_id
     deleted = service.remove_item(item_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
+    record_response(db_session, idem.key, 204, None)
+    db_session.commit()
+    return Response(status_code=204)
 
 
 @router.post(
@@ -892,11 +927,6 @@ from datapulse.pos.devices import (  # noqa: E402
     DeviceProof,
     device_token_verifier,
     register_device,
-)
-from datapulse.pos.idempotency import (  # noqa: E402
-    IdempotencyContext,
-    idempotency_dependency,
-    record_response,
 )
 from datapulse.pos.models import (  # noqa: E402  # noqa: E402,F811
     CapabilitiesDoc,
