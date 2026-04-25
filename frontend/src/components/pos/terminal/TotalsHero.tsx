@@ -94,7 +94,9 @@ export function TotalsHero({
 
       <div className="relative mt-3 flex flex-wrap gap-1.5">
         <Chip label="Subtotal" value={fmtEgp(subtotal)} />
-        <Chip label="VAT 14%" value={fmtEgp(taxTotal)} />
+        {taxTotal > 0 && (
+          <Chip label="VAT" value={fmtEgp(taxTotal)} />
+        )}
         {itemDiscountTotal > 0 && (
           <Chip label="Discount" value={`−${fmtEgp(itemDiscountTotal)}`} tone="green" />
         )}
