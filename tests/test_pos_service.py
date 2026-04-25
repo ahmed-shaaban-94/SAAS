@@ -278,9 +278,11 @@ class TestTerminalLifecycle:
     ):
         mock_repo.get_terminal_session.return_value = _terminal_row("active")
         mock_repo.update_terminal_status.return_value = _terminal_row("paused")
-        result = service.pause_terminal(1)
+        result = service.pause_terminal(1, tenant_id=1)
         assert result.status == TerminalStatus.paused
-        mock_repo.update_terminal_status.assert_called_once_with(1, "paused", closing_cash=None)
+        mock_repo.update_terminal_status.assert_called_once_with(
+            1, "paused", tenant_id=1, closing_cash=None
+        )
 
     def test_pause_terminal_rejects_closed(
         self,
@@ -289,7 +291,7 @@ class TestTerminalLifecycle:
     ):
         mock_repo.get_terminal_session.return_value = _terminal_row("closed")
         with pytest.raises(TerminalNotActiveError):
-            service.pause_terminal(1)
+            service.pause_terminal(1, tenant_id=1)
 
     def test_resume_terminal_only_from_paused(
         self,
@@ -298,7 +300,7 @@ class TestTerminalLifecycle:
     ):
         mock_repo.get_terminal_session.return_value = _terminal_row("paused")
         mock_repo.update_terminal_status.return_value = _terminal_row("active")
-        result = service.resume_terminal(1)
+        result = service.resume_terminal(1, tenant_id=1)
         assert result.status == TerminalStatus.paused or result.status == TerminalStatus.active
 
     def test_close_terminal_records_closing_cash(
@@ -311,11 +313,12 @@ class TestTerminalLifecycle:
             **_terminal_row("closed"),
             "closing_cash": Decimal("250"),
         }
-        result = service.close_terminal(1, closing_cash=Decimal("250"))
+        result = service.close_terminal(1, tenant_id=1, closing_cash=Decimal("250"))
         assert result.status == TerminalStatus.closed
         mock_repo.update_terminal_status.assert_called_once_with(
             1,
             "closed",
+            tenant_id=1,
             closing_cash=Decimal("250"),
         )
 
@@ -326,7 +329,7 @@ class TestTerminalLifecycle:
     ):
         mock_repo.get_terminal_session.return_value = None
         with pytest.raises(PosError):
-            service.close_terminal(99, closing_cash=Decimal("0"))
+            service.close_terminal(99, tenant_id=1, closing_cash=Decimal("0"))
 
     def test_list_active_terminals(
         self,
@@ -724,6 +727,7 @@ class TestUpdateRemoveItem:
         }
         item = service.update_item(
             1,
+            tenant_id=1,
             quantity=Decimal("4"),
             unit_price=Decimal("12.5"),
         )
@@ -741,7 +745,7 @@ class TestUpdateRemoveItem:
     ):
         mock_repo.update_item_quantity.return_value = None
         with pytest.raises(PosError):
-            service.update_item(99, quantity=Decimal("1"), unit_price=Decimal("1"))
+            service.update_item(99, tenant_id=1, quantity=Decimal("1"), unit_price=Decimal("1"))
 
     def test_remove_item_returns_repo_result(
         self,
@@ -749,7 +753,7 @@ class TestUpdateRemoveItem:
         mock_repo: MagicMock,
     ):
         mock_repo.remove_item.return_value = True
-        assert service.remove_item(1) is True
+        assert service.remove_item(1, tenant_id=1) is True
 
 
 # ---------------------------------------------------------------------------
@@ -1081,7 +1085,7 @@ class TestQueries:
         mock_repo: MagicMock,
     ):
         mock_repo.get_transaction.return_value = None
-        assert service.get_transaction_detail(1) is None
+        assert service.get_transaction_detail(1, tenant_id=1) is None
 
     def test_get_transaction_detail_includes_items(
         self,
@@ -1104,7 +1108,7 @@ class TestQueries:
                 "pharmacist_id": None,
             }
         ]
-        detail = service.get_transaction_detail(100)
+        detail = service.get_transaction_detail(100, tenant_id=1)
         assert detail is not None
         assert len(detail.items) == 1
 

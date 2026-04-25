@@ -186,10 +186,11 @@ class PosService:
         terminal_id: int,
         target: TerminalStatus,
         *,
+        tenant_id: int,
         closing_cash: Decimal | None = None,
     ) -> TerminalSession:
         """Validate + apply a terminal status change. Raises if illegal."""
-        current = self._repo.get_terminal_session(terminal_id)
+        current = self._repo.get_terminal_session(terminal_id, tenant_id=tenant_id)
         if current is None:
             raise PosError(
                 message=f"Terminal {terminal_id} does not exist",
@@ -197,7 +198,7 @@ class PosService:
             )
         assert_can_transition(terminal_id, current["status"], target)
         updated = self._repo.update_terminal_status(
-            terminal_id, target.value, closing_cash=closing_cash
+            terminal_id, target.value, tenant_id=tenant_id, closing_cash=closing_cash
         )
         if updated is None:
             raise PosError(
@@ -206,23 +207,24 @@ class PosService:
             )
         return TerminalSession.model_validate(updated)
 
-    def pause_terminal(self, terminal_id: int) -> TerminalSession:
+    def pause_terminal(self, terminal_id: int, *, tenant_id: int) -> TerminalSession:
         """Move ``active`` -> ``paused``."""
-        return self._transition_terminal(terminal_id, TerminalStatus.paused)
+        return self._transition_terminal(terminal_id, TerminalStatus.paused, tenant_id=tenant_id)
 
-    def resume_terminal(self, terminal_id: int) -> TerminalSession:
+    def resume_terminal(self, terminal_id: int, *, tenant_id: int) -> TerminalSession:
         """Move ``paused`` -> ``active``."""
-        return self._transition_terminal(terminal_id, TerminalStatus.active)
+        return self._transition_terminal(terminal_id, TerminalStatus.active, tenant_id=tenant_id)
 
     def close_terminal(
         self,
         terminal_id: int,
         *,
+        tenant_id: int,
         closing_cash: Decimal,
     ) -> TerminalSession:
         """Close a terminal session and record the closing cash drawer total."""
         return self._transition_terminal(
-            terminal_id, TerminalStatus.closed, closing_cash=closing_cash
+            terminal_id, TerminalStatus.closed, tenant_id=tenant_id, closing_cash=closing_cash
         )
 
     def list_active_terminals(self, tenant_id: int) -> list[TerminalSession]:
@@ -271,12 +273,14 @@ class PosService:
         )
         return TransactionResponse.model_validate(row)
 
-    def get_transaction_detail(self, transaction_id: int) -> TransactionDetailResponse | None:
+    def get_transaction_detail(
+        self, transaction_id: int, *, tenant_id: int
+    ) -> TransactionDetailResponse | None:
         """Full transaction with line items hydrated."""
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             return None
-        item_rows = self._repo.get_transaction_items(transaction_id)
+        item_rows = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         items = [PosCartItem.model_validate(r) for r in item_rows]
         return TransactionDetailResponse.model_validate({**header, "items": items})
 
@@ -395,6 +399,7 @@ class PosService:
         self,
         item_id: int,
         *,
+        tenant_id: int,
         quantity: Decimal,
         unit_price: Decimal,
         discount: Decimal | None = None,
@@ -405,6 +410,7 @@ class PosService:
             line_total = (line_total - _to_decimal(discount)).quantize(Decimal("0.0001"))
         row = self._repo.update_item_quantity(
             item_id,
+            tenant_id=tenant_id,
             quantity=quantity,
             line_total=line_total,
             discount=discount,
@@ -419,9 +425,9 @@ class PosService:
             {**row, "unit_price": unit_price, "drug_name": row.get("drug_name", "")}
         )
 
-    def remove_item(self, item_id: int) -> bool:
+    def remove_item(self, item_id: int, *, tenant_id: int) -> bool:
         """Delete a single item from a draft transaction."""
-        return self._repo.remove_item(item_id)
+        return self._repo.remove_item(item_id, tenant_id=tenant_id)
 
     # ──────────────────────────────────────────────────────────────
     # Checkout (async — records inventory movements + bronze write)
@@ -440,7 +446,7 @@ class PosService:
         change for cash and validates sufficient tender. Card / insurance
         / split flows are added in B4 via the :class:`PaymentGateway` ABC.
         """
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             raise PosError(
                 message=f"Transaction {transaction_id} not found",
@@ -453,7 +459,7 @@ class PosService:
                 detail=f"transaction_id={transaction_id} status={header['status']}",
             )
 
-        items = self._repo.get_transaction_items(transaction_id)
+        items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         if not items:
             raise PosError(
                 message=f"Transaction {transaction_id} has no items to check out",
@@ -571,6 +577,7 @@ class PosService:
         # inventory movements fire.
         updated = self._repo.update_transaction_status(
             transaction_id,
+            tenant_id=tenant_id,
             status=TransactionStatus.completed.value,
             payment_method=request.payment_method.value,
             receipt_number=receipt_number,
@@ -818,14 +825,14 @@ class PosService:
 
     def get_receipt_pdf(self, transaction_id: int, tenant_id: int) -> bytes:
         """Return stored PDF receipt bytes; regenerate on demand if missing."""
-        row = self._repo.get_receipt(transaction_id, "pdf")
+        row = self._repo.get_receipt(transaction_id, "pdf", tenant_id=tenant_id)
         if row and row.get("content"):
             return bytes(row["content"])
         return self._regenerate_receipt(transaction_id, tenant_id, "pdf")
 
     def get_receipt_thermal(self, transaction_id: int, tenant_id: int) -> bytes:
         """Return stored thermal ESC/POS bytes; regenerate on demand if missing."""
-        row = self._repo.get_receipt(transaction_id, "thermal")
+        row = self._repo.get_receipt(transaction_id, "thermal", tenant_id=tenant_id)
         if row and row.get("content"):
             return bytes(row["content"])
         return self._regenerate_receipt(transaction_id, tenant_id, "thermal")
@@ -834,10 +841,10 @@ class PosService:
         """Regenerate a receipt on demand (fallback when no stored receipt exists)."""
         from fastapi import HTTPException  # local import avoids circular dependency
 
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
-        items = self._repo.get_transaction_items(transaction_id)
+        items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         payment_info = {
             "method": header.get("payment_method", "cash"),
             "amount_charged": float(_to_decimal(header.get("grand_total", 0))),
@@ -876,7 +883,7 @@ class PosService:
 
         Raises :class:`PosError` for not-found or wrong-state.
         """
-        header = self._repo.get_transaction(transaction_id)
+        header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
             raise PosError(
                 message=f"Transaction {transaction_id} not found",
@@ -891,7 +898,7 @@ class PosService:
             )
 
         # Reverse inventory movements first — before status update
-        items = self._repo.get_transaction_items(transaction_id)
+        items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         for item in items:
             await self._inventory.record_movement(
                 StockMovement(
@@ -906,6 +913,7 @@ class PosService:
 
         self._repo.update_transaction_status(
             transaction_id,
+            tenant_id=tenant_id,
             status=TransactionStatus.voided.value,
         )
 
@@ -950,7 +958,7 @@ class PosService:
         Raises :class:`PosError` for not-found, wrong-state, empty items,
         non-matching lines, or quantity over-return.
         """
-        original = self._repo.get_transaction(original_transaction_id)
+        original = self._repo.get_transaction(original_transaction_id, tenant_id=tenant_id)
         if original is None:
             raise PosError(
                 message=f"Transaction {original_transaction_id} not found",
@@ -973,13 +981,17 @@ class PosService:
             )
 
         # ── Authoritative original lines, keyed by (drug_code, batch_number) ──
-        original_items = self._repo.get_transaction_items(original_transaction_id)
+        original_items = self._repo.get_transaction_items(
+            original_transaction_id, tenant_id=tenant_id
+        )
         orig_index: dict[tuple[str, str], dict[str, Any]] = {
             (oi["drug_code"], oi.get("batch_number") or ""): oi for oi in original_items
         }
 
         # ── Sum of already-returned quantities per line ───────────────────────
-        prior_returns = self._repo.get_returned_quantities_for_transaction(original_transaction_id)
+        prior_returns = self._repo.get_returned_quantities_for_transaction(
+            original_transaction_id, tenant_id=tenant_id
+        )
         returned_index: dict[tuple[str, str], Decimal] = {
             (r["drug_code"], r.get("batch_number") or ""): _to_decimal(r["returned_qty"])
             for r in prior_returns
@@ -1105,6 +1117,7 @@ class PosService:
 
         self._repo.update_transaction_status(
             return_txn_id,
+            tenant_id=tenant_id,
             status=TransactionStatus.returned.value,
         )
 
@@ -1128,24 +1141,28 @@ class PosService:
         )
         return ReturnResponse.model_validate(return_row)
 
-    def get_return(self, return_id: int) -> ReturnDetailResponse | None:
+    def get_return(self, return_id: int, *, tenant_id: int) -> ReturnDetailResponse | None:
         """Return the full detail of a return record, including its items."""
-        row = self._repo.get_return(return_id)
+        row = self._repo.get_return(return_id, tenant_id=tenant_id)
         if row is None:
             return None
         # Items come from the linked return transaction
         items: list[PosCartItem] = []
         if row.get("return_transaction_id"):
-            item_rows = self._repo.get_transaction_items(int(row["return_transaction_id"]))
+            item_rows = self._repo.get_transaction_items(
+                int(row["return_transaction_id"]), tenant_id=tenant_id
+            )
             items = [PosCartItem.model_validate(r) for r in item_rows]
         return ReturnDetailResponse.model_validate({**row, "items": items})
 
     def list_returns_for_transaction(
         self,
         original_transaction_id: int,
+        *,
+        tenant_id: int,
     ) -> list[ReturnResponse]:
         """List all return records linked to an original transaction."""
-        rows = self._repo.list_returns_for_transaction(original_transaction_id)
+        rows = self._repo.list_returns_for_transaction(original_transaction_id, tenant_id=tenant_id)
         return [ReturnResponse.model_validate(r) for r in rows]
 
     def list_returns(
@@ -1176,7 +1193,7 @@ class PosService:
         Raises :class:`PosError` if the terminal already has an open shift —
         the current shift must be closed before starting a new one.
         """
-        existing = self._repo.get_current_shift(terminal_id)
+        existing = self._repo.get_current_shift(terminal_id, tenant_id=tenant_id)
         if existing is not None:
             raise PosError(
                 message=(
@@ -1202,6 +1219,7 @@ class PosService:
         self,
         *,
         shift_id: int,
+        tenant_id: int,
         closing_cash: Decimal,
     ) -> ShiftSummaryResponse:
         """Close a shift — computes expected cash and variance from drawer events.
@@ -1211,7 +1229,7 @@ class PosService:
         """
         from datapulse.pos.terminal import compute_expected_cash, compute_variance
 
-        shift = self._repo.get_shift_by_id(shift_id)
+        shift = self._repo.get_shift_by_id(shift_id, tenant_id=tenant_id)
         if shift is None:
             raise PosError(
                 message=f"Shift {shift_id} not found",
@@ -1225,7 +1243,9 @@ class PosService:
 
         # Aggregate cash drawer events since shift opened
         shift_opened = shift["opened_at"]
-        cash_events = self._repo.get_cash_events(int(shift["terminal_id"]), limit=10000)
+        cash_events = self._repo.get_cash_events(
+            int(shift["terminal_id"]), tenant_id=tenant_id, limit=10000
+        )
         events_in_shift = [e for e in cash_events if e["timestamp"] >= shift_opened]
 
         cash_sales = sum(
@@ -1261,6 +1281,7 @@ class PosService:
         now = datetime.now(tz=UTC)
         updated = self._repo.update_shift_record(
             shift_id,
+            tenant_id=tenant_id,
             closing_cash=closing_cash,
             expected_cash=expected,
             variance=variance,
@@ -1274,6 +1295,7 @@ class PosService:
 
         summary_data = self._repo.get_shift_summary_data(
             int(shift["terminal_id"]),
+            tenant_id=tenant_id,
             opened_at=shift_opened,
             closed_at=now,
         )
@@ -1293,14 +1315,14 @@ class PosService:
             }
         )
 
-    def get_current_shift(self, terminal_id: int) -> ShiftRecord | None:
+    def get_current_shift(self, terminal_id: int, *, tenant_id: int) -> ShiftRecord | None:
         """Return the currently open shift for a terminal (None if no open shift)."""
-        row = self._repo.get_current_shift(terminal_id)
+        row = self._repo.get_current_shift(terminal_id, tenant_id=tenant_id)
         return ShiftRecord.model_validate(row) if row else None
 
-    def get_shift_by_id(self, shift_id: int) -> ShiftRecord | None:
+    def get_shift_by_id(self, shift_id: int, *, tenant_id: int) -> ShiftRecord | None:
         """Return a shift by its primary key (None if not found)."""
-        row = self._repo.get_shift_by_id(shift_id)
+        row = self._repo.get_shift_by_id(shift_id, tenant_id=tenant_id)
         return ShiftRecord.model_validate(row) if row else None
 
     def list_shifts(

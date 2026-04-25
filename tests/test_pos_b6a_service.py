@@ -165,7 +165,7 @@ async def test_void_transaction_success(
     assert call_args.movement_type == "void"
 
     mock_repo.update_transaction_status.assert_called_once_with(
-        1, status=TransactionStatus.voided.value
+        1, tenant_id=1, status=TransactionStatus.voided.value
     )
 
 
@@ -531,7 +531,7 @@ async def test_process_return_empty_items(service: PosService, mock_repo: MagicM
 
 def test_get_return_not_found(service: PosService, mock_repo: MagicMock) -> None:
     mock_repo.get_return.return_value = None
-    assert service.get_return(999) is None
+    assert service.get_return(999, tenant_id=1) is None
 
 
 def test_list_returns_for_transaction(service: PosService, mock_repo: MagicMock) -> None:
@@ -549,7 +549,7 @@ def test_list_returns_for_transaction(service: PosService, mock_repo: MagicMock)
             "created_at": datetime(2026, 4, 15, 12, 0, 0, tzinfo=UTC),
         }
     ]
-    results = service.list_returns_for_transaction(1)
+    results = service.list_returns_for_transaction(1, tenant_id=1)
     assert len(results) == 1
     assert results[0].id == 3
 
@@ -622,7 +622,7 @@ def test_close_shift_success(service: PosService, mock_repo: MagicMock) -> None:
         "total_sales": Decimal("300"),
     }
 
-    result = service.close_shift(shift_id=1, closing_cash=Decimal("750"))
+    result = service.close_shift(shift_id=1, tenant_id=1, closing_cash=Decimal("750"))
 
     assert result.transaction_count == 5
     assert result.total_sales == Decimal("300")
@@ -636,24 +636,24 @@ def test_close_shift_success(service: PosService, mock_repo: MagicMock) -> None:
 def test_close_shift_not_found(service: PosService, mock_repo: MagicMock) -> None:
     mock_repo.get_shift_by_id.return_value = None
     with pytest.raises(PosError, match="not found"):
-        service.close_shift(shift_id=999, closing_cash=Decimal("0"))
+        service.close_shift(shift_id=999, tenant_id=1, closing_cash=Decimal("0"))
 
 
 def test_close_shift_already_closed(service: PosService, mock_repo: MagicMock) -> None:
     shift = _shift_row(closed_at=datetime(2026, 4, 15, 18, 0, 0, tzinfo=UTC))
     mock_repo.get_shift_by_id.return_value = shift
     with pytest.raises(PosError, match="already closed"):
-        service.close_shift(shift_id=1, closing_cash=Decimal("750"))
+        service.close_shift(shift_id=1, tenant_id=1, closing_cash=Decimal("750"))
 
 
 def test_get_current_shift_none(service: PosService, mock_repo: MagicMock) -> None:
     mock_repo.get_current_shift.return_value = None
-    assert service.get_current_shift(10) is None
+    assert service.get_current_shift(10, tenant_id=1) is None
 
 
 def test_get_current_shift_found(service: PosService, mock_repo: MagicMock) -> None:
     mock_repo.get_current_shift.return_value = _shift_row()
-    result = service.get_current_shift(10)
+    result = service.get_current_shift(10, tenant_id=1)
     assert result is not None
     assert result.id == 1
 
