@@ -63,20 +63,30 @@ def _make_app(service: MagicMock) -> FastAPI:
             "pos:return:create",
             "pos:shift:reconcile",
             "pos:shift:open",
+            "pos:cash:event:create",
             "pos:controlled:verify",
         },
     )
     # Mocked tenant DB session — the close-shift route now invokes
-    # enforce_close_guard via Depends(get_tenant_session). With scalar()=0
-    # the guard accepts and the mocked service is then called.
+    # enforce_close_guard via Depends(get_tenant_session). scalar()=0
+    # → the guard accepts; mappings().first()=None lets repo lookups
+    # in the same session return cleanly when other routes touch them.
     _mock_session = MagicMock()
-    _mock_session.execute.return_value.scalar.return_value = 0
+    _execute_result = MagicMock()
+    _execute_result.scalar.return_value = 0
+    _execute_result.mappings.return_value.first.return_value = None
+    _mock_session.execute.return_value = _execute_result
 
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_pos_service] = lambda: service
     app.dependency_overrides[get_tenant_plan_limits] = lambda: PLAN_LIMITS["platform"]
     app.dependency_overrides[get_access_context] = lambda: _ctx
     app.dependency_overrides[get_tenant_session] = lambda: _mock_session
+
+    @app.middleware("http")
+    async def _inject_tenant(request, call_next):
+        request.state.tenant_id = 1
+        return await call_next(request)
 
     @app.exception_handler(PosError)
     async def _pos_handler(_req: Request, exc: PosError) -> JSONResponse:
@@ -178,6 +188,10 @@ def _cash_event() -> CashDrawerEventResponse:
     )
 
 
+def _idem(key: str) -> dict[str, str]:
+    return {"Idempotency-Key": key}
+
+
 # ---------------------------------------------------------------------------
 # Void route tests
 # ---------------------------------------------------------------------------
@@ -189,6 +203,7 @@ def test_void_transaction_success(client: TestClient, mock_service: MagicMock) -
     resp = client.post(
         "/api/v1/pos/transactions/1/void",
         json={"reason": "duplicate sale"},
+        headers=_idem("void-success"),
     )
 
     assert resp.status_code == 200
@@ -203,8 +218,21 @@ def test_void_transaction_reason_too_short(client: TestClient) -> None:
     resp = client.post(
         "/api/v1/pos/transactions/1/void",
         json={"reason": "no"},  # min_length=3
+        headers=_idem("void-short"),
     )
     assert resp.status_code == 422
+
+
+def test_void_transaction_requires_idempotency_key(
+    client: TestClient,
+    mock_service: MagicMock,
+) -> None:
+    resp = client.post(
+        "/api/v1/pos/transactions/1/void",
+        json={"reason": "duplicate sale"},
+    )
+    assert resp.status_code == 422
+    mock_service.void_transaction.assert_not_awaited()
 
 
 def test_void_transaction_conflict(client: TestClient, mock_service: MagicMock) -> None:
@@ -215,6 +243,7 @@ def test_void_transaction_conflict(client: TestClient, mock_service: MagicMock) 
     resp = client.post(
         "/api/v1/pos/transactions/1/void",
         json={"reason": "test reason"},
+        headers=_idem("void-conflict"),
     )
     assert resp.status_code == 409
 
@@ -245,7 +274,7 @@ def test_process_return_success(client: TestClient, mock_service: MagicMock) -> 
         "reason": "wrong_drug",
         "refund_method": "cash",
     }
-    resp = client.post("/api/v1/pos/returns", json=payload)
+    resp = client.post("/api/v1/pos/returns", json=payload, headers=_idem("return-success"))
 
     assert resp.status_code == 201
     data = resp.json()
@@ -262,7 +291,7 @@ def test_process_return_invalid_refund_method(client: TestClient) -> None:
         "reason": "defective",
         "refund_method": "card",  # not in pattern
     }
-    resp = client.post("/api/v1/pos/returns", json=payload)
+    resp = client.post("/api/v1/pos/returns", json=payload, headers=_idem("return-invalid"))
     assert resp.status_code == 422
 
 
@@ -356,10 +385,15 @@ def test_get_current_shift_not_found(client: TestClient, mock_service: MagicMock
 
 
 def test_close_shift_success(client: TestClient, mock_service: MagicMock) -> None:
+    mock_service.get_shift_by_id.return_value = _shift_record()
     mock_service.close_shift.return_value = _shift_summary()
     resp = client.post(
         "/api/v1/pos/shifts/1/close",
-        json={"closing_cash": "750"},
+        json={
+            "closing_cash": "750",
+            "local_unresolved": {"count": 0, "digest": "empty-queue"},
+        },
+        headers=_idem("shift-close-success"),
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -369,15 +403,51 @@ def test_close_shift_success(client: TestClient, mock_service: MagicMock) -> Non
 
 
 def test_close_shift_already_closed(client: TestClient, mock_service: MagicMock) -> None:
+    mock_service.get_shift_by_id.return_value = _shift_record()
     mock_service.close_shift.side_effect = PosError(
         message="Shift 1 is already closed",
         detail="",
     )
     resp = client.post(
         "/api/v1/pos/shifts/1/close",
-        json={"closing_cash": "750"},
+        json={
+            "closing_cash": "750",
+            "local_unresolved": {"count": 0, "digest": "empty-queue"},
+        },
+        headers=_idem("shift-close-conflict"),
     )
     assert resp.status_code == 409
+
+
+def test_close_shift_requires_unresolved_queue_claim(
+    client: TestClient,
+    mock_service: MagicMock,
+) -> None:
+    resp = client.post(
+        "/api/v1/pos/shifts/1/close",
+        json={"closing_cash": "750"},
+        headers=_idem("shift-close-missing-claim"),
+    )
+    assert resp.status_code == 422
+    mock_service.close_shift.assert_not_called()
+
+
+def test_close_shift_rejects_nonzero_unresolved_claim(
+    client: TestClient,
+    mock_service: MagicMock,
+) -> None:
+    mock_service.get_shift_by_id.return_value = _shift_record()
+    resp = client.post(
+        "/api/v1/pos/shifts/1/close",
+        json={
+            "closing_cash": "750",
+            "local_unresolved": {"count": 2, "digest": "pending-two"},
+        },
+        headers=_idem("shift-close-unresolved"),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "provisional_work_pending"
+    mock_service.close_shift.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

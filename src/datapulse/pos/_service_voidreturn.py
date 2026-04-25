@@ -69,7 +69,24 @@ class VoidReturnMixin:
                 detail=f"transaction_id={transaction_id} status={header['status']}",
             )
 
-        # Reverse inventory movements first — before status update
+        updated = self._repo.update_transaction_status(
+            transaction_id,
+            status=TransactionStatus.voided.value,
+            expected_status=TransactionStatus.completed.value,
+        )
+        if updated is None:
+            raise PosError(
+                message="Transaction changed while voiding; refresh and retry.",
+                detail=f"transaction_id={transaction_id} status_race=completed_to_other",
+            )
+
+        returned = self._repo.get_returned_quantities_for_transaction(transaction_id)
+        if any(to_decimal(row["returned_qty"]) > 0 for row in returned):
+            raise PosError(
+                message="Transaction has existing returns and cannot be voided.",
+                detail=f"transaction_id={transaction_id} existing_returns=true",
+            )
+
         items = self._repo.get_transaction_items(transaction_id)
         for item in items:
             await self._inventory.record_movement(
@@ -82,11 +99,6 @@ class VoidReturnMixin:
                     movement_type="void",
                 ),
             )
-
-        self._repo.update_transaction_status(
-            transaction_id,
-            status=TransactionStatus.voided.value,
-        )
 
         void_row = self._repo.create_void_log(
             transaction_id=transaction_id,
@@ -125,7 +137,7 @@ class VoidReturnMixin:
         Raises :class:`PosError` for not-found, wrong-state, empty items,
         non-matching lines, or quantity over-return.
         """
-        original = self._repo.get_transaction(original_transaction_id)
+        original = self._repo.get_transaction_for_update(original_transaction_id)
         if original is None:
             raise PosError(
                 message=f"Transaction {original_transaction_id} not found",

@@ -21,6 +21,7 @@ from datapulse.api.routes._pos_routes_deps import (
     _tenant_id_of,
 )
 from datapulse.pos.commit import atomic_commit
+from datapulse.pos.constants import TransactionStatus
 from datapulse.pos.devices import DeviceProof, device_token_verifier
 from datapulse.pos.idempotency import IdempotencyContext, record_response
 from datapulse.pos.models import (
@@ -43,6 +44,7 @@ router = APIRouter()
     "/transactions",
     response_model=TransactionResponse,
     status_code=201,
+    dependencies=[Depends(require_permission("pos:transaction:create"))],
 )
 @limiter.limit("30/minute")
 def create_transaction(
@@ -109,6 +111,7 @@ def list_transactions(
     "/transactions/{transaction_id}/items",
     response_model=PosCartItem,
     status_code=201,
+    dependencies=[Depends(require_permission("pos:transaction:create"))],
 )
 @limiter.limit("30/minute")
 async def add_item(
@@ -122,6 +125,8 @@ async def add_item(
     txn = service.get_transaction_detail(transaction_id)
     if txn is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
+    if txn.status != TransactionStatus.draft:
+        raise HTTPException(status_code=409, detail="Only draft transactions can be edited")
     return await service.add_item(
         transaction_id=transaction_id,
         tenant_id=_tenant_id_of(user),
@@ -138,6 +143,7 @@ async def add_item(
 @router.patch(
     "/transactions/{transaction_id}/items/{item_id}",
     response_model=PosCartItem,
+    dependencies=[Depends(require_permission("pos:transaction:create"))],
 )
 @limiter.limit("30/minute")
 def update_item(
@@ -155,9 +161,9 @@ def update_item(
     quantity-only PATCHes (Codex P1).
     """
     _ = user
-    _ = transaction_id  # routing-only; item_id is unique
     return service.update_item(
         item_id,
+        transaction_id=transaction_id,
         quantity=Decimal(str(body.quantity)),
         unit_price=(Decimal(str(body.override_price)) if body.override_price is not None else None),
         discount=Decimal(str(body.discount)) if body.discount is not None else None,
@@ -167,6 +173,7 @@ def update_item(
 @router.delete(
     "/transactions/{transaction_id}/items/{item_id}",
     status_code=204,
+    dependencies=[Depends(require_permission("pos:transaction:create"))],
 )
 @limiter.limit("30/minute")
 def remove_item(
@@ -178,8 +185,7 @@ def remove_item(
 ) -> None:
     """Remove a single line item from a draft transaction."""
     _ = user
-    _ = transaction_id
-    deleted = service.remove_item(item_id)
+    deleted = service.remove_item(item_id, transaction_id=transaction_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
 
@@ -214,7 +220,13 @@ async def checkout(
         tenant_id=_tenant_id_of(user),
         request=body,
     )
-    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
+    record_response(
+        db_session,
+        idem.key,
+        200,
+        result.model_dump(mode="json"),
+        tenant_id=idem.tenant_id,
+    )
     db_session.commit()
     return result
 
@@ -248,6 +260,12 @@ async def commit_transaction(
 
     tenant_id = _tenant_id_of(user)
     response = atomic_commit(db_session, tenant_id=tenant_id, payload=payload)
-    record_response(db_session, idem.key, 200, response.model_dump(mode="json"))
+    record_response(
+        db_session,
+        idem.key,
+        200,
+        response.model_dump(mode="json"),
+        tenant_id=idem.tenant_id,
+    )
     db_session.commit()
     return response

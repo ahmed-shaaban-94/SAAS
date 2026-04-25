@@ -48,6 +48,7 @@ from datapulse.pos.models import (
     CommitRequest,
     CommitResponse,
     EligibleCartItem,
+    PosCartItem,
     PromotionResponse,
     VoucherResponse,
 )
@@ -75,6 +76,108 @@ def _build_receipt_number(tenant_id: int, transaction_id: int, now: datetime) ->
 def _recompute_line_total(unit_price: Decimal, quantity: Decimal, discount: Decimal) -> Decimal:
     """Authoritative server-side line total = unit_price * qty - discount."""
     return (unit_price * quantity - discount).quantize(Decimal("0.0001"))
+
+
+def _write_bronze_pos_sale(
+    session: Session,
+    *,
+    tenant_id: int,
+    payload: CommitRequest,
+    transaction_id: int,
+    receipt_number: str,
+    transaction_date: datetime,
+    item: PosCartItem,
+    line_total: Decimal,
+) -> None:
+    """Mirror legacy checkout's POS bronze write for analytics ingestion."""
+    session.execute(
+        text(
+            """
+            INSERT INTO bronze.pos_transactions
+                (tenant_id, source_type, transaction_id, transaction_date,
+                 site_code, register_id, cashier_id, customer_id,
+                 drug_code, batch_number, quantity, unit_price,
+                 discount, net_amount, payment_method,
+                 insurance_no, is_return, pharmacist_id)
+            VALUES
+                (:tenant_id, 'pos_api', :transaction_id, :transaction_date,
+                 :site_code, :register_id, :cashier_id, :customer_id,
+                 :drug_code, :batch_number, :quantity, :unit_price,
+                 :discount, :net_amount, :payment_method,
+                 NULL, FALSE, :pharmacist_id)
+            ON CONFLICT (tenant_id, transaction_id, drug_code) DO NOTHING
+            """
+        ),
+        {
+            "tenant_id": tenant_id,
+            "transaction_id": f"POS-{receipt_number}",
+            "transaction_date": transaction_date,
+            "site_code": payload.site_code,
+            "register_id": str(payload.terminal_id),
+            "cashier_id": payload.staff_id,
+            "customer_id": payload.customer_id,
+            "drug_code": item.drug_code,
+            "batch_number": item.batch_number,
+            "quantity": item.quantity,
+            "unit_price": item.unit_price,
+            "discount": item.discount,
+            "net_amount": line_total,
+            "payment_method": payload.payment_method.value,
+            "pharmacist_id": item.pharmacist_id,
+        },
+    )
+
+
+def _record_stock_adjustment(
+    session: Session,
+    *,
+    tenant_id: int,
+    payload: CommitRequest,
+    receipt_number: str,
+    transaction_date: datetime,
+    item: PosCartItem,
+) -> None:
+    """Record the sale as a stock correction, matching InventoryAdapter semantics."""
+    session.execute(
+        text(
+            """
+            INSERT INTO bronze.stock_adjustments (
+                tenant_id,
+                source_file,
+                adjustment_date,
+                adjustment_type,
+                drug_code,
+                site_code,
+                batch_number,
+                quantity,
+                reason,
+                loaded_at
+            ) VALUES (
+                :tenant_id,
+                :source_file,
+                :adjustment_date,
+                'correction',
+                :drug_code,
+                :site_code,
+                :batch_number,
+                :quantity,
+                :reason,
+                :loaded_at
+            )
+            """
+        ),
+        {
+            "tenant_id": tenant_id,
+            "source_file": "pos_commit",
+            "adjustment_date": transaction_date.date(),
+            "drug_code": item.drug_code,
+            "site_code": payload.site_code,
+            "batch_number": item.batch_number,
+            "quantity": -item.quantity,
+            "reason": f"POS sale: ref=POS-{receipt_number}",
+            "loaded_at": transaction_date,
+        },
+    )
 
 
 def _normalize_discount_source(payload: CommitRequest) -> AppliedDiscount | None:
@@ -317,6 +420,24 @@ def atomic_commit(
                 "ic": item.is_controlled,
                 "ph": item.pharmacist_id,
             },
+        )
+        _write_bronze_pos_sale(
+            session,
+            tenant_id=tenant_id,
+            payload=payload,
+            transaction_id=transaction_id,
+            receipt_number=receipt,
+            transaction_date=now,
+            item=item,
+            line_total=server_line_total,
+        )
+        _record_stock_adjustment(
+            session,
+            tenant_id=tenant_id,
+            payload=payload,
+            receipt_number=receipt,
+            transaction_date=now,
+            item=item,
         )
 
     # ── Redeem voucher / record promotion now that we have a transaction_id.

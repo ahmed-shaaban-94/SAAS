@@ -9,20 +9,21 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from sqlalchemy.orm import Session
 
 from datapulse.api.limiter import limiter
 from datapulse.api.routes._pos_routes_deps import (
     CurrentUser,
     ServiceDep,
+    SessionDep,
+    _shift_close_idempotency_dep,
     _staff_id_of,
     _tenant_id_of,
 )
-from datapulse.core.auth import get_tenant_session
+from datapulse.pos.idempotency import IdempotencyContext, record_response
 from datapulse.pos.models import (
     CashCountRequest,
     CashDrawerEventResponse,
-    CloseShiftRequest,
+    CloseShiftRequestV2,
     ShiftRecord,
     ShiftSummaryResponse,
     StartShiftRequest,
@@ -34,7 +35,12 @@ from datapulse.rbac.dependencies import require_permission
 router = APIRouter()
 
 
-@router.post("/shifts", response_model=ShiftRecord, status_code=201)
+@router.post(
+    "/shifts",
+    response_model=ShiftRecord,
+    status_code=201,
+    dependencies=[Depends(require_permission("pos:shift:open"))],
+)
 @limiter.limit("20/minute")
 def start_shift(
     request: Request,
@@ -123,46 +129,76 @@ def get_current_shift(
 def close_shift(
     request: Request,
     shift_id: Annotated[int, Path(ge=1)],
-    body: CloseShiftRequest,
+    body: CloseShiftRequestV2,
     service: ServiceDep,
     user: CurrentUser,
-    db_session: Annotated[Session, Depends(get_tenant_session)],
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_shift_close_idempotency_dep)],
 ) -> ShiftSummaryResponse:
     """Close a cashier shift and compute cash reconciliation.
 
     Returns ``expected_cash``, ``variance`` (closing - expected), transaction count,
     and total sales for the shift.
 
-    Codex P2: enforces ``shift_close_guard.enforce_close_guard`` before
-    delegating to the service. The server-side check rejects close when
-    any ``pos.transactions`` row for this shift still has
-    ``commit_confirmed_at IS NULL`` — i.e. there are still provisional /
-    unreconciled transactions on disk. Web clients that don't carry a
-    ``local_unresolved`` claim pass count=0 / digest='no-claim' so only
-    the server-side check fires.
+    Codex P2: ``enforce_close_guard`` runs before delegating to the
+    service and rejects the close when any ``pos.transactions`` row for
+    this shift still has ``commit_confirmed_at IS NULL`` (provisional /
+    unreconciled transactions on disk). The client also supplies its own
+    ``local_unresolved`` claim (count + digest) which the guard
+    cross-checks against the server-side count. The whole route is
+    idempotency-keyed so a network retry replays the cached response
+    instead of double-closing.
     """
-    _ = user
-    shift_row = service._repo.get_shift_by_id(shift_id)  # type: ignore[attr-defined]
-    if shift_row is None:
+    if idem.replay:
+        if idem.cached_status and idem.cached_status >= 400:
+            detail = (idem.cached_body or {}).get("detail", "idempotent request failed")
+            raise HTTPException(status_code=idem.cached_status, detail=detail)
+        return ShiftSummaryResponse.model_validate(idem.cached_body)
+
+    tenant_id = _tenant_id_of(user)
+    shift = service.get_shift_by_id(shift_id)
+    if shift is None:
         raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found")
-    enforce_close_guard(
-        db_session,
-        shift_id=shift_id,
-        tenant_id=int(shift_row["tenant_id"]),
-        terminal_id=int(shift_row["terminal_id"]),
-        claim_count=0,
-        claim_digest="no-claim",
-    )
-    return service.close_shift(
+    try:
+        enforce_close_guard(
+            db_session,
+            shift_id=shift_id,
+            tenant_id=tenant_id,
+            terminal_id=shift.terminal_id,
+            claim_count=body.local_unresolved.count,
+            claim_digest=body.local_unresolved.digest,
+        )
+    except HTTPException as exc:
+        record_response(
+            db_session,
+            idem.key,
+            exc.status_code,
+            {"detail": exc.detail},
+            tenant_id=idem.tenant_id,
+        )
+        db_session.commit()
+        raise
+
+    result = service.close_shift(
         shift_id=shift_id,
         closing_cash=Decimal(str(body.closing_cash)),
     )
+    record_response(
+        db_session,
+        idem.key,
+        200,
+        result.model_dump(mode="json"),
+        tenant_id=idem.tenant_id,
+    )
+    db_session.commit()
+    return result
 
 
 @router.post(
     "/terminals/{terminal_id}/cash-events",
     response_model=CashDrawerEventResponse,
     status_code=201,
+    dependencies=[Depends(require_permission("pos:cash:event:create"))],
 )
 @limiter.limit("30/minute")
 def record_cash_event(

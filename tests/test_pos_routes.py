@@ -234,6 +234,7 @@ class TestTerminalRoutes:
         resp = client.post(
             "/api/v1/pos/terminals/1/close",
             json={"closing_cash": 250},
+            headers={"Idempotency-Key": "term-close-1"},
         )
         assert resp.status_code == 200
 
@@ -393,11 +394,55 @@ class TestTransactionRoutes:
         mock_service.remove_item.return_value = True
         resp = client.delete("/api/v1/pos/transactions/100/items/1")
         assert resp.status_code == 204
+        mock_service.remove_item.assert_called_once_with(1, transaction_id=100)
 
     def test_remove_item_404(self, client: TestClient, mock_service: MagicMock):
         mock_service.remove_item.return_value = False
         resp = client.delete("/api/v1/pos/transactions/100/items/99")
         assert resp.status_code == 404
+
+    def test_update_item_without_override_preserves_price(
+        self,
+        client: TestClient,
+        mock_service: MagicMock,
+    ):
+        mock_service.update_item.return_value = _cart_item()
+        resp = client.patch(
+            "/api/v1/pos/transactions/100/items/1",
+            json={"quantity": "4"},
+        )
+        assert resp.status_code == 200
+        mock_service.update_item.assert_called_once()
+        kwargs = mock_service.update_item.call_args.kwargs
+        assert kwargs["transaction_id"] == 100
+        assert kwargs["unit_price"] is None
+
+    def test_add_item_rejects_completed_transaction(
+        self,
+        client: TestClient,
+        mock_service: MagicMock,
+    ):
+        from datapulse.pos.models import TransactionDetailResponse
+
+        mock_service.get_transaction_detail.return_value = TransactionDetailResponse(
+            id=100,
+            terminal_id=1,
+            staff_id="s",
+            site_code="SITE01",
+            subtotal=Decimal("0"),
+            discount_total=Decimal("0"),
+            tax_total=Decimal("0"),
+            grand_total=Decimal("0"),
+            status=TransactionStatus.completed,
+            created_at=datetime(2026, 4, 15, 10, 30, tzinfo=UTC),
+            items=[],
+        )
+        resp = client.post(
+            "/api/v1/pos/transactions/100/items",
+            json={"drug_code": "DRUG001", "quantity": "1"},
+        )
+        assert resp.status_code == 409
+        mock_service.add_item.assert_not_awaited()
 
     def test_checkout_returns_response(
         self,

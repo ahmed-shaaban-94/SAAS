@@ -20,7 +20,9 @@ from datapulse.api.routes._pos_routes_deps import (
     SessionDep,
     _staff_id_of,
     _tenant_id_of,
+    _terminal_close_idempotency_dep,
 )
+from datapulse.pos.idempotency import IdempotencyContext, record_response
 from datapulse.pos.models import (
     TerminalCloseRequest,
     TerminalOpenRequest,
@@ -153,6 +155,7 @@ def get_terminal(
 @router.post(
     "/terminals/{terminal_id}/pause",
     response_model=TerminalSessionResponse,
+    dependencies=[Depends(require_permission("pos:terminal:open"))],
 )
 @limiter.limit("30/minute")
 def pause_terminal(
@@ -170,6 +173,7 @@ def pause_terminal(
 @router.post(
     "/terminals/{terminal_id}/resume",
     response_model=TerminalSessionResponse,
+    dependencies=[Depends(require_permission("pos:terminal:open"))],
 )
 @limiter.limit("30/minute")
 def resume_terminal(
@@ -196,6 +200,8 @@ def close_terminal(
     body: TerminalCloseRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_terminal_close_idempotency_dep)],
 ) -> TerminalSessionResponse:
     """Close a terminal — records closing cash and seals the shift.
 
@@ -205,5 +211,17 @@ def close_terminal(
     seeded — just was never required by the route.
     """
     _ = user
+    if idem.replay:
+        return TerminalSessionResponse.model_validate(idem.cached_body)
+
     session = service.close_terminal(terminal_id, closing_cash=Decimal(str(body.closing_cash)))
-    return TerminalSessionResponse.model_validate(session.model_dump())
+    result = TerminalSessionResponse.model_validate(session.model_dump())
+    record_response(
+        db_session,
+        idem.key,
+        200,
+        result.model_dump(mode="json"),
+        tenant_id=idem.tenant_id,
+    )
+    db_session.commit()
+    return result

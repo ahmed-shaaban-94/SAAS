@@ -69,6 +69,10 @@ router = APIRouter(
 # Re-exports for backwards-compatible test monkeypatching
 _legacy_checkout_idempotency_dep = _pos_routes_deps._legacy_checkout_idempotency_dep
 _commit_idempotency_dep = _pos_routes_deps._commit_idempotency_dep
+_void_idempotency_dep = _pos_routes_deps._void_idempotency_dep
+_return_idempotency_dep = _pos_routes_deps._return_idempotency_dep
+_shift_close_idempotency_dep = _pos_routes_deps._shift_close_idempotency_dep
+_terminal_close_idempotency_dep = _pos_routes_deps._terminal_close_idempotency_dep
 
 # Re-export capabilities_router so bootstrap/routers.py can mount it as
 # ``pos_routes.capabilities_router`` without modification.

@@ -136,7 +136,11 @@ async def test_void_transaction_success(
     item = _item_row()
     mock_repo.get_transaction.return_value = txn
     mock_repo.get_transaction_items.return_value = [item]
-    mock_repo.update_transaction_status.return_value = None
+    mock_repo.update_transaction_status.return_value = {
+        **txn,
+        "status": TransactionStatus.voided.value,
+    }
+    mock_repo.get_returned_quantities_for_transaction.return_value = []
     mock_repo.create_void_log.return_value = {
         "id": 99,
         "transaction_id": 1,
@@ -157,7 +161,8 @@ async def test_void_transaction_success(
     assert result.voided_by == "manager-1"
     assert result.transaction_id == 1
 
-    # Inventory movement reversed before status update
+    # The status CAS wins before stock is touched, so a double-click loser
+    # cannot restock twice.
     mock_inventory.record_movement.assert_awaited_once()
     call_args = mock_inventory.record_movement.call_args[0][0]
     assert isinstance(call_args, StockMovement)
@@ -165,7 +170,9 @@ async def test_void_transaction_success(
     assert call_args.movement_type == "void"
 
     mock_repo.update_transaction_status.assert_called_once_with(
-        1, status=TransactionStatus.voided.value
+        1,
+        status=TransactionStatus.voided.value,
+        expected_status=TransactionStatus.completed.value,
     )
 
 
@@ -206,6 +213,55 @@ async def test_void_already_voided_raises(service: PosService, mock_repo: MagicM
         )
 
 
+@pytest.mark.asyncio
+async def test_void_transaction_lost_status_race_skips_inventory(
+    service: PosService,
+    mock_repo: MagicMock,
+    mock_inventory: AsyncMock,
+) -> None:
+    mock_repo.get_transaction.return_value = _completed_txn()
+    mock_repo.update_transaction_status.return_value = None
+
+    with pytest.raises(PosError, match="changed while voiding"):
+        await service.void_transaction(
+            transaction_id=1,
+            tenant_id=1,
+            reason="duplicate sale",
+            voided_by="manager-1",
+        )
+
+    mock_inventory.record_movement.assert_not_awaited()
+    mock_repo.create_void_log.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_void_transaction_with_prior_return_skips_inventory(
+    service: PosService,
+    mock_repo: MagicMock,
+    mock_inventory: AsyncMock,
+) -> None:
+    txn = _completed_txn()
+    mock_repo.get_transaction.return_value = txn
+    mock_repo.update_transaction_status.return_value = {
+        **txn,
+        "status": TransactionStatus.voided.value,
+    }
+    mock_repo.get_returned_quantities_for_transaction.return_value = [
+        {"drug_code": "DRUG001", "batch_number": "BATCH-1", "returned_qty": Decimal("1")}
+    ]
+
+    with pytest.raises(PosError, match="existing returns"):
+        await service.void_transaction(
+            transaction_id=1,
+            tenant_id=1,
+            reason="duplicate sale",
+            voided_by="manager-1",
+        )
+
+    mock_inventory.record_movement.assert_not_awaited()
+    mock_repo.create_void_log.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # Return tests
 # ---------------------------------------------------------------------------
@@ -234,7 +290,7 @@ def _setup_return_mocks(
     refund_amount: Decimal = Decimal("50"),
 ) -> None:
     """Common mock wiring for process_return happy-path tests."""
-    mock_repo.get_transaction.return_value = _completed_txn()
+    mock_repo.get_transaction_for_update.return_value = _completed_txn()
     mock_repo.get_transaction_items.return_value = original_items or [_item_row()]
     mock_repo.get_returned_quantities_for_transaction.return_value = prior_returns or []
     mock_repo.create_transaction.return_value = {
@@ -293,6 +349,7 @@ async def test_process_return_success(
     assert result.original_transaction_id == 1
     assert result.return_transaction_id == 20
     assert result.refund_amount == Decimal("50")
+    mock_repo.get_transaction_for_update.assert_called_once_with(1)
 
     # Inventory restocked
     mock_inventory.record_movement.assert_awaited_once()
@@ -483,7 +540,7 @@ async def test_process_return_original_not_found(
     mock_repo: MagicMock,
     return_item: PosCartItem,
 ) -> None:
-    mock_repo.get_transaction.return_value = None
+    mock_repo.get_transaction_for_update.return_value = None
     with pytest.raises(PosError, match="not found"):
         await service.process_return(
             original_transaction_id=999,
@@ -503,7 +560,7 @@ async def test_process_return_wrong_state(
 ) -> None:
     txn = _completed_txn()
     txn["status"] = TransactionStatus.voided.value
-    mock_repo.get_transaction.return_value = txn
+    mock_repo.get_transaction_for_update.return_value = txn
     with pytest.raises(PosError, match="Returns only allowed"):
         await service.process_return(
             original_transaction_id=1,
@@ -517,7 +574,7 @@ async def test_process_return_wrong_state(
 
 @pytest.mark.asyncio
 async def test_process_return_empty_items(service: PosService, mock_repo: MagicMock) -> None:
-    mock_repo.get_transaction.return_value = _completed_txn()
+    mock_repo.get_transaction_for_update.return_value = _completed_txn()
     with pytest.raises(PosError, match="at least one item"):
         await service.process_return(
             original_transaction_id=1,

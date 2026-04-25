@@ -48,6 +48,7 @@ def test_check_and_claim_fresh_key_returns_replay_false() -> None:
     ctx = check_and_claim(session, "k1", 1, "POST /x", _hash(b"{}"))
 
     assert ctx.replay is False
+    assert ctx.tenant_id == 1
     assert ctx.cached_status is None
     assert ctx.cached_body is None
     assert session.execute.call_count == 2
@@ -59,6 +60,7 @@ def test_check_and_claim_replays_when_hash_matches() -> None:
     h = _hash(b"{}")
     session = MagicMock()
     row = {
+        "endpoint": "POST /x",
         "request_hash": h,
         "response_status": 200,
         "response_body": {"ok": True},
@@ -69,6 +71,7 @@ def test_check_and_claim_replays_when_hash_matches() -> None:
     ctx = check_and_claim(session, "k1", 1, "POST /x", h)
 
     assert ctx.replay is True
+    assert ctx.tenant_id == 1
     assert ctx.cached_status == 200
     assert ctx.cached_body == {"ok": True}
 
@@ -78,6 +81,7 @@ def test_check_and_claim_409_on_hash_mismatch() -> None:
 
     session = MagicMock()
     row = {
+        "endpoint": "POST /x",
         "request_hash": _hash(b"OLD"),
         "response_status": 200,
         "response_body": {"ok": True},
@@ -90,11 +94,31 @@ def test_check_and_claim_409_on_hash_mismatch() -> None:
     assert exc.value.status_code == 409
 
 
+def test_check_and_claim_409_on_endpoint_mismatch() -> None:
+    from datapulse.pos.idempotency import check_and_claim
+
+    h = _hash(b"{}")
+    session = MagicMock()
+    row = {
+        "endpoint": "POST /old",
+        "request_hash": h,
+        "response_status": 200,
+        "response_body": {"ok": True},
+        "expires_at": _future(),
+    }
+    session.execute.return_value.mappings.return_value.first.return_value = row
+
+    with pytest.raises(HTTPException) as exc:
+        check_and_claim(session, "k1", 1, "POST /new", h)
+    assert exc.value.status_code == 409
+
+
 def test_check_and_claim_reclaims_expired_row() -> None:
     from datapulse.pos.idempotency import check_and_claim
 
     session = MagicMock()
     expired_row = {
+        "endpoint": "POST /x",
         "request_hash": _hash(b"{}"),
         "response_status": 200,
         "response_body": {"ok": True},
@@ -115,12 +139,13 @@ def test_record_response_issues_update() -> None:
     from datapulse.pos.idempotency import record_response
 
     session = MagicMock()
-    record_response(session, "k1", 200, {"ok": True})
+    record_response(session, "k1", 200, {"ok": True}, tenant_id=7)
 
     session.execute.assert_called_once()
     stmt, params = session.execute.call_args.args
     assert "UPDATE pos.idempotency_keys" in str(stmt)
     assert params["key"] == "k1"
+    assert params["tenant_id"] == 7
     assert params["st"] == 200
     assert params["body"] == {"ok": True}
 

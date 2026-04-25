@@ -250,6 +250,8 @@ async def device_token_verifier(
         signed_at_dt = datetime.fromisoformat(x_signed_at.replace("Z", "+00:00"))
     except ValueError as e:
         raise HTTPException(status_code=400, detail="invalid X-Signed-At") from e
+    if signed_at_dt.tzinfo is None:
+        signed_at_dt = signed_at_dt.replace(tzinfo=UTC)
 
     now = datetime.now(UTC)
     if signed_at_dt > now + timedelta(minutes=CLOCK_SKEW_TOLERANCE_MINUTES):

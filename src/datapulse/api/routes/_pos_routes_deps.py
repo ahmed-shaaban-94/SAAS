@@ -31,6 +31,10 @@ _legacy_checkout_idempotency_dep = idempotency_dependency("POST /pos/transaction
 # at import — creating it once here is functionally identical to creating it
 # per-call and avoids the ruff B008 false positive on factory dependencies.
 _commit_idempotency_dep = idempotency_dependency("POST /pos/transactions/commit")
+_void_idempotency_dep = idempotency_dependency("POST /pos/transactions/{id}/void")
+_return_idempotency_dep = idempotency_dependency("POST /pos/returns")
+_shift_close_idempotency_dep = idempotency_dependency("POST /pos/shifts/{id}/close")
+_terminal_close_idempotency_dep = idempotency_dependency("POST /pos/terminals/{id}/close")
 
 
 def _tenant_id_of(user: CurrentUser) -> int:  # type: ignore[valid-type]

@@ -13,9 +13,13 @@ from datapulse.api.limiter import limiter
 from datapulse.api.routes._pos_routes_deps import (
     CurrentUser,
     ServiceDep,
+    SessionDep,
+    _return_idempotency_dep,
     _staff_id_of,
     _tenant_id_of,
+    _void_idempotency_dep,
 )
+from datapulse.pos.idempotency import IdempotencyContext, record_response
 from datapulse.pos.models import (
     ReturnDetailResponse,
     ReturnRequest,
@@ -40,18 +44,33 @@ async def void_transaction(
     body: VoidRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_void_idempotency_dep)],
 ) -> VoidResponse:
     """Void a completed transaction — reverses inventory and writes an audit log.
 
     Restricted to supervisors / managers. Only ``completed`` transactions
     may be voided; draft transactions should be abandoned by removing items.
     """
-    return await service.void_transaction(
+    if idem.replay:
+        return VoidResponse.model_validate(idem.cached_body)
+
+    tenant_id = _tenant_id_of(user)
+    result = await service.void_transaction(
         transaction_id=transaction_id,
-        tenant_id=_tenant_id_of(user),
+        tenant_id=tenant_id,
         reason=body.reason,
         voided_by=_staff_id_of(user),
     )
+    record_response(
+        db_session,
+        idem.key,
+        200,
+        result.model_dump(mode="json"),
+        tenant_id=idem.tenant_id,
+    )
+    db_session.commit()
+    return result
 
 
 @router.post(
@@ -66,21 +85,36 @@ async def process_return(
     body: ReturnRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_return_idempotency_dep)],
 ) -> ReturnResponse:
     """Process a drug return against a completed transaction.
 
     Creates a return transaction, restocks inventory via FEFO movement,
     and records a ``pos.returns`` audit entry.
     """
-    return await service.process_return(
+    if idem.replay:
+        return ReturnResponse.model_validate(idem.cached_body)
+
+    tenant_id = _tenant_id_of(user)
+    result = await service.process_return(
         original_transaction_id=body.original_transaction_id,
-        tenant_id=_tenant_id_of(user),
+        tenant_id=tenant_id,
         staff_id=_staff_id_of(user),
         items=list(body.items),
         reason=body.reason,
         refund_method=body.refund_method,
         notes=body.notes,
     )
+    record_response(
+        db_session,
+        idem.key,
+        201,
+        result.model_dump(mode="json"),
+        tenant_id=idem.tenant_id,
+    )
+    db_session.commit()
+    return result
 
 
 @router.get("/returns/{return_id}", response_model=ReturnDetailResponse)

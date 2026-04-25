@@ -706,21 +706,49 @@ class TestAddItem:
 
 
 class TestUpdateRemoveItem:
+    def _item_row(
+        self,
+        *,
+        transaction_id: int = 100,
+        unit_price: Decimal = Decimal("12.5"),
+    ) -> dict:
+        return {
+            "id": 1,
+            "transaction_id": transaction_id,
+            "tenant_id": 1,
+            "drug_code": "DRUG001",
+            "drug_name": "X",
+            "batch_number": None,
+            "expiry_date": None,
+            "quantity": Decimal("2"),
+            "unit_price": unit_price,
+            "discount": Decimal("0"),
+            "line_total": Decimal("25.0000"),
+            "is_controlled": False,
+            "pharmacist_id": None,
+        }
+
     def test_update_item_recalculates_line_total(
         self,
         service: PosService,
         mock_repo: MagicMock,
     ):
+        mock_repo.get_transaction_item.return_value = self._item_row()
+        mock_repo.get_transaction.return_value = _txn_row("draft")
         mock_repo.update_item_quantity.return_value = {
             "id": 1,
             "transaction_id": 100,
+            "tenant_id": 1,
             "drug_code": "DRUG001",
             "drug_name": "X",
+            "batch_number": None,
+            "expiry_date": None,
             "quantity": Decimal("4"),
             "unit_price": Decimal("12.5"),
             "discount": Decimal("0"),
             "line_total": Decimal("50.0000"),
             "is_controlled": False,
+            "pharmacist_id": None,
         }
         item = service.update_item(
             1,
@@ -733,25 +761,79 @@ class TestUpdateRemoveItem:
         assert item.quantity == Decimal("4")
         mock_repo.update_item_quantity.assert_called_once()
         kwargs = mock_repo.update_item_quantity.call_args.kwargs
+        # The repo recomputes ``line_total`` in SQL, so the service no
+        # longer passes it as a kwarg.
+        assert "line_total" not in kwargs
         assert kwargs["quantity"] == Decimal("4")
         assert kwargs["unit_price"] == Decimal("12.5")
+        assert kwargs["expected_status"] == "draft"
+
+    def test_update_item_preserves_existing_price_when_no_override(
+        self,
+        service: PosService,
+        mock_repo: MagicMock,
+    ):
+        mock_repo.get_transaction_item.return_value = self._item_row(unit_price=Decimal("12.5"))
+        mock_repo.get_transaction.return_value = _txn_row("draft")
+        mock_repo.update_item_quantity.return_value = {
+            **self._item_row(unit_price=Decimal("12.5")),
+            "quantity": Decimal("4"),
+            "line_total": Decimal("50.0000"),
+        }
+
+        item = service.update_item(1, quantity=Decimal("4"))
+
+        # Service passes ``unit_price=None`` so the repo's SQL COALESCE
+        # keeps the persisted price. The returned row still carries the
+        # recomputed line_total.
+        assert item.line_total == Decimal("50.0000")
+        kwargs = mock_repo.update_item_quantity.call_args.kwargs
+        assert kwargs["unit_price"] is None
+        assert kwargs["expected_status"] == "draft"
+
+    def test_update_item_rejects_completed_transaction(
+        self,
+        service: PosService,
+        mock_repo: MagicMock,
+    ):
+        mock_repo.get_transaction_item.return_value = self._item_row()
+        mock_repo.get_transaction.return_value = _txn_row("completed")
+        with pytest.raises(PosError, match="Only draft"):
+            service.update_item(1, quantity=Decimal("4"))
 
     def test_update_unknown_item_raises(
         self,
         service: PosService,
         mock_repo: MagicMock,
     ):
-        mock_repo.update_item_quantity.return_value = None
+        mock_repo.get_transaction_item.return_value = None
         with pytest.raises(PosError):
-            service.update_item(99, quantity=Decimal("1"), unit_price=Decimal("1"))
+            service.update_item(99, quantity=Decimal("1"))
 
     def test_remove_item_returns_repo_result(
         self,
         service: PosService,
         mock_repo: MagicMock,
     ):
+        mock_repo.get_transaction_item.return_value = self._item_row()
+        mock_repo.get_transaction.return_value = _txn_row("draft")
         mock_repo.remove_item.return_value = True
-        assert service.remove_item(1) is True
+        assert service.remove_item(1, transaction_id=100) is True
+        mock_repo.remove_item.assert_called_once_with(
+            1,
+            transaction_id=100,
+            expected_status=TransactionStatus.draft.value,
+        )
+
+    def test_remove_item_rejects_completed_transaction(
+        self,
+        service: PosService,
+        mock_repo: MagicMock,
+    ):
+        mock_repo.get_transaction_item.return_value = self._item_row()
+        mock_repo.get_transaction.return_value = _txn_row("completed")
+        with pytest.raises(PosError, match="Only draft"):
+            service.remove_item(1, transaction_id=100)
 
 
 # ---------------------------------------------------------------------------

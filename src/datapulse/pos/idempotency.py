@@ -28,6 +28,7 @@ class IdempotencyContext:
     """Outcome of check_and_claim for a particular Idempotency-Key."""
 
     key: str
+    tenant_id: int
     request_hash: str
     replay: bool
     cached_status: int | None = None
@@ -60,7 +61,7 @@ def check_and_claim(
         session.execute(
             text(
                 """
-            SELECT request_hash, response_status, response_body, expires_at
+            SELECT endpoint, request_hash, response_status, response_body, expires_at
               FROM pos.idempotency_keys
              WHERE key = :key AND tenant_id = :tenant_id
             """
@@ -78,6 +79,11 @@ def check_and_claim(
                 {"key": key, "tid": tenant_id},
             )
         else:
+            if row["endpoint"] != endpoint:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Idempotency-Key reuse across endpoints.",
+                )
             if row["request_hash"] != request_hash:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -85,6 +91,7 @@ def check_and_claim(
                 )
             return IdempotencyContext(
                 key=key,
+                tenant_id=tenant_id,
                 request_hash=request_hash,
                 replay=True,
                 cached_status=row["response_status"],
@@ -113,7 +120,12 @@ def check_and_claim(
         session.rollback()
         return check_and_claim(session, key, tenant_id, endpoint, request_hash)
 
-    return IdempotencyContext(key=key, request_hash=request_hash, replay=False)
+    return IdempotencyContext(
+        key=key,
+        tenant_id=tenant_id,
+        request_hash=request_hash,
+        replay=False,
+    )
 
 
 def record_response(
@@ -121,6 +133,8 @@ def record_response(
     key: str,
     response_status: int,
     response_body: dict[str, Any] | None,
+    *,
+    tenant_id: int | None = None,
 ) -> None:
     """Persist the response for a previously-claimed key."""
     session.execute(
@@ -129,9 +143,15 @@ def record_response(
             UPDATE pos.idempotency_keys
                SET response_status = :st, response_body = :body
              WHERE key = :key
+               AND tenant_id = :tenant_id
             """
         ),
-        {"key": key, "st": response_status, "body": response_body},
+        {
+            "key": key,
+            "tenant_id": tenant_id,
+            "st": response_status,
+            "body": response_body,
+        },
     )
 
 

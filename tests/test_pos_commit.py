@@ -99,8 +99,8 @@ def test_atomic_commit_returns_response_with_change_due() -> None:
     assert resp.receipt_number.startswith("R")
     assert "-1-42" in resp.receipt_number  # tenant-1, txn-42
     assert resp.change_due == Decimal("8.00")
-    # Header INSERT + receipt UPDATE + 1 item INSERT = 3 execute calls.
-    assert session.execute.call_count == 3
+    # Header INSERT + receipt UPDATE + item INSERT + bronze sale + stock adjustment.
+    assert session.execute.call_count == 5
 
 
 def test_atomic_commit_400_when_cash_insufficient() -> None:
@@ -205,6 +205,56 @@ def test_atomic_commit_writes_server_computed_line_total() -> None:
     assert len(item_inserts) == 1
     params = item_inserts[0].args[1]
     assert params["lt"] == Decimal("100.0000")
+
+
+def test_atomic_commit_writes_bronze_sale_and_stock_adjustment() -> None:
+    """Desktop/offline commits must feed analytics and inventory side effects."""
+    from datapulse.pos.commit import atomic_commit
+
+    session = _stub_session(returning_id=42)
+    item = PosCartItem(
+        drug_code="D",
+        drug_name="Drug",
+        batch_number="B1",
+        quantity=Decimal("2"),
+        unit_price=Decimal("50"),
+        discount=Decimal("3"),
+        line_total=Decimal("97"),
+    )
+    atomic_commit(
+        session,
+        tenant_id=7,
+        payload=_payload(
+            total="97.00",
+            declared_grand_total="97.00",
+            tendered="100.00",
+            subtotal="97.00",
+            items=[item],
+        ),
+    )
+
+    bronze_calls = [
+        call
+        for call in session.execute.call_args_list
+        if "INSERT INTO bronze.pos_transactions" in str(call.args[0])
+    ]
+    assert len(bronze_calls) == 1
+    bronze_params = bronze_calls[0].args[1]
+    assert bronze_params["tenant_id"] == 7
+    assert bronze_params["transaction_id"].startswith("POS-R")
+    assert bronze_params["drug_code"] == "D"
+    assert bronze_params["net_amount"] == Decimal("97.0000")
+
+    stock_calls = [
+        call
+        for call in session.execute.call_args_list
+        if "INSERT INTO bronze.stock_adjustments" in str(call.args[0])
+    ]
+    assert len(stock_calls) == 1
+    stock_params = stock_calls[0].args[1]
+    assert stock_params["tenant_id"] == 7
+    assert stock_params["quantity"] == Decimal("-2")
+    assert stock_params["reason"].startswith("POS sale: ref=POS-R")
 
 
 def test_atomic_commit_tolerates_rounding_epsilon() -> None:

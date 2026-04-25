@@ -298,6 +298,32 @@ class TestGetTransaction:
         mock_session.execute.return_value = _make_execute(None, mode="first")
         assert repo.get_transaction(0) is None
 
+    def test_for_update_locks_row(self, repo: PosRepository, mock_session: MagicMock):
+        row = {
+            "id": 55,
+            "tenant_id": 2,
+            "terminal_id": 3,
+            "staff_id": "S",
+            "pharmacist_id": None,
+            "customer_id": None,
+            "site_code": "S1",
+            "subtotal": Decimal("0"),
+            "discount_total": Decimal("0"),
+            "tax_total": Decimal("0"),
+            "grand_total": Decimal("0"),
+            "payment_method": None,
+            "status": "completed",
+            "receipt_number": "RCP-001",
+            "created_at": datetime.datetime(2026, 4, 15),
+        }
+        mock_session.execute.return_value = _make_execute(row, mode="first")
+
+        result = repo.get_transaction_for_update(55)
+
+        assert result["id"] == 55
+        sql = str(mock_session.execute.call_args[0][0])
+        assert "FOR UPDATE" in sql
+
 
 class TestListTransactions:
     def test_returns_list_filtered(self, repo: PosRepository, mock_session: MagicMock):

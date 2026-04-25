@@ -16,7 +16,7 @@ from datapulse.pos._service_helpers import (
     select_fefo_batch,
     to_decimal,
 )
-from datapulse.pos.constants import TerminalStatus
+from datapulse.pos.constants import TerminalStatus, TransactionStatus
 from datapulse.pos.exceptions import (
     InsufficientStockError,
     PharmacistVerificationRequiredError,
@@ -205,19 +205,52 @@ class CartOpsMixin:
         quantity: Decimal,
         unit_price: Decimal | None = None,
         discount: Decimal | None = None,
+        transaction_id: int | None = None,
     ) -> PosCartItem:
         """Update an existing line item's quantity (+ optional price/discount).
 
         ``unit_price=None`` means "leave the existing price alone" — the
         SQL UPDATE recomputes ``line_total`` from the persisted price, so
         a pure quantity change cannot zero the line by passing 0 here
-        (Codex P1).
+        (Codex P1). The SQL also has a status guard: a non-draft parent
+        transaction cannot have its lines mutated.
+
+        We still issue a service-side status check first so the caller
+        gets a clear ``PosError`` (vs. a silent no-op when the SQL
+        WHERE clause filters everything out).
         """
+        existing = self._repo.get_transaction_item(item_id)
+        if existing is None:
+            raise PosError(
+                message=f"Item {item_id} not found",
+                detail=f"item_id={item_id}",
+            )
+        existing_transaction_id = int(existing["transaction_id"])
+        if transaction_id is not None and existing_transaction_id != transaction_id:
+            raise PosError(
+                message=f"Item {item_id} does not belong to transaction {transaction_id}",
+                detail=f"item_id={item_id} transaction_id={transaction_id}",
+            )
+
+        header = self._repo.get_transaction(existing_transaction_id)
+        if header is None:
+            raise PosError(
+                message=f"Transaction {existing_transaction_id} not found",
+                detail=f"transaction_id={existing_transaction_id}",
+            )
+        if header["status"] != TransactionStatus.draft.value:
+            raise PosError(
+                message=(f"Only draft transactions can be edited (current: {header['status']})."),
+                detail=f"transaction_id={existing_transaction_id} status={header['status']}",
+            )
+
         row = self._repo.update_item_quantity(
             item_id,
             quantity=quantity,
-            unit_price=unit_price,
-            discount=discount,
+            unit_price=to_decimal(unit_price) if unit_price is not None else None,
+            discount=to_decimal(discount) if discount is not None else None,
+            transaction_id=existing_transaction_id,
+            expected_status=TransactionStatus.draft.value,
         )
         if row is None:
             raise PosError(
@@ -228,6 +261,22 @@ class CartOpsMixin:
         # straight from the row — no client-side merge needed.
         return PosCartItem.model_validate({**row, "drug_name": row.get("drug_name", "")})
 
-    def remove_item(self, item_id: int) -> bool:
+    def remove_item(self, item_id: int, *, transaction_id: int | None = None) -> bool:
         """Delete a single item from a draft transaction."""
-        return self._repo.remove_item(item_id)
+        existing = self._repo.get_transaction_item(item_id)
+        if existing is None:
+            return False
+        existing_transaction_id = int(existing["transaction_id"])
+        if transaction_id is not None and existing_transaction_id != transaction_id:
+            return False
+        header = self._repo.get_transaction(existing_transaction_id)
+        if header is not None and header["status"] != TransactionStatus.draft.value:
+            raise PosError(
+                message=(f"Only draft transactions can be edited (current: {header['status']})."),
+                detail=f"transaction_id={existing_transaction_id} status={header['status']}",
+            )
+        return self._repo.remove_item(
+            item_id,
+            transaction_id=existing_transaction_id,
+            expected_status=TransactionStatus.draft.value,
+        )
