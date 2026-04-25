@@ -3,6 +3,7 @@
 import { Minus, Plus, X } from "lucide-react";
 import type { PosCartItem } from "@/types/pos";
 import { cn } from "@/lib/utils";
+import { cleanDrugName } from "@/lib/pos/format-drug-name";
 import { fmtEgp } from "./types";
 
 interface CartRowProps {
@@ -54,7 +55,7 @@ export function CartRow({
       </div>
 
       <div className="flex min-w-0 flex-col gap-0.5">
-        <div className="truncate text-sm font-semibold text-text-primary">{item.drug_name}</div>
+        <div className="truncate text-sm font-semibold text-text-primary">{cleanDrugName(item.drug_name)}</div>
         <div className="flex items-center gap-2.5">
           <span className="font-mono text-[10px] text-text-secondary">{item.drug_code}</span>
           {!synced && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { cleanDrugName } from "@/lib/pos/format-drug-name";
 import { fmtEgp, type QuickPickItem, type QuickPickSignal } from "./types";
 
 interface QuickPickGridProps {
@@ -108,7 +109,7 @@ export function QuickPickGrid({
                 type="button"
                 role="gridcell"
                 onClick={() => onPick(tile)}
-                aria-label={`Quick pick ${n}: ${tile.drug_name} at EGP ${fmtEgp(tile.unit_price)}`}
+                aria-label={`Quick pick ${n}: ${cleanDrugName(tile.drug_name)} at EGP ${fmtEgp(tile.unit_price)}`}
                 data-testid={`quick-pick-${n}`}
                 style={{ height: 120 }}
                 className={cn(
@@ -155,7 +156,7 @@ export function QuickPickGrid({
                   style={{ fontFamily: "var(--font-plex-arabic, sans-serif)", fontWeight: 700, fontSize: 14 }}
                   className="mt-1 line-clamp-2 flex-1 leading-tight text-text-primary"
                 >
-                  {tile.drug_name_ar ?? tile.drug_name}
+                  {tile.drug_name_ar ?? cleanDrugName(tile.drug_name)}
                 </span>
 
                 {/* Foot: stock + expiry */}
