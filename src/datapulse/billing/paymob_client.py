@@ -18,6 +18,7 @@ import hashlib
 import hmac
 import json
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -170,6 +171,40 @@ class PaymobClient:
 
     def cancel_subscription(self, external_subscription_id: str) -> None:
         """No-op — Paymob recurring is managed via the dashboard."""
+
+    # ── POS payment (issue #738) ─────────────────────────────────────────────
+
+    def create_pos_payment_session(
+        self,
+        amount: Decimal,
+        merchant_ref: str,
+        currency: str = "EGP",
+    ) -> dict:
+        """Initiate a POS card-payment session through Paymob.
+
+        Unlike :meth:`create_checkout_session` (which is for subscription
+        billing and looks up amount from plan limits), this method accepts
+        ``amount`` directly in the currency unit (e.g. EGP, not piastres).
+
+        ``merchant_ref`` is forwarded as ``merchant_order_id`` — Paymob
+        deduplicates orders with the same ``merchant_order_id``, giving us
+        idempotency protection against double-charges on retry (#738).
+
+        Returns a dict with at least ``"order_id"`` so callers do not need
+        to import internal Paymob shim types.
+        """
+        from decimal import Decimal as _Decimal  # local import avoids unused at module level
+
+        amount_piastres = int(_Decimal(str(amount)) * 100)
+        auth_token = self._auth_token()
+        order_id = self._register_order(auth_token, amount_piastres, merchant_ref)
+        logger.info(
+            "paymob_pos_payment_initiated",
+            order_id=order_id,
+            merchant_ref=merchant_ref,
+            currency=currency,
+        )
+        return {"order_id": order_id}
 
     # ── Internal helpers ─────────────────────────────────────────────────────
 

@@ -88,7 +88,10 @@ class TestCardGateway:
         result = gw.process_payment(Decimal("50"))
         assert result.success is False
         assert result.method == "card"
-        assert "not configured" in result.message.lower()
+        # CardGateway is now a documented fallback stub; message directs operator
+        # to set PAYMOB_API_KEY for real card processing (#738).
+        msg = result.message.lower()
+        assert "paymob_api_key" in msg or "paymobcardgateway" in msg
 
     def test_zero_charged_on_failure(self):
         gw = CardGateway()
