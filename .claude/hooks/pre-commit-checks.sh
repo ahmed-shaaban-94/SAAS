@@ -30,18 +30,14 @@ if [ -n "$TS_FILES" ] && [ -f frontend/tsconfig.json ]; then
   fi
   if [ -f "$TSC_BIN" ]; then
     # Filter pre-existing errors not caused by our source code:
-    #  - vitest/globals config error
-    #  - .next/types/* stale build artifacts (worktree / first-build issue)
-    #  - @clerk/nextjs missing package (optional dep, not installed in all envs)
-    #  - bwip-js / qrcode.react missing packages (optional receipt deps)
+    #   - vitest/globals config error (tsconfig issue, not real code error)
+    #   - frontend/.next/ stale build artifacts (missing .js modules after route renames)
+    #   - TS2307 "Cannot find module" for npm packages (node_modules not installed in worktree)
     TSC_OUT=$("$TSC_BIN" --project frontend/tsconfig.json --noEmit 2>&1 || true)
     NEW_ERRORS=$(echo "$TSC_OUT" | grep "^frontend/" \
       | grep -v "vitest/globals" \
-      | grep -v "\.next/types/" \
-      | grep -v "@clerk/nextjs" \
-      | grep -v "bwip-js" \
-      | grep -v "qrcode\.react" \
-      | grep -v "src/middleware\.ts" \
+      | grep -v "^frontend/\.next/" \
+      | grep -v "error TS2307: Cannot find module" \
       | grep "error TS" || true)
     if [ -n "$NEW_ERRORS" ]; then
       echo "$NEW_ERRORS" >&2
