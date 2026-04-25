@@ -1,0 +1,17 @@
+{
+  "ci": {
+    "assert": {
+      "assertions": {
+        "first-contentful-paint": ["warn", {"maxNumericValue": 3000}],
+        "largest-contentful-paint": ["warn", {"maxNumericValue": 4000}],
+        "total-blocking-time": ["warn", {"maxNumericValue": 1000}],
+        "cumulative-layout-shift": ["warn", {"maxNumericValue": 0.25}],
+        "interactive": ["warn", {"maxNumericValue": 5000}]
+      }
+    },
+    "collect": {
+      "startServerCommand": "npm start",
+      "url": ["http://localhost:3000/pos"]
+    }
+  }
+}

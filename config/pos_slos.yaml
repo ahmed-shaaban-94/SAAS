@@ -1,0 +1,7 @@
+# POS route SLOs — target p95 latency in milliseconds (#734)
+routes:
+  "POST /api/v1/pos/transactions/{id}/items": 120
+  "POST /api/v1/pos/transactions/{id}/checkout": 500
+  "GET /api/v1/pos/catalog/search": 200
+  "POST /api/v1/pos/terminals/open": 300
+  "GET /api/v1/pos/terminals/{id}": 100
