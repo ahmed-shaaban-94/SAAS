@@ -32,11 +32,17 @@ class CatalogRepoMixin:
         *,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
-        """Search ``public_marts.dim_product`` by drug_code / drug_name / drug_brand.
+        """Search ``public_marts.dim_product`` and ``pharma.drug_catalog``.
 
-        Tenant isolation is enforced by RLS via ``SET LOCAL app.tenant_id``.
-        ``unit_price`` is the most-recent unit_price from ``public_marts.fct_sales``
-        (falls back to 0 when the drug has never been sold).
+        Tenant isolation on ``dim_product`` is enforced by RLS via
+        ``SET LOCAL app.tenant_id``. ``pharma.drug_catalog`` is a global SAP
+        catalog (no tenant column) and is visible to every tenant for now;
+        revisit when ``pharma.drug_alias`` lands.
+
+        ``unit_price`` for ``dim_product`` is the most-recent unit_price from
+        ``public_marts.fct_sales`` (falls back to 0). For ``pharma.drug_catalog``
+        it is ``price_egp`` directly. dim_product wins when the same code
+        exists in both — see the ``NOT EXISTS`` filter on the catalog leg.
         """
         pattern = f"%{query}%"
         rows = (
@@ -65,7 +71,25 @@ class CatalogRepoMixin:
                         OR p.drug_code  ILIKE :pattern
                         OR p.drug_brand ILIKE :pattern
                     )
-                    ORDER  BY p.drug_name
+                    UNION ALL
+                    SELECT
+                        c.material_code AS drug_code,
+                        c.name_en       AS drug_name,
+                        c.vendor_name   AS drug_brand,
+                        c.subcategory   AS drug_cluster,
+                        c.category      AS drug_category,
+                        COALESCE(c.price_egp, 0) AS unit_price
+                    FROM   pharma.drug_catalog c
+                    WHERE  (
+                           c.name_en       ILIKE :pattern
+                        OR c.material_code ILIKE :pattern
+                        OR c.vendor_name   ILIKE :pattern
+                    )
+                    AND    NOT EXISTS (
+                        SELECT 1 FROM public_marts.dim_product p2
+                        WHERE  p2.drug_code = c.material_code
+                    )
+                    ORDER  BY drug_name
                     LIMIT  :limit
                 """),
                 {"pattern": pattern, "limit": limit},
@@ -76,7 +100,12 @@ class CatalogRepoMixin:
         return [dict(r) for r in rows]
 
     def get_product_by_code(self, drug_code: str) -> dict[str, Any] | None:
-        """Return a single product by ``drug_code`` with its most-recent unit price."""
+        """Return a single product by ``drug_code`` with its most-recent unit price.
+
+        Falls back to ``pharma.drug_catalog`` (matched on ``material_code``)
+        when the code is not in ``dim_product``. The catalog leg is global
+        across tenants — see ``search_dim_products`` docstring for context.
+        """
         row = (
             self._session.execute(
                 text("""
@@ -99,6 +128,20 @@ class CatalogRepoMixin:
                         ) AS unit_price
                     FROM   public_marts.dim_product p
                     WHERE  p.drug_code = :drug_code
+                    UNION ALL
+                    SELECT
+                        c.material_code AS drug_code,
+                        c.name_en       AS drug_name,
+                        c.vendor_name   AS drug_brand,
+                        c.subcategory   AS drug_cluster,
+                        c.category      AS drug_category,
+                        COALESCE(c.price_egp, 0) AS unit_price
+                    FROM   pharma.drug_catalog c
+                    WHERE  c.material_code = :drug_code
+                    AND    NOT EXISTS (
+                        SELECT 1 FROM public_marts.dim_product p2
+                        WHERE  p2.drug_code = c.material_code
+                    )
                     LIMIT  1
                 """),
                 {"drug_code": drug_code},
@@ -263,11 +306,14 @@ class CatalogRepoMixin:
         cursor: str | None,
         limit: int,
     ) -> list[dict[str, Any]]:
-        """Return up to *limit* products from ``dim_product`` ordered by drug_code.
+        """Return up to *limit* products ordered by drug_code.
 
-        Uses a ``DISTINCT ON`` CTE to pre-compute the latest unit_price for every
-        drug_code in a single fct_sales scan — avoids 17.8k correlated subqueries
-        that would fire when pulling the full catalog.
+        Combines ``public_marts.dim_product`` (tenant-scoped via RLS, latest
+        unit_price from fct_sales) with ``pharma.drug_catalog`` (global SAP
+        catalog, price_egp). Uses a ``DISTINCT ON`` CTE to pre-compute the
+        latest unit_price for every drug_code in a single fct_sales scan.
+        Catalog rows are excluded when the same code is already in
+        ``dim_product`` to keep the DISTINCT-ON precedence intact.
         """
         rows = (
             self._session.execute(
@@ -278,18 +324,35 @@ class CatalogRepoMixin:
                             unit_price
                         FROM   public_marts.fct_sales
                         ORDER  BY drug_code, invoice_date DESC
+                    ),
+                    combined AS (
+                        SELECT
+                            p.drug_code,
+                            p.drug_name,
+                            p.drug_brand,
+                            p.drug_cluster,
+                            p.drug_category,
+                            COALESCE(lp.unit_price, 0) AS unit_price
+                        FROM   public_marts.dim_product p
+                        LEFT   JOIN latest_price lp USING (drug_code)
+                        UNION ALL
+                        SELECT
+                            c.material_code AS drug_code,
+                            c.name_en       AS drug_name,
+                            c.vendor_name   AS drug_brand,
+                            c.subcategory   AS drug_cluster,
+                            c.category      AS drug_category,
+                            COALESCE(c.price_egp, 0) AS unit_price
+                        FROM   pharma.drug_catalog c
+                        WHERE  NOT EXISTS (
+                            SELECT 1 FROM public_marts.dim_product p2
+                            WHERE  p2.drug_code = c.material_code
+                        )
                     )
-                    SELECT
-                        p.drug_code,
-                        p.drug_name,
-                        p.drug_brand,
-                        p.drug_cluster,
-                        p.drug_category,
-                        COALESCE(lp.unit_price, 0) AS unit_price
-                    FROM   public_marts.dim_product p
-                    LEFT   JOIN latest_price lp USING (drug_code)
-                    WHERE  (:cursor IS NULL OR p.drug_code > :cursor)
-                    ORDER  BY p.drug_code
+                    SELECT *
+                    FROM   combined
+                    WHERE  (:cursor IS NULL OR drug_code > :cursor)
+                    ORDER  BY drug_code
                     LIMIT  :limit
                 """),
                 {"cursor": cursor, "limit": limit},
