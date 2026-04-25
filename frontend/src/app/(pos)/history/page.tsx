@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, RotateCcw, XCircle } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Printer, RefreshCw, RotateCcw, XCircle } from "lucide-react";
 import { VoidModal } from "@/components/pos/VoidModal";
 import { usePosHistory } from "@/hooks/use-pos-history";
+import { useSession } from "@/lib/auth-bridge";
+import { fetchAPI } from "@/lib/api-client";
+import { buildReceiptPayload, printReceipt } from "@/lib/pos/print-bridge";
+import { getPosBranding } from "@/lib/pos-branding";
 import { cn } from "@/lib/utils";
-import type { TransactionResponse, TransactionStatus } from "@/types/pos";
+import type { TransactionDetailResponse, TransactionResponse, TransactionStatus, CheckoutResponse } from "@/types/pos";
+
+const { invoiceLabel: BRANCH_NAME, branchAddress: BRANCH_ADDRESS } = getPosBranding();
 
 const STATUS_COLORS: Record<TransactionStatus, string> = {
   draft: "text-text-secondary bg-white/[0.04]",
@@ -21,6 +27,7 @@ function fmt(n: number): string {
 
 export default function PosHistoryPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [page, setPage] = useState(1);
   const limit = 15;
 
@@ -31,9 +38,43 @@ export default function PosHistoryPage() {
   // Void modal state
   const [voidTarget, setVoidTarget] = useState<TransactionResponse | null>(null);
 
+  // Per-row reprint state — { [txnId]: "printing" | "error" }
+  const [reprintState, setReprintState] = useState<Record<number, "printing" | "error">>({});
+
   function handleVoidSuccess() {
     setVoidTarget(null);
     void mutate();
+  }
+
+  async function handleReprint(txn: TransactionResponse) {
+    setReprintState((s) => ({ ...s, [txn.id]: "printing" }));
+    try {
+      const detail = await fetchAPI<TransactionDetailResponse>(
+        `/api/v1/pos/transactions/${txn.id}`,
+      );
+      const payload = buildReceiptPayload({
+        txn: detail,
+        result: { receipt_number: txn.receipt_number ?? `TXN-${txn.id}` } as CheckoutResponse,
+        staffName: session?.user?.name ?? "",
+        storeName: BRANCH_NAME,
+        storeAddress: BRANCH_ADDRESS,
+        confirmation: "confirmed",
+      });
+      await printReceipt(payload);
+      setReprintState((s) => {
+        const { [txn.id]: _omit, ...rest } = s;
+        return rest;
+      });
+    } catch {
+      setReprintState((s) => ({ ...s, [txn.id]: "error" }));
+      // Auto-clear error after 3s so the cashier can retry
+      setTimeout(() => {
+        setReprintState((s) => {
+          const { [txn.id]: _omit, ...rest } = s;
+          return rest;
+        });
+      }, 3000);
+    }
   }
 
   return (
@@ -131,6 +172,25 @@ export default function PosHistoryPage() {
               {/* Action buttons — only for completed transactions */}
               {txn.status === "completed" && (
                 <div className="mt-2 flex gap-2 border-t border-[var(--pos-line)] pt-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleReprint(txn)}
+                    disabled={reprintState[txn.id] === "printing"}
+                    data-testid={`reprint-${txn.id}`}
+                    className={cn(
+                      "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5",
+                      "border border-cyan-400/30 bg-cyan-400/10 text-xs font-medium text-cyan-300",
+                      "hover:bg-cyan-400/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                      reprintState[txn.id] === "error" && "border-destructive/30 bg-destructive/10 text-destructive",
+                    )}
+                  >
+                    <Printer className={cn("h-3 w-3", reprintState[txn.id] === "printing" && "animate-pulse")} />
+                    {reprintState[txn.id] === "printing"
+                      ? "Printing\u2026"
+                      : reprintState[txn.id] === "error"
+                        ? "Failed"
+                        : "Reprint"}
+                  </button>
                   <button
                     type="button"
                     onClick={() =>
