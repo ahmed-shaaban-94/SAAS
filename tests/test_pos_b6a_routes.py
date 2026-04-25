@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from datapulse.api.auth import get_current_user
-from datapulse.api.deps import get_pos_service, get_tenant_plan_limits
+from datapulse.api.deps import get_pos_service, get_tenant_plan_limits, get_tenant_session
 from datapulse.billing.plans import PLAN_LIMITS
 from datapulse.pos.constants import (
     CashDrawerEventType,
@@ -66,10 +66,17 @@ def _make_app(service: MagicMock) -> FastAPI:
             "pos:controlled:verify",
         },
     )
+    # Mocked tenant DB session — the close-shift route now invokes
+    # enforce_close_guard via Depends(get_tenant_session). With scalar()=0
+    # the guard accepts and the mocked service is then called.
+    _mock_session = MagicMock()
+    _mock_session.execute.return_value.scalar.return_value = 0
+
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_pos_service] = lambda: service
     app.dependency_overrides[get_tenant_plan_limits] = lambda: PLAN_LIMITS["platform"]
     app.dependency_overrides[get_access_context] = lambda: _ctx
+    app.dependency_overrides[get_tenant_session] = lambda: _mock_session
 
     @app.exception_handler(PosError)
     async def _pos_handler(_req: Request, exc: PosError) -> JSONResponse:
@@ -83,6 +90,14 @@ def mock_service() -> MagicMock:
     svc = MagicMock()
     svc.void_transaction = AsyncMock()
     svc.process_return = AsyncMock()
+    # close_shift route calls service._repo.get_shift_by_id(shift_id) before
+    # enforce_close_guard to resolve tenant_id / terminal_id. Return a real
+    # dict so int(...) coercion in the route succeeds.
+    svc._repo.get_shift_by_id.return_value = {
+        "id": 1,
+        "tenant_id": 1,
+        "terminal_id": 10,
+    }
     return svc
 
 
