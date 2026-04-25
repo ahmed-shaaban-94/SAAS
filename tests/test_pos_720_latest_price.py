@@ -266,11 +266,11 @@ class TestListCatalogProductsPrice:
 
 @pytest.mark.unit
 def test_migration_is_idempotent() -> None:
-    """Migration 117 must use DO $$ IF NOT EXISTS pattern for idempotency."""
+    """Migration 118 must use DO $$ IF NOT EXISTS pattern for idempotency."""
     import pathlib
 
     migration_path = (
-        pathlib.Path(__file__).parent.parent / "migrations" / "117_mv_latest_unit_price.sql"
+        pathlib.Path(__file__).parent.parent / "migrations" / "118_mv_latest_unit_price.sql"
     )
     assert migration_path.exists(), f"Migration file not found: {migration_path}"
 
