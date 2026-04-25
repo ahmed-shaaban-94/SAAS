@@ -85,7 +85,7 @@ deduplicated AS (
         *,
         ROW_NUMBER() OVER (
             PARTITION BY tenant_id, reference_no, date, material, customer, site
-            ORDER BY id
+            ORDER BY loaded_at DESC, id DESC
         ) AS row_num
     FROM source
 )
