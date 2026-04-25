@@ -324,6 +324,7 @@ class TestTransactionRoutes:
         resp = client.post(
             "/api/v1/pos/transactions/100/items",
             json={"drug_code": "DRUG001", "quantity": "3"},
+            headers={"Idempotency-Key": "test-key-add-1"},
         )
         assert resp.status_code == 201
         body = resp.json()
@@ -357,6 +358,7 @@ class TestTransactionRoutes:
         resp = client.post(
             "/api/v1/pos/transactions/100/items",
             json={"drug_code": "DRUG001", "quantity": "5"},
+            headers={"Idempotency-Key": "test-key-add-2"},
         )
         assert resp.status_code == 409
 
@@ -387,18 +389,25 @@ class TestTransactionRoutes:
         resp = client.post(
             "/api/v1/pos/transactions/100/items",
             json={"drug_code": "MORPHINE", "quantity": "1"},
+            headers={"Idempotency-Key": "test-key-add-3"},
         )
         assert resp.status_code == 403
 
     def test_remove_item_204(self, client: TestClient, mock_service: MagicMock):
         mock_service.remove_item.return_value = True
-        resp = client.delete("/api/v1/pos/transactions/100/items/1")
+        resp = client.delete(
+            "/api/v1/pos/transactions/100/items/1",
+            headers={"Idempotency-Key": "test-key-remove-1"},
+        )
         assert resp.status_code == 204
         mock_service.remove_item.assert_called_once_with(1, transaction_id=100)
 
     def test_remove_item_404(self, client: TestClient, mock_service: MagicMock):
         mock_service.remove_item.return_value = False
-        resp = client.delete("/api/v1/pos/transactions/100/items/99")
+        resp = client.delete(
+            "/api/v1/pos/transactions/100/items/99",
+            headers={"Idempotency-Key": "test-key-remove-2"},
+        )
         assert resp.status_code == 404
 
     def test_update_item_without_override_preserves_price(
@@ -410,6 +419,7 @@ class TestTransactionRoutes:
         resp = client.patch(
             "/api/v1/pos/transactions/100/items/1",
             json={"quantity": "4"},
+            headers={"Idempotency-Key": "test-key-update-1"},
         )
         assert resp.status_code == 200
         mock_service.update_item.assert_called_once()
@@ -440,6 +450,7 @@ class TestTransactionRoutes:
         resp = client.post(
             "/api/v1/pos/transactions/100/items",
             json={"drug_code": "DRUG001", "quantity": "1"},
+            headers={"Idempotency-Key": "test-key-add-4"},
         )
         assert resp.status_code == 409
         mock_service.add_item.assert_not_awaited()
