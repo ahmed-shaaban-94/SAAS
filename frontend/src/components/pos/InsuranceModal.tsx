@@ -95,7 +95,12 @@ export function InsuranceModal({
     setNationalId(initial?.nationalId ?? "");
     setCoverage(initial?.coveragePct ?? insurers[idx]?.coverage ?? 80);
     setPreauth("");
-    setTimeout(() => nationalIdRef.current?.focus(), 80);
+    // Focus synchronously after mount — useEffect already runs post-DOM-commit,
+    // so the ref is populated. The previous setTimeout(80) raced with
+    // userEvent.type in tests: when the test typed into preauth, the late
+    // setTimeout would shift focus back to national-id mid-type, causing
+    // characters to land in the wrong field.
+    nationalIdRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
