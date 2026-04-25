@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session
 
 from datapulse.pos.models import (
@@ -98,7 +99,7 @@ def select_update_policy(
     )
 
 
-def _candidate_from_mapping(row: Mapping[str, Any]) -> CandidateRelease:
+def _candidate_from_mapping(row: Mapping[str, Any] | RowMapping) -> CandidateRelease:
     targets = row.get("target_tenant_ids") or []
     return CandidateRelease(
         release_id=int(row["release_id"]),
@@ -177,7 +178,7 @@ def get_update_policy(
 
 
 def _release_response_from_row(
-    row: Mapping[str, Any],
+    row: Mapping[str, Any] | RowMapping,
     tenant_ids: list[int],
 ) -> DesktopUpdateReleaseResponse:
     return DesktopUpdateReleaseResponse(

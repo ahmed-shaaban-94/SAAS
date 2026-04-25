@@ -1,4 +1,4 @@
--- Migration: 113 - POS desktop staged update rollouts
+-- Migration: 115 - POS desktop staged update rollouts
 -- Layer: POS operational / release management
 -- Idempotent.
 
