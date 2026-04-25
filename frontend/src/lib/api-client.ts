@@ -51,10 +51,11 @@ function buildQueryString(params?: FilterParams): string {
 }
 
 /**
- * Retrieve the current access token from the NextAuth session.
- * Relies on NextAuth's own session cache (window.__NEXT_AUTH.session) — no
- * extra network request on repeated calls. Avoids stale-token-after-sign-out
- * that a module-level cache would cause.
+ * Retrieve the current access token from the auth-bridge session.
+ * Delegates to getSession() from @/lib/auth-bridge, which works for both
+ * Clerk (reads window.Clerk.session) and Auth0/NextAuth (reads the
+ * NextAuth session cache). No extra network request on repeated calls;
+ * avoids stale-token-after-sign-out that a module-level cache would cause.
  */
 async function getAccessToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
