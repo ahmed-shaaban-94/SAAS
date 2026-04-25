@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { cleanDrugName } from "@/lib/pos/format-drug-name";
 import { fmtEgp, type QuickPickItem } from "./types";
 
 interface ScanDisambigPickerProps {
@@ -106,7 +107,7 @@ export function ScanDisambigPicker({
                 </kbd>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold text-text-primary">
-                    {tile.drug_name}
+                    {cleanDrugName(tile.drug_name)}
                   </div>
                   <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary">
                     {tile.drug_code}
