@@ -39,10 +39,13 @@ class CatalogRepoMixin:
         catalog (no tenant column) and is visible to every tenant for now;
         revisit when ``pharma.drug_alias`` lands.
 
-        ``unit_price`` for ``dim_product`` is the most-recent unit_price from
-        ``public_marts.fct_sales`` (falls back to 0). For ``pharma.drug_catalog``
-        it is ``price_egp`` directly. dim_product wins when the same code
-        exists in both — see the ``NOT EXISTS`` filter on the catalog leg.
+        ``unit_price`` is 0 for ``dim_product`` rows here. The previous
+        correlated subquery against ``public_marts.fct_sales`` (1.38M rows,
+        no per-product index) caused statement timeouts on the search path.
+        A proper "latest price" feature will need a materialized view; for
+        now, prices come only from ``drug_catalog.price_egp``. dim_product
+        still wins when the same code exists in both — see the
+        ``NOT EXISTS`` filter on the catalog leg.
         """
         pattern = f"%{query}%"
         rows = (
@@ -54,17 +57,7 @@ class CatalogRepoMixin:
                         p.drug_brand,
                         p.drug_cluster,
                         p.drug_category,
-                        COALESCE(
-                            (
-                                SELECT (f.sales / NULLIF(f.quantity, 0))
-                                FROM   public_marts.fct_sales f
-                                WHERE  f.tenant_id = p.tenant_id
-                                AND    f.product_key = p.product_key
-                                ORDER  BY f.date_key DESC
-                                LIMIT  1
-                            ),
-                            0
-                        ) AS unit_price
+                        0::numeric AS unit_price
                     FROM   public_marts.dim_product p
                     WHERE  (
                            p.drug_name  ILIKE :pattern
@@ -115,17 +108,7 @@ class CatalogRepoMixin:
                         p.drug_brand,
                         p.drug_cluster,
                         p.drug_category,
-                        COALESCE(
-                            (
-                                SELECT (f.sales / NULLIF(f.quantity, 0))
-                                FROM   public_marts.fct_sales f
-                                WHERE  f.tenant_id = p.tenant_id
-                                AND    f.product_key = p.product_key
-                                ORDER  BY f.date_key DESC
-                                LIMIT  1
-                            ),
-                            0
-                        ) AS unit_price
+                        0::numeric AS unit_price
                     FROM   public_marts.dim_product p
                     WHERE  p.drug_code = :drug_code
                     UNION ALL
@@ -168,17 +151,7 @@ class CatalogRepoMixin:
                         p.drug_brand,
                         p.drug_cluster,
                         p.drug_category,
-                        COALESCE(
-                            (
-                                SELECT (f.sales / NULLIF(f.quantity, 0))
-                                FROM   public_marts.fct_sales f
-                                WHERE  f.tenant_id = p.tenant_id
-                                AND    f.product_key = p.product_key
-                                ORDER  BY f.date_key DESC
-                                LIMIT  1
-                            ),
-                            0
-                        ) AS unit_price,
+                        0::numeric AS unit_price,
                         m.counseling_text,
                         m.active_ingredient
                     FROM   public_marts.dim_product p
@@ -211,17 +184,7 @@ class CatalogRepoMixin:
                         p.drug_name,
                         r.reason,
                         r.reason_tag,
-                        COALESCE(
-                            (
-                                SELECT (f.sales / NULLIF(f.quantity, 0))
-                                FROM   public_marts.fct_sales f
-                                WHERE  f.tenant_id = p.tenant_id
-                                AND    f.product_key = p.product_key
-                                ORDER  BY f.date_key DESC
-                                LIMIT  1
-                            ),
-                            0
-                        ) AS unit_price
+                        0::numeric AS unit_price
                     FROM   pos.cross_sell_rules r
                     JOIN   public_marts.dim_product p
                            ON p.drug_code = r.suggested_drug_code
@@ -254,20 +217,7 @@ class CatalogRepoMixin:
                             m.tenant_id,
                             m.drug_code,
                             m.active_ingredient,
-                            COALESCE(
-                                (
-                                    SELECT (f.sales / NULLIF(f.quantity, 0))
-                                    FROM   public_marts.fct_sales f
-                                    JOIN   public_marts.dim_product dp
-                                           ON dp.product_key = f.product_key
-                                          AND dp.tenant_id = f.tenant_id
-                                    WHERE  f.tenant_id = m.tenant_id
-                                    AND    dp.drug_code = m.drug_code
-                                    ORDER  BY f.date_key DESC
-                                    LIMIT  1
-                                ),
-                                0
-                            ) AS unit_price
+                            0::numeric AS unit_price
                         FROM   pos.product_catalog_meta m
                         WHERE  m.drug_code = :drug_code
                           AND  m.active_ingredient IS NOT NULL
@@ -275,17 +225,7 @@ class CatalogRepoMixin:
                     SELECT
                         alt.drug_code,
                         p.drug_name,
-                        COALESCE(
-                            (
-                                SELECT (f.sales / NULLIF(f.quantity, 0))
-                                FROM   public_marts.fct_sales f
-                                WHERE  f.tenant_id = p.tenant_id
-                                AND    f.product_key = p.product_key
-                                ORDER  BY f.date_key DESC
-                                LIMIT  1
-                            ),
-                            0
-                        ) AS unit_price,
+                        0::numeric AS unit_price,
                         primary.unit_price AS primary_unit_price
                     FROM   pos.product_catalog_meta alt
                     JOIN   primary
@@ -311,33 +251,29 @@ class CatalogRepoMixin:
     ) -> list[dict[str, Any]]:
         """Return up to *limit* products ordered by drug_code.
 
-        Combines ``public_marts.dim_product`` (tenant-scoped via RLS, latest
-        unit_price from fct_sales) with ``pharma.drug_catalog`` (global SAP
-        catalog, price_egp). Uses a ``DISTINCT ON`` CTE to pre-compute the
-        latest unit_price for every drug_code in a single fct_sales scan.
-        Catalog rows are excluded when the same code is already in
-        ``dim_product`` to keep the DISTINCT-ON precedence intact.
+        Combines ``public_marts.dim_product`` (tenant-scoped via RLS) with
+        ``pharma.drug_catalog`` (global SAP catalog, ``price_egp``). Catalog
+        rows are excluded when the same code is already in ``dim_product``
+        to keep precedence intact.
+
+        ``unit_price`` is 0 for ``dim_product`` rows here — the previous
+        ``DISTINCT ON`` over ``fct_sales`` (1.38M rows) caused statement
+        timeouts at the search endpoint. A proper "latest price" feature
+        will need a per-product materialized view; for now, prices come
+        only from ``drug_catalog.price_egp``.
         """
         rows = (
             self._session.execute(
                 text("""
-                    WITH latest_price AS (
-                        SELECT DISTINCT ON (product_key)
-                            product_key,
-                            (sales / NULLIF(quantity, 0)) AS unit_price
-                        FROM   public_marts.fct_sales
-                        ORDER  BY product_key, date_key DESC
-                    ),
-                    combined AS (
+                    WITH combined AS (
                         SELECT
                             p.drug_code,
                             p.drug_name,
                             p.drug_brand,
                             p.drug_cluster,
                             p.drug_category,
-                            COALESCE(lp.unit_price, 0) AS unit_price
+                            0::numeric AS unit_price
                         FROM   public_marts.dim_product p
-                        LEFT   JOIN latest_price lp ON lp.product_key = p.product_key
                         UNION ALL
                         SELECT
                             c.material_code AS drug_code,
