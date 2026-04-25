@@ -30,8 +30,14 @@ REPO_ROOT = Path("C:/Users/user/Documents/GitHub/Data-Pulse")
 
 
 def ssh_connect() -> paramiko.SSHClient:
+    """Connect to the production droplet with strict host-key checking.
+
+    Loads ~/.ssh/known_hosts and rejects unknown hosts — pre-trust must
+    be established by SSHing manually first.
+    """
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.load_system_host_keys()
+    client.set_missing_host_key_policy(paramiko.RejectPolicy())
     client.connect(SSH_HOST, username=SSH_USER, key_filename=SSH_KEY, timeout=15)
     return client
 

@@ -102,7 +102,10 @@ def excel_to_csv() -> Path:
     for col in df.columns:
         df[col] = df[col].str.strip().replace({"nan": None, "": None})
 
-    out = Path(tempfile.mktemp(suffix=".csv"))
+    # NamedTemporaryFile(delete=False) avoids the mktemp race (CWE-377);
+    # we close the handle immediately and let pandas reopen by path.
+    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tf:
+        out = Path(tf.name)
     df.to_csv(out, index=False, quoting=csv.QUOTE_NONNUMERIC, na_rep="")
     print(f"      {len(df):,} rows -> {out}")
     return out
@@ -112,8 +115,16 @@ def excel_to_csv() -> Path:
 
 
 def ssh_connect() -> paramiko.SSHClient:
+    """Connect to the production droplet with strict host-key checking.
+
+    Loads the operator's ~/.ssh/known_hosts and rejects unknown hosts —
+    pre-trust must be established by SSHing manually first (one-shot
+    ``ssh-keyscan -H <host> >> ~/.ssh/known_hosts``). This protects
+    against MITM where an attacker spoofs the droplet's IP.
+    """
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.load_system_host_keys()
+    client.set_missing_host_key_policy(paramiko.RejectPolicy())
     client.connect(SSH_HOST, username=SSH_USER, key_filename=SSH_KEY, timeout=15)
     return client
 
