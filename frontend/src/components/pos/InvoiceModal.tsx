@@ -21,6 +21,8 @@ export interface InvoiceModalProps {
   onClose: () => void;
   transaction: TransactionDetailResponse;
   checkoutResult: CheckoutResponse;
+  /** Legal company/pharmacy name shown in the invoice letterhead. */
+  companyName?: string;
   branchName: string;
   branchAddress: string;
   taxNumber: string;
@@ -72,6 +74,7 @@ export function InvoiceModal({
   onClose,
   transaction,
   checkoutResult,
+  companyName = "Pharmacy",
   branchName,
   branchAddress,
   taxNumber,
@@ -212,7 +215,7 @@ export function InvoiceModal({
                   letterSpacing: "-0.01em",
                 }}
               >
-                DataPulse Pharmacy
+                {companyName}
               </div>
               <div style={{ fontSize: 11, letterSpacing: "0.1em", opacity: 0.85 }}>
                 Simplified tax invoice

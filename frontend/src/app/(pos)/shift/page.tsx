@@ -9,11 +9,9 @@ import { ThermalShiftReceipt } from "@/components/pos/shift/ThermalShiftReceipt"
 import { useSession } from "@/lib/auth-bridge";
 import { openTerminal, closeTerminal } from "@/hooks/use-pos-terminal";
 import { buildShiftReceiptPayload, printReceipt } from "@/lib/pos/print-bridge";
-import { getPosBranding } from "@/lib/pos-branding";
+import { usePosBranding } from "@/hooks/use-pos-branding";
 import { cn } from "@/lib/utils";
 import type { TerminalSessionResponse } from "@/types/pos";
-
-const { invoiceLabel: BRANCH_NAME, branchAddress: BRANCH_ADDRESS } = getPosBranding();
 
 type ShiftView = "open" | "active" | "close" | "closed";
 
@@ -57,6 +55,7 @@ function CashInput({
 export default function ShiftPage() {
   const router = useRouter();
   const { data: session } = useSession();
+  const { branding: posBranding } = usePosBranding();
 
   const [terminal, setTerminal] = useState<TerminalSessionResponse | null>(() => {
     if (typeof window === "undefined") return null;
@@ -129,11 +128,11 @@ export default function ShiftPage() {
       shift: target,
       cashSales,
       staffName: session?.user?.name ?? "",
-      storeName: BRANCH_NAME,
-      storeAddress: BRANCH_ADDRESS,
+      storeName: posBranding.invoiceLabel,
+      storeAddress: posBranding.branchAddress,
     });
     void printReceipt(payload);
-  }, [shiftResult, terminal, cashSales, session]);
+  }, [shiftResult, terminal, cashSales, session, posBranding]);
 
   useEffect(() => {
     if (view !== "close") return;
@@ -341,8 +340,9 @@ export default function ShiftPage() {
                 Receipt preview · 80mm
               </div>
               <ThermalShiftReceipt
+                companyName={posBranding.companyName}
                 branchName={`Site ${terminal.site_code}`}
-                taxNo="345-678-901"
+                taxNo={posBranding.taxNumber || "345-678-901"}
                 terminalName={terminal.terminal_name}
                 cashierName={terminal.staff_id}
                 openedAt={terminal.opened_at}

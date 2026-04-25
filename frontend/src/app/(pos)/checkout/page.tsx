@@ -20,10 +20,8 @@ import type {
   TransactionDetailResponse,
 } from "@/types/pos";
 import type { ReceiptData } from "@/components/pos/receipts/receipt-mock";
-import { getPosBranding } from "@/lib/pos-branding";
+import { usePosBranding } from "@/hooks/use-pos-branding";
 import { buildReceiptPayload, printReceipt } from "@/lib/pos/print-bridge";
-
-const { invoiceLabel: INVOICE_BRANCH_NAME, branchAddress: INVOICE_BRANCH_ADDRESS, taxNumber: INVOICE_TAX_NUMBER } = getPosBranding();
 
 interface PendingCheckout {
   transactionId: number;
@@ -111,6 +109,7 @@ export default function CheckoutPage() {
   const { data: session } = useSession();
   const { grandTotal, appliedDiscount, clearCart } = usePosCart();
   const checkout = usePosCheckout();
+  const { branding: posBranding } = usePosBranding();
 
   const [pending, setPending] = useState<PendingCheckout | null>(null);
   const [result, setResult] = useState<CheckoutResponse | null>(null);
@@ -150,8 +149,8 @@ export default function CheckoutPage() {
         txn: txnDetail,
         result,
         staffName: session?.user?.name ?? "",
-        storeName: INVOICE_BRANCH_NAME,
-        storeAddress: INVOICE_BRANCH_ADDRESS,
+        storeName: posBranding.invoiceLabel,
+        storeAddress: posBranding.branchAddress,
       });
       void printReceipt(payload);
     }, 300);
@@ -193,11 +192,11 @@ export default function CheckoutPage() {
       txn: txnDetail,
       result,
       staffName: session?.user?.name ?? "",
-      storeName: INVOICE_BRANCH_NAME,
-      storeAddress: INVOICE_BRANCH_ADDRESS,
+      storeName: posBranding.invoiceLabel,
+      storeAddress: posBranding.branchAddress,
     });
     void printReceipt(payload);
-  }, [txnDetail, result, session]);
+  }, [txnDetail, result, session, posBranding]);
 
   async function handleEmail() {
     if (!result) return;
@@ -345,9 +344,10 @@ export default function CheckoutPage() {
           onClose={() => setInvoiceOpen(false)}
           transaction={txnDetail}
           checkoutResult={result}
-          branchName={INVOICE_BRANCH_NAME}
-          branchAddress={INVOICE_BRANCH_ADDRESS}
-          taxNumber={INVOICE_TAX_NUMBER}
+          companyName={posBranding.companyName}
+          branchName={posBranding.invoiceLabel}
+          branchAddress={posBranding.branchAddress}
+          taxNumber={posBranding.taxNumber}
           cashierName={cashierName}
           voucher={discountSource === "voucher" ? appliedDiscount?.ref : null}
           promotion={discountSource === "promotion" ? appliedDiscount?.label : null}

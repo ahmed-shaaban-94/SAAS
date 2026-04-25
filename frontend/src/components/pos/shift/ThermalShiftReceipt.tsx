@@ -3,6 +3,8 @@
 import { cn } from "@/lib/utils";
 
 interface ThermalShiftReceiptProps {
+  /** Legal company/pharmacy name shown at the top of the receipt. */
+  companyName?: string;
   branchName: string;
   taxNo: string;
   terminalName: string;
@@ -29,6 +31,7 @@ function Line({ l, r }: { l: string; r: string }) {
 }
 
 export function ThermalShiftReceipt({
+  companyName = "Pharmacy",
   branchName,
   taxNo,
   terminalName,
@@ -71,7 +74,7 @@ export function ThermalShiftReceipt({
           className="font-[family-name:var(--font-fraunces)] font-semibold"
           style={{ fontSize: 17 }}
         >
-          DataPulse Pharmacy
+          {companyName}
         </div>
         <div style={{ fontSize: 10 }}>{branchName}</div>
         <div style={{ fontSize: 10 }}>Tax No: {taxNo}</div>

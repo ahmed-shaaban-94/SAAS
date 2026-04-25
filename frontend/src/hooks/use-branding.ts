@@ -19,6 +19,12 @@ export interface BrandingConfig {
   support_url: string | null;
   hide_datapulse_branding: boolean;
   custom_login_bg: string | null;
+  // POS letterhead fields (migration 116)
+  pos_branch_name: string | null;
+  pos_branch_address: string | null;
+  pos_tax_number: string | null;
+  pos_cr_number: string | null;
+  pos_invoice_label: string | null;
 }
 
 export function useBranding() {

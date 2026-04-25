@@ -16,12 +16,7 @@ import { useDrugSearch } from "@/hooks/use-drug-search";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { TerminalSessionResponse } from "@/types/pos";
-import { getPosBranding } from "@/lib/pos-branding";
-
-// Stocktaking worksheet letterhead — pulled from getPosBranding() so the
-// values can be set per-deployment via NEXT_PUBLIC_POS_* env vars without
-// editing page code. Multi-tenant fetch from tenant_branding is a follow-up.
-const { branchName: STOCKTAKING_BRANCH_NAME, branchAddress: STOCKTAKING_BRANCH_ADDRESS, crNumber: STOCKTAKING_CR_NUMBER } = getPosBranding();
+import { usePosBranding } from "@/hooks/use-pos-branding";
 
 function useActiveTerminal(): TerminalSessionResponse | null {
   const [terminal, setTerminal] = useState<TerminalSessionResponse | null>(null);
@@ -41,6 +36,7 @@ function useActiveTerminal(): TerminalSessionResponse | null {
 export default function PosDrugsPage() {
   const router = useRouter();
   const terminal = useActiveTerminal();
+  const { branding: posBranding } = usePosBranding();
   const { addItem, grandTotal, itemCount } = usePosCart();
   const toast = useToast();
 
@@ -267,9 +263,9 @@ export default function PosDrugsPage() {
         open={stocktakingOpen}
         onClose={() => setStocktakingOpen(false)}
         rows={allRows}
-        branchName={STOCKTAKING_BRANCH_NAME}
-        branchAddress={STOCKTAKING_BRANCH_ADDRESS}
-        crNumber={STOCKTAKING_CR_NUMBER}
+        branchName={posBranding.branchName}
+        branchAddress={posBranding.branchAddress}
+        crNumber={posBranding.crNumber}
       />
     </div>
   );

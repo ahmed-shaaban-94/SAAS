@@ -1,16 +1,13 @@
 /**
- * POS letterhead — pharmacy branding shown on invoices, receipts, and
- * stocktaking worksheets.
+ * POS letterhead — static fallback via NEXT_PUBLIC_POS_* env vars.
  *
- * PILOT-ERA: values come from `NEXT_PUBLIC_POS_*` env vars with empty
- * defaults. Setting them at build time is the pilot's single source of
- * truth so the branch name, address, and legal identifiers are no longer
- * hardcoded into page files.
+ * @deprecated Since issue #680 the POS pages fetch branding dynamically from
+ * the `tenant_branding` API via `usePosBranding` (hooks/use-pos-branding.ts).
+ * This module is kept for backwards compatibility with Electron packaging
+ * scripts that still read env vars at build time; it is no longer called by
+ * any page component.
  *
- * Upgrade path (multi-tenant): replace this with an SWR fetch from the
- * `tenant_branding` table (see migration 027). The call signature stays
- * the same — consumers only read `getPosBranding()`, so the swap is
- * contained to this module.
+ * Do NOT add new callers. Use `usePosBranding` instead.
  */
 
 export interface PosBranding {
@@ -26,6 +23,7 @@ export interface PosBranding {
   crNumber: string;
 }
 
+/** @deprecated Use `usePosBranding` hook instead (see hooks/use-pos-branding.ts). */
 export function getPosBranding(): PosBranding {
   const branchName = process.env.NEXT_PUBLIC_POS_BRANCH_NAME ?? "Pharmacy Branch";
   return {

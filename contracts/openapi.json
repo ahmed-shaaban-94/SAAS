@@ -1187,6 +1187,61 @@
             ],
             "title": "Logo Url"
           },
+          "pos_branch_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Branch Address"
+          },
+          "pos_branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Branch Name"
+          },
+          "pos_cr_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Cr Number"
+          },
+          "pos_invoice_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Invoice Label"
+          },
+          "pos_tax_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Tax Number"
+          },
           "primary_color": {
             "default": "#4F46E5",
             "title": "Primary Color",
@@ -1349,6 +1404,61 @@
               }
             ],
             "title": "Hide Datapulse Branding"
+          },
+          "pos_branch_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Branch Address"
+          },
+          "pos_branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Branch Name"
+          },
+          "pos_cr_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Cr Number"
+          },
+          "pos_invoice_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Invoice Label"
+          },
+          "pos_tax_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pos Tax Number"
           },
           "primary_color": {
             "anyOf": [

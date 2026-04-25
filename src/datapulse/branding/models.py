@@ -23,6 +23,12 @@ class BrandingUpdate(BaseModel):
     support_url: str | None = None
     hide_datapulse_branding: bool | None = None
     custom_login_bg: str | None = None
+    # POS letterhead fields (added in migration 116)
+    pos_branch_name: str | None = None
+    pos_branch_address: str | None = None
+    pos_tax_number: str | None = None
+    pos_cr_number: str | None = None
+    pos_invoice_label: str | None = None
 
 
 class BrandingResponse(BaseModel):
@@ -47,6 +53,12 @@ class BrandingResponse(BaseModel):
     support_url: str | None = None
     hide_datapulse_branding: bool = False
     custom_login_bg: str | None = None
+    # POS letterhead fields (migration 116)
+    pos_branch_name: str | None = None
+    pos_branch_address: str | None = None
+    pos_tax_number: str | None = None
+    pos_cr_number: str | None = None
+    pos_invoice_label: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

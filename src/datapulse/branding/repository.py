@@ -19,6 +19,17 @@ log = get_logger(__name__)
 
 _DEFAULT_BRANDING = BrandingResponse(tenant_id=0)
 
+_BRANDING_COLS = """
+    tenant_id, company_name, logo_url, favicon_url,
+    primary_color, accent_color, sidebar_bg, font_family,
+    custom_domain, subdomain, email_from_name, email_logo_url,
+    footer_text, support_email, support_url,
+    hide_datapulse_branding, custom_login_bg,
+    pos_branch_name, pos_branch_address, pos_tax_number,
+    pos_cr_number, pos_invoice_label,
+    created_at, updated_at
+"""
+
 
 class BrandingRepository:
     """Data-access layer for tenant branding configuration."""
@@ -30,16 +41,7 @@ class BrandingRepository:
         """Get branding config for a tenant, returning defaults if not set."""
         row = (
             self._session.execute(
-                text("""
-                SELECT tenant_id, company_name, logo_url, favicon_url,
-                       primary_color, accent_color, sidebar_bg, font_family,
-                       custom_domain, subdomain, email_from_name, email_logo_url,
-                       footer_text, support_email, support_url,
-                       hide_datapulse_branding, custom_login_bg,
-                       created_at, updated_at
-                FROM public.tenant_branding
-                WHERE tenant_id = :tid
-            """),
+                text(f"SELECT {_BRANDING_COLS} FROM public.tenant_branding WHERE tenant_id = :tid"),
                 {"tid": tenant_id},
             )
             .mappings()
@@ -71,12 +73,7 @@ class BrandingRepository:
                 ON CONFLICT (tenant_id) DO UPDATE SET
                     {set_clauses},
                     updated_at = NOW()
-                RETURNING tenant_id, company_name, logo_url, favicon_url,
-                          primary_color, accent_color, sidebar_bg, font_family,
-                          custom_domain, subdomain, email_from_name, email_logo_url,
-                          footer_text, support_email, support_url,
-                          hide_datapulse_branding, custom_login_bg,
-                          created_at, updated_at
+                RETURNING {_BRANDING_COLS}
             """),
                 updates,
             )

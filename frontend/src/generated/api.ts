@@ -4150,6 +4150,16 @@ export interface components {
             hide_datapulse_branding: boolean;
             /** Logo Url */
             logo_url?: string | null;
+            /** Pos Branch Address */
+            pos_branch_address?: string | null;
+            /** Pos Branch Name */
+            pos_branch_name?: string | null;
+            /** Pos Cr Number */
+            pos_cr_number?: string | null;
+            /** Pos Invoice Label */
+            pos_invoice_label?: string | null;
+            /** Pos Tax Number */
+            pos_tax_number?: string | null;
             /**
              * Primary Color
              * @default #4F46E5
@@ -4189,6 +4199,16 @@ export interface components {
             footer_text?: string | null;
             /** Hide Datapulse Branding */
             hide_datapulse_branding?: boolean | null;
+            /** Pos Branch Address */
+            pos_branch_address?: string | null;
+            /** Pos Branch Name */
+            pos_branch_name?: string | null;
+            /** Pos Cr Number */
+            pos_cr_number?: string | null;
+            /** Pos Invoice Label */
+            pos_invoice_label?: string | null;
+            /** Pos Tax Number */
+            pos_tax_number?: string | null;
             /** Primary Color */
             primary_color?: string | null;
             /** Sidebar Bg */

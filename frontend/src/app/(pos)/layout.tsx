@@ -11,6 +11,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
 import { PosCartProvider } from "@/contexts/pos-cart-context";
 import { useRendererCrashBridge } from "@/hooks/use-renderer-crash-bridge";
+import { BrandProvider } from "@/components/branding/brand-provider";
 
 // Fraunces = italic display on the Totals Hero + invoice.
 // JetBrains Mono = SKUs, barcodes, numeric readouts, kbd chips.
@@ -134,6 +135,7 @@ export default function PosLayout({ children }: { children: ReactNode }) {
           <ErrorBoundary>
             <ToastProvider>
               <SessionGuard>
+                <BrandProvider>
                 <PosCartProvider>
                   <RendererCrashBridge>
                     <PosKeyboardHandler>
@@ -145,6 +147,7 @@ export default function PosLayout({ children }: { children: ReactNode }) {
                     </PosKeyboardHandler>
                   </RendererCrashBridge>
                 </PosCartProvider>
+                </BrandProvider>
               </SessionGuard>
             </ToastProvider>
           </ErrorBoundary>

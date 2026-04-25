@@ -8,11 +8,9 @@ import { usePosHistory } from "@/hooks/use-pos-history";
 import { useSession } from "@/lib/auth-bridge";
 import { fetchAPI } from "@/lib/api-client";
 import { buildReceiptPayload, printReceipt } from "@/lib/pos/print-bridge";
-import { getPosBranding } from "@/lib/pos-branding";
+import { usePosBranding } from "@/hooks/use-pos-branding";
 import { cn } from "@/lib/utils";
 import type { TransactionDetailResponse, TransactionResponse, TransactionStatus, CheckoutResponse } from "@/types/pos";
-
-const { invoiceLabel: BRANCH_NAME, branchAddress: BRANCH_ADDRESS } = getPosBranding();
 
 const STATUS_COLORS: Record<TransactionStatus, string> = {
   draft: "text-text-secondary bg-white/[0.04]",
@@ -28,6 +26,7 @@ function fmt(n: number): string {
 export default function PosHistoryPage() {
   const router = useRouter();
   const { data: session } = useSession();
+  const { branding: posBranding } = usePosBranding();
   const [page, setPage] = useState(1);
   const limit = 15;
 
@@ -56,8 +55,8 @@ export default function PosHistoryPage() {
         txn: detail,
         result: { receipt_number: txn.receipt_number ?? `TXN-${txn.id}` } as CheckoutResponse,
         staffName: session?.user?.name ?? "",
-        storeName: BRANCH_NAME,
-        storeAddress: BRANCH_ADDRESS,
+        storeName: posBranding.invoiceLabel,
+        storeAddress: posBranding.branchAddress,
         confirmation: "confirmed",
       });
       await printReceipt(payload);
