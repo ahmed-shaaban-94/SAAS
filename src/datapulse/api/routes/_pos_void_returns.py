@@ -126,8 +126,8 @@ def get_return(
     user: CurrentUser,
 ) -> ReturnDetailResponse:
     """Fetch a single return record with its line items."""
-    _ = user
-    detail = service.get_return(return_id)
+    tenant_id = _tenant_id_of(user)
+    detail = service.get_return(return_id, tenant_id=tenant_id)
     if detail is None:
         raise HTTPException(status_code=404, detail=f"Return {return_id} not found")
     return detail
@@ -145,8 +145,8 @@ def list_transaction_returns(
     user: CurrentUser,
 ) -> list[ReturnResponse]:
     """List all return records for an original transaction."""
-    _ = user
-    return service.list_returns_for_transaction(transaction_id)
+    tenant_id = _tenant_id_of(user)
+    return service.list_returns_for_transaction(transaction_id, tenant_id=tenant_id)
 
 
 @router.get("/returns", response_model=list[ReturnResponse])

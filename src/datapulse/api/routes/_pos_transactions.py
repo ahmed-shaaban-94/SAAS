@@ -82,8 +82,8 @@ def get_transaction(
     user: CurrentUser,
 ) -> TransactionDetailResponse:
     """Return a transaction header with its full line items."""
-    _ = user
-    detail = service.get_transaction_detail(transaction_id)
+    tenant_id = _tenant_id_of(user)
+    detail = service.get_transaction_detail(transaction_id, tenant_id=tenant_id)
     if detail is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
     return detail
@@ -129,7 +129,7 @@ async def add_item(
     """Add a drug to the active draft transaction (FEFO batch + stock check)."""
     if idem.replay:
         return PosCartItem.model_validate(idem.cached_body)
-    txn = service.get_transaction_detail(transaction_id)
+    txn = service.get_transaction_detail(transaction_id, tenant_id=_tenant_id_of(user))
     if txn is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
     if txn.status != TransactionStatus.draft:

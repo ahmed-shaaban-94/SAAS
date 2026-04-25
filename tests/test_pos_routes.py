@@ -400,7 +400,7 @@ class TestTransactionRoutes:
             headers={"Idempotency-Key": "test-key-remove-1"},
         )
         assert resp.status_code == 204
-        mock_service.remove_item.assert_called_once_with(1, transaction_id=100)
+        mock_service.remove_item.assert_called_once_with(1, transaction_id=100, tenant_id=1)
 
     def test_remove_item_404(self, client: TestClient, mock_service: MagicMock):
         mock_service.remove_item.return_value = False
