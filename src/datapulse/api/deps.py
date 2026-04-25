@@ -379,6 +379,7 @@ def get_whatsapp_provider():
 
 def get_pos_service(
     session: Annotated[Session, Depends(get_tenant_session)],
+    user: Annotated[UserClaims, Depends(get_current_user)],
 ):
     """Factory for :class:`PosService` — wires repo + inventory + pharmacist verifier.
 
@@ -389,6 +390,10 @@ def get_pos_service(
 
     The :class:`PharmacistVerifier` uses the repo's pin-lookup closure and
     the application secret key so the service stays dependency-free.
+
+    ``tenant_id`` is captured in the ``pin_lookup`` closure so the PIN hash
+    query includes an explicit ``AND tenant_id = :tenant_id`` predicate (C3
+    defence-in-depth — #676).
     """
     from datapulse.expiry.repository import ExpiryRepository
     from datapulse.expiry.service import ExpiryService
@@ -403,6 +408,7 @@ def get_pos_service(
 
     settings = get_settings()
     repo = PosRepository(session)
+    tenant_id: int = int(user.get("tenant_id", "1"))
     inventory = InventoryAdapter(
         inventory_service=InventoryService(InventoryRepository(session)),
         expiry_service=ExpiryService(ExpiryRepository(session)),
@@ -412,7 +418,9 @@ def get_pos_service(
     signing_secret = settings.pipeline_webhook_secret or "dev-pos-pharmacist-secret"
     verifier = PharmacistVerifier(
         secret_key=signing_secret,
-        pin_lookup=repo.get_pharmacist_pin_hash,
+        # Closure captures tenant_id so the lookup is scoped to the current
+        # tenant regardless of RLS state (C3 defence-in-depth — #676).
+        pin_lookup=lambda pid: repo.get_pharmacist_pin_hash(pid, tenant_id),
     )
     voucher_repo = VoucherRepository(session)
     promotion_repo = PromotionRepository(session)

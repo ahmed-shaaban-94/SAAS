@@ -394,3 +394,58 @@ def test_access_context_accepts_pos_supervisor_role() -> None:
         permissions={"pos:transaction:void", "pos:shift:reconcile"},
     )
     assert ctx.role_key == "pos_supervisor"
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# C3 — tenant_id predicate on pharmacist PIN hash lookup (#676)
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def _make_tenant_scoped_verifier(
+    pharmacist_id: str,
+    stored_tenant_id: int,
+    pin_hash: str,
+    request_tenant_id: int,
+) -> PharmacistVerifier:
+    """Build a verifier whose pin_lookup only returns the hash when tenant matches.
+
+    Simulates what ``get_pos_service`` does: the closure captures the caller's
+    ``tenant_id`` and passes it to ``repo.get_pharmacist_pin_hash(pid, tenant_id)``.
+    """
+
+    def _scoped_lookup(pid: str) -> str | None:
+        # Return the hash only when the pharmacist belongs to the requesting tenant.
+        if pid == pharmacist_id and request_tenant_id == stored_tenant_id:
+            return pin_hash
+        return None
+
+    return PharmacistVerifier(secret_key=SECRET, pin_lookup=_scoped_lookup)
+
+
+def test_pin_lookup_returns_hash_for_correct_tenant() -> None:
+    """PIN verification succeeds when pharmacist and caller share the same tenant."""
+    verifier = _make_tenant_scoped_verifier(
+        pharmacist_id=PHARMACIST_ID,
+        stored_tenant_id=42,
+        pin_hash=hash_pin(VALID_PIN),
+        request_tenant_id=42,
+    )
+    token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
+    assert isinstance(token, str) and len(token) > 0
+
+
+def test_pin_lookup_returns_none_for_wrong_tenant() -> None:
+    """PIN lookup returns None when the requesting tenant does not own the pharmacist record.
+
+    This is the C3 defence-in-depth check: even if RLS were bypassed a
+    pharmacist from tenant A must not authenticate against PIN data belonging
+    to tenant B.
+    """
+    verifier = _make_tenant_scoped_verifier(
+        pharmacist_id=PHARMACIST_ID,
+        stored_tenant_id=42,  # pharmacist lives in tenant 42
+        pin_hash=hash_pin(VALID_PIN),
+        request_tenant_id=99,  # caller is from tenant 99
+    )
+    with pytest.raises(PharmacistVerificationRequiredError):
+        verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)

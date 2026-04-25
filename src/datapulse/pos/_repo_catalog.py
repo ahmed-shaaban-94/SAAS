@@ -337,11 +337,13 @@ class CatalogRepoMixin:
         )
         return [dict(r) for r in rows]
 
-    def get_pharmacist_pin_hash(self, pharmacist_id: str) -> str | None:
+    def get_pharmacist_pin_hash(self, pharmacist_id: str, tenant_id: int) -> str | None:
         """Return the stored PIN hash for a pharmacist member, or None.
 
-        Looks up ``tenant_members.pharmacist_pin_hash`` by ``user_id``.
-        RLS scopes the query to the current tenant automatically.
+        Looks up ``tenant_members.pharmacist_pin_hash`` by ``user_id`` **and**
+        ``tenant_id``.  The explicit tenant predicate is a defence-in-depth
+        measure (C3): even if RLS were bypassed a pharmacist from tenant A
+        cannot match PIN data belonging to tenant B.
         Returns ``None`` when the member does not exist or has no PIN set.
         """
         row = (
@@ -349,11 +351,12 @@ class CatalogRepoMixin:
                 text("""
                     SELECT pharmacist_pin_hash
                     FROM   public.tenant_members
-                    WHERE  user_id = :user_id
+                    WHERE  user_id   = :user_id
+                      AND  tenant_id = :tenant_id
                       AND  is_active = TRUE
                     LIMIT 1
                 """),
-                {"user_id": pharmacist_id},
+                {"user_id": pharmacist_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
