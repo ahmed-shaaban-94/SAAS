@@ -451,6 +451,7 @@ describe("updater channels", () => {
   test("updater.canInstall reads settings and calls canInstallUpdate", async () => {
     (push.getBaseUrl as jest.Mock).mockReturnValue("https://api.example.com");
     (settings.getSetting as jest.Mock).mockImplementation((_db, k: string) => {
+      if (k === "jwt") return "jwt-1";
       if (k === "min_compatible_app_version") return "1.0.0";
       if (k === "schema_version") return "3";
       return null;
@@ -459,6 +460,10 @@ describe("updater channels", () => {
     const res = await handlers["updater.canInstall"]({});
     expect(updater.canInstallUpdate).toHaveBeenCalledWith({
       baseUrl: "https://api.example.com",
+      jwt: "jwt-1",
+      currentVersion: "1.2.3",
+      channel: "stable",
+      platform: process.platform,
       localMinCompatibleAppVersion: "1.0.0",
       localSchemaVersion: 3,
     });
@@ -472,6 +477,10 @@ describe("updater channels", () => {
     await handlers["updater.canInstall"]({});
     expect(updater.canInstallUpdate).toHaveBeenCalledWith({
       baseUrl: "https://api.example.com",
+      jwt: null,
+      currentVersion: "1.2.3",
+      channel: "stable",
+      platform: process.platform,
       localMinCompatibleAppVersion: "0.0.0",
       localSchemaVersion: 1,
     });
@@ -539,6 +548,7 @@ describe("updater channels", () => {
       });
       (push.getBaseUrl as jest.Mock).mockReturnValue("https://api.example.com");
       (settings.getSetting as jest.Mock).mockImplementation((_db, k: string) => {
+        if (k === "jwt") return "jwt-1";
         if (k === "min_compatible_app_version") return "1.0.0";
         if (k === "schema_version") return "2";
         return null;
@@ -549,6 +559,10 @@ describe("updater channels", () => {
 
       expect(updater.canInstallUpdate).toHaveBeenCalledWith({
         baseUrl: "https://api.example.com",
+        jwt: "jwt-1",
+        currentVersion: "1.2.3",
+        channel: "stable",
+        platform: process.platform,
         localMinCompatibleAppVersion: "1.0.0",
         localSchemaVersion: 2,
       });

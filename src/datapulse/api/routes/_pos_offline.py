@@ -69,6 +69,7 @@ def capabilities(request: Request) -> CapabilitiesDoc:
         },
         tenant_key_endpoint="/api/v1/pos/tenant-key",
         device_registration_endpoint="/api/v1/pos/terminals/register-device",
+        update_policy_endpoint="/api/v1/pos/updates/policy",
     )
 
 

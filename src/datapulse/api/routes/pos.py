@@ -11,6 +11,7 @@ Sub-router files (leading ``_`` = internal to this facade):
   _pos_void_returns.py   — void + returns (B6a)
   _pos_shifts.py         — shifts + cash drawer events (B6a)
   _pos_offline.py        — offline grant refresh + pharmacist verify + capabilities_router
+  _pos_updates.py        — desktop staged update rollout policy
 
 Two handlers remain in this file (register_terminal_device, tenant_key) because
 tests monkeypatch ``datapulse.api.routes.pos.register_device`` and
@@ -38,6 +39,7 @@ from datapulse.api.routes import (
     _pos_shifts,
     _pos_terminals,
     _pos_transactions,
+    _pos_updates,
     _pos_void_returns,
 )
 from datapulse.api.routes._pos_routes_deps import (
@@ -92,6 +94,7 @@ for _sub in (
     _pos_shifts,
     _pos_offline,
     _pos_delivery,
+    _pos_updates,
 ):
     router.include_router(_sub.router)
 

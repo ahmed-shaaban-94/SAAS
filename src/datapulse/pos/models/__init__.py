@@ -22,6 +22,7 @@ Grouping:
 - ``offline``     — capabilities, tenant keys, device reg, grants, override tokens
 - ``vouchers``    — Phase 1 voucher engine
 - ``promotions``  — Phase 2 promotion engine
+- ``updates``     — desktop staged update rollout policy
 """
 
 from datapulse.pos.models.cart import PosCartItem
@@ -128,6 +129,11 @@ from datapulse.pos.models.transaction import (
     TransactionResponse,
     UpdateItemRequest,
 )
+from datapulse.pos.models.updates import (
+    DesktopUpdatePolicyResponse,
+    DesktopUpdateReleaseRequest,
+    DesktopUpdateReleaseResponse,
+)
 from datapulse.pos.models.vouchers import (
     VoucherCodeStr,
     VoucherCreate,
@@ -233,6 +239,10 @@ __all__ = [
     "TransactionDetailResponse",
     "TransactionResponse",
     "UpdateItemRequest",
+    # updates
+    "DesktopUpdatePolicyResponse",
+    "DesktopUpdateReleaseRequest",
+    "DesktopUpdateReleaseResponse",
     # vouchers
     "VoucherCodeStr",
     "VoucherCreate",

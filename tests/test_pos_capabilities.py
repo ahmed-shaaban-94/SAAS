@@ -61,3 +61,4 @@ def test_capabilities_advertises_registration_endpoints(client: TestClient) -> N
     body = r.json()
     assert body["tenant_key_endpoint"] == "/api/v1/pos/tenant-key"
     assert body["device_registration_endpoint"] == "/api/v1/pos/terminals/register-device"
+    assert body["update_policy_endpoint"] == "/api/v1/pos/updates/policy"

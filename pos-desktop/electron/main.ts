@@ -8,6 +8,7 @@ import { createHardware } from "./hardware/index";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { getSetting } from "./db/settings";
 import { bootRecovery, startBackgroundSync } from "./sync/background";
+import { getBaseUrl } from "./sync/push";
 import { setupUpdater, checkForUpdates } from "./updater/index";
 import { upgradeSecretsToEncrypted } from "./authz/secure-store";
 import { createLogger } from "./logging/index";
@@ -475,7 +476,15 @@ app.whenReady().then(async () => {
   if (mainWindow && app.isPackaged) {
     setupUpdater(mainWindow);
     // Delay the first check 30s so it doesn't compete with startup I/O
-    setTimeout(() => { checkForUpdates().catch(() => {}); }, 30_000);
+    setTimeout(() => {
+      checkForUpdates({
+        baseUrl: getBaseUrl(),
+        jwt: getSetting(db, "jwt"),
+        currentVersion: app.getVersion(),
+        channel: "stable",
+        platform: process.platform,
+      }).catch(() => {});
+    }, 30_000);
   }
 
   // Start background sync loop (push queue every 10s, online detection via /health)

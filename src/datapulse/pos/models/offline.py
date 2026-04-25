@@ -26,6 +26,7 @@ class CapabilitiesDoc(BaseModel):
     enforced_policies: dict[str, int]
     tenant_key_endpoint: str
     device_registration_endpoint: str
+    update_policy_endpoint: str
 
 
 class TenantPublicKey(BaseModel):

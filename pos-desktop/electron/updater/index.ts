@@ -33,6 +33,8 @@ export type UpdaterEvent =
 // ─── Setup ────────────────────────────────────────────────────
 
 let updateReadyToInstall = false;
+let allowedUpdateVersion: string | null = null;
+let downloadedUpdateVersion: string | null = null;
 let pendingWindow: BrowserWindow | null = null;
 
 function send(win: BrowserWindow | null, event: UpdaterEvent): void {
@@ -42,7 +44,7 @@ function send(win: BrowserWindow | null, event: UpdaterEvent): void {
 export function setupUpdater(win: BrowserWindow): void {
   pendingWindow = win;
 
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on("checking-for-update", () => {
@@ -50,7 +52,14 @@ export function setupUpdater(win: BrowserWindow): void {
   });
 
   autoUpdater.on("update-available", (info) => {
+    if (!allowedUpdateVersion || info.version !== allowedUpdateVersion) {
+      send(win, { type: "not-available" });
+      return;
+    }
     send(win, { type: "available", version: info.version });
+    autoUpdater.downloadUpdate().catch((err: Error) => {
+      send(win, { type: "error", message: err.message });
+    });
   });
 
   autoUpdater.on("update-not-available", () => {
@@ -63,6 +72,7 @@ export function setupUpdater(win: BrowserWindow): void {
 
   autoUpdater.on("update-downloaded", (info) => {
     updateReadyToInstall = true;
+    downloadedUpdateVersion = info.version;
     send(win, { type: "ready", version: info.version });
     // Renderer receives this and shows an "Update ready — install at shift close?" dialog.
   });
@@ -72,12 +82,59 @@ export function setupUpdater(win: BrowserWindow): void {
   });
 }
 
+interface UpdatePolicyDoc {
+  update_available?: boolean;
+  allowed?: boolean;
+  reason?: string;
+  version?: string | null;
+}
+
+interface PolicyOptions {
+  baseUrl: string;
+  jwt?: string | null;
+  currentVersion: string;
+  channel?: string;
+  platform?: string;
+}
+
+async function fetchUpdatePolicy(opts: PolicyOptions): Promise<UpdatePolicyDoc> {
+  if (!opts.jwt) {
+    return { update_available: false, allowed: false, reason: "missing_auth" };
+  }
+
+  const params = new URLSearchParams({
+    current_version: opts.currentVersion,
+    channel: opts.channel ?? "stable",
+    platform: opts.platform ?? process.platform,
+  });
+  const res = await fetch(`${opts.baseUrl}/api/v1/pos/updates/policy?${params}`, {
+    headers: { Authorization: `Bearer ${opts.jwt}` },
+  });
+  if (!res.ok) {
+    return {
+      update_available: false,
+      allowed: false,
+      reason: `policy_fetch_failed_${res.status}`,
+    };
+  }
+  return (await res.json()) as UpdatePolicyDoc;
+}
+
 /**
  * Run a silent update check. Call this after the 30s warm-up in main.ts so
  * the check doesn't compete with database init and sync startup.
  */
-export async function checkForUpdates(): Promise<void> {
+export async function checkForUpdates(opts?: PolicyOptions): Promise<void> {
   try {
+    if (opts) {
+      const policy = await fetchUpdatePolicy(opts);
+      if (!policy.update_available || !policy.allowed || !policy.version) {
+        allowedUpdateVersion = null;
+        send(pendingWindow, { type: "not-available" });
+        return;
+      }
+      allowedUpdateVersion = policy.version;
+    }
     await autoUpdater.checkForUpdates();
   } catch {
     // Non-fatal: update check failures are logged by the error event handler.
@@ -117,11 +174,33 @@ interface CapabilitiesDoc {
  */
 export async function canInstallUpdate(opts: {
   baseUrl: string;
+  jwt?: string | null;
+  currentVersion: string;
+  channel?: string;
+  platform?: string;
   localMinCompatibleAppVersion: string;
   localSchemaVersion: number;
 }): Promise<{ canInstall: boolean; reason?: string }> {
   if (!updateReadyToInstall) {
     return { canInstall: false, reason: "no_update_downloaded" };
+  }
+
+  let policy: UpdatePolicyDoc;
+  try {
+    policy = await fetchUpdatePolicy(opts);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { canInstall: false, reason: `update_policy_unreachable:${msg}` };
+  }
+
+  if (!policy.update_available || !policy.allowed || !policy.version) {
+    return { canInstall: false, reason: policy.reason ?? "update_not_allowed" };
+  }
+  if (downloadedUpdateVersion && policy.version !== downloadedUpdateVersion) {
+    return {
+      canInstall: false,
+      reason: `update_policy_version_mismatch:policy=${policy.version},downloaded=${downloadedUpdateVersion}`,
+    };
   }
 
   let capabilities: CapabilitiesDoc;

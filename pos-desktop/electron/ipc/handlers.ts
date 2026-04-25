@@ -218,10 +218,15 @@ export function registerIpcHandlers(
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { canInstallUpdate } = require("../updater/index") as typeof import("../updater/index");
     const baseUrl = getBaseUrl();
+    const jwt = getSetting(db, "jwt");
     const minCompat = getSetting(db, "min_compatible_app_version") ?? "0.0.0";
     const schemaVer = Number(getSetting(db, "schema_version") ?? "1");
     return canInstallUpdate({
       baseUrl,
+      jwt,
+      currentVersion: app.getVersion(),
+      channel: "stable",
+      platform: process.platform,
       localMinCompatibleAppVersion: minCompat,
       localSchemaVersion: schemaVer,
     });
@@ -241,10 +246,15 @@ export function registerIpcHandlers(
 
     // Gate: block if the server has moved to a newer schema than the app can handle.
     const baseUrl = getBaseUrl();
+    const jwt = getSetting(db, "jwt");
     const minCompat = getSetting(db, "min_compatible_app_version") ?? "0.0.0";
     const schemaVer = Number(getSetting(db, "schema_version") ?? "1");
     const gate = await canInstallUpdate({
       baseUrl,
+      jwt,
+      currentVersion: app.getVersion(),
+      channel: "stable",
+      platform: process.platform,
       localMinCompatibleAppVersion: minCompat,
       localSchemaVersion: schemaVer,
     });
