@@ -35,7 +35,12 @@ from datapulse.pos.inventory_contract import (
     StockMovement,
 )
 from datapulse.pos.models import CheckoutRequest
-from datapulse.pos.pharmacist_verifier import PharmacistVerifier, hash_pin
+from datapulse.pos.pharmacist_verifier import ALGO_SCRYPT, PharmacistVerifier, PinRecord, hash_pin
+
+
+def _make_pin_record(pin: str) -> PinRecord:
+    h, s = hash_pin(pin)
+    return PinRecord(pin_hash=h, pin_salt=s, pin_hash_algo=ALGO_SCRYPT)
 from datapulse.pos.service import (
     PosService,
     _build_receipt_number,
@@ -101,7 +106,7 @@ def verifier() -> PharmacistVerifier:
     and validate signed tokens end-to-end (no mocking of the crypto path)."""
     return PharmacistVerifier(
         secret_key="test-secret",
-        pin_lookup=lambda _uid: hash_pin("1234"),
+        pin_lookup=lambda _uid: _make_pin_record("1234"),
     )
 
 
