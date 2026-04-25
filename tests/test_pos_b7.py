@@ -24,7 +24,13 @@ from datapulse.api.deps import get_pos_service, get_tenant_plan_limits
 from datapulse.billing.plans import PLAN_LIMITS, get_plan_limits
 from datapulse.pos.exceptions import PharmacistVerificationRequiredError
 from datapulse.pos.models import PharmacistVerifyResponse
-from datapulse.pos.pharmacist_verifier import PharmacistVerifier, hash_pin
+from datapulse.pos.pharmacist_verifier import (
+    ALGO_SCRYPT,
+    PharmacistVerifier,
+    PinRecord,
+    hash_pin,
+    verify_pin,
+)
 from datapulse.rbac.dependencies import get_access_context
 from datapulse.rbac.models import AccessContext
 
@@ -49,10 +55,15 @@ _MOCK_USER: dict[str, Any] = {
 }
 
 
-def _make_verifier(pin_hash: str | None = None) -> PharmacistVerifier:
+def _make_pin_record(pin: str) -> PinRecord:
+    h, s = hash_pin(pin)
+    return PinRecord(pin_hash=h, pin_salt=s, pin_hash_algo=ALGO_SCRYPT)
+
+
+def _make_verifier(pin_record: PinRecord | None = None) -> PharmacistVerifier:
     return PharmacistVerifier(
         secret_key=SECRET,
-        pin_lookup=lambda _user_id: pin_hash,
+        pin_lookup=lambda _user_id: pin_record,
     )
 
 
@@ -61,96 +72,70 @@ def _make_verifier(pin_hash: str | None = None) -> PharmacistVerifier:
 # ────────────────────────────────────────────────────────────────────────────
 
 
-def test_hash_pin_is_deterministic() -> None:
-    assert hash_pin("1234") == hash_pin("1234")
+def test_hash_pin_verify_roundtrip() -> None:
+    """Scrypt hash+verify roundtrip: correct PIN must verify successfully."""
+    h, s = hash_pin("1234")
+    assert verify_pin("1234", h, s) is True
 
 
-def test_hash_pin_differs_for_different_pins() -> None:
-    assert hash_pin("1234") != hash_pin("5678")
+def test_hash_pin_wrong_pin_fails_verify() -> None:
+    """Wrong PIN must not verify against a hash produced from a different PIN."""
+    h, s = hash_pin("1234")
+    assert verify_pin("5678", h, s) is False
 
 
-def test_hash_pin_is_peppered_not_plain_sha256() -> None:
-    """Regression guard: a PIN hash must never equal plain SHA-256 of the PIN.
-
-    Unsalted SHA-256 of a 4–6 digit PIN is rainbow-tableable in milliseconds,
-    so this test ensures the peppered-HMAC upgrade sticks.
-    """
-    import hashlib
-
-    plain = hashlib.sha256(b"1234").hexdigest()
-    assert hash_pin("1234") != plain
+def test_hash_pin_random_salt() -> None:
+    """Each call produces a fresh salt — hashes for the same PIN must differ."""
+    h1, s1 = hash_pin("1234")
+    h2, s2 = hash_pin("1234")
+    assert s1 != s2
+    assert h1 != h2
 
 
-def test_get_pepper_raises_when_secret_empty_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Empty secret_key in non-dev environments must NOT silently fall back
-    to the public dev pepper — that would leave PIN hashes with the rainbow-
-    table resistance of plain SHA-256.
-    """
-    from datapulse.core.config import get_settings
-    from datapulse.pos.pharmacist_verifier import _get_pepper
+def test_hash_pin_returns_base64_strings() -> None:
+    """hash_pin must return base64-encoded strings, not raw bytes or hex."""
+    import base64
 
-    settings = get_settings()
-    monkeypatch.setattr(settings, "pipeline_webhook_secret", "")
-    monkeypatch.setattr(settings, "app_env", "production")
-    monkeypatch.setattr(settings, "sentry_environment", "production")
-
-    with pytest.raises(RuntimeError, match="pipeline_webhook_secret is empty"):
-        _get_pepper()
-
-
-def test_get_pepper_allows_dev_fallback_in_dev_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Dev/test environments may use the fallback pepper so unit tests and
-    local boot don't require a real secret_key. Ensures the guard doesn't
-    over-reach.
-    """
-    from datapulse.core.config import get_settings
-    from datapulse.pos.pharmacist_verifier import _get_pepper
-
-    settings = get_settings()
-    monkeypatch.setattr(settings, "pipeline_webhook_secret", "")
-    monkeypatch.setattr(settings, "app_env", "development")
-    monkeypatch.setattr(settings, "sentry_environment", "development")
-
-    pepper = _get_pepper()
-    assert isinstance(pepper, bytes)
-    assert len(pepper) > 0
+    h, s = hash_pin("1234")
+    assert base64.b64decode(h)  # decodes without error
+    assert base64.b64decode(s)
 
 
 def test_verify_and_issue_returns_token_on_correct_pin() -> None:
-    verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
+    verifier = _make_verifier(_make_pin_record(VALID_PIN))
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
     assert isinstance(token, str)
     assert len(token) > 0
 
 
 def test_verify_and_issue_raises_on_wrong_pin() -> None:
-    verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
+    verifier = _make_verifier(_make_pin_record(VALID_PIN))
     with pytest.raises(PharmacistVerificationRequiredError):
         verifier.verify_and_issue(PHARMACIST_ID, "wrong", DRUG_CODE)
 
 
 def test_verify_and_issue_raises_when_no_pin_stored() -> None:
-    verifier = _make_verifier(pin_hash=None)
+    verifier = _make_verifier()
     with pytest.raises(PharmacistVerificationRequiredError):
         verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
 
 
 def test_validate_token_returns_pharmacist_id() -> None:
-    verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
+    verifier = _make_verifier(_make_pin_record(VALID_PIN))
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
     result = verifier.validate_token(token, DRUG_CODE)
     assert result == PHARMACIST_ID
 
 
 def test_validate_token_raises_on_wrong_drug_code() -> None:
-    verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
+    verifier = _make_verifier(_make_pin_record(VALID_PIN))
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
     with pytest.raises(PharmacistVerificationRequiredError):
         verifier.validate_token(token, "OTHER-DRUG")
 
 
 def test_validate_token_raises_on_tampered_signature() -> None:
-    verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
+    verifier = _make_verifier(_make_pin_record(VALID_PIN))
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
     tampered = token[:-4] + "xxxx"
     with pytest.raises(PharmacistVerificationRequiredError):
@@ -160,7 +145,7 @@ def test_validate_token_raises_on_tampered_signature() -> None:
 def test_validate_token_raises_on_expired_token() -> None:
     verifier = PharmacistVerifier(
         secret_key=SECRET,
-        pin_lookup=lambda _: hash_pin(VALID_PIN),
+        pin_lookup=lambda _: _make_pin_record(VALID_PIN),
         ttl=1,  # 1-second TTL for test
     )
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
@@ -175,7 +160,7 @@ def test_validate_token_raises_on_expired_token() -> None:
 
 
 def test_validate_token_raises_on_malformed_token() -> None:
-    verifier = _make_verifier(pin_hash=hash_pin(VALID_PIN))
+    verifier = _make_verifier(_make_pin_record(VALID_PIN))
     with pytest.raises(PharmacistVerificationRequiredError):
         verifier.validate_token("not:a:valid", DRUG_CODE)
 
@@ -404,19 +389,19 @@ def test_access_context_accepts_pos_supervisor_role() -> None:
 def _make_tenant_scoped_verifier(
     pharmacist_id: str,
     stored_tenant_id: int,
-    pin_hash: str,
+    pin_record: PinRecord,
     request_tenant_id: int,
 ) -> PharmacistVerifier:
-    """Build a verifier whose pin_lookup only returns the hash when tenant matches.
+    """Build a verifier whose pin_lookup only returns the record when tenant matches.
 
     Simulates what ``get_pos_service`` does: the closure captures the caller's
     ``tenant_id`` and passes it to ``repo.get_pharmacist_pin_hash(pid, tenant_id)``.
     """
 
-    def _scoped_lookup(pid: str) -> str | None:
-        # Return the hash only when the pharmacist belongs to the requesting tenant.
+    def _scoped_lookup(pid: str) -> PinRecord | None:
+        # Return the record only when the pharmacist belongs to the requesting tenant.
         if pid == pharmacist_id and request_tenant_id == stored_tenant_id:
-            return pin_hash
+            return pin_record
         return None
 
     return PharmacistVerifier(secret_key=SECRET, pin_lookup=_scoped_lookup)
@@ -427,7 +412,7 @@ def test_pin_lookup_returns_hash_for_correct_tenant() -> None:
     verifier = _make_tenant_scoped_verifier(
         pharmacist_id=PHARMACIST_ID,
         stored_tenant_id=42,
-        pin_hash=hash_pin(VALID_PIN),
+        pin_record=_make_pin_record(VALID_PIN),
         request_tenant_id=42,
     )
     token = verifier.verify_and_issue(PHARMACIST_ID, VALID_PIN, DRUG_CODE)
@@ -444,7 +429,7 @@ def test_pin_lookup_returns_none_for_wrong_tenant() -> None:
     verifier = _make_tenant_scoped_verifier(
         pharmacist_id=PHARMACIST_ID,
         stored_tenant_id=42,  # pharmacist lives in tenant 42
-        pin_hash=hash_pin(VALID_PIN),
+        pin_record=_make_pin_record(VALID_PIN),
         request_tenant_id=99,  # caller is from tenant 99
     )
     with pytest.raises(PharmacistVerificationRequiredError):

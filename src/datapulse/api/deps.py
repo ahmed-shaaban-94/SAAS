@@ -421,6 +421,7 @@ def get_pos_service(
         # Closure captures tenant_id so the lookup is scoped to the current
         # tenant regardless of RLS state (C3 defence-in-depth — #676).
         pin_lookup=lambda pid: repo.get_pharmacist_pin_hash(pid, tenant_id),
+        pin_upgrade=repo.upgrade_pharmacist_pin,
     )
     voucher_repo = VoucherRepository(session)
     promotion_repo = PromotionRepository(session)
