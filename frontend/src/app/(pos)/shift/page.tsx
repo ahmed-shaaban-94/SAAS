@@ -6,9 +6,14 @@ import { ArrowLeft, DollarSign, Loader2, Monitor } from "lucide-react";
 import { ShiftSummary } from "@/components/pos/ShiftSummary";
 import { ReconcileGrid } from "@/components/pos/shift/ReconcileGrid";
 import { ThermalShiftReceipt } from "@/components/pos/shift/ThermalShiftReceipt";
+import { useSession } from "@/lib/auth-bridge";
 import { openTerminal, closeTerminal } from "@/hooks/use-pos-terminal";
+import { buildShiftReceiptPayload, printReceipt } from "@/lib/pos/print-bridge";
+import { getPosBranding } from "@/lib/pos-branding";
 import { cn } from "@/lib/utils";
 import type { TerminalSessionResponse } from "@/types/pos";
+
+const { invoiceLabel: BRANCH_NAME, branchAddress: BRANCH_ADDRESS } = getPosBranding();
 
 type ShiftView = "open" | "active" | "close" | "closed";
 
@@ -51,6 +56,7 @@ function CashInput({
 
 export default function ShiftPage() {
   const router = useRouter();
+  const { data: session } = useSession();
 
   const [terminal, setTerminal] = useState<TerminalSessionResponse | null>(() => {
     if (typeof window === "undefined") return null;
@@ -111,8 +117,23 @@ export default function ShiftPage() {
   }, [terminal, closingCash]);
 
   const handlePrint = useCallback(() => {
-    if (typeof window !== "undefined") window.print();
-  }, []);
+    // Route to the native ESC/POS thermal adapter via the same IPC bridge
+    // the checkout receipt uses (#713). Falls back to window.print() in
+    // the browser or when the thermal adapter fails. See issue #477 K3.
+    const target = shiftResult ?? terminal;
+    if (!target) {
+      if (typeof window !== "undefined") window.print();
+      return;
+    }
+    const payload = buildShiftReceiptPayload({
+      shift: target,
+      cashSales,
+      staffName: session?.user?.name ?? "",
+      storeName: BRANCH_NAME,
+      storeAddress: BRANCH_ADDRESS,
+    });
+    void printReceipt(payload);
+  }, [shiftResult, terminal, cashSales, session]);
 
   useEffect(() => {
     if (view !== "close") return;

@@ -105,6 +105,75 @@ export function buildReceiptPayload(args: BuildArgs): ReceiptPayload {
   };
 }
 
+interface BuildShiftArgs {
+  /** ``TerminalSessionResponse`` from the close-shift endpoint, or the
+   *  active terminal row when reprinting. */
+  shift: {
+    id: number;
+    site_code?: string | null;
+    terminal_name?: string | null;
+    opened_at?: string | null;
+    closed_at?: string | null;
+    opening_cash?: number | string | null;
+    closing_cash?: number | string | null;
+  };
+  /** Cash sales over the shift, when the server exposes it. ``0`` is fine
+   *  in the smoke-test phase — the variance line will reflect that. */
+  cashSales?: number | string | null;
+  staffName: string;
+  storeName: string;
+  storeAddress: string;
+  storePhone?: string;
+}
+
+/**
+ * Build a {@link ReceiptPayload} that the existing thermal adapter can
+ * print as a shift-close slip. The adapter formats items[] / total /
+ * payment header generically, so we synthesise items[] from the shift
+ * fields and use ``total`` for closing cash. The receipt header reads
+ * ``SHIFT CLOSE`` instead of a transaction number.
+ *
+ * Avoids growing a parallel ESC/POS code path in the main process — one
+ * payload shape, one renderer, one main-process formatter.
+ */
+export function buildShiftReceiptPayload(args: BuildShiftArgs): ReceiptPayload {
+  const { shift } = args;
+  const opening = Number(shift.opening_cash ?? 0);
+  const closing = Number(shift.closing_cash ?? 0);
+  const cashSales = Number(args.cashSales ?? 0);
+  const expected = opening + cashSales;
+  const variance = closing - expected;
+  const fmt = (n: number) => n.toFixed(2);
+  return {
+    storeName: args.storeName,
+    storeAddress: args.storeAddress,
+    storePhone: args.storePhone ?? "",
+    logoPath: null,
+    transactionId: null,
+    receiptNumber: `SHIFT-${shift.id}`,
+    createdAt: shift.closed_at ?? new Date().toISOString(),
+    staffName: args.staffName || "Staff",
+    customerName: shift.terminal_name ?? null,
+    items: [
+      { name: "Opening cash", qty: "", unitPrice: "", lineTotal: fmt(opening), batch: null, expiry: null },
+      { name: "Cash sales", qty: "", unitPrice: "", lineTotal: fmt(cashSales), batch: null, expiry: null },
+      { name: "Expected", qty: "", unitPrice: "", lineTotal: fmt(expected), batch: null, expiry: null },
+      { name: "Counted (closing)", qty: "", unitPrice: "", lineTotal: fmt(closing), batch: null, expiry: null },
+      { name: "Variance", qty: "", unitPrice: "", lineTotal: fmt(variance), batch: null, expiry: null },
+    ],
+    subtotal: fmt(expected),
+    discount: "0.00",
+    tax: "0.00",
+    total: fmt(closing),
+    paymentMethod: "cash",
+    cashTendered: null,
+    changeDue: null,
+    languages: ["ar", "en"],
+    currency: "EGP",
+    confirmation: "confirmed",
+  };
+}
+
 /**
  * Print the receipt via the Electron native thermal adapter when available,
  * else fall back to `window.print()`. Always resolves — never throws.
