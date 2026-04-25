@@ -242,9 +242,25 @@ export default function PosTerminalPage() {
   const handleDecrement = useCallback(
     (drugCode: string) => {
       const item = items.find((i) => i.drug_code === drugCode);
-      if (item) updateQuantity(drugCode, item.quantity - 1);
+      if (!item) return;
+      const next = item.quantity - 1;
+      // Decrementing to zero is functionally a remove and must go through
+      // the same manager-PIN gate, otherwise a cashier could side-step the
+      // override by clicking Minus instead of the X button.
+      if (next <= 0) {
+        requestOverride("حذف صنف من السلة", () => {
+          removeItem(drugCode);
+          setUnsyncedCodes((prev) => {
+            const updated = new Set(prev);
+            updated.delete(drugCode);
+            return updated;
+          });
+        });
+        return;
+      }
+      updateQuantity(drugCode, next);
     },
-    [items, updateQuantity],
+    [items, updateQuantity, removeItem, requestOverride],
   );
 
   const handleRemove = useCallback(
