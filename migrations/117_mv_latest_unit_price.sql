@@ -5,6 +5,15 @@
 
 DO $$
 BEGIN
+  -- Skip when public_marts.fct_sales doesn't exist yet (dbt not yet run).
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public_marts' AND table_name = 'fct_sales'
+  ) THEN
+    RAISE NOTICE 'public_marts.fct_sales does not exist yet — skipping mv_latest_unit_price creation';
+    RETURN;
+  END IF;
+
   -- Create the MV only if it doesn't already exist (idempotent)
   IF NOT EXISTS (
     SELECT 1 FROM pg_matviews
