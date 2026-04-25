@@ -114,7 +114,14 @@ class CashGateway(PaymentGateway):
 
 
 class CardGateway(PaymentGateway):
-    """Card payment stub — returns not-configured until integration is set up."""
+    """Card payment fallback — active only when Paymob credentials are absent.
+
+    When ``PAYMOB_API_KEY`` is configured, ``api/deps.py`` injects a real
+    ``PaymobCardGateway`` in place of this stub via the gateway factory.
+    This class exists solely as a safe fallback so environments without
+    Paymob credentials do not crash — they degrade gracefully with a clear
+    user message.
+    """
 
     def process_payment(
         self,
@@ -129,7 +136,10 @@ class CardGateway(PaymentGateway):
             success=False,
             method="card",
             amount_charged=Decimal("0"),
-            message="Card payment not configured. Use cash or insurance.",
+            message=(
+                "Card payments require PaymobCardGateway — "
+                "set PAYMOB_API_KEY to enable card processing."
+            ),
         )
 
 
