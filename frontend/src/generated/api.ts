@@ -2653,6 +2653,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rbac/verify-pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Pin
+         * @description Approve a manager-PIN override for the current tenant.
+         *
+         *     Body: ``{"pin": "1234"}``. Returns ``{"approved": true}`` when the
+         *     peppered hash of ``pin`` matches at least one active member's
+         *     ``pharmacist_pin_hash`` in the same tenant; ``{"approved": false}``
+         *     otherwise. A `false` is NOT a 401 — the modal lets the cashier
+         *     retry with a different PIN.
+         *
+         *     Rate-limited to 10/min per IP to slow brute-force; combine with the
+         *     front-end's 3-strikes lockout once that lands.
+         */
+        post: operations["verify_pin_api_v1_rbac_verify_pin_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/report-schedules": {
         parameters: {
             query?: never;
@@ -7933,6 +7962,25 @@ export interface components {
             type: string;
         };
         /**
+         * VerifyPinRequest
+         * @description Body of ``POST /rbac/verify-pin``.
+         */
+        VerifyPinRequest: {
+            /**
+             * Pin
+             * @description 4-10 digit numeric PIN
+             */
+            pin: string;
+        };
+        /**
+         * VerifyPinResponse
+         * @description Response of ``POST /rbac/verify-pin``.
+         */
+        VerifyPinResponse: {
+            /** Approved */
+            approved: boolean;
+        };
+        /**
          * WaterfallAnalysis
          * @description Revenue change decomposition across dimensions.
          */
@@ -12134,6 +12182,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueryResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_pin_api_v1_rbac_verify_pin_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyPinRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyPinResponse"];
                 };
             };
             /** @description Validation Error */
