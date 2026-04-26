@@ -155,3 +155,27 @@ class TestFactoryFunctions:
         from datapulse.ai_light.service import AILightService
 
         assert isinstance(svc, AILightService)
+
+    def test_get_pos_service_uses_pharmacist_signing_secret(self):
+        """Audit C2: PharmacistVerifier must derive its HMAC key from
+        ``pharmacist_signing_secret``, not ``pipeline_webhook_secret``.
+        Sharing the secret coupled two unrelated threat models — see config
+        comment for the full rationale."""
+        from datapulse.api.deps import get_pos_service
+        from datapulse.config import Settings
+
+        mock_session = MagicMock()
+        # Distinct values so we can prove which one was picked.
+        test_settings = Settings(
+            _env_file=None,
+            database_url="",
+            pipeline_webhook_secret="WRONG_PIPELINE_SECRET",
+            pharmacist_signing_secret="CORRECT_PHARMACIST_SECRET",
+        )
+        with patch("datapulse.api.deps.get_settings", return_value=test_settings):
+            svc = get_pos_service(
+                session=mock_session,
+                user={"tenant_id": "1", "sub": "test"},
+            )
+
+        assert svc._verifier.secret_key == "CORRECT_PHARMACIST_SECRET"

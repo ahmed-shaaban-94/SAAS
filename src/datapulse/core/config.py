@@ -94,6 +94,13 @@ class Settings(BaseSettings):
     # n8n removed — orchestration via datapulse.scheduler
     pipeline_webhook_secret: str = ""
 
+    # POS pharmacist override HMAC signing key. Distinct from
+    # ``pipeline_webhook_secret`` so the two secrets gate independent threat
+    # models (pipeline ingest token vs POS controlled-substance override) and
+    # rotate on independent schedules. Required in non-dev — audit C2,
+    # 2026-04-26.
+    pharmacist_signing_secret: str = ""
+
     # API security
     api_key: str = ""
     db_reader_password: str = ""
@@ -300,6 +307,8 @@ class Settings(BaseSettings):
             missing.append("DB_READER_PASSWORD")
         if not self.pipeline_webhook_secret:
             missing.append("PIPELINE_WEBHOOK_SECRET")
+        if not self.pharmacist_signing_secret:
+            missing.append("PHARMACIST_SIGNING_SECRET")
 
         if missing:
             missing_list = ", ".join(missing)
