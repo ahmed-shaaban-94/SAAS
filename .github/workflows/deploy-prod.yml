@@ -183,6 +183,21 @@ jobs:
             # backend's `_fetch_jwks` would 503 on every Bearer request.
             export CLERK_FRONTEND_API CLERK_JWT_ISSUER CLERK_JWT_AUDIENCE CLERK_JWT_TEMPLATE CLERK_SECRET_KEY
 
+            # Nginx needs an origin cert for Cloudflare Full mode. The repo
+            # does not store private keys, so generate a local self-signed
+            # cert if the server does not already have one.
+            mkdir -p traefik/certs nginx
+            if [ ! -s traefik/certs/origin.crt ] || [ ! -s traefik/certs/origin.key ]; then
+              echo "=== Generating missing nginx origin certificate ==="
+              openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+                -keyout traefik/certs/origin.key \
+                -out traefik/certs/origin.crt \
+                -subj "/CN=smartdatapulse.tech" \
+                -addext "subjectAltName=DNS:smartdatapulse.tech,DNS:*.smartdatapulse.tech"
+              chmod 600 traefik/certs/origin.key
+            fi
+            touch nginx/monitoring.htpasswd
+
             # Save current state for rollback
             echo "=== Saving rollback state ==="
             PREV_API_IMAGE=$(docker inspect --format='{{.Image}}' datapulse-api 2>/dev/null || echo "none")
@@ -240,6 +255,12 @@ jobs:
               -f docker-compose.prod.yml \
               -f docker-compose.monitoring.yml \
               logs --tail=80 api 2>&1 || true
+            echo "=== Nginx logs (startup) ==="
+            docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.prod.yml \
+              -f docker-compose.monitoring.yml \
+              logs --tail=80 nginx 2>&1 || true
 
             # Health check — API liveness via nginx internal port.
             # Uses /health/live (always 200 if process is alive) not /health
@@ -313,6 +334,13 @@ jobs:
                 -f docker-compose.prod.yml \
                 -f docker-compose.monitoring.yml \
                 logs --tail=40 frontend 2>&1 || true
+
+              echo "=== Nginx Logs (last 80 lines) ==="
+              docker compose \
+                -f docker-compose.yml \
+                -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
+                logs --tail=80 nginx 2>&1 || true
 
               echo "=== Postgres Logs (last 20 lines) ==="
               docker compose \
