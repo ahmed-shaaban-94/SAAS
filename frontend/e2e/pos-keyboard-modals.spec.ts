@@ -41,8 +41,8 @@ test.describe("POS keyboard quick wins", () => {
     });
   });
 
-  test("? opens shortcuts cheat-sheet on /pos/terminal", async ({ page }) => {
-    await page.goto("/pos/terminal");
+  test("? opens shortcuts cheat-sheet on /terminal", async ({ page }) => {
+    await page.goto("/terminal");
     await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
 
     // Cheat-sheet should not be visible initially
@@ -54,7 +54,7 @@ test.describe("POS keyboard quick wins", () => {
   });
 
   test("ESC closes shortcuts cheat-sheet", async ({ page }) => {
-    await page.goto("/pos/terminal");
+    await page.goto("/terminal");
     await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
 
     await page.keyboard.press("?");
@@ -65,7 +65,7 @@ test.describe("POS keyboard quick wins", () => {
   });
 
   test("? toggles cheat-sheet closed when already open", async ({ page }) => {
-    await page.goto("/pos/terminal");
+    await page.goto("/terminal");
     await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
 
     await page.keyboard.press("?");
@@ -76,7 +76,7 @@ test.describe("POS keyboard quick wins", () => {
   });
 
   test("? does not open cheat-sheet when focus is in a text input", async ({ page }) => {
-    await page.goto("/pos/terminal");
+    await page.goto("/terminal");
     await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
 
     // Focus the scan bar input
