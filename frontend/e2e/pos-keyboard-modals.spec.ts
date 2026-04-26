@@ -14,7 +14,7 @@
  * We seed it via page.addInitScript before navigation so no real auth is needed.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const TERMINAL_SESSION = {
   id: 1,
@@ -24,6 +24,19 @@ const TERMINAL_SESSION = {
   opened_at: new Date().toISOString(),
   opening_cash: 100,
 };
+
+/** Wait for React to hydrate by confirming the scan input is auto-focused. */
+async function waitForTerminalReady(page: Page) {
+  await page.goto("/terminal");
+  // The terminal page auto-focuses the scan input in a useEffect on mount.
+  // Waiting for an INPUT to hold focus proves React has hydrated and all
+  // useEffect keyboard handlers are registered — waitForSelector("main")
+  // fires too early (on server-rendered HTML, before hydration).
+  await page.waitForFunction(
+    () => document.activeElement?.tagName === "INPUT",
+    { timeout: 10_000 },
+  );
+}
 
 test.describe("POS keyboard quick wins", () => {
   test.beforeEach(async ({ page }) => {
@@ -42,23 +55,18 @@ test.describe("POS keyboard quick wins", () => {
   });
 
   test("? opens shortcuts cheat-sheet on /terminal", async ({ page }) => {
-    await page.goto("/terminal");
-    await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
-    // The terminal auto-focuses the scan input on mount; blur it so the ? key
-    // reaches the window keydown handler instead of typing into the input.
+    await waitForTerminalReady(page);
+    // Blur the auto-focused scan input so ? reaches the window keydown handler.
     await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
-    // Cheat-sheet should not be visible initially
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).not.toBeVisible();
 
-    // Press ? to open
     await page.keyboard.press("?");
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeVisible();
   });
 
   test("ESC closes shortcuts cheat-sheet", async ({ page }) => {
-    await page.goto("/terminal");
-    await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
+    await waitForTerminalReady(page);
     await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
     await page.keyboard.press("?");
@@ -69,8 +77,7 @@ test.describe("POS keyboard quick wins", () => {
   });
 
   test("? toggles cheat-sheet closed when already open", async ({ page }) => {
-    await page.goto("/terminal");
-    await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
+    await waitForTerminalReady(page);
     await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
     await page.keyboard.press("?");
@@ -81,12 +88,8 @@ test.describe("POS keyboard quick wins", () => {
   });
 
   test("? does not open cheat-sheet when focus is in a text input", async ({ page }) => {
-    await page.goto("/terminal");
-    await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
-
-    // Focus the scan bar input
-    const scanInput = page.locator("input[placeholder*='Scan'], input[data-testid*='scan'], input").first();
-    await scanInput.focus();
+    await waitForTerminalReady(page);
+    // Scan input is already auto-focused after waitForTerminalReady; keep focus there.
 
     await page.keyboard.press("?");
     // ? should not have opened the cheat-sheet (it typed into the input instead)
