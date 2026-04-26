@@ -42,12 +42,12 @@ MOCK_USER = {
 
 def _make_replay_app(service: MagicMock, replay_after_first: bool = True) -> FastAPI:
     """Build a minimal app where the idempotency dep replays after the first call."""
-    from datapulse.api.routes import _pos_transactions as pos_module
-
-    app = FastAPI()
-
+    from datapulse.api.routes._pos_routes_deps import (
+        _add_item_idempotency_dep as _idem_dep,
+    )
     from datapulse.api.routes.pos import router as pos_router
 
+    app = FastAPI()
     app.include_router(pos_router, prefix="/api/v1")
     _ctx = AccessContext(
         member_id=1,
@@ -83,21 +83,19 @@ def _make_replay_app(service: MagicMock, replay_after_first: bool = True) -> Fas
         pharmacist_id=None,
     ).model_dump(mode="json")
 
-    original = pos_module._add_item_idempotency_dep
-
     async def _stateful_dep(request: Request) -> IdempotencyContext:  # noqa: ARG001
         _call_count[0] += 1
         is_replay = replay_after_first and _call_count[0] > 1
         return IdempotencyContext(
             key="offline-queue-key",
+            tenant_id=1,
             request_hash="d" * 64,
             replay=is_replay,
             cached_status=200 if is_replay else None,
             cached_body=_cached_body if is_replay else None,
         )
 
-    pos_module._add_item_idempotency_dep = _stateful_dep
-    app.state._original_dep = original  # store for cleanup
+    app.dependency_overrides[_idem_dep] = _stateful_dep
     return app
 
 
@@ -116,8 +114,6 @@ def test_offline_queue_replay_five_calls_idempotent(mock_service: MagicMock) -> 
     it 5 times on reconnect. Each call returns 201 with the same body, but the
     service is only invoked once.
     """
-    from datapulse.api.routes import _pos_transactions as pos_module
-
     txn_detail = TransactionDetailResponse(
         id=42,
         terminal_id=1,
@@ -147,18 +143,14 @@ def test_offline_queue_replay_five_calls_idempotent(mock_service: MagicMock) -> 
 
     app = _make_replay_app(mock_service)
     responses = []
-    try:
-        with TestClient(app) as c:
-            for _i in range(5):
-                resp = c.post(
-                    "/api/v1/pos/transactions/42/items",
-                    json={"drug_code": "DRUG001", "quantity": "2"},
-                    headers={"Idempotency-Key": "offline-queue-key"},
-                )
-                responses.append(resp)
-    finally:
-        # Restore original dep
-        pos_module._add_item_idempotency_dep = app.state._original_dep
+    with TestClient(app) as c:
+        for _i in range(5):
+            resp = c.post(
+                "/api/v1/pos/transactions/42/items",
+                json={"drug_code": "DRUG001", "quantity": "2"},
+                headers={"Idempotency-Key": "offline-queue-key"},
+            )
+            responses.append(resp)
 
     # All 5 should succeed
     for resp in responses:

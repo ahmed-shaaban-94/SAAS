@@ -71,6 +71,7 @@ class ShiftRepoMixin:
         self,
         shift_id: int,
         *,
+        tenant_id: int,
         closing_cash: Decimal | None = None,
         expected_cash: Decimal | None = None,
         variance: Decimal | None = None,
@@ -85,7 +86,8 @@ class ShiftRepoMixin:
                            expected_cash = COALESCE(:expected_cash, expected_cash),
                            variance      = COALESCE(:variance,      variance),
                            closed_at     = COALESCE(:closed_at,     closed_at)
-                    WHERE  id = :shift_id
+                    WHERE  id        = :shift_id
+                    AND    tenant_id = :tenant_id
                     RETURNING
                         id, terminal_id, tenant_id, staff_id, shift_date,
                         opened_at, closed_at, opening_cash, closing_cash,
@@ -93,6 +95,7 @@ class ShiftRepoMixin:
                 """),
                 {
                     "shift_id": shift_id,
+                    "tenant_id": tenant_id,
                     "closing_cash": closing_cash,
                     "expected_cash": expected_cash,
                     "variance": variance,
@@ -104,7 +107,7 @@ class ShiftRepoMixin:
         )
         return dict(row) if row else None
 
-    def get_current_shift(self, terminal_id: int) -> dict[str, Any] | None:
+    def get_current_shift(self, terminal_id: int, *, tenant_id: int) -> dict[str, Any] | None:
         """Return the currently open (unclosed) shift for a terminal."""
         row = (
             self._session.execute(
@@ -114,11 +117,12 @@ class ShiftRepoMixin:
                            expected_cash, variance
                     FROM   pos.shift_records
                     WHERE  terminal_id = :terminal_id
+                    AND    tenant_id   = :tenant_id
                     AND    closed_at   IS NULL
                     ORDER  BY opened_at DESC
                     LIMIT  1
                 """),
-                {"terminal_id": terminal_id},
+                {"terminal_id": terminal_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
@@ -158,8 +162,8 @@ class ShiftRepoMixin:
         )
         return [dict(r) for r in rows]
 
-    def get_shift_by_id(self, shift_id: int) -> dict[str, Any] | None:
-        """Return a single shift record by ID."""
+    def get_shift_by_id(self, shift_id: int, *, tenant_id: int) -> dict[str, Any] | None:
+        """Return a single shift record by ID, scoped to the given tenant."""
         row = (
             self._session.execute(
                 text("""
@@ -167,9 +171,10 @@ class ShiftRepoMixin:
                            opened_at, closed_at, opening_cash, closing_cash,
                            expected_cash, variance
                     FROM   pos.shift_records
-                    WHERE  id = :shift_id
+                    WHERE  id        = :shift_id
+                    AND    tenant_id = :tenant_id
                 """),
-                {"shift_id": shift_id},
+                {"shift_id": shift_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
@@ -180,6 +185,7 @@ class ShiftRepoMixin:
         self,
         terminal_id: int,
         *,
+        tenant_id: int,
         opened_at: datetime,
         closed_at: datetime,
     ) -> dict[str, Any]:
@@ -193,11 +199,13 @@ class ShiftRepoMixin:
                                                                              AS total_sales
                     FROM pos.transactions
                     WHERE terminal_id = :terminal_id
+                    AND   tenant_id   = :tenant_id
                     AND   created_at >= :opened_at
                     AND   created_at <= :closed_at
                 """),
                 {
                     "terminal_id": terminal_id,
+                    "tenant_id": tenant_id,
                     "opened_at": opened_at,
                     "closed_at": closed_at,
                 },
@@ -246,6 +254,7 @@ class ShiftRepoMixin:
         self,
         terminal_id: int,
         *,
+        tenant_id: int,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """Return cash drawer events for a terminal, most recent first."""
@@ -256,10 +265,11 @@ class ShiftRepoMixin:
                            reference_id, timestamp
                     FROM   pos.cash_drawer_events
                     WHERE  terminal_id = :terminal_id
+                    AND    tenant_id   = :tenant_id
                     ORDER  BY timestamp DESC
                     LIMIT  :limit
                 """),
-                {"terminal_id": terminal_id, "limit": limit},
+                {"terminal_id": terminal_id, "tenant_id": tenant_id, "limit": limit},
             )
             .mappings()
             .all()

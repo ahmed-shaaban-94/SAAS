@@ -481,11 +481,11 @@ def test_list_cash_events(client: TestClient, mock_service: MagicMock) -> None:
     resp = client.get("/api/v1/pos/terminals/10/cash-events?limit=50")
     assert resp.status_code == 200
     assert len(resp.json()) == 1
-    mock_service.get_cash_events.assert_called_once_with(10, limit=50)
+    mock_service.get_cash_events.assert_called_once_with(10, tenant_id=1, limit=50)
 
 
 def test_list_cash_events_default_limit(client: TestClient, mock_service: MagicMock) -> None:
     mock_service.get_cash_events.return_value = []
     resp = client.get("/api/v1/pos/terminals/10/cash-events")
     assert resp.status_code == 200
-    mock_service.get_cash_events.assert_called_once_with(10, limit=100)
+    mock_service.get_cash_events.assert_called_once_with(10, tenant_id=1, limit=100)

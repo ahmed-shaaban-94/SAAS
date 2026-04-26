@@ -60,7 +60,7 @@ class VoidReturnRepoMixin:
         )
         return dict(row)
 
-    def get_void_log(self, transaction_id: int) -> dict[str, Any] | None:
+    def get_void_log(self, transaction_id: int, *, tenant_id: int) -> dict[str, Any] | None:
         """Return the void record for a transaction (at most one per transaction)."""
         row = (
             self._session.execute(
@@ -68,9 +68,10 @@ class VoidReturnRepoMixin:
                     SELECT id, transaction_id, tenant_id, voided_by, reason, voided_at
                     FROM   pos.void_log
                     WHERE  transaction_id = :txn_id
+                    AND    tenant_id      = :tenant_id
                     LIMIT  1
                 """),
-                {"txn_id": transaction_id},
+                {"txn_id": transaction_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
@@ -154,24 +155,27 @@ class VoidReturnRepoMixin:
         )
         return dict(row)
 
-    def get_return(self, return_id: int) -> dict[str, Any] | None:
-        """Return a single return record by ID."""
+    def get_return(self, return_id: int, *, tenant_id: int) -> dict[str, Any] | None:
+        """Return a single return record by ID, scoped to the given tenant."""
         row = (
             self._session.execute(
                 text("""
                     SELECT id, tenant_id, original_transaction_id, return_transaction_id,
                            staff_id, reason, refund_amount, refund_method, notes, created_at
                     FROM   pos.returns
-                    WHERE  id = :return_id
+                    WHERE  id        = :return_id
+                    AND    tenant_id = :tenant_id
                 """),
-                {"return_id": return_id},
+                {"return_id": return_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
         )
         return dict(row) if row else None
 
-    def list_returns_for_transaction(self, original_transaction_id: int) -> list[dict[str, Any]]:
+    def list_returns_for_transaction(
+        self, original_transaction_id: int, *, tenant_id: int
+    ) -> list[dict[str, Any]]:
         """Return all return records linked to an original transaction."""
         rows = (
             self._session.execute(
@@ -180,9 +184,10 @@ class VoidReturnRepoMixin:
                            staff_id, reason, refund_amount, refund_method, notes, created_at
                     FROM   pos.returns
                     WHERE  original_transaction_id = :original_txn_id
+                    AND    tenant_id               = :tenant_id
                     ORDER  BY created_at ASC
                 """),
-                {"original_txn_id": original_transaction_id},
+                {"original_txn_id": original_transaction_id, "tenant_id": tenant_id},
             )
             .mappings()
             .all()
@@ -192,6 +197,8 @@ class VoidReturnRepoMixin:
     def get_returned_quantities_for_transaction(
         self,
         original_transaction_id: int,
+        *,
+        tenant_id: int,
     ) -> list[dict[str, Any]]:
         """Sum already-returned quantities by ``(drug_code, batch_number)``.
 
@@ -210,9 +217,10 @@ class VoidReturnRepoMixin:
                     JOIN   pos.transaction_items ti
                        ON  ti.transaction_id = r.return_transaction_id
                     WHERE  r.original_transaction_id = :original_txn_id
+                    AND    r.tenant_id               = :tenant_id
                     GROUP  BY ti.drug_code, ti.batch_number
                 """),
-                {"original_txn_id": original_transaction_id},
+                {"original_txn_id": original_transaction_id, "tenant_id": tenant_id},
             )
             .mappings()
             .all()

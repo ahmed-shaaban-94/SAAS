@@ -11,7 +11,6 @@ from fastapi.testclient import TestClient
 from datapulse.api.auth import get_current_user
 from datapulse.api.routes.rbac import router as rbac_router
 from datapulse.core.auth import get_tenant_session
-from datapulse.pos.pharmacist_verifier import hash_pin
 
 pytestmark = pytest.mark.unit
 
@@ -79,7 +78,8 @@ class TestVerifyPin:
         # Inspect the SQL params bound to the SELECT
         params = mock_session.execute.call_args[0][1]
         assert params["tenant_id"] == 1
-        assert params["pin_hash"] == hash_pin("5678")
+        h, s = params["pin_hash"]  # scrypt: hash_pin returns (hash_b64, salt_b64)
+        assert h and s
         sql = str(mock_session.execute.call_args[0][0])
         assert "tenant_members" in sql
         assert "pharmacist_pin_hash = :pin_hash" in sql

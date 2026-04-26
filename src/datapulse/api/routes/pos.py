@@ -75,6 +75,9 @@ _void_idempotency_dep = _pos_routes_deps._void_idempotency_dep
 _return_idempotency_dep = _pos_routes_deps._return_idempotency_dep
 _shift_close_idempotency_dep = _pos_routes_deps._shift_close_idempotency_dep
 _terminal_close_idempotency_dep = _pos_routes_deps._terminal_close_idempotency_dep
+_add_item_idempotency_dep = _pos_routes_deps._add_item_idempotency_dep
+_update_item_idempotency_dep = _pos_routes_deps._update_item_idempotency_dep
+_remove_item_idempotency_dep = _pos_routes_deps._remove_item_idempotency_dep
 
 # Re-export capabilities_router so bootstrap/routers.py can mount it as
 # ``pos_routes.capabilities_router`` without modification.
