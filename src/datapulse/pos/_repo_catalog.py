@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from datapulse.pos.pharmacist_verifier import PinRecord
+
 from sqlalchemy import text
 
 from datapulse.logging import get_logger
@@ -337,19 +340,24 @@ class CatalogRepoMixin:
         )
         return [dict(r) for r in rows]
 
-    def get_pharmacist_pin_hash(self, pharmacist_id: str, tenant_id: int) -> str | None:
-        """Return the stored PIN hash for a pharmacist member, or None.
+    def get_pharmacist_pin_hash(self, pharmacist_id: str, tenant_id: int) -> PinRecord | None:
+        """Return a :class:`PinRecord` for a pharmacist member, or None.
 
-        Looks up ``tenant_members.pharmacist_pin_hash`` by ``user_id`` **and**
-        ``tenant_id``.  The explicit tenant predicate is a defence-in-depth
-        measure (C3): even if RLS were bypassed a pharmacist from tenant A
-        cannot match PIN data belonging to tenant B.
+        Looks up ``tenant_members.pharmacist_pin_hash``, ``pharmacist_pin_salt``,
+        and ``pharmacist_pin_hash_algo`` by ``user_id`` **and** ``tenant_id``.
+        The explicit tenant predicate is a defence-in-depth measure (C3): even if
+        RLS were bypassed a pharmacist from tenant A cannot match PIN data
+        belonging to tenant B.
         Returns ``None`` when the member does not exist or has no PIN set.
         """
+        from datapulse.pos.pharmacist_verifier import ALGO_LEGACY, PinRecord
+
         row = (
             self._session.execute(
                 text("""
-                    SELECT pharmacist_pin_hash
+                    SELECT pharmacist_pin_hash,
+                           pharmacist_pin_salt,
+                           COALESCE(pharmacist_pin_hash_algo, 'legacy') AS pharmacist_pin_hash_algo
                     FROM   public.tenant_members
                     WHERE  user_id   = :user_id
                       AND  tenant_id = :tenant_id
@@ -361,6 +369,30 @@ class CatalogRepoMixin:
             .mappings()
             .first()
         )
-        if row is None:
+        if row is None or row["pharmacist_pin_hash"] is None:
             return None
-        return row["pharmacist_pin_hash"]
+        return PinRecord(
+            pin_hash=row["pharmacist_pin_hash"],
+            pin_salt=row.get("pharmacist_pin_salt"),
+            pin_hash_algo=row["pharmacist_pin_hash_algo"] or ALGO_LEGACY,
+        )
+
+    def upgrade_pharmacist_pin(self, pharmacist_id: str, new_hash: str, new_salt: str) -> None:
+        """Upgrade a pharmacist's stored PIN hash to scrypt in-place.
+
+        Called automatically by :class:`PharmacistVerifier` after a successful
+        legacy-PIN verification.  The session must already be flushed/committed
+        by the caller.
+        """
+        self._session.execute(
+            text("""
+                UPDATE public.tenant_members
+                SET    pharmacist_pin_hash      = :new_hash,
+                       pharmacist_pin_salt      = :new_salt,
+                       pharmacist_pin_hash_algo = 'scrypt'
+                WHERE  user_id = :user_id
+                  AND  is_active = TRUE
+            """),
+            {"user_id": pharmacist_id, "new_hash": new_hash, "new_salt": new_salt},
+        )
+        self._session.flush()
