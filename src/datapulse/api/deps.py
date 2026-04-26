@@ -351,6 +351,35 @@ def get_reorder_config_service(
     return ReorderConfigService(repo)
 
 
+def get_paymob_gateway():
+    """Return a configured :class:`PaymobCardGateway`, or ``None`` when Paymob is disabled.
+
+    ``None`` signals that ``CardGateway`` (the fallback stub) should be used instead.
+    Wiring is done here — ``pos/paymob_gateway.py`` never imports from ``billing/``.
+
+    The callable passed to ``PaymobCardGateway`` adapts the POS-shaped call
+    ``(amount, merchant_ref, currency)`` to ``PaymobClient.create_pos_payment_session``.
+    The ``merchant_ref`` doubles as Paymob's ``merchant_order_id``, giving
+    idempotency protection against double-charges on retry (#738).
+    """
+    settings = get_settings()
+    if not settings.paymob_api_key:
+        return None
+    from datapulse.billing.paymob_client import PaymobClient
+    from datapulse.pos.paymob_gateway import PaymobCardGateway
+
+    client = PaymobClient(
+        api_key=settings.paymob_api_key,
+        integration_id=settings.paymob_integration_id,
+        iframe_id=settings.paymob_iframe_id,
+        hmac_secret=settings.paymob_hmac_secret,
+    )
+    return PaymobCardGateway(
+        create_pos_payment=client.create_pos_payment_session,
+        hmac_secret=settings.paymob_hmac_secret or "",
+    )
+
+
 def get_whatsapp_provider():
     """Return the configured :class:`WhatsAppProvider`, or ``None`` when disabled.
 
@@ -432,6 +461,7 @@ def get_pos_service(
         voucher_repo=voucher_repo,
         promotion_repo=promotion_repo,
         whatsapp_provider=get_whatsapp_provider(),
+        card_gateway=get_paymob_gateway(),
     )
 
 

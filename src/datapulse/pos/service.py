@@ -53,6 +53,7 @@ from datapulse.pos._service_whatsapp import WhatsAppReceiptMixin
 
 if TYPE_CHECKING:
     from datapulse.pos.inventory_contract import InventoryServiceProtocol
+    from datapulse.pos.payment import PaymentGateway
     from datapulse.pos.pharmacist_verifier import PharmacistVerifier
     from datapulse.pos.promotion_repository import PromotionRepository
     from datapulse.pos.repository import PosRepository
@@ -101,6 +102,7 @@ class PosService(
         voucher_repo: VoucherRepository | None = None,
         promotion_repo: PromotionRepository | None = None,
         whatsapp_provider: WhatsAppProvider | None = None,
+        card_gateway: PaymentGateway | None = None,
     ) -> None:
         self._repo = repo
         self._inventory = inventory
@@ -114,3 +116,7 @@ class PosService(
         # WhatsApp receipt delivery (#629). When None, send_receipt_whatsapp
         # raises WhatsAppDisabledError -> 503 so the UI falls back to print.
         self._whatsapp = whatsapp_provider
+        # Card gateway override (#738). When None, checkout falls back to the
+        # CardGateway stub (which returns "not configured" until PAYMOB_API_KEY
+        # is set). When set, card payments route through PaymobCardGateway.
+        self._card_gateway = card_gateway
