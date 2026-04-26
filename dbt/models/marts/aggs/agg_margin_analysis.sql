@@ -90,11 +90,15 @@ SELECT
     year,
     month,
     month_name,
-    ROUND(revenue, 2)                                                        AS revenue,
+    -- M3 (audit 2026-04-26): preserve NUMERIC(18,4) precision through the
+    -- final SELECT. The previous ROUND(_, 2) narrowed to two decimals, which
+    -- conflicted with the upstream ::NUMERIC(18, 4) casts and silently lost
+    -- four-decimal precision needed for fractional-currency margin reports.
+    ROUND(revenue, 4)                                                        AS revenue,
     units_sold,
     weighted_unit_cost,
-    ROUND(units_sold * weighted_unit_cost, 2)                                AS cogs,
-    ROUND(revenue - (units_sold * weighted_unit_cost), 2)                   AS gross_margin,
+    ROUND(units_sold * weighted_unit_cost, 4)                                AS cogs,
+    ROUND(revenue - (units_sold * weighted_unit_cost), 4)                   AS gross_margin,
     ROUND(
         (revenue - (units_sold * weighted_unit_cost))
         / NULLIF(revenue, 0),

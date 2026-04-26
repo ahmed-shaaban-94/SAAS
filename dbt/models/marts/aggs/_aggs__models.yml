@@ -39,6 +39,11 @@ models:
           - not_null
       - name: margin_pct
         description: "gross_margin / revenue (NULL when revenue = 0)"
+    # M11 invariants (audit 2026-04-26):
+    #   - gross_margin = revenue - COALESCE(cost, 0)
+    #   - margin_pct in [-1, 1] (or NULL)
+    # Implemented as singular tests under dbt/tests/ because dbt_utils
+    # is not in this project's package list (only dbt_expectations is).
 
   # ── agg_margin_analysis ──────────────────────────────────────────────
   - name: agg_margin_analysis

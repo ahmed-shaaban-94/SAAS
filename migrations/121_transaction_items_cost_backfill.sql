@@ -3,9 +3,25 @@
 -- Layer: POS / RBAC
 -- Idempotent.
 --
--- Backfill: Uses unit_price × 0.70 as a conservative cost proxy for
--- historical rows where cost was not captured at point of sale.
--- Real cost capture starts from migration 119 forward.
+-- Backfill assumption (H10, audit 2026-04-26):
+--   Historical rows that pre-date migration 119 had no cost captured at
+--   point of sale, so we estimate cost as ``unit_price * 0.70`` — a 30%
+--   gross margin proxy chosen as conservative for general OTC pharma
+--   retail in EG. Real cost capture starts from migration 119 forward;
+--   this constant never overwrites a captured value (the WHERE
+--   ``cost_per_unit IS NULL`` clause guards that).
+--
+--   This single ratio assumes the tenant population is reasonably
+--   uniform. If a future tenant onboards with a materially different
+--   margin profile (high-cost specialty, generics-only, etc.), replace
+--   this constant with a per-tenant override (``cost_proxy_pct`` on a
+--   tenants config table or a new Settings field). Until that need is
+--   real, keep the literal — adding a config knob for one tenant is
+--   premature abstraction.
+--
+--   The DO $$ ... $$ block is implicitly transactional in Postgres, so
+--   no explicit BEGIN/COMMIT is needed for atomicity.
+--
 -- Only touches NULL rows — safe to run multiple times.
 --
 -- Permission: pos:cost:read gates exposure of cost_per_unit on the

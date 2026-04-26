@@ -111,8 +111,14 @@ models:
       # -- Financial --
       - name: quantity
         description: "Signed quantity (negative on returns; mirrors stg_sales convention)"
+        tests:
+          - not_null
       - name: sales
         description: "unit_price * signed_quantity (rounded to 4 decimals)"
+        tests:
+          # M11 (audit 2026-04-26): every POS row must carry a sales
+          # amount — NULL would corrupt fct_sales aggregations downstream.
+          - not_null
       - name: discount
         description: "Negative-signed discount magnitude (0 when no discount; mirrors stg_sales)"
       - name: net_amount
