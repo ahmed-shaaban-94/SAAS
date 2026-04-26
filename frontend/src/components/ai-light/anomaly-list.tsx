@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { useAIAnomalies } from "@/hooks/use-ai-anomalies";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/formatters";
 
 const severityStyles: Record<string, string> = {
   high: "bg-growth-red/10 text-growth-red",
@@ -74,9 +75,9 @@ export function AnomalyList() {
             </div>
             <p className="mt-2 text-sm text-text-secondary">{anomaly.description}</p>
             <p className="mt-1 text-xs text-text-secondary">
-              Actual: {anomaly.actual_value.toLocaleString()} &middot; Expected:{" "}
-              {anomaly.expected_range_low.toLocaleString()} &ndash;{" "}
-              {anomaly.expected_range_high.toLocaleString()}
+              Actual: {formatNumber(anomaly.actual_value)} &middot; Expected:{" "}
+              {formatNumber(anomaly.expected_range_low)} &ndash;{" "}
+              {formatNumber(anomaly.expected_range_high)}
             </p>
           </div>
         ))}

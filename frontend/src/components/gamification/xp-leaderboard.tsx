@@ -6,6 +6,7 @@ import { TierBadge } from "./tier-badge";
 import { Crown, Medal, Award } from "lucide-react";
 import { useXPLeaderboard } from "@/hooks/use-gamification";
 import { LoadingCard } from "@/components/loading-card";
+import { formatNumber } from "@/lib/formatters";
 
 const PODIUM_ICONS = [Crown, Medal, Award];
 const PODIUM_COLORS = ["text-yellow-400", "text-slate-300", "text-orange-400"];
@@ -48,7 +49,7 @@ export function XPLeaderboard() {
               </span>
               <TierBadge tier={entry.current_tier} />
               <div className="text-xs text-text-secondary">
-                Lv.{entry.level} &middot; {entry.total_xp.toLocaleString()} XP
+                Lv.{entry.level} &middot; {formatNumber(entry.total_xp)} XP
               </div>
               <div className="text-[10px] text-text-secondary">
                 {entry.badge_count} badges
@@ -82,7 +83,7 @@ export function XPLeaderboard() {
                     </Link>
                   </td>
                   <td className="px-4 py-2.5 text-center text-text-primary">{entry.level}</td>
-                  <td className="px-4 py-2.5 text-right text-text-primary">{entry.total_xp.toLocaleString()}</td>
+                  <td className="px-4 py-2.5 text-right text-text-primary">{formatNumber(entry.total_xp)}</td>
                   <td className="px-4 py-2.5 text-center"><TierBadge tier={entry.current_tier} /></td>
                   <td className="px-4 py-2.5 text-center text-text-secondary">{entry.badge_count}</td>
                 </tr>

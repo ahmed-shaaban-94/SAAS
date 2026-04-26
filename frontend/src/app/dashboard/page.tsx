@@ -41,6 +41,7 @@ import { usePipelineHealth } from "@/hooks/use-pipeline-health";
 import { useSites } from "@/hooks/use-sites";
 import { buildBranchRollup } from "@/lib/branch-rollup";
 import { trackFirstDashboardView } from "@/lib/analytics-events";
+import { formatNumber } from "@/lib/formatters";
 import type { ApiGet } from "@/lib/api-types";
 import type { PipelineHealth } from "@/hooks/use-pipeline-health";
 import type {
@@ -73,7 +74,7 @@ function formatEgp(value: number): string {
 }
 
 function formatInt(value: number): string {
-  return value.toLocaleString();
+  return formatNumber(value);
 }
 
 function sparklineFor(

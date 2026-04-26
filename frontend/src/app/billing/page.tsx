@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, CreditCard, ExternalLink, Zap } from "lucide-react";
 import { createCheckout, createPortalSession, useBilling } from "@/hooks/use-billing";
+import { formatNumber } from "@/lib/formatters";
 import { DashboardShell } from "@/components/dashboard-v2/shell";
 import { LoadingCard } from "@/components/loading-card";
 import { useToast } from "@/components/ui/toast";
@@ -27,7 +28,7 @@ function UsageMeter({
           {label}
         </span>
         <span className="font-semibold text-text-primary">
-          {used.toLocaleString()} / {isUnlimited ? "Unlimited" : limit.toLocaleString()}
+          {formatNumber(used)} / {isUnlimited ? "Unlimited" : formatNumber(limit)}
         </span>
       </div>
       <div className="mt-3 h-2.5 rounded-full bg-border/70">

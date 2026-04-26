@@ -9,6 +9,7 @@ import { Activity, ChevronDown, ChevronUp } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-v2/shell";
 import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
+import { formatNumber } from "@/lib/formatters";
 import { fetchAPI } from "@/lib/api-client";
 import { useConnections } from "@/hooks/use-connections";
 import type { SyncJob, SyncJobList } from "@/hooks/use-connections";
@@ -57,7 +58,7 @@ function SyncHistory({ connectionId }: { connectionId: number }) {
                 {job.status ?? "pending"}
               </span>
             </td>
-            <td className="px-4 py-2 text-text-secondary">{job.rows_loaded?.toLocaleString() ?? "—"}</td>
+            <td className="px-4 py-2 text-text-secondary">{job.rows_loaded != null ? formatNumber(job.rows_loaded) : "—"}</td>
             <td className="px-4 py-2 text-text-secondary">
               {job.duration_seconds != null ? `${job.duration_seconds.toFixed(1)}s` : "—"}
             </td>

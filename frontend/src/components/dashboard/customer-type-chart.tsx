@@ -15,7 +15,7 @@ import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorRetry } from "@/components/error-retry";
-import { formatCompact } from "@/lib/formatters";
+import { formatCompact, formatNumber } from "@/lib/formatters";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 
 // Theme-aware: dark mode uses brighter variants for contrast
@@ -33,7 +33,7 @@ function CustomTooltip(props: Record<string, unknown>) {
     <div className="rounded-xl border border-border bg-card/95 px-4 py-3 shadow-xl backdrop-blur-sm">
       <p className="text-xs font-medium text-text-secondary">{d.name}</p>
       <p className="mt-1 text-lg font-bold text-accent">
-        {d.value.toLocaleString()}
+        {formatNumber(d.value)}
       </p>
       <p className="text-xs text-text-secondary">{d.pct.toFixed(1)}% of total</p>
     </div>
@@ -114,7 +114,7 @@ export const CustomerTypeChart = memo(function CustomerTypeChart() {
               className="inline-block h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: TYPE_COLORS[i % TYPE_COLORS.length] }}
             />
-            {d.name}: {d.value.toLocaleString()} ({d.pct.toFixed(1)}%)
+            {d.name}: {formatNumber(d.value)} ({d.pct.toFixed(1)}%)
           </span>
         ))}
       </div>

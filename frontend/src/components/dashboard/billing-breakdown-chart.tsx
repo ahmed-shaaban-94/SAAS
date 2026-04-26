@@ -14,7 +14,7 @@ import { useBillingBreakdown } from "@/hooks/use-billing-breakdown";
 import { useFilters } from "@/contexts/filter-context";
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
-import { formatCurrency, formatCompact } from "@/lib/formatters";
+import { formatCurrency, formatCompact, formatNumber } from "@/lib/formatters";
 import { CHART_COLORS } from "@/lib/constants";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import { ChartSpotlight, SpotlightTrigger } from "@/components/shared/chart-spotlight";
@@ -59,7 +59,7 @@ function CustomTooltip(props: Record<string, unknown>) {
         {formatCurrency(d.value)}
       </p>
       <p className="text-xs text-text-secondary">
-        {d.count.toLocaleString()} transactions ({d.pct.toFixed(1)}%)
+        {formatNumber(d.count)} transactions ({d.pct.toFixed(1)}%)
       </p>
     </div>
   );

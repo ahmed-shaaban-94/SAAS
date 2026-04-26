@@ -2,6 +2,7 @@
 
 import { Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/formatters";
 import { getStageIndex, getStageLabel } from "@/hooks/use-pipeline-run";
 
 interface RunProgress {
@@ -92,7 +93,7 @@ export function PipelineProgress({ progress, isRunning, error }: PipelineProgres
       {/* Success details */}
       {isSuccess && progress.rows_loaded != null && (
         <p className="text-xs text-text-secondary">
-          {progress.rows_loaded.toLocaleString()} rows loaded
+          {formatNumber(progress.rows_loaded)} rows loaded
         </p>
       )}
     </div>
