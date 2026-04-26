@@ -78,11 +78,15 @@ services:
       - NEXT_PUBLIC_API_URL=
       - INTERNAL_API_URL=http://api:8000
       - NEXTAUTH_URL=https://${DOMAIN:-smartdatapulse.tech}
-      - AUTH0_DOMAIN=${AUTH0_DOMAIN:-}
-      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
-      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-}
-      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET must be set in production}
+      # Clerk — sole IdP post-#668. NEXT_PUBLIC_* vars are also baked into
+      # the client bundle at image build time via deploy-prod.yml build-args
+      # (the runtime values below feed SSR + middleware).
+      - NEXT_PUBLIC_AUTH_PROVIDER=${NEXT_PUBLIC_AUTH_PROVIDER:-clerk}
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
+      - CLERK_FRONTEND_API=${CLERK_FRONTEND_API:-}
+      - CLERK_JWT_ISSUER=${CLERK_JWT_ISSUER:-}
       - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}
       - NEXT_PUBLIC_SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
     labels: []
