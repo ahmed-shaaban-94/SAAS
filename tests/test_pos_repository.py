@@ -147,7 +147,9 @@ class TestUpdateTerminalStatus:
         }
         mock_session.execute.return_value = _make_execute(expected, mode="first")
 
-        result = repo.update_terminal_status(1, status="closed", tenant_id=1, closing_cash=Decimal("300"))
+        result = repo.update_terminal_status(
+            1, status="closed", tenant_id=1, closing_cash=Decimal("300")
+        )
 
         assert result["status"] == "closed"
         assert result["closing_cash"] == Decimal("300")
@@ -291,12 +293,12 @@ class TestGetTransaction:
             "created_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
-        result = repo.get_transaction(55)
+        result = repo.get_transaction(55, tenant_id=2)
         assert result["receipt_number"] == "RCP-001"
 
     def test_returns_none_when_missing(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(None, mode="first")
-        assert repo.get_transaction(0) is None
+        assert repo.get_transaction(0, tenant_id=1) is None
 
     def test_for_update_locks_row(self, repo: PosRepository, mock_session: MagicMock):
         row = {
@@ -318,7 +320,7 @@ class TestGetTransaction:
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
 
-        result = repo.get_transaction_for_update(55)
+        result = repo.get_transaction_for_update(55, tenant_id=2)
 
         assert result["id"] == 55
         sql = str(mock_session.execute.call_args[0][0])
@@ -481,7 +483,7 @@ class TestGetTransactionItems:
             },
         ]
         mock_session.execute.return_value = _make_execute(rows, mode="all")
-        result = repo.get_transaction_items(10)
+        result = repo.get_transaction_items(10, tenant_id=1)
         assert len(result) == 1
         assert result[0]["drug_code"] == "A"
 
@@ -539,12 +541,12 @@ class TestGetReceipt:
             "generated_at": datetime.datetime(2026, 4, 15),
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
-        result = repo.get_receipt(100, "pdf")
+        result = repo.get_receipt(100, "pdf", tenant_id=1)
         assert result["content"] == b"%PDF"
 
     def test_returns_none_when_not_found(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(None, mode="first")
-        assert repo.get_receipt(999, "thermal") is None
+        assert repo.get_receipt(999, "thermal", tenant_id=1) is None
 
 
 # ---------------------------------------------------------------------------
@@ -597,12 +599,12 @@ class TestGetCurrentShift:
             "variance": None,
         }
         mock_session.execute.return_value = _make_execute(row, mode="first")
-        result = repo.get_current_shift(5)
+        result = repo.get_current_shift(5, tenant_id=1)
         assert result["id"] == 3
 
     def test_sql_filters_closed_at_null(self, repo: PosRepository, mock_session: MagicMock):
         mock_session.execute.return_value = _make_execute(None, mode="first")
-        repo.get_current_shift(5)
+        repo.get_current_shift(5, tenant_id=1)
         sql = str(mock_session.execute.call_args[0][0])
         assert "closed_at" in sql
         assert "IS NULL" in sql
@@ -695,7 +697,7 @@ class TestGetCashEvents:
             },
         ]
         mock_session.execute.return_value = _make_execute(rows, mode="all")
-        result = repo.get_cash_events(terminal_id=5)
+        result = repo.get_cash_events(terminal_id=5, tenant_id=1)
         assert len(result) == 1
 
 
