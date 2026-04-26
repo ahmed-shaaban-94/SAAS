@@ -54,14 +54,35 @@ const plexArabic = Cairo({
  *  ``401 Authentication required`` — surfaced as a red error banner on
  *  the shift-open modal (incident 2026-04-24).
  */
+/** Detect whether we're running inside the Electron POS shell.
+ *
+ *  In the SaaS web build, ``middleware.ts`` redirects unauthenticated users
+ *  before they reach the layout. In the Electron POS desktop shell that
+ *  middleware is short-circuited (``POS_DESKTOP_MODE=1`` — see #692) so
+ *  the only available auth gate is the browser. We use the presence of
+ *  ``window.electronAPI`` as the runtime signal — same idiom used by
+ *  ``use-renderer-crash-bridge`` to detect Electron mounts.
+ */
+function isPosDesktopRuntime(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
+}
+
 function SessionGuard({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    // In the web app, middleware already redirects unauthenticated users so we
-    // only need to handle token-refresh errors here. Unauthenticated state in
-    // POS desktop mode (middleware bypassed) is handled by Clerk client-side.
+    // Refresh-token errors always need a re-auth, regardless of runtime.
     if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
+      void signIn(undefined, { callbackUrl: "/terminal" });
+      return;
+    }
+    // Audit C3 (2026-04-26): in the Electron POS shell middleware is
+    // bypassed, so unauthenticated visitors must be pushed to sign-in
+    // here — otherwise the terminal mounts, hits the API, and surfaces a
+    // 401 banner instead of a sign-in flow. The web build keeps the
+    // fall-through so middleware owns the redirect (E2E CI relies on it).
+    if (status === "unauthenticated" && isPosDesktopRuntime()) {
       void signIn(undefined, { callbackUrl: "/terminal" });
     }
   }, [status, session]);
