@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from datapulse.api.auth import get_current_user
 from datapulse.api.routes.rbac import router as rbac_router
 from datapulse.core.auth import get_tenant_session
+
 pytestmark = pytest.mark.unit
 
 
