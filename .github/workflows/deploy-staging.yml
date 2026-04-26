@@ -134,6 +134,21 @@ jobs:
             # Secrets are available as env vars (passed via envs: — not in shell history)
             export API_KEY PIPELINE_WEBHOOK_SECRET PHARMACIST_SIGNING_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
 
+            # Nginx needs an origin cert for Cloudflare Full mode. The repo
+            # does not store private keys, so generate a local self-signed
+            # cert if the server does not already have one.
+            mkdir -p traefik/certs nginx
+            if [ ! -s traefik/certs/origin.crt ] || [ ! -s traefik/certs/origin.key ]; then
+              echo "=== Generating missing nginx origin certificate ==="
+              openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+                -keyout traefik/certs/origin.key \
+                -out traefik/certs/origin.crt \
+                -subj "/CN=smartdatapulse.tech" \
+                -addext "subjectAltName=DNS:smartdatapulse.tech,DNS:*.smartdatapulse.tech"
+              chmod 600 traefik/certs/origin.key
+            fi
+            touch nginx/monitoring.htpasswd
+
             # Save current image digests for rollback
             echo "=== Saving current state for rollback ==="
             docker compose \
@@ -190,6 +205,8 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml ps || true
             echo "=== API logs (startup) ==="
             docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml logs --tail=80 api 2>&1 || true
+            echo "=== Nginx logs (startup) ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml logs --tail=80 nginx 2>&1 || true
 
             # Health check — API liveness via nginx internal port.
             # Uses /health/live (always 200 if process is alive) not /health
@@ -296,6 +313,13 @@ jobs:
                 -f docker-compose.prod.yml \
                 logs --tail=30 frontend 2>&1 || true
 
+              echo "=== Nginx Logs (last 80 lines) ==="
+              docker compose \
+                -f docker-compose.yml \
+                -f docker-compose.prod.yml \
+                -f docker-compose.monitoring.yml \
+                logs --tail=80 nginx 2>&1 || true
+
               # Rollback: restart with previous images if available
               if [ "$PREV_API_IMAGE" != "none" ]; then
                 echo "=== Rolling back to previous images ==="
@@ -317,12 +341,23 @@ jobs:
       - name: Post-deploy status
         if: always()
         uses: appleboy/ssh-action@v1
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          PIPELINE_WEBHOOK_SECRET: ${{ secrets.PIPELINE_WEBHOOK_SECRET }}
+          PHARMACIST_SIGNING_SECRET: ${{ secrets.PHARMACIST_SIGNING_SECRET }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          DB_READER_PASSWORD: ${{ secrets.DB_READER_PASSWORD }}
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
+          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,PHARMACIST_SIGNING_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD
           script: |
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            export IMAGE_TAG=staging
+            export API_KEY PIPELINE_WEBHOOK_SECRET PHARMACIST_SIGNING_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
 
             echo "=== Final Container Status ==="
             docker compose \
@@ -333,7 +368,7 @@ jobs:
 
             echo ""
             echo "=== Recent Logs (last 15 lines per service) ==="
-            for svc in api frontend postgres; do
+            for svc in api frontend nginx postgres; do
               echo "--- $svc ---"
               docker compose \
                 -f docker-compose.yml \
