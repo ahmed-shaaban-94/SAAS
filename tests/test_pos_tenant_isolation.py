@@ -126,7 +126,7 @@ def test_update_item_quantity_includes_tenant_predicate() -> None:
     repo = _make_repo(session)
 
     repo.update_item_quantity(
-        42, tenant_id=TENANT_A, quantity=Decimal("2"), line_total=Decimal("20")
+        42, tenant_id=TENANT_A, quantity=Decimal("2"), unit_price=Decimal("10")
     )
 
     sql_text = str(session.execute.call_args[0][0])
