@@ -35,7 +35,7 @@ from datapulse.pos.inventory_contract import (
     StockMovement,
 )
 from datapulse.pos.models import CheckoutRequest
-from datapulse.pos.pharmacist_verifier import PharmacistVerifier, hash_pin
+from datapulse.pos.pharmacist_verifier import ALGO_SCRYPT, PharmacistVerifier, PinRecord, hash_pin
 from datapulse.pos.service import (
     PosService,
     _build_receipt_number,
@@ -99,9 +99,11 @@ def service(mock_repo: MagicMock, mock_inventory: AsyncMock) -> PosService:
 def verifier() -> PharmacistVerifier:
     """A real :class:`PharmacistVerifier` so controlled-substance tests issue
     and validate signed tokens end-to-end (no mocking of the crypto path)."""
+    _hash, _salt = hash_pin("1234")
+    _stored = PinRecord(pin_hash=_hash, pin_salt=_salt, pin_hash_algo=ALGO_SCRYPT)
     return PharmacistVerifier(
         secret_key="test-secret",
-        pin_lookup=lambda _uid: hash_pin("1234"),
+        pin_lookup=lambda _uid: _stored,
     )
 
 

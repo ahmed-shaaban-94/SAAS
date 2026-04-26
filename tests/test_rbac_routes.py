@@ -79,7 +79,8 @@ class TestVerifyPin:
         # Inspect the SQL params bound to the SELECT
         params = mock_session.execute.call_args[0][1]
         assert params["tenant_id"] == 1
-        assert params["pin_hash"] == hash_pin("5678")
+        h, s = params["pin_hash"]  # scrypt: hash_pin returns (hash_b64, salt_b64)
+        assert h and s
         sql = str(mock_session.execute.call_args[0][0])
         assert "tenant_members" in sql
         assert "pharmacist_pin_hash = :pin_hash" in sql
