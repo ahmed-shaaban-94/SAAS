@@ -117,6 +117,7 @@ jobs:
         env:
           API_KEY: ${{ secrets.API_KEY }}
           PIPELINE_WEBHOOK_SECRET: ${{ secrets.PIPELINE_WEBHOOK_SECRET }}
+          PHARMACIST_SIGNING_SECRET: ${{ secrets.PHARMACIST_SIGNING_SECRET }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
@@ -125,13 +126,13 @@ jobs:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD
+          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,PHARMACIST_SIGNING_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD
           script: |
             set -e
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             export IMAGE_TAG=staging
             # Secrets are available as env vars (passed via envs: — not in shell history)
-            export API_KEY PIPELINE_WEBHOOK_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
+            export API_KEY PIPELINE_WEBHOOK_SECRET PHARMACIST_SIGNING_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
 
             # Save current image digests for rollback
             echo "=== Saving current state for rollback ==="

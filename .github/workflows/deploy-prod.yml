@@ -150,6 +150,7 @@ jobs:
         env:
           API_KEY: ${{ secrets.API_KEY }}
           PIPELINE_WEBHOOK_SECRET: ${{ secrets.PIPELINE_WEBHOOK_SECRET }}
+          PHARMACIST_SIGNING_SECRET: ${{ secrets.PHARMACIST_SIGNING_SECRET }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
@@ -168,14 +169,14 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD,CLERK_FRONTEND_API,CLERK_JWT_ISSUER,CLERK_JWT_AUDIENCE,CLERK_JWT_TEMPLATE,CLERK_SECRET_KEY
+          envs: API_KEY,PIPELINE_WEBHOOK_SECRET,PHARMACIST_SIGNING_SECRET,NEXTAUTH_SECRET,POSTGRES_PASSWORD,REDIS_PASSWORD,DB_READER_PASSWORD,CLERK_FRONTEND_API,CLERK_JWT_ISSUER,CLERK_JWT_AUDIENCE,CLERK_JWT_TEMPLATE,CLERK_SECRET_KEY
           command_timeout: 20m
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
             export IMAGE_TAG="${{ needs.build-push.outputs.image_tag }}"
             # Secrets are available as env vars (passed via envs: — not in shell history)
-            export API_KEY PIPELINE_WEBHOOK_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
+            export API_KEY PIPELINE_WEBHOOK_SECRET PHARMACIST_SIGNING_SECRET NEXTAUTH_SECRET POSTGRES_PASSWORD REDIS_PASSWORD DB_READER_PASSWORD
             # Clerk env — docker-compose interpolates these into the api
             # service's environment block (see docker-compose.yml). Without
             # the export, compose would substitute empty strings and the
