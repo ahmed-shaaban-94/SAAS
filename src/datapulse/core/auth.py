@@ -286,8 +286,16 @@ def get_tenant_session(
 
     Extracts tenant_id from JWT claims and sets it via ``SET LOCAL`` so
     that PostgreSQL RLS policies filter data automatically.
+
+    Contract: ``user["tenant_id"]`` is guaranteed populated by
+    ``get_current_user`` (it 401s upstream when the JWT is missing the claim
+    in non-dev — see #546 + ``test_jwt_missing_tenant_id_rejects_401_in_production``).
+    Reaching this function without ``tenant_id`` means a non-FastAPI caller
+    bypassed the dependency tree — that's a programming error, not a user
+    error. We surface ``KeyError`` so it shows up loudly in tests / 500s,
+    rather than silently routing to tenant 1 (audit M1, 2026-04-26).
     """
-    tenant_id = user.get("tenant_id") or "1"
+    tenant_id = user["tenant_id"]
     current_tenant_id.set(str(tenant_id))
     structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
     session = get_session_factory()()
@@ -324,7 +332,10 @@ def get_tenant_session_readonly(
     """
     from datapulse.metrics import db_replica_fallbacks, db_replica_hits
 
-    tenant_id = user.get("tenant_id") or "1"
+    # Same M1 contract as get_tenant_session: get_current_user populates
+    # tenant_id or 401s upstream, so the previous ``or "1"`` was dead in
+    # non-dev. Surface KeyError on programming-error paths.
+    tenant_id = user["tenant_id"]
     current_tenant_id.set(str(tenant_id))
     structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
 

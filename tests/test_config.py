@@ -124,8 +124,34 @@ class TestSettings:
             clerk_jwt_issuer="https://example.clerk.accounts.dev",
             db_reader_password="reader-secret",
             pipeline_webhook_secret="pipeline-secret",
+            pharmacist_signing_secret="pharmacist-secret",
         )
         assert s.sentry_environment == "production"
+
+    def test_non_dev_requires_pharmacist_signing_secret(self):
+        """Audit C2: pharmacist HMAC signing key must be its own env var, not
+        an alias of ``pipeline_webhook_secret``. The two secrets gate distinct
+        threats (pipeline ingest auth vs POS pharmacist override) and must
+        rotate independently."""
+        with pytest.raises(ValidationError, match="PHARMACIST_SIGNING_SECRET"):
+            _settings(
+                sentry_environment="production",
+                api_key="secret123",
+                clerk_frontend_api="https://example.clerk.accounts.dev",
+                clerk_jwt_issuer="https://example.clerk.accounts.dev",
+                db_reader_password="reader-secret",
+                pipeline_webhook_secret="pipeline-secret",
+                # pharmacist_signing_secret intentionally omitted
+            )
+
+    def test_pharmacist_signing_secret_separate_from_pipeline_webhook(self):
+        """The two secrets are independent fields, not aliases."""
+        s = _settings(
+            pipeline_webhook_secret="A",
+            pharmacist_signing_secret="B",
+        )
+        assert s.pipeline_webhook_secret == "A"
+        assert s.pharmacist_signing_secret == "B"
 
     def test_cors_wildcard_is_rejected(self):
         """CORS_ORIGINS=['*'] with credentials is a CSRF cliff (#546)."""

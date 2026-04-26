@@ -5,6 +5,8 @@ from __future__ import annotations
 import contextlib
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from datapulse.api.deps import (
     get_ai_light_service,
     get_analytics_service,
@@ -78,19 +80,23 @@ class TestGetTenantSession:
         mock_session.close.assert_called_once()
 
     @patch("datapulse.core.auth.get_session_factory")
-    def test_defaults_tenant_id_to_1(self, mock_factory):
+    def test_missing_tenant_id_is_contract_violation(self, mock_factory):
+        """A user dict reaching ``get_tenant_session`` without ``tenant_id`` is a
+        programming error — ``get_current_user`` is contractually required to
+        populate it (or 401 upstream — see #546). The dead ``or "1"`` fallback
+        was silently routing to tenant 1 when the upstream contract was
+        violated, which is exactly the bug the audit flagged.
+        """
         mock_session = MagicMock()
         mock_factory.return_value = MagicMock(return_value=mock_session)
-        user = {"sub": "test"}  # no tenant_id
+        user = {"sub": "test"}  # no tenant_id — upstream contract violated
 
         gen = get_tenant_session(user=user)
-        next(gen)
-
-        tenant_call = mock_session.execute.call_args_list[0]
-        assert tenant_call.args[1] == {"tid": "1"}
-
-        with contextlib.suppress(StopIteration):
+        with pytest.raises(KeyError, match="tenant_id"):
             next(gen)
+
+        # The session must not be opened when the contract is violated.
+        mock_factory.assert_not_called()
 
     @patch("datapulse.core.auth.get_session_factory")
     def test_rollback_on_exception(self, mock_factory):
@@ -106,6 +112,33 @@ class TestGetTenantSession:
 
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
+
+
+class TestGetTenantSessionReadonly:
+    """Mirror of TestGetTenantSession — the read-replica session function
+    has the same M1 contract: ``get_current_user`` guarantees ``tenant_id``,
+    so the previous ``or "1"`` fallback was dead and now raises KeyError
+    on programming-error paths.
+    """
+
+    @patch("datapulse.core.auth.get_readonly_session_factory")
+    @patch("datapulse.core.auth.get_session_factory")
+    @patch("datapulse.core.auth.get_settings")
+    def test_missing_tenant_id_is_contract_violation(
+        self, mock_get_settings, mock_factory, mock_readonly_factory
+    ):
+        from datapulse.core.auth import get_tenant_session_readonly
+
+        mock_get_settings.return_value = MagicMock(database_replica_url="")
+        user = {"sub": "test"}  # no tenant_id — upstream contract violated
+
+        gen = get_tenant_session_readonly(user=user)
+        with pytest.raises(KeyError, match="tenant_id"):
+            next(gen)
+
+        # No session opened on a programming-error path.
+        mock_factory.assert_not_called()
+        mock_readonly_factory.assert_not_called()
 
 
 class TestFactoryFunctions:
@@ -149,3 +182,27 @@ class TestFactoryFunctions:
         from datapulse.ai_light.service import AILightService
 
         assert isinstance(svc, AILightService)
+
+    def test_get_pos_service_uses_pharmacist_signing_secret(self):
+        """Audit C2: PharmacistVerifier must derive its HMAC key from
+        ``pharmacist_signing_secret``, not ``pipeline_webhook_secret``.
+        Sharing the secret coupled two unrelated threat models — see config
+        comment for the full rationale."""
+        from datapulse.api.deps import get_pos_service
+        from datapulse.config import Settings
+
+        mock_session = MagicMock()
+        # Distinct values so we can prove which one was picked.
+        test_settings = Settings(
+            _env_file=None,
+            database_url="",
+            pipeline_webhook_secret="WRONG_PIPELINE_SECRET",
+            pharmacist_signing_secret="CORRECT_PHARMACIST_SECRET",
+        )
+        with patch("datapulse.api.deps.get_settings", return_value=test_settings):
+            svc = get_pos_service(
+                session=mock_session,
+                user={"tenant_id": "1", "sub": "test"},
+            )
+
+        assert svc._verifier.secret_key == "CORRECT_PHARMACIST_SECRET"

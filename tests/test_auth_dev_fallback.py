@@ -38,6 +38,7 @@ def _prod_settings_with_dev_sentry_label(**overrides) -> Settings:
         auth0_domain="",
         database_url="",
         pipeline_webhook_secret="disabled-for-test",
+        pharmacist_signing_secret="disabled-for-test",
         db_reader_password="test",
     )
     defaults.update(overrides)
@@ -89,6 +90,7 @@ class TestStartupGateCannotBeBypassed:
         monkeypatch.setenv("API_KEY", "configured-for-test")
         monkeypatch.setenv("DATABASE_URL", "")
         monkeypatch.setenv("PIPELINE_WEBHOOK_SECRET", "disabled-for-test")
+        monkeypatch.setenv("PHARMACIST_SIGNING_SECRET", "disabled-for-test")
         monkeypatch.setenv("DB_READER_PASSWORD", "test")
         settings = Settings(_env_file=None)
         assert settings.app_env == "production"
