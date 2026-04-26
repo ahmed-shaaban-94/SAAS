@@ -38,7 +38,7 @@ from datapulse.pos.models import (
     TransactionResponse,
     UpdateItemRequest,
 )
-from datapulse.rbac.dependencies import require_permission
+from datapulse.rbac.dependencies import AccessCtx, require_permission
 
 router = APIRouter()
 
@@ -80,12 +80,26 @@ def get_transaction(
     transaction_id: Annotated[int, Path(ge=1)],
     service: ServiceDep,
     user: CurrentUser,
+    ctx: AccessCtx,
 ) -> TransactionDetailResponse:
-    """Return a transaction header with its full line items."""
+    """Return a transaction header with its full line items.
+
+    ``cost_per_unit`` is included on each line item only for users with the
+    ``pos:cost:read`` permission. For all other roles the field is nulled out
+    so cost data is never accidentally exposed to cashier-level users.
+    """
     tenant_id = _tenant_id_of(user)
     detail = service.get_transaction_detail(transaction_id, tenant_id=tenant_id)
     if detail is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
+
+    if "pos:cost:read" not in ctx.permissions:
+        detail = detail.model_copy(
+            update={
+                "items": [item.model_copy(update={"cost_per_unit": None}) for item in detail.items]
+            }
+        )
+
     return detail
 
 

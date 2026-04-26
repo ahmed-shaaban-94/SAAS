@@ -12,6 +12,8 @@ models:
           - not_null
       - name: shift_id
         description: "FK to pos.shift_records — the shift this basket belongs to"
+        tests:
+          - not_null
       - name: staff_id
         description: "Cashier who processed the transaction"
         tests:
