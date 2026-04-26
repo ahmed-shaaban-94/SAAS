@@ -5,7 +5,10 @@ These tests verify that ``get_tenant_session`` in ``datapulse.api.deps``:
   1. Always issues ``SET LOCAL app.tenant_id = :tid`` before yielding the session.
   2. Uses the tenant_id extracted from the authenticated user's JWT claims — never
      a hardcoded value.
-  3. Falls back to the default tenant_id ('1') when the claim is absent.
+  3. Raises ``KeyError`` (i.e., 500s loudly) when ``tenant_id`` is missing —
+     ``get_current_user`` is contractually required to populate it (#546).
+     Reaching this function without it is a programming error, not a user
+     error (audit M1, 2026-04-26).
   4. Isolates distinct tenants by producing distinct SET LOCAL calls.
 
 Scope & Limitations
@@ -26,6 +29,8 @@ from __future__ import annotations
 
 import contextlib
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from datapulse.api.deps import get_tenant_session
 
@@ -93,28 +98,27 @@ class TestRLSTenantSessionBoundary:
         mock_session.commit.assert_called_once()
 
     # ------------------------------------------------------------------
-    # 2. Fallback to default_tenant_id when JWT claim is absent
+    # 2. Missing tenant_id claim is a contract violation, not a fallback
     # ------------------------------------------------------------------
 
     @patch("datapulse.core.auth.get_session_factory")
-    def test_get_tenant_session_uses_default_when_tenant_id_missing(
+    def test_get_tenant_session_raises_when_tenant_id_missing(
         self, mock_factory: MagicMock
     ) -> None:
-        """When JWT claims contain no tenant_id, the session must fall back to '1'."""
-        mock_session = MagicMock()
-        mock_factory.return_value = MagicMock(return_value=mock_session)
-
+        """Audit M1 (2026-04-26): the previous ``or "1"`` fallback was dead in
+        non-dev because ``get_current_user`` already 401s upstream when the
+        JWT lacks ``tenant_id``. Reaching this function without it means a
+        non-FastAPI caller bypassed the dependency tree — that is a programming
+        error, surfaced as KeyError so it 500s loudly instead of silently
+        routing to tenant 1."""
         user = {"sub": "anonymous-user"}  # intentionally no tenant_id key
 
         gen = get_tenant_session(user=user)
-        next(gen)
+        with pytest.raises(KeyError, match="tenant_id"):
+            next(gen)
 
-        params = _first_execute_params(mock_session)
-        assert params == {"tid": "1"}, (
-            f"Missing tenant_id claim must default to '1', got {params!r}"
-        )
-
-        _drain_generator(gen)
+        # No DB session opened on a programming-error path.
+        mock_factory.assert_not_called()
 
     # ------------------------------------------------------------------
     # 3. tenant_id comes from claims — not hardcoded
