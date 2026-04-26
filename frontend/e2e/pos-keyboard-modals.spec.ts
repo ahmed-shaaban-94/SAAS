@@ -56,20 +56,17 @@ test.describe("POS keyboard quick wins", () => {
 
   test("? opens shortcuts cheat-sheet on /terminal", async ({ page }) => {
     await waitForTerminalReady(page);
-    // Blur the auto-focused scan input so ? reaches the window keydown handler.
-    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
-
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).not.toBeVisible();
 
-    await page.keyboard.press("?");
+    // page.locator("body").press sets CDP focus to body before dispatching the key,
+    // so e.target = body (not the scan input) and isInput = false in the handler.
+    await page.locator("body").press("?");
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeVisible();
   });
 
   test("ESC closes shortcuts cheat-sheet", async ({ page }) => {
     await waitForTerminalReady(page);
-    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
-
-    await page.keyboard.press("?");
+    await page.locator("body").press("?");
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeVisible();
 
     await page.keyboard.press("Escape");
@@ -78,12 +75,10 @@ test.describe("POS keyboard quick wins", () => {
 
   test("? toggles cheat-sheet closed when already open", async ({ page }) => {
     await waitForTerminalReady(page);
-    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
-
-    await page.keyboard.press("?");
+    await page.locator("body").press("?");
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeVisible();
 
-    await page.keyboard.press("?");
+    await page.locator("body").press("?");
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).not.toBeVisible();
   });
 
