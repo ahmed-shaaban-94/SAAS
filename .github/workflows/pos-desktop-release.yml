@@ -21,7 +21,6 @@ on:
   pull_request:
     paths:
       - "pos-desktop/**"
-      - "frontend/**"
       - ".github/workflows/pos-desktop-release.yml"
 
   # Manual trigger for ad-hoc builds (e.g. testing installer locally).
