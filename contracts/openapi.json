@@ -9778,6 +9778,38 @@
         "title": "VerifyPinResponse",
         "type": "object"
       },
+      "VitalPayload": {
+        "properties": {
+          "metric": {
+            "description": "Web vital name, e.g. FCP, LCP, CLS, INP",
+            "title": "Metric",
+            "type": "string"
+          },
+          "route": {
+            "description": "Next.js pathname where the vital was measured",
+            "title": "Route",
+            "type": "string"
+          },
+          "ts": {
+            "description": "Unix timestamp in milliseconds",
+            "title": "Ts",
+            "type": "integer"
+          },
+          "value": {
+            "description": "Metric value in ms (or unitless for CLS)",
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric",
+          "value",
+          "route",
+          "ts"
+        ],
+        "title": "VitalPayload",
+        "type": "object"
+      },
       "WaterfallAnalysis": {
         "description": "Revenue change decomposition across dimensions.",
         "properties": {
@@ -9887,6 +9919,36 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/_metrics": {
+      "get": {
+        "description": "Expose per-route p50/p95/p99 latency in Prometheus text format.",
+        "operationId": "metrics_api_v1__metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Prometheus latency metrics",
+        "tags": [
+          "observability"
+        ]
+      }
+    },
     "/api/v1/ai-light/anomalies": {
       "get": {
         "description": "Detect anomalies in daily sales data.",
@@ -17563,6 +17625,41 @@
         "summary": "Get Onboarding Status",
         "tags": [
           "onboarding"
+        ]
+      }
+    },
+    "/api/v1/perf/vitals": {
+      "post": {
+        "description": "Accept a single web-vital measurement from the client. No auth required.",
+        "operationId": "receive_vital_api_v1_perf_vitals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VitalPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Receive web-vitals beacon",
+        "tags": [
+          "observability"
         ]
       }
     },

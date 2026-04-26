@@ -28,8 +28,10 @@ from datapulse.api.routes import (
     leads,
     lineage,
     members,
+    metrics,
     notifications,
     onboarding,
+    perf,
     pipeline,
     purchase_orders,
     queries,
@@ -99,6 +101,9 @@ def _register_core_routers(app: FastAPI) -> None:
         reseller.router,
         tenants.router,
         webhooks.router,
+        # Observability (#734)
+        metrics.router,
+        perf.router,
     ):
         app.include_router(router, prefix=_API_PREFIX)
 

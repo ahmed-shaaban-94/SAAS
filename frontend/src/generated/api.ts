@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/v1/_metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prometheus latency metrics
+         * @description Expose per-route p50/p95/p99 latency in Prometheus text format.
+         */
+        get: operations["metrics_api_v1__metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai-light/anomalies": {
         parameters: {
             query?: never;
@@ -2163,6 +2183,26 @@ export interface paths {
         get: operations["get_onboarding_status_api_v1_onboarding_status_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/perf/vitals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Receive web-vitals beacon
+         * @description Accept a single web-vital measurement from the client. No auth required.
+         */
+        post: operations["receive_vital_api_v1_perf_vitals_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8000,6 +8040,29 @@ export interface components {
             /** Approved */
             approved: boolean;
         };
+        /** VitalPayload */
+        VitalPayload: {
+            /**
+             * Metric
+             * @description Web vital name, e.g. FCP, LCP, CLS, INP
+             */
+            metric: string;
+            /**
+             * Route
+             * @description Next.js pathname where the vital was measured
+             */
+            route: string;
+            /**
+             * Ts
+             * @description Unix timestamp in milliseconds
+             */
+            ts: number;
+            /**
+             * Value
+             * @description Metric value in ms (or unitless for CLS)
+             */
+            value: number;
+        };
         /**
          * WaterfallAnalysis
          * @description Revenue change decomposition across dimensions.
@@ -8049,6 +8112,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    metrics_api_v1__metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
     get_anomalies_api_v1_ai_light_anomalies_get: {
         parameters: {
             query?: {
@@ -11396,6 +11479,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OnboardingStatus"];
+                };
+            };
+        };
+    };
+    receive_vital_api_v1_perf_vitals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VitalPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

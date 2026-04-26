@@ -14,8 +14,11 @@ MUST NOT be rearranged without understanding the consequences:
    lifecycle log line and unbound only after ``request_completed``.
 """
 
+import threading
 import time
 import uuid as _uuid
+from collections import deque
+from typing import Any
 
 import structlog
 from fastapi import FastAPI, Request, Response
@@ -39,6 +42,56 @@ POS_DESKTOP_ORIGINS: list[str] = [
     "http://localhost:3847",
     "http://127.0.0.1:3847",
 ]
+
+# ── Per-route latency histogram (#734) ──────────────────────────────────────
+# Key: (method: str, route_template: str, status_code: int)
+# Value: deque of duration_ms floats (circular buffer, max 1000 samples)
+_route_histogram: dict[tuple[str, str, int], deque[float]] = {}
+_histogram_lock = threading.Lock()
+
+_MAX_SAMPLES = 1000
+
+
+def _record_latency(method: str, route: str, status_code: int, duration_ms: float) -> None:
+    """Push one latency sample into the per-route circular buffer."""
+    key = (method, route, status_code)
+    with _histogram_lock:
+        if key not in _route_histogram:
+            _route_histogram[key] = deque(maxlen=_MAX_SAMPLES)
+        _route_histogram[key].append(duration_ms)
+
+
+def get_route_percentiles() -> dict[tuple[str, str, int], dict[str, float]]:
+    """Return p50 / p95 / p99 latencies for every recorded route.
+
+    Returns an immutable snapshot — callers must not mutate the result.
+    """
+    result: dict[tuple[str, str, int], dict[str, float]] = {}
+    with _histogram_lock:
+        snapshot = {k: list(v) for k, v in _route_histogram.items()}
+
+    for key, samples in snapshot.items():
+        if not samples:
+            continue
+        sorted_samples = sorted(samples)
+        n = len(sorted_samples)
+        result[key] = {
+            "p50": _percentile(sorted_samples, 50),
+            "p95": _percentile(sorted_samples, 95),
+            "p99": _percentile(sorted_samples, 99),
+            "count": float(n),
+        }
+    return result
+
+
+def _percentile(sorted_data: list[float], pct: int) -> float:
+    """Nearest-rank percentile from a pre-sorted list."""
+    if not sorted_data:
+        return 0.0
+    n = len(sorted_data)
+    # Nearest-rank: index = ceil(pct/100 * n) - 1, clamped to [0, n-1]
+    idx = max(0, min(n - 1, int((pct / 100.0) * n + 0.5) - 1))
+    return sorted_data[idx]
 
 
 def install_middleware(app: FastAPI, settings: Settings) -> None:
@@ -152,14 +205,21 @@ def _install_request_logging(app: FastAPI) -> None:
             return response
         finally:
             duration_ms = round((time.perf_counter() - start) * 1000, 1)
+            status_code = response.status_code if response is not None else 500
             logger.info(
                 "request_completed",
                 method=request.method,
                 path=request.url.path,
-                status=response.status_code if response is not None else 500,
+                status=status_code,
                 duration_ms=duration_ms,
                 user_agent=request.headers.get("user-agent", ""),
             )
+            # Record latency sample using the matched route template so that
+            # parameterised paths like /pos/transactions/{id}/items are grouped
+            # together rather than exploding into one bucket per unique id.
+            route: Any = request.scope.get("route")
+            route_template: str = route.path if route is not None else request.url.path
+            _record_latency(request.method, route_template, status_code, duration_ms)
             if response is not None:
                 response.headers["X-Request-ID"] = request_id
             structlog.contextvars.unbind_contextvars("request_id")
