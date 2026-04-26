@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { Download } from "lucide-react";
 import { useChartTheme } from "@/hooks/use-chart-theme";
+import { formatNumber } from "@/lib/formatters";
 import { friendlyColumnLabel, type ChartType } from "./report-config";
 import type { ExploreResult } from "@/types/api";
 
@@ -119,7 +120,7 @@ function ResultBarChart({ result }: { result: ExploreResult }) {
             border: `1px solid ${theme.tooltipBorder}`,
             borderRadius: "8px",
           }}
-          formatter={(value: number) => value.toLocaleString()}
+          formatter={(value: number) => formatNumber(value)}
         />
         {metricCols.map((col, i) => (
           <Bar
@@ -153,7 +154,7 @@ function ResultLineChart({ result }: { result: ExploreResult }) {
             border: `1px solid ${theme.tooltipBorder}`,
             borderRadius: "8px",
           }}
-          formatter={(value: number) => value.toLocaleString()}
+          formatter={(value: number) => formatNumber(value)}
         />
         {metricCols.map((col, i) => (
           <Line
@@ -194,7 +195,7 @@ function ResultPieChart({ result }: { result: ExploreResult }) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number) => value.toLocaleString()}
+          formatter={(value: number) => formatNumber(value)}
           contentStyle={{
             backgroundColor: theme.tooltipBg,
             border: `1px solid ${theme.tooltipBorder}`,
@@ -237,7 +238,7 @@ export function ReportResults({ result, chartType }: ReportResultsProps) {
     <div className="viz-panel overflow-hidden rounded-[1.75rem]">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <span className="text-sm text-text-secondary">
-          {result.row_count.toLocaleString()} results
+          {formatNumber(result.row_count)} results
           {result.truncated && " (showing first 500)"}
         </span>
         <button

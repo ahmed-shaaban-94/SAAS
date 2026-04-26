@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/formatters";
 
 interface XPProgressBarProps {
   totalXP: number;
@@ -18,7 +19,7 @@ export function XPProgressBar({ totalXP, xpToNext, level, className }: XPProgres
     <div className={cn("space-y-1", className)}>
       <div className="flex items-center justify-between text-xs text-text-secondary">
         <span>Level {level}</span>
-        <span>{xpToNext > 0 ? `${xpToNext.toLocaleString()} XP to next` : "MAX"}</span>
+        <span>{xpToNext > 0 ? `${formatNumber(xpToNext)} XP to next` : "MAX"}</span>
       </div>
       <div className="h-2 w-full rounded-full bg-divider overflow-hidden">
         <div
@@ -27,7 +28,7 @@ export function XPProgressBar({ totalXP, xpToNext, level, className }: XPProgres
         />
       </div>
       <div className="text-right text-[10px] text-text-secondary">
-        {totalXP.toLocaleString()} XP total
+        {formatNumber(totalXP)} XP total
       </div>
     </div>
   );

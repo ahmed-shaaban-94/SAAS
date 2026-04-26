@@ -6,6 +6,7 @@ import { LoadingCard } from "@/components/loading-card";
 import { ErrorRetry } from "@/components/error-retry";
 import { ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { formatNumber } from "@/lib/formatters";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "bg-blue-500/10 text-blue-500",
@@ -78,7 +79,7 @@ export function AuditLogOverview() {
 
       <div className="viz-panel-soft inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-text-secondary">
         <ScrollText className="h-4 w-4" />
-        <span>{data.total.toLocaleString()} entries</span>
+        <span>{formatNumber(data.total)} entries</span>
       </div>
 
       {data.items.length === 0 ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ConnectionPreviewResult } from "@/hooks/use-connections";
+import { formatNumber } from "@/lib/formatters";
 
 interface Props {
   preview: ConnectionPreviewResult;
@@ -15,7 +16,7 @@ export function PreviewTable({ preview, maxRows = 50 }: Props) {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
         <span>
-          <strong className="text-text-primary">{preview.row_count_estimate.toLocaleString()}</strong>{" "}
+          <strong className="text-text-primary">{formatNumber(preview.row_count_estimate)}</strong>{" "}
           estimated rows
         </span>
         <span>

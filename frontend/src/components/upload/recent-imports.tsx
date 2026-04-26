@@ -4,6 +4,7 @@ import { usePipelineRuns, type PipelineRun } from "@/hooks/use-pipeline-runs";
 import { LoadingCard } from "@/components/loading-card";
 import { Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/formatters";
 
 function StatusIcon({ status }: { status: string }) {
   switch (status) {
@@ -44,7 +45,7 @@ function RunRow({ run }: { run: PipelineRun }) {
         <p className="text-xs text-text-secondary">
           {new Date(run.started_at).toLocaleString()}
           {run.duration_seconds != null && ` - ${run.duration_seconds.toFixed(1)}s`}
-          {run.rows_loaded != null && ` - ${run.rows_loaded.toLocaleString()} rows`}
+          {run.rows_loaded != null && ` - ${formatNumber(run.rows_loaded)} rows`}
         </p>
       </div>
       <StatusBadge status={run.status} />

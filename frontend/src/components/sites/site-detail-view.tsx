@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { SummaryStats } from "@/components/shared/summary-stats";
 import { EmptyState } from "@/components/empty-state";
-import { formatCurrency, formatCompact } from "@/lib/formatters";
+import { formatCurrency, formatCompact, formatNumber } from "@/lib/formatters";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import type { SiteDetail } from "@/types/api";
 
@@ -38,9 +38,9 @@ export function SiteDetailView({ site }: SiteDetailViewProps) {
 
   const stats = [
     { label: "Total Net Sales", value: formatCurrency(site.total_net_amount) },
-    { label: "Transactions", value: site.transaction_count.toLocaleString() },
-    { label: "Unique Customers", value: site.unique_customers.toLocaleString() },
-    { label: "Unique Staff", value: site.unique_staff.toLocaleString() },
+    { label: "Transactions", value: formatNumber(site.transaction_count) },
+    { label: "Unique Customers", value: formatNumber(site.unique_customers) },
+    { label: "Unique Staff", value: formatNumber(site.unique_staff) },
     { label: "Walk-in Ratio", value: `${(site.walk_in_ratio * 100).toFixed(1)}%` },
     { label: "Insurance Ratio", value: `${(site.insurance_ratio * 100).toFixed(1)}%` },
     { label: "Return Rate", value: `${site.return_rate.toFixed(1)}%` },

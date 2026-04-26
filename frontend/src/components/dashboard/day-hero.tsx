@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface DayHeroProps {
@@ -29,7 +29,7 @@ export const DayHero = memo(function DayHero({ revenue, transactions, momGrowth 
       <p className="mt-3 text-lg font-semibold leading-8 text-text-primary sm:text-[1.65rem]">
         <span className="text-accent">{formatCurrency(revenue)}</span>
         {" "}across{" "}
-        <span className="font-bold">{transactions?.toLocaleString() ?? "—"}</span>
+        <span className="font-bold">{transactions != null ? formatNumber(transactions) : "—"}</span>
         {" "}transactions
         {trendWord && momGrowth !== null && momGrowth !== undefined && (
           <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm ${trendColor} viz-panel-soft`}>

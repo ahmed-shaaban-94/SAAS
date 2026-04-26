@@ -5,6 +5,7 @@ import { TierBadge } from "./tier-badge";
 import { XPProgressBar } from "./xp-progress-bar";
 import { Award, Flame, Trophy } from "lucide-react";
 import type { GamificationProfile } from "@/hooks/use-gamification";
+import { formatNumber } from "@/lib/formatters";
 
 interface PlayerCardProps {
   profile: GamificationProfile;
@@ -61,7 +62,7 @@ export function PlayerCard({ profile, className }: PlayerCardProps) {
           <Trophy className="h-4 w-4 text-accent" />
           <div>
             <p className="text-xs text-text-secondary">Total XP</p>
-            <p className="text-sm font-semibold text-text-primary">{profile.total_xp.toLocaleString()}</p>
+            <p className="text-sm font-semibold text-text-primary">{formatNumber(profile.total_xp)}</p>
           </div>
         </div>
       </div>

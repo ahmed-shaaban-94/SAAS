@@ -19,6 +19,7 @@ import { useForecastSummary } from "@/hooks/use-forecast";
 import { useHorizon } from "@/components/horizon/horizon-context";
 import { WhyChangedTrigger } from "@/components/why-changed/why-changed-trigger";
 import type { WhyChangedData } from "@/components/why-changed/why-changed";
+import { formatNumber } from "@/lib/formatters";
 import {
   buildMtdRevenueWhy,
   buildExpiryExposureWhy,
@@ -114,7 +115,7 @@ export function KpiRow() {
         {
           label: `Transactions · forecast`,
           value: summary?.mtd_transactions
-            ? Math.round(summary.mtd_transactions * (daysOut / 30)).toLocaleString()
+            ? formatNumber(Math.round(summary.mtd_transactions * (daysOut / 30)))
             : "—",
         },
         {
@@ -152,7 +153,7 @@ export function KpiRow() {
       },
       {
         label: "Transactions · MTD",
-        value: summary.mtd_transactions.toLocaleString(),
+        value: formatNumber(summary.mtd_transactions),
       },
       {
         label: "Avg basket size",
