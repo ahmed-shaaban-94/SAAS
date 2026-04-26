@@ -44,6 +44,9 @@ test.describe("POS keyboard quick wins", () => {
   test("? opens shortcuts cheat-sheet on /terminal", async ({ page }) => {
     await page.goto("/terminal");
     await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
+    // The terminal auto-focuses the scan input on mount; blur it so the ? key
+    // reaches the window keydown handler instead of typing into the input.
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
     // Cheat-sheet should not be visible initially
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).not.toBeVisible();
@@ -56,6 +59,7 @@ test.describe("POS keyboard quick wins", () => {
   test("ESC closes shortcuts cheat-sheet", async ({ page }) => {
     await page.goto("/terminal");
     await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
     await page.keyboard.press("?");
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeVisible();
@@ -67,6 +71,7 @@ test.describe("POS keyboard quick wins", () => {
   test("? toggles cheat-sheet closed when already open", async ({ page }) => {
     await page.goto("/terminal");
     await page.waitForSelector("[data-testid='pos-terminal-page'], main", { timeout: 10_000 });
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
 
     await page.keyboard.press("?");
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).toBeVisible();
