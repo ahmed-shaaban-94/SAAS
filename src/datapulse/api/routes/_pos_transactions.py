@@ -15,6 +15,7 @@ from datapulse.api.routes._pos_routes_deps import (
     CurrentUser,
     ServiceDep,
     SessionDep,
+    _add_item_idempotency_dep,
     _commit_idempotency_dep,
     _legacy_checkout_idempotency_dep,
     _staff_id_of,
@@ -120,14 +121,18 @@ async def add_item(
     body: AddItemRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_add_item_idempotency_dep)],
 ) -> PosCartItem:
     """Add a drug to the active draft transaction (FEFO batch + stock check)."""
+    if idem.replay:
+        return PosCartItem.model_validate(idem.cached_body)
     txn = service.get_transaction_detail(transaction_id)
     if txn is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
     if txn.status != TransactionStatus.draft:
         raise HTTPException(status_code=409, detail="Only draft transactions can be edited")
-    return await service.add_item(
+    result = await service.add_item(
         transaction_id=transaction_id,
         tenant_id=_tenant_id_of(user),
         site_code=txn.site_code,
@@ -138,6 +143,9 @@ async def add_item(
         ),
         pharmacist_id=body.pharmacist_id,
     )
+    record_response(db_session, idem.key, 201, result.model_dump(mode="json"))
+    db_session.commit()
+    return result
 
 
 @router.patch(

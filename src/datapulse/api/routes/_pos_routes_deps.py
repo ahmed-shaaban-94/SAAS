@@ -35,6 +35,7 @@ _void_idempotency_dep = idempotency_dependency("POST /pos/transactions/{id}/void
 _return_idempotency_dep = idempotency_dependency("POST /pos/returns")
 _shift_close_idempotency_dep = idempotency_dependency("POST /pos/shifts/{id}/close")
 _terminal_close_idempotency_dep = idempotency_dependency("POST /pos/terminals/{id}/close")
+_add_item_idempotency_dep = idempotency_dependency("POST /pos/transactions/{id}/items")
 
 
 def _tenant_id_of(user: CurrentUser) -> int:  # type: ignore[valid-type]

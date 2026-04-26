@@ -15,6 +15,7 @@ import { QuickPickGrid } from "@/components/pos/terminal/QuickPickGrid";
 import { CartTable } from "@/components/pos/terminal/CartTable";
 import { TotalsHero } from "@/components/pos/terminal/TotalsHero";
 import { ShortcutLegend } from "@/components/pos/terminal/ShortcutLegend";
+import { ShortcutsCheatSheet } from "@/components/pos/ShortcutsCheatSheet";
 // ActivePaymentStrip owns the InsuranceState shape — we still import the
 // type for local state, but the component itself renders inside the
 // CheckoutConfirmModal now (D0). Same for Keypad, PaymentTiles,
@@ -116,6 +117,7 @@ export default function PosTerminalPage() {
   // lives inside a confirm modal, not inline on the right column. This
   // frees the right column for the Clinical/AI panel in Phase D1.
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [cheatSheetOpen, setCheatSheetOpen] = useState(false);
   // D3 — customer phone lookup. Currently backed by fixtures (issue
   // #624 for the real endpoint). Phone state lives here so the churn
   // alert below CustomerBar and any future D4 loyalty surfaces can
@@ -396,6 +398,11 @@ export default function PosTerminalPage() {
       }
 
       if (!isInput) {
+        if (e.key === "?") {
+          e.preventDefault();
+          setCheatSheetOpen((v) => !v);
+          return;
+        }
         if (e.key === "/") {
           e.preventDefault();
           focusScan();
@@ -448,6 +455,8 @@ export default function PosTerminalPage() {
     openVoucherModal,
     voucherOpen,
     checkoutOpen,
+    cheatSheetOpen,
+    setCheatSheetOpen,
   ]);
 
   // Hijack the legacy F2 layout shortcut (now = Sync).
@@ -709,6 +718,8 @@ export default function PosTerminalPage() {
         onApproved={approveOverride}
         onCancel={cancelOverride}
       />
+
+      <ShortcutsCheatSheet open={cheatSheetOpen} onClose={() => setCheatSheetOpen(false)} />
     </div>
   );
 }
