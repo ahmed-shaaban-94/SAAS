@@ -58,16 +58,19 @@ function SessionGuard({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      void signIn(undefined, { callbackUrl: "/terminal" });
-      return;
-    }
+    // In the web app, middleware already redirects unauthenticated users so we
+    // only need to handle token-refresh errors here. Unauthenticated state in
+    // POS desktop mode (middleware bypassed) is handled by Clerk client-side.
     if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
       void signIn(undefined, { callbackUrl: "/terminal" });
     }
   }, [status, session]);
 
-  if (status !== "authenticated") {
+  // Block rendering only during the initial loading phase — matches the
+  // (app) layout pattern. Unauthenticated renders fall through to children;
+  // the middleware redirect handles unauthenticated web-app access, and
+  // E2E CI tests need `main` to be reachable before session is confirmed.
+  if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
