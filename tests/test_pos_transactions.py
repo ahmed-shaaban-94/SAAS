@@ -186,6 +186,7 @@ class TestAddItemIdempotency:
         ) -> IdempotencyContext:
             return IdempotencyContext(
                 key="replay-key",
+                tenant_id=1,
                 request_hash="a" * 64,
                 replay=True,
                 cached_status=200,
@@ -269,6 +270,7 @@ class TestUpdateItemIdempotency:
         async def _replay_dep(request: Request) -> IdempotencyContext:  # noqa: ARG001
             return IdempotencyContext(
                 key="upd-replay",
+                tenant_id=1,
                 request_hash="b" * 64,
                 replay=True,
                 cached_status=200,
@@ -323,6 +325,7 @@ class TestRemoveItemIdempotency:
         async def _replay_dep(request: Request) -> IdempotencyContext:  # noqa: ARG001
             return IdempotencyContext(
                 key="del-replay",
+                tenant_id=1,
                 request_hash="c" * 64,
                 replay=True,
                 cached_status=204,
@@ -379,6 +382,7 @@ def test_concurrent_same_key_409() -> None:
 
     session = MagicMock()
     session.execute.return_value.mappings.return_value.first.return_value = {
+        "endpoint": "POST /pos/transactions/{id}/items",
         "request_hash": h1,
         "response_status": 200,
         "response_body": {"ok": True},
