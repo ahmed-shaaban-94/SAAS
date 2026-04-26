@@ -10,7 +10,8 @@
       }
     },
     "collect": {
-      "startServerCommand": "npm start",
+      "startServerCommand": "node frontend/.next/standalone/server.js",
+      "startServerReadyPattern": "started server on",
       "url": ["http://localhost:3000/pos"]
     }
   }
