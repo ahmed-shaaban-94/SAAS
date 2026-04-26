@@ -168,7 +168,7 @@ type ClerkHandler = (req: NextRequest, evt: unknown) => Promise<NextResponse> | 
 let _clerkMw: ClerkHandler | null = null;
 function getClerkMw(): ClerkHandler {
   if (_clerkMw) return _clerkMw;
-  _clerkMw = clerkMiddleware(async (auth, request) => {
+  _clerkMw = clerkMiddleware(async (auth, request: NextRequest) => {
     const tenantDomain = resolveTenantDomain(request);
     if (isProtectedRoute(request)) {
       const { userId } = await auth();

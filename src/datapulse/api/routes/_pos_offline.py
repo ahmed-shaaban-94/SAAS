@@ -112,7 +112,7 @@ def refresh_grant(
 
     tenant_id = _tenant_id_of(user)
     staff_id = _staff_id_of(user)
-    shift = service.get_shift_by_id(shift_id)
+    shift = service.get_shift_by_id(shift_id, tenant_id=tenant_id)
     if shift is None or int(shift.tenant_id) != tenant_id:
         raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found")
     if shift.closed_at is not None:

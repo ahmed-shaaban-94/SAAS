@@ -68,8 +68,8 @@ class TransactionRepoMixin:
         log.info("pos.transaction.created", txn_id=row["id"], tenant_id=tenant_id)
         return dict(row)
 
-    def get_transaction(self, transaction_id: int) -> dict[str, Any] | None:
-        """Return a transaction header by ID."""
+    def get_transaction(self, transaction_id: int, *, tenant_id: int) -> dict[str, Any] | None:
+        """Return a transaction header by ID, scoped to the given tenant."""
         row = (
             self._session.execute(
                 text("""
@@ -78,9 +78,10 @@ class TransactionRepoMixin:
                            tax_total, grand_total, payment_method, status,
                            receipt_number, created_at
                     FROM   pos.transactions
-                    WHERE  id = :txn_id
+                    WHERE  id        = :txn_id
+                    AND    tenant_id = :tenant_id
                 """),
-                {"txn_id": transaction_id},
+                {"txn_id": transaction_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
@@ -91,6 +92,7 @@ class TransactionRepoMixin:
         self,
         transaction_id: int,
         *,
+        tenant_id: int,
         status: str,
         payment_method: str | None = None,
         receipt_number: str | None = None,
@@ -122,7 +124,8 @@ class TransactionRepoMixin:
                            grand_total    = COALESCE(:grand_total,    grand_total),
                            pharmacist_id  = COALESCE(:pharmacist_id,  pharmacist_id),
                            customer_id    = COALESCE(:customer_id,    customer_id)
-                    WHERE  id = :txn_id
+                    WHERE  id        = :txn_id
+                    AND    tenant_id = :tenant_id
                     AND    (:expected_status IS NULL OR status = :expected_status)
                     RETURNING
                         id, tenant_id, terminal_id, staff_id, pharmacist_id,
@@ -132,6 +135,7 @@ class TransactionRepoMixin:
                 """),
                 {
                     "txn_id": transaction_id,
+                    "tenant_id": tenant_id,
                     "status": status,
                     "payment_method": payment_method,
                     "receipt_number": receipt_number,
@@ -237,8 +241,8 @@ class TransactionRepoMixin:
         )
         return dict(row)
 
-    def get_transaction_item(self, item_id: int) -> dict[str, Any] | None:
-        """Return one line item by ID."""
+    def get_transaction_item(self, item_id: int, *, tenant_id: int) -> dict[str, Any] | None:
+        """Return one line item by ID, scoped to tenant."""
         row = (
             self._session.execute(
                 text("""
@@ -246,16 +250,19 @@ class TransactionRepoMixin:
                            batch_number, expiry_date, quantity, unit_price,
                            discount, line_total, is_controlled, pharmacist_id
                     FROM   pos.transaction_items
-                    WHERE  id = :item_id
+                    WHERE  id        = :item_id
+                    AND    tenant_id = :tenant_id
                 """),
-                {"item_id": item_id},
+                {"item_id": item_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
         )
         return dict(row) if row else None
 
-    def get_transaction_for_update(self, transaction_id: int) -> dict[str, Any] | None:
+    def get_transaction_for_update(
+        self, transaction_id: int, *, tenant_id: int
+    ) -> dict[str, Any] | None:
         """Return a transaction header and lock it for the current DB transaction."""
         row = (
             self._session.execute(
@@ -265,10 +272,11 @@ class TransactionRepoMixin:
                            tax_total, grand_total, payment_method, status,
                            receipt_number, created_at
                     FROM   pos.transactions
-                    WHERE  id = :txn_id
+                    WHERE  id        = :txn_id
+                    AND    tenant_id = :tenant_id
                     FOR UPDATE
                 """),
-                {"txn_id": transaction_id},
+                {"txn_id": transaction_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()
@@ -279,6 +287,7 @@ class TransactionRepoMixin:
         self,
         item_id: int,
         *,
+        tenant_id: int,
         quantity: Decimal,
         unit_price: Decimal | None = None,
         discount: Decimal | None = None,
@@ -309,8 +318,9 @@ class TransactionRepoMixin:
                            line_total = (COALESCE(:unit_price, ti.unit_price) * :quantity)
                                         - COALESCE(:discount, ti.discount, 0)
                     FROM   pos.transactions t
-                    WHERE  ti.id = :item_id
-                    AND    t.id  = ti.transaction_id
+                    WHERE  ti.id        = :item_id
+                    AND    ti.tenant_id = :tenant_id
+                    AND    t.id         = ti.transaction_id
                     AND    (:transaction_id IS NULL OR ti.transaction_id = :transaction_id)
                     AND    (:expected_status IS NULL OR t.status = :expected_status)
                     RETURNING
@@ -321,6 +331,7 @@ class TransactionRepoMixin:
                 """),
                 {
                     "item_id": item_id,
+                    "tenant_id": tenant_id,
                     "quantity": quantity,
                     "unit_price": unit_price,
                     "discount": discount,
@@ -337,6 +348,7 @@ class TransactionRepoMixin:
         self,
         item_id: int,
         *,
+        tenant_id: int,
         transaction_id: int | None = None,
         expected_status: str | None = None,
     ) -> bool:
@@ -345,13 +357,15 @@ class TransactionRepoMixin:
             text("""
                 DELETE FROM pos.transaction_items ti
                 USING pos.transactions t
-                WHERE ti.id = :item_id
-                AND   t.id  = ti.transaction_id
+                WHERE ti.id        = :item_id
+                AND   ti.tenant_id = :tenant_id
+                AND   t.id         = ti.transaction_id
                 AND   (:transaction_id IS NULL OR ti.transaction_id = :transaction_id)
                 AND   (:expected_status IS NULL OR t.status = :expected_status)
             """),
             {
                 "item_id": item_id,
+                "tenant_id": tenant_id,
                 "transaction_id": transaction_id,
                 "expected_status": expected_status,
             },
@@ -360,7 +374,7 @@ class TransactionRepoMixin:
         # ``rowcount``; the generic ``Result`` type doesn't, hence the ignore.
         return (result.rowcount or 0) > 0  # type: ignore[attr-defined]
 
-    def get_transaction_items(self, transaction_id: int) -> list[dict[str, Any]]:
+    def get_transaction_items(self, transaction_id: int, *, tenant_id: int) -> list[dict[str, Any]]:
         """Return all line items for a transaction, ordered by insertion."""
         rows = (
             self._session.execute(
@@ -370,9 +384,10 @@ class TransactionRepoMixin:
                            discount, line_total, is_controlled, pharmacist_id
                     FROM   pos.transaction_items
                     WHERE  transaction_id = :txn_id
+                    AND    tenant_id      = :tenant_id
                     ORDER  BY id ASC
                 """),
-                {"txn_id": transaction_id},
+                {"txn_id": transaction_id, "tenant_id": tenant_id},
             )
             .mappings()
             .all()
@@ -411,7 +426,9 @@ class TransactionRepoMixin:
         )
         return dict(row)
 
-    def get_receipt(self, transaction_id: int, fmt: str) -> dict[str, Any] | None:
+    def get_receipt(
+        self, transaction_id: int, fmt: str, *, tenant_id: int
+    ) -> dict[str, Any] | None:
         """Retrieve the most-recent receipt of a given format for a transaction."""
         row = (
             self._session.execute(
@@ -420,11 +437,12 @@ class TransactionRepoMixin:
                            file_path, generated_at
                     FROM   pos.receipts
                     WHERE  transaction_id = :txn_id
+                    AND    tenant_id      = :tenant_id
                     AND    format         = :fmt
                     ORDER  BY generated_at DESC
                     LIMIT  1
                 """),
-                {"txn_id": transaction_id, "fmt": fmt},
+                {"txn_id": transaction_id, "tenant_id": tenant_id, "fmt": fmt},
             )
             .mappings()
             .first()

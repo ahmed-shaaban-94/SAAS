@@ -8,7 +8,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 
 from datapulse.api.limiter import limiter
 from datapulse.api.routes._pos_routes_deps import (
@@ -18,8 +18,10 @@ from datapulse.api.routes._pos_routes_deps import (
     _add_item_idempotency_dep,
     _commit_idempotency_dep,
     _legacy_checkout_idempotency_dep,
+    _remove_item_idempotency_dep,
     _staff_id_of,
     _tenant_id_of,
+    _update_item_idempotency_dep,
 )
 from datapulse.pos.commit import atomic_commit
 from datapulse.pos.constants import TransactionStatus
@@ -80,8 +82,8 @@ def get_transaction(
     user: CurrentUser,
 ) -> TransactionDetailResponse:
     """Return a transaction header with its full line items."""
-    _ = user
-    detail = service.get_transaction_detail(transaction_id)
+    tenant_id = _tenant_id_of(user)
+    detail = service.get_transaction_detail(transaction_id, tenant_id=tenant_id)
     if detail is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
     return detail
@@ -127,7 +129,7 @@ async def add_item(
     """Add a drug to the active draft transaction (FEFO batch + stock check)."""
     if idem.replay:
         return PosCartItem.model_validate(idem.cached_body)
-    txn = service.get_transaction_detail(transaction_id)
+    txn = service.get_transaction_detail(transaction_id, tenant_id=_tenant_id_of(user))
     if txn is None:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
     if txn.status != TransactionStatus.draft:
@@ -143,7 +145,7 @@ async def add_item(
         ),
         pharmacist_id=body.pharmacist_id,
     )
-    record_response(db_session, idem.key, 201, result.model_dump(mode="json"))
+    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
     db_session.commit()
     return result
 
@@ -154,13 +156,15 @@ async def add_item(
     dependencies=[Depends(require_permission("pos:transaction:create"))],
 )
 @limiter.limit("30/minute")
-def update_item(
+async def update_item(
     request: Request,
     transaction_id: Annotated[int, Path(ge=1)],
     item_id: Annotated[int, Path(ge=1)],
     body: UpdateItemRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_update_item_idempotency_dep)],
 ) -> PosCartItem:
     """Update an existing line item's quantity / price / discount.
 
@@ -168,14 +172,20 @@ def update_item(
     — passing ``Decimal("0")`` here used to zero the line on innocent
     quantity-only PATCHes (Codex P1).
     """
-    _ = user
-    return service.update_item(
+    if idem.replay:
+        return PosCartItem.model_validate(idem.cached_body)
+    tenant_id = _tenant_id_of(user)
+    result = service.update_item(
         item_id,
         transaction_id=transaction_id,
+        tenant_id=tenant_id,
         quantity=Decimal(str(body.quantity)),
         unit_price=(Decimal(str(body.override_price)) if body.override_price is not None else None),
         discount=Decimal(str(body.discount)) if body.discount is not None else None,
     )
+    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
+    db_session.commit()
+    return result
 
 
 @router.delete(
@@ -184,18 +194,25 @@ def update_item(
     dependencies=[Depends(require_permission("pos:transaction:create"))],
 )
 @limiter.limit("30/minute")
-def remove_item(
+async def remove_item(
     request: Request,
     transaction_id: Annotated[int, Path(ge=1)],
     item_id: Annotated[int, Path(ge=1)],
     service: ServiceDep,
     user: CurrentUser,
-) -> None:
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_remove_item_idempotency_dep)],
+) -> Response:
     """Remove a single line item from a draft transaction."""
-    _ = user
-    deleted = service.remove_item(item_id, transaction_id=transaction_id)
+    if idem.replay:
+        return Response(status_code=204)
+    tenant_id = _tenant_id_of(user)
+    deleted = service.remove_item(item_id, transaction_id=transaction_id, tenant_id=tenant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
+    record_response(db_session, idem.key, 204, None)
+    db_session.commit()
+    return Response(status_code=204)
 
 
 @router.post(
