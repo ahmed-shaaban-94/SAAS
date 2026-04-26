@@ -282,7 +282,9 @@ class TestTerminalLifecycle:
         mock_repo.update_terminal_status.return_value = _terminal_row("paused")
         result = service.pause_terminal(1, tenant_id=1)
         assert result.status == TerminalStatus.paused
-        mock_repo.update_terminal_status.assert_called_once_with(1, "paused", tenant_id=1, closing_cash=None)
+        mock_repo.update_terminal_status.assert_called_once_with(
+            1, "paused", tenant_id=1, closing_cash=None
+        )
 
     def test_pause_terminal_rejects_closed(
         self,
