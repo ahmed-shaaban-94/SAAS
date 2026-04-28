@@ -21,6 +21,7 @@ import structlog
 from fastapi import Depends
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from datapulse.ai_light.service import AILightService
@@ -57,6 +58,7 @@ from datapulse.core.auth import (  # noqa: F401 (re-exported for routes + tests)
     SessionDepReadOnly,
     UserClaims,
     get_current_user,
+    get_plain_session_async,
     get_tenant_session,
     get_tenant_session_async,
     get_tenant_session_readonly,
@@ -487,6 +489,23 @@ def get_views_service(
 def get_lead_service(
     session: Annotated[Session, Depends(get_plain_session)],
 ):
+    """Sync lead service factory.
+
+    .. deprecated::
+        Use ``get_lead_service_async`` — the leads vertical has migrated to async.
+        This sync version is kept only for backward compatibility with existing
+        test dependency_overrides.
+    """
+    from datapulse.leads.repository import LeadRepository
+    from datapulse.leads.service import LeadService
+
+    return LeadService(LeadRepository(session))
+
+
+def get_lead_service_async(
+    session: Annotated[AsyncSession, Depends(get_plain_session_async)],
+):
+    """Async lead service factory — preferred over get_lead_service."""
     from datapulse.leads.repository import LeadRepository
     from datapulse.leads.service import LeadService
 

@@ -432,6 +432,27 @@ async def get_tenant_session_async(
         structlog.contextvars.unbind_contextvars("tenant_id")
 
 
+async def get_plain_session_async() -> AsyncGenerator[AsyncSession, None]:
+    """Async plain (no-tenant) session for public endpoints.
+
+    Mirrors get_plain_session (sync). Statement timeout 30s.
+    """
+    factory = get_async_session_factory()
+    session = factory()
+    try:
+        await session.execute(text("SET LOCAL statement_timeout = '30s'"))
+        yield session
+        await session.commit()
+    except SQLAlchemyError:
+        await session.rollback()
+        raise
+    except BaseException:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
 # Type aliases for FastAPI dependency injection
 AsyncSessionDep = Annotated[AsyncSession, Depends(get_tenant_session_async)]
 SessionDep = Annotated[Session, Depends(get_tenant_session)]
