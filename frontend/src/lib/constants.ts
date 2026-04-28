@@ -51,6 +51,9 @@ export interface NavGroup {
   icon: string;
   minRole: RoleKey;
   items: NavItem[];
+  /** When true, this group is hidden from navigation and its routes have been
+   *  archived out of the Next.js build. See `frontend/src/_archived/README.md`. */
+  archived?: boolean;
 }
 
 // ── Grouped navigation ───────────────────────────────────
@@ -59,6 +62,7 @@ const OPERATIONS_GROUP: NavGroup = {
   label: "Operations",
   icon: "Warehouse",
   minRole: "editor",
+  archived: true,
   items: [
     { label: "Inventory", href: "/inventory", icon: "Package", minRole: "editor" },
     { label: "Dispensing", href: "/dispensing", icon: "Activity", minRole: "viewer" },
@@ -87,6 +91,7 @@ const CONTROL_CENTER_GROUP: NavGroup = {
   label: "Control Center",
   icon: "Settings2",
   minRole: "admin",
+  archived: true,
   items: [
     { label: "Sources",   href: "/control-center/sources",   icon: "Plug",              minRole: "admin"  },
     { label: "Profiles",  href: "/control-center/profiles",  icon: "SlidersHorizontal", minRole: "admin"  },
@@ -129,6 +134,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Intelligence",
     icon: "Brain",
     minRole: "viewer",
+    archived: true,
     items: [
       { label: "Insights", href: "/insights", icon: "Sparkles", minRole: "viewer" },
       { label: "Alerts", href: "/alerts", icon: "Bell", minRole: "viewer" },
@@ -171,5 +177,8 @@ export const NAV_GROUPS: NavGroup[] = [
   CONTROL_CENTER_GROUP,
 ];
 
-/** Flat list derived from groups — backward compatible */
-export const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
+/** Visible (non-archived) groups — use this when rendering navigation. */
+export const VISIBLE_NAV_GROUPS: NavGroup[] = NAV_GROUPS.filter((g) => !g.archived);
+
+/** Flat list derived from non-archived groups — backward compatible */
+export const NAV_ITEMS = VISIBLE_NAV_GROUPS.flatMap((g) => g.items);

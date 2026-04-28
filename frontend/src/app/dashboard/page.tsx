@@ -258,7 +258,7 @@ export default function DashboardPage() {
         deltaText: "30-day window",
         sub: `${formatInt(summary.expiry_batch_count ?? 0)} batches`,
         sparkline: sparklineFor("expiry_exposure", summary),
-        href: "/expiry",
+        href: undefined,
       },
     ];
   }, [summary]);

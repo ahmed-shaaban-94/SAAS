@@ -13,7 +13,7 @@ export interface KpiPill {
   deltaText: string;
   sub: string;
   sparkline: number[];
-  href: string;
+  href?: string;
 }
 
 function DeltaIcon({ dir }: { dir: KpiPill["deltaDir"] }) {
@@ -45,12 +45,21 @@ function Pill({ pill, children }: { pill: KpiPill; children?: ReactNode }) {
       : pill.deltaDir === "down"
       ? "text-red-400"
       : "text-ink-secondary";
+  const Wrapper = pill.href
+    ? ({ children: c }: { children: ReactNode }) => (
+        <Link
+          href={pill.href!}
+          className="block p-4 hover:bg-elevated/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          aria-label={`${pill.label}: ${pill.value}${pill.valueSuffix ? " " + pill.valueSuffix : ""}. ${pill.deltaText} ${pill.sub}`}
+        >
+          {c}
+        </Link>
+      )
+    : ({ children: c }: { children: ReactNode }) => (
+        <div className="block p-4">{c}</div>
+      );
   return (
-    <Link
-      href={pill.href}
-      className="block p-4 hover:bg-elevated/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-      aria-label={`${pill.label}: ${pill.value}${pill.valueSuffix ? " " + pill.valueSuffix : ""}. ${pill.deltaText} ${pill.sub}`}
-    >
+    <Wrapper>
       <div className="text-[11px] uppercase tracking-wider text-ink-secondary">
         {pill.label}
       </div>
@@ -67,7 +76,7 @@ function Pill({ pill, children }: { pill: KpiPill; children?: ReactNode }) {
       <Sparkline points={pill.sparkline} />
       <div className="text-[11px] text-ink-secondary mt-0.5">{pill.sub}</div>
       {children}
-    </Link>
+    </Wrapper>
   );
 }
 

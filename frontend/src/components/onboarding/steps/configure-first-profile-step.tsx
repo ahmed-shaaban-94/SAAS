@@ -24,13 +24,12 @@ export function ConfigureFirstProfileStep({
         DataPulse&apos;s canonical schema.
       </p>
 
-      <Link
-        href="/control-center/profiles"
+      <button
         onClick={onComplete}
         className="mb-3 flex w-full max-w-xs items-center justify-center rounded-lg bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90"
       >
-        Go to Profiles
-      </Link>
+        Got it
+      </button>
 
       <button
         onClick={onComplete}

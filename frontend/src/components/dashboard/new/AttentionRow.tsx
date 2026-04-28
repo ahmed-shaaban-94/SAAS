@@ -66,15 +66,17 @@ export function AttentionRow({ alert }: { alert: AttentionAlert }) {
       {alert.where && (
         <span className="text-xs text-ink-secondary shrink-0">{alert.where}</span>
       )}
-      <Link
-        href={alert.drillHref}
-        className="inline-flex items-center gap-1 text-xs text-accent-strong hover:underline shrink-0
-                   focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
-        aria-label={`Drill into ${alert.title}`}
-      >
-        <ArrowUpRight className="w-3 h-3" aria-hidden />
-        Drill
-      </Link>
+      {alert.drillHref && (
+        <Link
+          href={alert.drillHref}
+          className="inline-flex items-center gap-1 text-xs text-accent-strong hover:underline shrink-0
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
+          aria-label={`Drill into ${alert.title}`}
+        >
+          <ArrowUpRight className="w-3 h-3" aria-hidden />
+          Drill
+        </Link>
+      )}
     </li>
   );
 }

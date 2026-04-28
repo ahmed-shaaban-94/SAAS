@@ -41,10 +41,7 @@ const NAV: NavGroup[] = [
   {
     section: "Operations",
     items: [
-      { label: "Inventory", href: "/inventory", icon: Package },
       { label: "Branches", href: "/sites", icon: Building2 },
-      { label: "Suppliers", href: "/suppliers", icon: Truck },
-      { label: "Expiry", href: "/expiry", icon: CalendarClock },
     ],
   },
   {
