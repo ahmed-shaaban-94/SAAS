@@ -137,8 +137,7 @@ describe("OnboardingStrip", () => {
   });
 
   it("hides itself when > 14 days have passed since first mount", () => {
-    const fifteenDaysAgo = new Date();
-    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+    const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
     localStorage.setItem(
       STATE_KEY,
       JSON.stringify({

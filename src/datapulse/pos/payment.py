@@ -176,14 +176,16 @@ class SplitPaymentProcessor:
         )
     """
 
-    _GATEWAYS: dict[str, PaymentGateway] = {
-        "cash": CashGateway(),
+    def __init__(self) -> None:
+        # Per-instance dict so two SplitPaymentProcessor objects never share state.
         # ``card`` deliberately omitted: card payments via external terminal
         # require a single approval code per transaction, which doesn't
         # compose with split semantics. Mixing card with cash should be
         # done by ringing two separate transactions.
-        "insurance": InsuranceGateway(),
-    }
+        self._GATEWAYS: dict[str, PaymentGateway] = {
+            "cash": CashGateway(),
+            "insurance": InsuranceGateway(),
+        }
 
     def process(
         self,

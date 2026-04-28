@@ -69,6 +69,15 @@ class VoidReturnMixin:
                 detail=f"transaction_id={transaction_id} status={header['status']}",
             )
 
+        returned = self._repo.get_returned_quantities_for_transaction(
+            transaction_id, tenant_id=tenant_id
+        )
+        if any(to_decimal(row["returned_qty"]) > 0 for row in returned):
+            raise PosError(
+                message="Transaction has existing returns and cannot be voided.",
+                detail=f"transaction_id={transaction_id} existing_returns=true",
+            )
+
         updated = self._repo.update_transaction_status(
             transaction_id,
             tenant_id=tenant_id,
@@ -79,15 +88,6 @@ class VoidReturnMixin:
             raise PosError(
                 message="Transaction changed while voiding; refresh and retry.",
                 detail=f"transaction_id={transaction_id} status_race=completed_to_other",
-            )
-
-        returned = self._repo.get_returned_quantities_for_transaction(
-            transaction_id, tenant_id=tenant_id
-        )
-        if any(to_decimal(row["returned_qty"]) > 0 for row in returned):
-            raise PosError(
-                message="Transaction has existing returns and cannot be voided.",
-                detail=f"transaction_id={transaction_id} existing_returns=true",
             )
 
         items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)

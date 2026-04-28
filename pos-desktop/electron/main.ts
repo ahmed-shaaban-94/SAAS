@@ -108,8 +108,8 @@ function startNextServer(): Promise<void> {
       NEXTAUTH_SECRET:
         process.env.NEXTAUTH_SECRET ||
         "clerk-deployment-nextauth-unused-placeholder",
-      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "https://smartdatapulse.tech",
-      INTERNAL_API_URL: process.env.INTERNAL_API_URL || "https://smartdatapulse.tech",
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "https://pos.smartdatapulse.tech",
+      INTERNAL_API_URL: process.env.INTERNAL_API_URL || "https://pos.smartdatapulse.tech",
       // Clerk runtime env — `NEXT_PUBLIC_*` values were also inlined at
       // build time (see build.sh); re-exposing here keeps dev-mode
       // (`DEV_RENDERER_URL` pointed at `next dev`) working when the

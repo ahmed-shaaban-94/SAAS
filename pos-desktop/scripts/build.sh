@@ -40,11 +40,13 @@ export NEXT_PUBLIC_FEATURE_CONTROL_CENTER="true"
 # installed app renders the old Auth0 sign-in page.
 export NEXT_PUBLIC_AUTH_PROVIDER="clerk"
 
-# Clerk publishable key — Next.js inlines NEXT_PUBLIC_* at build time, so
-# CI must forward this from GitHub Secrets. If unset (e.g. a fork PR with
-# no secret access), the build still succeeds but Clerk SDK will throw at
-# runtime when it tries to initialise. That is acceptable for draft PRs.
-export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}"
+# Clerk publishable key — Next.js inlines NEXT_PUBLIC_* at build time.
+# The publishable key is intentionally hardcoded here as the default: it is
+# a *public* key (designed to be shipped in client bundles; see Clerk docs),
+# not a secret. CI can override via the NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+# secret, but every build — including PR smoke builds — gets a working key.
+# NEVER hardcode CLERK_SECRET_KEY here (server secret; would be a leak).
+export NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsuc21hcnRkYXRhcHVsc2UudGVjaCQ}"
 export NEXT_PUBLIC_CLERK_JWT_TEMPLATE="${NEXT_PUBLIC_CLERK_JWT_TEMPLATE:-datapulse}"
 # Cascade fallback — see auth-bridge.tsx and electron/main.ts for context.
 # Must be baked in at build time (NEXT_PUBLIC_*) so the client bundle can
@@ -52,11 +54,6 @@ export NEXT_PUBLIC_CLERK_JWT_TEMPLATE="${NEXT_PUBLIC_CLERK_JWT_TEMPLATE:-datapul
 export NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES="${NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES:-datapulse-pos}"
 export NEXT_PUBLIC_CLERK_SIGN_IN_URL="${NEXT_PUBLIC_CLERK_SIGN_IN_URL:-/sign-in}"
 export NEXT_PUBLIC_CLERK_SIGN_UP_URL="${NEXT_PUBLIC_CLERK_SIGN_UP_URL:-/sign-up}"
-
-if [ -z "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" ]; then
-  echo "[WARN] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY not set — shipped bundle will fail to initialise Clerk at runtime."
-  echo "       Add it as a GitHub Actions secret and forward via the workflow env block."
-fi
 
 npm run build
 

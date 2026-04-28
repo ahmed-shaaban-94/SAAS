@@ -134,9 +134,12 @@ function areEqual(prev: CartRowProps, next: CartRowProps): boolean {
     prev.index === next.index &&
     prev.synced === next.synced &&
     prev.item.drug_code === next.item.drug_code &&
+    prev.item.drug_name === next.item.drug_name &&
     prev.item.quantity === next.item.quantity &&
     prev.item.unit_price === next.item.unit_price &&
-    prev.item.discount === next.item.discount
+    prev.item.line_total === next.item.line_total &&
+    prev.item.discount === next.item.discount &&
+    prev.item.is_controlled === next.item.is_controlled
   );
 }
 

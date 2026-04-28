@@ -47,7 +47,7 @@ export function getBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_API_URL ??
     process.env.INTERNAL_API_URL ??
-    "https://smartdatapulse.tech"
+    "https://pos.smartdatapulse.tech"
   );
 }
 

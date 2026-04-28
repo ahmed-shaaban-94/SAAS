@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from datapulse.logging import get_logger
 from datapulse.pos._service_helpers import is_controlled, to_decimal
+from datapulse.pos.exceptions import PosNotFoundError
 from datapulse.pos.models import (
     BatchSummary,
     CatalogProductEntry,
@@ -237,11 +238,9 @@ class CatalogMixin:
 
     def _regenerate_receipt(self, transaction_id: int, tenant_id: int, fmt: str) -> bytes:
         """Regenerate a receipt on demand (fallback when no stored receipt exists)."""
-        from fastapi import HTTPException  # local import avoids circular dependency
-
         header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
-            raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
+            raise PosNotFoundError("transaction_not_found")
         items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         payment_info = {
             "method": header.get("payment_method", "cash"),

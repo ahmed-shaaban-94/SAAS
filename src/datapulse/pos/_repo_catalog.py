@@ -61,7 +61,7 @@ class CatalogRepoMixin:
                         COALESCE(lp.unit_price, 0) AS unit_price
                     FROM   public_marts.dim_product p
                     LEFT   JOIN public_marts.mv_latest_unit_price lp
-                           ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                           ON  lp.tenant_id   = NULLIF(current_setting('app.tenant_id', true), '')::INT
                            AND lp.product_key = p.product_key
                     WHERE  (
                            p.drug_name  ILIKE :pattern
@@ -115,7 +115,7 @@ class CatalogRepoMixin:
                         COALESCE(lp.unit_price, 0) AS unit_price
                     FROM   public_marts.dim_product p
                     LEFT   JOIN public_marts.mv_latest_unit_price lp
-                           ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                           ON  lp.tenant_id   = NULLIF(current_setting('app.tenant_id', true), '')::INT
                            AND lp.product_key = p.product_key
                     WHERE  p.drug_code = :drug_code
                     UNION ALL
@@ -166,7 +166,7 @@ class CatalogRepoMixin:
                            ON m.tenant_id = p.tenant_id
                           AND m.drug_code = p.drug_code
                     LEFT   JOIN public_marts.mv_latest_unit_price lp
-                           ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                           ON  lp.tenant_id   = NULLIF(current_setting('app.tenant_id', true), '')::INT
                            AND lp.product_key = p.product_key
                     WHERE  p.drug_code = :drug_code
                     LIMIT  1
@@ -284,7 +284,7 @@ class CatalogRepoMixin:
                             COALESCE(lp.unit_price, 0) AS unit_price
                         FROM   public_marts.dim_product p
                         LEFT   JOIN public_marts.mv_latest_unit_price lp
-                               ON  lp.tenant_id   = current_setting('app.tenant_id', true)
+                               ON  lp.tenant_id   = NULLIF(current_setting('app.tenant_id', true), '')::INT
                                AND lp.product_key = p.product_key
                         UNION ALL
                         SELECT

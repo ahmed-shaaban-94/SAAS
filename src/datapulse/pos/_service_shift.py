@@ -202,7 +202,7 @@ class ShiftCashMixin:
         if shift is None:
             return None
 
-        summary = self._repo.get_shift_commission_summary(int(shift["id"]))
+        summary = self._repo.get_shift_commission_summary(int(shift["id"]), tenant_id=tenant_id)
         target = self._repo.get_terminal_daily_target(int(shift["terminal_id"]))
 
         return ActiveShiftResponse(

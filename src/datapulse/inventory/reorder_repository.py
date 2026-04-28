@@ -111,9 +111,9 @@ class ReorderConfigRepository:
         tenant_id: int,
         drug_code: str,
         site_code: str,
-        min_stock: float,
-        reorder_point: float,
-        max_stock: float,
+        min_stock: Decimal,
+        reorder_point: Decimal,
+        max_stock: Decimal,
         reorder_lead_days: int,
         updated_by: str | None = None,
     ) -> ReorderConfig:
@@ -162,7 +162,10 @@ class ReorderConfigRepository:
             .mappings()
             .first()
         )
-        assert row is not None, "RETURNING clause must produce a row after upsert"
+        if row is None:
+            raise RuntimeError(
+                "RETURNING clause produced no row after upsert — database constraint violated"
+            )
         log.info(
             "reorder_config_upserted",
             tenant_id=tenant_id,

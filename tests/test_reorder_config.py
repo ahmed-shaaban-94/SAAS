@@ -278,7 +278,9 @@ def test_repo_upsert_config(rc_repo, mock_session):
         "updated_by": "test",
     }
     mock_session.execute.return_value = _mock_first(row)
-    result = rc_repo.upsert_config(1, "D001", "S01", 10.0, 20.0, 100.0, 7, "test")
+    result = rc_repo.upsert_config(
+        1, "D001", "S01", Decimal("10"), Decimal("20"), Decimal("100"), 7, "test"
+    )
     assert result.reorder_point == Decimal("20")
     mock_session.execute.assert_called_once()
 

@@ -248,4 +248,23 @@ describe("InvoiceModal", () => {
     const tbody = screen.getByTestId("pos-invoice-items").querySelector("tbody");
     expect(tbody?.textContent ?? "").toContain("—");
   });
+
+  it("shows em-dash for per-line VAT cells when transaction tax_total is zero", () => {
+    const item = makeItem({ quantity: 1, unit_price: 100 });
+    render(
+      <InvoiceModal
+        open
+        onClose={vi.fn()}
+        transaction={makeTxn({ items: [item], tax_total: 0, subtotal: 100, grand_total: 100 })}
+        checkoutResult={makeResult()}
+        {...baseProps}
+      />,
+    );
+    const tbody = screen.getByTestId("pos-invoice-items").querySelector("tbody");
+    // Both the ex-VAT column and the VAT column should show "—".
+    const dashes = [...(tbody?.querySelectorAll("td") ?? [])].filter(
+      (td) => td.textContent?.trim() === "—",
+    );
+    expect(dashes.length).toBeGreaterThanOrEqual(2);
+  });
 });

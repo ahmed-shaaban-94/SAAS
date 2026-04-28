@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { memo, Suspense } from "react";
 import { HeartPulse, Plus, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePosDrugClinical, type CrossSellItem, type AlternativeItem } from "@/hooks/use-pos-drug-clinical";
@@ -287,15 +287,25 @@ function ClinicalPanelInner({ activeDrugCode, onAddToCart, className }: Clinical
   );
 }
 
-/**
- * Public export: wraps ClinicalPanelInner in a Suspense boundary so the rest
- * of the terminal layout never stalls on the clinical data fetch.
- * The ClinicalPanelSkeleton is shown while the inner panel's data loads.
- */
-export function ClinicalPanel(props: ClinicalPanelProps) {
+function ClinicalPanelWrapper(props: ClinicalPanelProps) {
   return (
     <Suspense fallback={<ClinicalPanelSkeleton activeDrugCode={props.activeDrugCode} className={props.className} />}>
       <ClinicalPanelInner {...props} />
     </Suspense>
   );
 }
+
+function areClinicalPanelPropsEqual(prev: ClinicalPanelProps, next: ClinicalPanelProps): boolean {
+  return (
+    prev.activeDrugCode === next.activeDrugCode &&
+    prev.className === next.className &&
+    prev.onAddToCart === next.onAddToCart
+  );
+}
+
+/**
+ * Public export: wraps ClinicalPanelInner in a Suspense boundary so the rest
+ * of the terminal layout never stalls on the clinical data fetch.
+ * Memoized with an explicit comparator over the three props this component reads.
+ */
+export const ClinicalPanel = memo(ClinicalPanelWrapper, areClinicalPanelPropsEqual);

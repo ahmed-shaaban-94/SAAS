@@ -312,6 +312,8 @@ class ShiftRepoMixin:
     def get_shift_commission_summary(
         self,
         shift_id: int,
+        *,
+        tenant_id: int,
     ) -> dict[str, Any]:
         """Return ``commission_earned`` + live sales totals for a shift (#627).
 
@@ -340,9 +342,10 @@ class ShiftRepoMixin:
                     LEFT  JOIN  pos.product_catalog_meta m
                                 ON m.tenant_id = t.tenant_id
                                AND m.drug_code = ti.drug_code
-                    WHERE       t.shift_id = :shift_id
+                    WHERE       t.shift_id   = :shift_id
+                    AND         t.tenant_id  = :tenant_id
                 """),
-                {"shift_id": shift_id},
+                {"shift_id": shift_id, "tenant_id": tenant_id},
             )
             .mappings()
             .first()

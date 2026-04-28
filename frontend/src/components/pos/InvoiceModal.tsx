@@ -383,7 +383,7 @@ export function InvoiceModal({
             </thead>
             <tbody>
               {transaction.items.map((item, i) => (
-                <InvoiceRow key={`${item.drug_code}-${i}`} item={item} index={i} />
+                <InvoiceRow key={`${item.drug_code}-${i}`} item={item} index={i} vatApplied={vat > 0} />
               ))}
               {transaction.items.length === 0 && (
                 <tr>
@@ -552,10 +552,10 @@ export function InvoiceModal({
   );
 }
 
-function InvoiceRow({ item, index }: { item: PosCartItem; index: number }) {
+function InvoiceRow({ item, index, vatApplied }: { item: PosCartItem; index: number; vatApplied: boolean }) {
   const lineIncl = item.line_total;
-  const lineEx = lineIncl / 1.14;
-  const vat = lineIncl - lineEx;
+  const lineEx = vatApplied ? lineIncl / 1.14 : lineIncl;
+  const vat = vatApplied ? lineIncl - lineEx : 0;
   return (
     <tr
       className="pos-print-zebra"
@@ -577,17 +577,17 @@ function InvoiceRow({ item, index }: { item: PosCartItem; index: number }) {
             fontFamily: "var(--font-jetbrains-mono), JetBrains Mono, monospace",
           }}
         >
-          Unit {fmtEgp(item.unit_price)} · incl. VAT
+          Unit {fmtEgp(item.unit_price)}{vatApplied ? " · incl. VAT" : ""}
         </div>
       </InvTd>
       <InvTd align="end" mono>
         <b>{item.quantity}</b>
       </InvTd>
       <InvTd align="end" mono>
-        {fmtEgp(item.unit_price / 1.14)}
+        {vatApplied ? fmtEgp(item.unit_price / 1.14) : "—"}
       </InvTd>
       <InvTd align="end" mono>
-        {fmtEgp(vat)}
+        {vatApplied ? fmtEgp(vat) : "—"}
       </InvTd>
       <InvTd align="end" mono>
         <b>{fmtEgp(lineIncl)}</b>

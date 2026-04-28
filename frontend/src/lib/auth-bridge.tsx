@@ -33,6 +33,18 @@ export type AuthProvider = "auth0" | "clerk";
 export const AUTH_PROVIDER: AuthProvider =
   (process.env.NEXT_PUBLIC_AUTH_PROVIDER as AuthProvider) || "auth0";
 
+/**
+ * True when NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY was provided at build time.
+ *
+ * Without this key ClerkProvider boots but isLoaded never becomes true —
+ * the SessionGuard spinner never resolves. Callers use this flag to skip
+ * the loading phase immediately and surface a meaningful error instead of
+ * hanging. In every properly-configured deployment this is always true;
+ * it's only false in CI smoke builds (PR/branch without the secret) or
+ * local builds that skip the env var.
+ */
+export const CLERK_KEY_CONFIGURED = !!(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 const CLERK_JWT_TEMPLATE =
   process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || "datapulse";
 
@@ -275,7 +287,11 @@ function useClerkSession(): UseSessionReturn {
     };
   }, [isSignedIn, getToken]);
 
-  const status: AuthStatus = !isLoaded
+  // When no publishable key was baked into the build, Clerk never reaches
+  // isLoaded=true — skip "loading" and treat it as unauthenticated so
+  // SessionGuard can render (error screen or sign-in redirect) instead of
+  // hanging on the spinner indefinitely.
+  const status: AuthStatus = !isLoaded && CLERK_KEY_CONFIGURED
     ? "loading"
     : isSignedIn
       ? "authenticated"

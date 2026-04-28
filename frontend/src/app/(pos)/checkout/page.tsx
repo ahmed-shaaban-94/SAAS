@@ -133,7 +133,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!pending || result) return;
-    processCheckout(pending.method);
+    void processCheckout(pending.method);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
 
