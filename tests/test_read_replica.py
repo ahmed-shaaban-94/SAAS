@@ -277,3 +277,31 @@ class TestGetTenantSessionReadonly:
 
         mock_session.rollback.assert_called_once()
         mock_session.close.assert_called_once()
+
+    def test_missing_tenant_id_raises_401(self):
+        """Audit M1 (readonly twin): same loud-fail rule applies to the
+        replica path — silent fallback to tenant ``"1"`` would be the same
+        cross-tenant exposure on read endpoints.
+        """
+        from fastapi import HTTPException
+
+        from datapulse.core import auth
+
+        mock_settings = MagicMock()
+        mock_settings.database_replica_url = None
+        mock_factory = MagicMock()
+
+        with (
+            patch.object(auth, "get_settings", return_value=mock_settings),
+            patch.object(auth, "get_session_factory", return_value=mock_factory),
+        ):
+            gen = auth.get_tenant_session_readonly({"sub": "u1"})  # no tenant_id
+            try:
+                next(gen)
+            except HTTPException as exc:
+                assert exc.status_code == 401
+                assert exc.detail == "tenant_id claim missing"
+            else:
+                raise AssertionError("expected HTTPException(401)")
+
+        mock_factory.assert_not_called()

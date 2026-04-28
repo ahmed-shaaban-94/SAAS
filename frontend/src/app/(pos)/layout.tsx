@@ -2,11 +2,11 @@
 
 import { useEffect, useCallback, type ReactNode } from "react";
 import { Fraunces, JetBrains_Mono, Cairo } from "next/font/google";
-import { useSession, signIn } from "@/lib/auth-bridge";
 import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
 import { swrConfig } from "@/lib/swr-config";
 import { AuthProvider } from "@/components/auth-provider";
+import { PosSessionGuard } from "@/components/auth/pos-session-guard";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
 import { PosCartProvider } from "@/contexts/pos-cart-context";
@@ -41,45 +41,6 @@ const plexArabic = Cairo({
   variable: "--font-plex-arabic",
   display: "swap",
 });
-
-/** Block children until the user is authenticated; redirect anonymous
- *  visitors to the IdP sign-in page.
- *
- *  POS desktop context: the embedded Next.js server runs with
- *  ``POS_DESKTOP_MODE=1`` which short-circuits ``middleware.ts`` (#692,
- *  to avoid baking ``CLERK_SECRET_KEY`` into the installer). That leaves
- *  the browser as the only auth gate. Without this guard, anonymous
- *  users reach ``/terminal`` → ``<ShiftOpenModal>`` → ``postAPI(...)``
- *  with no ``Authorization`` header, and the backend responds
- *  ``401 Authentication required`` — surfaced as a red error banner on
- *  the shift-open modal (incident 2026-04-24).
- */
-function SessionGuard({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
-
-  useEffect(() => {
-    // In the web app, middleware already redirects unauthenticated users so we
-    // only need to handle token-refresh errors here. Unauthenticated state in
-    // POS desktop mode (middleware bypassed) is handled by Clerk client-side.
-    if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
-      void signIn(undefined, { callbackUrl: "/terminal" });
-    }
-  }, [status, session]);
-
-  // Block rendering only during the initial loading phase — matches the
-  // (app) layout pattern. Unauthenticated renders fall through to children;
-  // the middleware redirect handles unauthenticated web-app access, and
-  // E2E CI tests need `main` to be reachable before session is confirmed.
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
 
 /** Keyboard shortcuts for the POS terminal.
  *
@@ -137,7 +98,7 @@ export default function PosLayout({ children }: { children: ReactNode }) {
         <SWRConfig value={swrConfig}>
           <ErrorBoundary>
             <ToastProvider>
-              <SessionGuard>
+              <PosSessionGuard>
                 <BrandProvider>
                 <PosCartProvider>
                   <RendererCrashBridge>
@@ -151,7 +112,7 @@ export default function PosLayout({ children }: { children: ReactNode }) {
                   </RendererCrashBridge>
                 </PosCartProvider>
                 </BrandProvider>
-              </SessionGuard>
+              </PosSessionGuard>
             </ToastProvider>
           </ErrorBoundary>
         </SWRConfig>

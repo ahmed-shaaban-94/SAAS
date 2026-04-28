@@ -286,8 +286,16 @@ def get_tenant_session(
 
     Extracts tenant_id from JWT claims and sets it via ``SET LOCAL`` so
     that PostgreSQL RLS policies filter data automatically.
+
+    Audit M1 (2026-04-26): the previous ``or "1"`` fallback turned a
+    missing claim into a silent cross-tenant exposure on tenant ``1``.
+    ``get_current_user`` is the canonical source of the claim, but this
+    is the last gate before SQL runs — fail loudly if anything bypasses
+    it (test override, future refactor, direct callers).
     """
-    tenant_id = user.get("tenant_id") or "1"
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="tenant_id claim missing")
     current_tenant_id.set(str(tenant_id))
     structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
     session = get_session_factory()()
@@ -324,7 +332,11 @@ def get_tenant_session_readonly(
     """
     from datapulse.metrics import db_replica_fallbacks, db_replica_hits
 
-    tenant_id = user.get("tenant_id") or "1"
+    # Audit M1 (2026-04-26): mirror ``get_tenant_session`` — silent fallback
+    # to tenant ``"1"`` on read endpoints would be the same exposure.
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="tenant_id claim missing")
     current_tenant_id.set(str(tenant_id))
     structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
 

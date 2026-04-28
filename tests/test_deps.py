@@ -78,19 +78,44 @@ class TestGetTenantSession:
         mock_session.close.assert_called_once()
 
     @patch("datapulse.core.auth.get_session_factory")
-    def test_defaults_tenant_id_to_1(self, mock_factory):
+    def test_missing_tenant_id_raises_401(self, mock_factory):
+        """Audit M1: a missing/empty tenant_id claim must 401, not silently
+        fall back to tenant ``"1"`` and risk cross-tenant data exposure.
+        ``get_current_user`` is the canonical source of the claim — anything
+        that bypasses it (test override, future refactor) must fail loudly.
+        """
+        from fastapi import HTTPException
+
         mock_session = MagicMock()
         mock_factory.return_value = MagicMock(return_value=mock_session)
         user = {"sub": "test"}  # no tenant_id
 
         gen = get_tenant_session(user=user)
-        next(gen)
-
-        tenant_call = mock_session.execute.call_args_list[0]
-        assert tenant_call.args[1] == {"tid": "1"}
-
-        with contextlib.suppress(StopIteration):
+        try:
             next(gen)
+        except HTTPException as exc:
+            assert exc.status_code == 401
+            assert exc.detail == "tenant_id claim missing"
+        else:
+            raise AssertionError("expected HTTPException(401)")
+
+        # Session must NOT be opened when the claim is absent — closing the
+        # door before any DB work avoids leaking a session on the floor.
+        mock_factory.assert_not_called()
+
+    @patch("datapulse.core.auth.get_session_factory")
+    def test_empty_tenant_id_raises_401(self, mock_factory):
+        from fastapi import HTTPException
+
+        user = {"sub": "test", "tenant_id": ""}
+        gen = get_tenant_session(user=user)
+        try:
+            next(gen)
+        except HTTPException as exc:
+            assert exc.status_code == 401
+        else:
+            raise AssertionError("expected HTTPException(401)")
+        mock_factory.assert_not_called()
 
     @patch("datapulse.core.auth.get_session_factory")
     def test_rollback_on_exception(self, mock_factory):
@@ -149,3 +174,46 @@ class TestFactoryFunctions:
         from datapulse.ai_light.service import AILightService
 
         assert isinstance(svc, AILightService)
+
+
+class TestGetPosService:
+    """Audit C2: pharmacist HMAC key must be required and explicit — no
+    silent fallback to ``pipeline_webhook_secret`` and no dev-stub default.
+    """
+
+    def _settings(self, **kw):
+        from datapulse.core.config import Settings
+
+        kw.setdefault("database_url", "")
+        return Settings(_env_file=None, **kw)
+
+    def test_raises_when_pharmacist_signing_secret_missing(self):
+        from datapulse.api.deps import get_pos_service
+
+        mock_session = MagicMock()
+        user = {"sub": "u", "tenant_id": "1"}
+
+        # No pharmacist_signing_secret configured; must raise loudly.
+        with patch("datapulse.api.deps.get_settings", return_value=self._settings()):
+            try:
+                get_pos_service(session=mock_session, user=user)
+            except RuntimeError as exc:
+                assert "PHARMACIST_SIGNING_SECRET" in str(exc)
+            else:
+                raise AssertionError("expected RuntimeError")
+
+    def test_uses_pharmacist_signing_secret_when_set(self):
+        from datapulse.api.deps import get_pos_service
+        from datapulse.pos.service import PosService
+
+        mock_session = MagicMock()
+        user = {"sub": "u", "tenant_id": "1"}
+
+        with patch(
+            "datapulse.api.deps.get_settings",
+            return_value=self._settings(
+                pharmacist_signing_secret="real-pharmacist-key",
+            ),
+        ):
+            svc = get_pos_service(session=mock_session, user=user)
+            assert isinstance(svc, PosService)

@@ -124,8 +124,23 @@ class TestSettings:
             clerk_jwt_issuer="https://example.clerk.accounts.dev",
             db_reader_password="reader-secret",
             pipeline_webhook_secret="pipeline-secret",
+            pharmacist_signing_secret="pharmacist-secret",
         )
         assert s.sentry_environment == "production"
+
+    def test_non_dev_requires_pharmacist_signing_secret(self):
+        """Audit C2: pharmacist HMAC key must be present in non-dev — no
+        falling back to ``pipeline_webhook_secret`` or a dev stub.
+        """
+        with pytest.raises(ValidationError, match="PHARMACIST_SIGNING_SECRET"):
+            _settings(
+                sentry_environment="production",
+                api_key="secret123",
+                clerk_frontend_api="https://example.clerk.accounts.dev",
+                clerk_jwt_issuer="https://example.clerk.accounts.dev",
+                db_reader_password="reader-secret",
+                pipeline_webhook_secret="pipeline-secret",
+            )
 
     def test_cors_wildcard_is_rejected(self):
         """CORS_ORIGINS=['*'] with credentials is a CSRF cliff (#546)."""

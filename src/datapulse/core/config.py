@@ -94,6 +94,15 @@ class Settings(BaseSettings):
     # n8n removed — orchestration via datapulse.scheduler
     pipeline_webhook_secret: str = ""
 
+    # Pharmacist HMAC signing key (POS controlled-substance overrides).
+    # SECURITY: kept SEPARATE from ``pipeline_webhook_secret`` on purpose —
+    # the pipeline secret is a webhook bearer token shared with operations
+    # tooling, while this key signs short-lived pharmacist override tokens
+    # and must rotate independently. Reusing the same key would mean any
+    # compromise of the webhook secret instantly forges pharmacist
+    # approvals (audit C2 — 2026-04-26).
+    pharmacist_signing_secret: str = ""
+
     # API security
     api_key: str = ""
     db_reader_password: str = ""
@@ -300,6 +309,8 @@ class Settings(BaseSettings):
             missing.append("DB_READER_PASSWORD")
         if not self.pipeline_webhook_secret:
             missing.append("PIPELINE_WEBHOOK_SECRET")
+        if not self.pharmacist_signing_secret:
+            missing.append("PHARMACIST_SIGNING_SECRET")
 
         if missing:
             missing_list = ", ".join(missing)
@@ -366,6 +377,14 @@ class Settings(BaseSettings):
             logger.warning(
                 "auth_disabled",
                 detail="PIPELINE_WEBHOOK_SECRET is empty — pipeline token auth is disabled",
+            )
+        if not self.pharmacist_signing_secret:
+            logger.warning(
+                "auth_disabled",
+                detail=(
+                    "PHARMACIST_SIGNING_SECRET is empty — POS pharmacist override "
+                    "token signing is disabled (controlled-substance dispenses will fail)"
+                ),
             )
         if not self._jwt_provider_configured:
             logger.warning(

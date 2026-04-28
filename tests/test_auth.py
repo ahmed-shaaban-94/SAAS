@@ -159,6 +159,7 @@ class TestGetCurrentUser:
             auth0_domain="example.auth0.com",
             db_reader_password="reader-secret",
             pipeline_webhook_secret="pipeline-secret",
+            pharmacist_signing_secret="pharmacist-secret",
         )
         with (
             patch("datapulse.core.auth.verify_jwt", return_value=fake_claims),
@@ -180,6 +181,7 @@ class TestGetCurrentUser:
             auth0_domain="example.auth0.com",
             db_reader_password="reader-secret",
             pipeline_webhook_secret="pipeline-secret",
+            pharmacist_signing_secret="pharmacist-secret",
         )
         with (
             patch("datapulse.core.auth.verify_jwt", return_value=fake_claims),

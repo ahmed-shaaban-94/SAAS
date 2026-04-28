@@ -413,9 +413,19 @@ def get_pos_service(
         inventory_service=InventoryService(InventoryRepository(session)),
         expiry_service=ExpiryService(ExpiryRepository(session)),
     )
-    # Use pipeline_webhook_secret as the HMAC signing key for pharmacist tokens.
-    # Falls back to a non-empty dev stub so that dev mode still works.
-    signing_secret = settings.pipeline_webhook_secret or "dev-pos-pharmacist-secret"
+    # Pharmacist HMAC signing key — required even in dev. The previous
+    # implementation fell back to ``pipeline_webhook_secret`` and then to a
+    # public dev stub (``"dev-pos-pharmacist-secret"``), which meant any
+    # attacker who knew the stub could forge pharmacist override tokens
+    # against any environment that forgot to set the variable. Audit C2
+    # requires loud failure (#765 audit, 2026-04-26).
+    signing_secret = settings.pharmacist_signing_secret
+    if not signing_secret:
+        raise RuntimeError(
+            "PHARMACIST_SIGNING_SECRET is not set — refusing to construct "
+            "PosService with an empty pharmacist HMAC key. Set the env var "
+            "(separate from PIPELINE_WEBHOOK_SECRET — see Settings docstring)."
+        )
     verifier = PharmacistVerifier(
         secret_key=signing_secret,
         # Closure captures tenant_id so the lookup is scoped to the current
