@@ -68,7 +68,7 @@ describe("FirstInsightCard", () => {
     expect(screen.getByText(SAMPLE.body)).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /view more insights/i });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "/insights");
+    expect(link).toHaveAttribute("href", "/dashboard");
   });
 
   it("renders a dismiss button", () => {

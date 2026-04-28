@@ -75,7 +75,7 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { NAV_GROUPS } from "@/lib/constants";
+import { VISIBLE_NAV_GROUPS } from "@/lib/constants";
 import "./dashboard-v2.css";
 
 /**
@@ -216,7 +216,7 @@ function Sidebar({
         </button>
       </div>
 
-      {NAV_GROUPS.map((group) => (
+      {VISIBLE_NAV_GROUPS.map((group) => (
         <div key={group.id}>
           {!collapsed && <div className="nav-section">{group.label}</div>}
           {group.items.map((item) => {

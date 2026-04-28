@@ -50,6 +50,8 @@ const MOCK_REORDER_ALERTS = [
 
 test.describe("/inventory (v2 shell)", () => {
   test.beforeEach(async ({ page }) => {
+    // /inventory is archived — skip all structural smoke tests.
+    test.skip(true, "/inventory is archived");
     await page.goto("/inventory");
   });
 
@@ -78,9 +80,9 @@ test.describe("/inventory (v2 shell)", () => {
 });
 
 test.describe("/inventory-v2 redirect", () => {
-  test("navigating to /inventory-v2 lands on /inventory", async ({ page }) => {
+  test("navigating to /inventory-v2 lands on /dashboard", async ({ page }) => {
     const response = await page.goto("/inventory-v2");
-    await expect(page).toHaveURL(/\/inventory$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     expect(response?.ok()).toBe(true);
   });
 });

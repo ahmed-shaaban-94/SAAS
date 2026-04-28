@@ -15,7 +15,7 @@ export interface AttentionAlert {
   impactCount?: number;
   where?: string;
   detectedAt?: string;
-  drillHref: string;
+  drillHref?: string;
 }
 
 const SEVERITY_WEIGHT: Record<AttentionSeverity, number> = {
@@ -100,7 +100,7 @@ export function mergeAttentionAlerts(input: MergeInputs): AttentionAlert[] {
       title: `${b.batch_count} batches expire within ${b.days_out} days`,
       impactEgp: b.exposure_egp,
       where: "All branches",
-      drillHref: "/expiry",
+      drillHref: undefined,
     });
   }
 
@@ -137,7 +137,7 @@ export function mergeAttentionAlerts(input: MergeInputs): AttentionAlert[] {
       title: `${g.rows[0].drug_name} below reorder${worstOnHand <= 0 ? " — OUT OF STOCK" : ""}`,
       impactEgp: g.totalImpact > 0 ? g.totalImpact : undefined,
       where: sites.length === 1 ? sites[0] : `${sites.length} branches`,
-      drillHref: `/inventory?filter=below-reorder`,
+      drillHref: undefined,
     });
   }
 
@@ -155,7 +155,7 @@ export function mergeAttentionAlerts(input: MergeInputs): AttentionAlert[] {
       impactEgp: a.impact_egp ?? undefined,
       where: a.site_name ?? "All branches",
       detectedAt: a.detected_at,
-      drillHref: `/insights`,
+      drillHref: undefined,
     });
   }
 

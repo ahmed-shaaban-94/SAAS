@@ -10,6 +10,8 @@ const needsBackend = !!process.env.CI;
 
 test.describe("Insights Page (v2 shell)", () => {
   test.beforeEach(async ({ page }) => {
+    // /insights is archived — skip all tests in this suite.
+    test.skip(true, "/insights is archived");
     await page.goto("/insights");
   });
 

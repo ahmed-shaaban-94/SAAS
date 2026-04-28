@@ -93,7 +93,7 @@ export function FirstInsightCard() {
               Open →
             </Link>
             <Link
-              href="/insights"
+              href="/dashboard"
               className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary"
             >
               View more insights

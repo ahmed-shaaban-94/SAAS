@@ -46,8 +46,8 @@ export function buildMtdRevenueWhy(
       { label: "Promotions", contribution: deltaEGP * 0.12, note: "Incremental revenue from active promotions." },
     ],
     confidence: 0.72,
-    actionHref: "/insights",
-    actionLabel: "See full breakdown in Insights",
+    actionHref: undefined,
+    actionLabel: undefined,
   };
 }
 
@@ -70,8 +70,8 @@ export function buildExpiryExposureWhy(exposureEGP: number): WhyChangedData {
       { label: "Supplier short-dates", contribution: -Math.abs(exposureEGP) * 0.1, note: "Deliveries received within the near-expiry window." },
     ],
     confidence: 0.84,
-    actionHref: "/expiry",
-    actionLabel: "Open expiry workbench",
+    actionHref: undefined,
+    actionLabel: undefined,
   };
 }
 

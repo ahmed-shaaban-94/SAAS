@@ -47,7 +47,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_GROUPS, type NavGroup } from "@/lib/constants";
+import { VISIBLE_NAV_GROUPS, type NavGroup } from "@/lib/constants";
 import { HealthIndicator } from "./health-indicator";
 import { SavedViewsMenu } from "./saved-views-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -397,7 +397,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
 
             {/* Navigation groups */}
             <nav data-testid="sidebar-nav" className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
-              {NAV_GROUPS.map((group) => (
+              {VISIBLE_NAV_GROUPS.map((group) => (
                 <NavGroupSection
                   key={group.id}
                   group={group}
@@ -470,7 +470,7 @@ export function Sidebar({ anomalyCount = 0, alertCount = 0 }: SidebarProps) {
             collapsed ? "px-1 space-y-2" : "px-2 space-y-1",
           )}
         >
-          {NAV_GROUPS.map((group) => (
+          {VISIBLE_NAV_GROUPS.map((group) => (
             <NavGroupSection
               key={group.id}
               group={group}

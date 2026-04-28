@@ -2,8 +2,9 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Filters", () => {
   test.beforeEach(async ({ page }) => {
-    // Post-#502 the new /dashboard has no FilterBar (handoff layout owns its
-    // own period control). /inventory still renders the shared FilterBar.
+    // /inventory is archived — FilterBar tests are skipped until a live route
+    // that renders the shared FilterBar is available.
+    test.skip(true, "/inventory is archived — no FilterBar route available");
     await page.goto("/inventory");
   });
 

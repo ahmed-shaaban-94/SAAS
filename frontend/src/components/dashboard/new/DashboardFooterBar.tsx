@@ -96,7 +96,7 @@ export function DashboardFooterBar({ pipeline, channelsSlot }: Props) {
       </div>
 
       <Link
-        href="/insights"
+        href="/alerts"
         className="inline-flex items-center gap-1.5 hover:text-ink-primary
                    focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
       >

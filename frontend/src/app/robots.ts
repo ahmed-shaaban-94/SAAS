@@ -15,7 +15,6 @@ export default function robots(): MetadataRoute.Robots {
           "/staff",
           "/sites",
           "/returns",
-          "/insights",
           "/api/",
         ],
       },
