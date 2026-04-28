@@ -16,8 +16,8 @@ on:
     tags:
       - "pos-desktop-v*.*.*"
 
-  # Smoke-build: PR touches POS desktop code. Produces artifact but does
-  # NOT publish. Lets us catch build regressions before tagging a release.
+  # Smoke-build: PR touches POS desktop code or frontend. Produces artifact
+  # but does NOT publish. Lets us catch build regressions before tagging a release.
   pull_request:
     paths:
       - "pos-desktop/**"

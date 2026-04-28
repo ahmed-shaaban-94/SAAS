@@ -17,8 +17,16 @@ import { render } from "@testing-library/react";
 
 const useSessionMock = vi.fn();
 const signInMock = vi.fn();
+let authProvider: "auth0" | "clerk" = "clerk";
+let clerkKeyConfigured = true;
 
 vi.mock("@/lib/auth-bridge", () => ({
+  get AUTH_PROVIDER() {
+    return authProvider;
+  },
+  get CLERK_KEY_CONFIGURED() {
+    return clerkKeyConfigured;
+  },
   useSession: () => useSessionMock(),
   signIn: (...args: unknown[]) => signInMock(...args),
 }));
@@ -62,6 +70,8 @@ describe("PosLayout / SessionGuard — audit C3", () => {
   const originalElectronAPI = (window as unknown as { electronAPI?: unknown }).electronAPI;
 
   beforeEach(() => {
+    authProvider = "clerk";
+    clerkKeyConfigured = true;
     useSessionMock.mockReset();
     signInMock.mockReset();
   });
@@ -108,5 +118,32 @@ describe("PosLayout / SessionGuard — audit C3", () => {
     await Promise.resolve();
 
     expect(signInMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a build-config error when Clerk is missing from the build", async () => {
+    clerkKeyConfigured = false;
+    (window as unknown as { electronAPI?: unknown }).electronAPI = { ping: () => "pong" };
+    useSessionMock.mockReturnValue({ data: null, status: "unauthenticated" });
+
+    const { getByText } = render(<PosLayout>terminal-content</PosLayout>);
+    await Promise.resolve();
+
+    expect(getByText("Authentication not configured")).toBeTruthy();
+    expect(signInMock).not.toHaveBeenCalled();
+  });
+
+  it("does not show the Clerk build-config error for Auth0 builds", async () => {
+    authProvider = "auth0";
+    clerkKeyConfigured = false;
+    useSessionMock.mockReturnValue({
+      data: { user: { name: "Pharmacist" } },
+      status: "authenticated",
+    });
+
+    const { getByText, queryByText } = render(<PosLayout>terminal-content</PosLayout>);
+    await Promise.resolve();
+
+    expect(queryByText("Authentication not configured")).toBeNull();
+    expect(getByText("terminal-content")).toBeTruthy();
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, type ReactNode } from "react";
 import { Fraunces, JetBrains_Mono, Cairo } from "next/font/google";
-import { useSession, signIn } from "@/lib/auth-bridge";
+import { useSession, signIn, AUTH_PROVIDER, CLERK_KEY_CONFIGURED } from "@/lib/auth-bridge";
 import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
 import { swrConfig } from "@/lib/swr-config";
@@ -68,10 +68,17 @@ function isPosDesktopRuntime(): boolean {
   return Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
 }
 
+function isClerkAuthMissing(): boolean {
+  return AUTH_PROVIDER === "clerk" && !CLERK_KEY_CONFIGURED;
+}
+
 function SessionGuard({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
+  const clerkAuthMissing = isClerkAuthMissing();
 
   useEffect(() => {
+    // No-op when Clerk was not configured — the render branch below handles it.
+    if (clerkAuthMissing) return;
     // Refresh-token errors always need a re-auth, regardless of runtime.
     if ((session as { error?: string } | null)?.error === "RefreshAccessTokenError") {
       void signIn(undefined, { callbackUrl: "/terminal" });
@@ -85,7 +92,42 @@ function SessionGuard({ children }: { children: ReactNode }) {
     if (status === "unauthenticated" && isPosDesktopRuntime()) {
       void signIn(undefined, { callbackUrl: "/terminal" });
     }
-  }, [status, session]);
+  }, [status, session, clerkAuthMissing]);
+
+  // When Clerk was not configured at build time, show a build-config error.
+  // Catches CI smoke builds (PR/branch without the secret) before they
+  // redirect to a /sign-in page that would be equally broken. Stable across
+  // SSR and hydration — no window access, so no mismatch.
+  if (clerkAuthMissing) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-8 w-8 text-destructive"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+            />
+          </svg>
+        </div>
+        <h1 className="text-lg font-semibold text-text-primary">Authentication not configured</h1>
+        <p className="max-w-sm text-sm text-text-secondary">
+          This installer was built without a Clerk publishable key and cannot
+          authenticate. Use a tagged release{" "}
+          <span className="font-mono text-xs">pos-desktop-v*.*.*</span> or add{" "}
+          <span className="font-mono text-xs">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</span>{" "}
+          to GitHub Actions secrets.
+        </p>
+      </div>
+    );
+  }
 
   // Block rendering only during the initial loading phase — matches the
   // (app) layout pattern. Unauthenticated renders fall through to children;
