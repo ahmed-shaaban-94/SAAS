@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { FocusTrap } from "focus-trap-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -91,6 +92,13 @@ export function ModalShell({
         animation: "dpFade 200ms ease-out",
       }}
     >
+      <FocusTrap
+        focusTrapOptions={{
+          escapeDeactivates: false, // Escape handled by window keydown listener above
+          allowOutsideClick: true, // backdrop click must reach the backdrop handler
+          initialFocus: false, // don't steal focus from typed input on open
+        }}
+      >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -184,6 +192,7 @@ export function ModalShell({
         </div>
         <div className="min-h-0 overflow-y-auto">{children}</div>
       </div>
+      </FocusTrap>
     </div>
   );
 }
