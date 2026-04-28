@@ -16,6 +16,7 @@ from datapulse.api.routes.health import (
     _check_dbt_freshness,
     _check_query_executor,
     _check_redis,
+    _check_table_bloat,
 )
 
 
@@ -219,3 +220,92 @@ class TestAuthCheck:
         resp = client.get("/health/auth-check")
         assert resp.status_code == 503
         assert resp.json()["error"] == "tenant_session_failed"
+
+
+# ---------------------------------------------------------------------------
+# _check_table_bloat
+# ---------------------------------------------------------------------------
+
+
+def _make_bloat_row(schema, table, dead, live, last_vac=None, last_analyze=None):
+    """Build a mock pg_stat_user_tables row tuple."""
+    return (schema, table, dead, live, last_vac, last_analyze)
+
+
+class TestCheckTableBloat:
+    """Tests for the _check_table_bloat health helper."""
+
+    @patch("datapulse.api.routes.health.get_engine")
+    def test_all_ok(self, mock_engine):
+        """Returns ok when all tables have fewer dead tuples than the warn threshold."""
+        rows = [
+            _make_bloat_row("pos", "transactions", 100, 50_000),
+            _make_bloat_row("pos", "idempotency_keys", 50, 20_000),
+            _make_bloat_row("bronze", "sales", 200, 100_000),
+        ]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = rows
+        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+
+        result = _check_table_bloat()
+
+        assert result["status"] == "ok"
+        assert len(result["tables"]) == 3
+        for t in result["tables"]:
+            assert t["status"] == "ok"
+
+    @patch("datapulse.api.routes.health.get_engine")
+    def test_warning_threshold(self, mock_engine):
+        """Returns warning when a table has 10k–100k dead tuples."""
+        rows = [
+            _make_bloat_row("pos", "transactions", 15_000, 200_000),
+        ]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = rows
+        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+
+        result = _check_table_bloat()
+
+        assert result["status"] == "warning"
+        assert result["tables"][0]["status"] == "warning"
+
+    @patch("datapulse.api.routes.health.get_engine")
+    def test_critical_threshold(self, mock_engine):
+        """Returns critical when a table has > 100k dead tuples."""
+        rows = [
+            _make_bloat_row("pos", "transactions", 150_000, 500_000),
+        ]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = rows
+        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+
+        result = _check_table_bloat()
+
+        assert result["status"] == "critical"
+        assert result["tables"][0]["status"] == "critical"
+
+    @patch("datapulse.api.routes.health.get_engine")
+    def test_db_error_returns_error_status(self, mock_engine):
+        """Returns error status (not a 500) when the DB query fails."""
+        mock_engine.return_value.connect.side_effect = Exception("pg_stat unavailable")
+
+        result = _check_table_bloat()
+
+        assert result["status"] == "error"
+        assert result["error"] == "internal_error"
+
+    @patch("datapulse.api.routes.health.get_engine")
+    def test_empty_result_ok(self, mock_engine):
+        """Returns ok with empty table list when pg_stat returns no rows."""
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = []
+        mock_engine.return_value.connect.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.connect.return_value.__exit__ = lambda s, *a: None
+
+        result = _check_table_bloat()
+
+        assert result["status"] == "ok"
+        assert result["tables"] == []

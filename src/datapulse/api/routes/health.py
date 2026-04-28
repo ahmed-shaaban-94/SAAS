@@ -142,6 +142,96 @@ def _check_data_freshness() -> dict:
         return {"status": "error", "error": "internal_error"}
 
 
+def _check_table_bloat() -> dict:
+    """Report dead-tuple counts for high-churn tables to detect autovacuum lag.
+
+    Queries pg_stat_user_tables for the tables most likely to accumulate dead
+    tuples under POS sync and pipeline load.  Returns per-table n_dead_tup and
+    a simple status:
+
+    - ``ok``      — all tables have < 10 000 dead tuples
+    - ``warning`` — any table has 10 000 – 100 000 dead tuples
+    - ``critical``— any table has > 100 000 dead tuples
+
+    This is an informational check only — it does not affect the overall
+    health status.  It is visible only to authenticated callers (same as all
+    other component details).
+    """
+    # Thresholds chosen conservatively; typical autovacuum fires at ~2% of live
+    # rows, so 10k dead tuples on a 500k-row table is well within normal range.
+    warn_threshold = 10_000
+    crit_threshold = 100_000
+
+    high_churn_tables = [
+        ("pos", "transactions"),
+        ("pos", "transaction_items"),
+        ("pos", "idempotency_keys"),
+        ("pos", "receipts"),
+        ("pos", "shift_records"),
+        ("bronze", "sales"),
+        ("public", "audit_log"),
+    ]
+
+    sql = text(
+        """
+        SELECT schemaname, relname, n_dead_tup, n_live_tup,
+               last_autovacuum, last_autoanalyze
+        FROM   pg_stat_user_tables
+        WHERE  (schemaname, relname) = ANY(:pairs)
+        ORDER  BY n_dead_tup DESC
+        """
+    )
+    try:
+        pairs = list(high_churn_tables)
+        with get_engine().connect() as conn:
+            rows = conn.execute(sql, {"pairs": pairs}).fetchall()
+
+        tables = []
+        overall_status = "ok"
+        for row in rows:
+            schema, table, dead, live, last_vac, last_analyze = row
+            if dead >= crit_threshold:
+                table_status = "critical"
+                overall_status = "critical"
+            elif dead >= warn_threshold:
+                table_status = "warning"
+                if overall_status != "critical":
+                    overall_status = "warning"
+            else:
+                table_status = "ok"
+
+            if table_status == "critical":
+                logger.error(
+                    "table_bloat_critical",
+                    schema=schema,
+                    table=table,
+                    n_dead_tup=dead,
+                )
+            elif table_status == "warning":
+                logger.warning(
+                    "table_bloat_warning",
+                    schema=schema,
+                    table=table,
+                    n_dead_tup=dead,
+                )
+
+            tables.append(
+                {
+                    "table": f"{schema}.{table}",
+                    "n_dead_tup": dead,
+                    "n_live_tup": live,
+                    "last_autovacuum": last_vac.isoformat() if last_vac else None,
+                    "last_autoanalyze": last_analyze.isoformat() if last_analyze else None,
+                    "status": table_status,
+                }
+            )
+
+        return {"status": overall_status, "tables": tables}
+    except Exception:
+        logger.exception("Table bloat health check failed")
+        return {"status": "error", "error": "internal_error"}
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -199,6 +289,7 @@ def health_check(
         from datapulse.scheduler import get_scheduler_status
 
         checks["scheduler"] = get_scheduler_status()
+        checks["table_bloat"] = _check_table_bloat()
         content["checks"] = checks
 
     return JSONResponse(status_code=status_code, content=content)
