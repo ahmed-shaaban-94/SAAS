@@ -59,3 +59,19 @@ async def test_async_tenant_session_rolls_back_on_exception():
         async with async_tenant_session(1) as session:
             await session.execute(text("SELECT 1"))
             raise RuntimeError("boom")
+
+
+@requires_real_db
+@pytest.mark.asyncio
+async def test_health_db_endpoint_returns_200():
+    from httpx import ASGITransport, AsyncClient
+
+    from datapulse.api.app import create_app
+
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/health/db")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}

@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
@@ -18,6 +18,7 @@ from datapulse.api.auth import get_optional_user_for_health
 from datapulse.api.deps import get_engine
 from datapulse.api.limiter import limiter
 from datapulse.checks import check_db, check_redis
+from datapulse.core.db import get_async_engine
 
 router = APIRouter(tags=["health"])
 logger = structlog.get_logger()
@@ -202,6 +203,23 @@ def health_check(
         content["checks"] = checks
 
     return JSONResponse(status_code=status_code, content=content)
+
+
+@router.get("/health/db")
+async def health_db() -> dict[str, str]:
+    """Async DB-reachability probe.
+
+    Returns 200 + {"status": "ok"} on success.
+    Raises HTTPException(503) on any failure.
+    """
+    engine = get_async_engine()
+    try:
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT 1"))
+            assert result.scalar_one() == 1
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=503, detail=f"db_unreachable: {exc!s}") from exc
+    return {"status": "ok"}
 
 
 @router.get("/health/live")
