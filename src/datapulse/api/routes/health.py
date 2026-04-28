@@ -163,13 +163,13 @@ def _check_table_bloat() -> dict:
     crit_threshold = 100_000
 
     high_churn_tables = [
-        ("pos", "transactions"),
-        ("pos", "transaction_items"),
-        ("pos", "idempotency_keys"),
-        ("pos", "receipts"),
-        ("pos", "shift_records"),
-        ("bronze", "sales"),
-        ("public", "audit_log"),
+        "pos.transactions",
+        "pos.transaction_items",
+        "pos.idempotency_keys",
+        "pos.receipts",
+        "pos.shift_records",
+        "bronze.sales",
+        "public.audit_log",
     ]
 
     sql = text(
@@ -177,14 +177,13 @@ def _check_table_bloat() -> dict:
         SELECT schemaname, relname, n_dead_tup, n_live_tup,
                last_autovacuum, last_autoanalyze
         FROM   pg_stat_user_tables
-        WHERE  (schemaname, relname) = ANY(:pairs)
+        WHERE  schemaname || '.' || relname = ANY(:pairs)
         ORDER  BY n_dead_tup DESC
         """
     )
     try:
-        pairs = list(high_churn_tables)
         with get_engine().connect() as conn:
-            rows = conn.execute(sql, {"pairs": pairs}).fetchall()
+            rows = conn.execute(sql, {"pairs": high_churn_tables}).fetchall()
 
         tables = []
         overall_status = "ok"
