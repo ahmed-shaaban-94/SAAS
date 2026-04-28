@@ -31,7 +31,7 @@ requires_real_db = pytest.mark.skipif(
 
 
 @requires_real_db
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_async_tenant_session_sets_rls_tenant_id():
     from datapulse.core.db_session import async_tenant_session
 
@@ -41,7 +41,7 @@ async def test_async_tenant_session_sets_rls_tenant_id():
 
 
 @requires_real_db
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_async_tenant_session_sets_statement_timeout():
     from datapulse.core.db_session import async_tenant_session
 
@@ -51,7 +51,7 @@ async def test_async_tenant_session_sets_statement_timeout():
 
 
 @requires_real_db
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_async_tenant_session_rolls_back_on_exception():
     from datapulse.core.db_session import async_tenant_session
 
@@ -62,7 +62,7 @@ async def test_async_tenant_session_rolls_back_on_exception():
 
 
 @requires_real_db
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_health_db_endpoint_returns_200():
     from httpx import ASGITransport, AsyncClient
 

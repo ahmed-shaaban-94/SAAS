@@ -21932,6 +21932,32 @@
         ]
       }
     },
+    "/health/db": {
+      "get": {
+        "description": "Async DB-reachability probe.\n\nReturns 200 + {\"status\": \"ok\"} on success.\nRaises HTTPException(503) on any failure.",
+        "operationId": "health_db_health_db_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Db Health Db Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Db",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/health/live": {
       "get": {
         "description": "Liveness probe — app process is running.",
