@@ -15,7 +15,7 @@ export interface AttentionAlert {
   impactCount?: number;
   where?: string;
   detectedAt?: string;
-  drillHref: string;
+  drillHref?: string;
 }
 
 const SEVERITY_WEIGHT: Record<AttentionSeverity, number> = {
