@@ -486,22 +486,6 @@ def get_views_service(
     return ViewsService(ViewsRepository(session))
 
 
-def get_lead_service(
-    session: Annotated[Session, Depends(get_plain_session)],
-):
-    """Sync lead service factory.
-
-    .. deprecated::
-        Use ``get_lead_service_async`` — the leads vertical has migrated to async.
-        This sync version is kept only for backward compatibility with existing
-        test dependency_overrides.
-    """
-    from datapulse.leads.repository import LeadRepository
-    from datapulse.leads.service import LeadService
-
-    return LeadService(LeadRepository(session))
-
-
 def get_lead_service_async(
     session: Annotated[AsyncSession, Depends(get_plain_session_async)],
 ):

@@ -113,7 +113,7 @@ async def run_query_task(
         )
     finally:
         session.close()
-        await client.aclose()
+        await client.close()
 
 
 async def _on_startup(ctx: dict[str, Any]) -> None:

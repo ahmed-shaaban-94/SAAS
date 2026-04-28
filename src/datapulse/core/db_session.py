@@ -113,7 +113,8 @@ async def async_tenant_session(
     factory = get_async_session_factory()
     session = factory()
     try:
-        await session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tid})
+        # asyncpg does not support bind params for SET; value comes from validated JWT.
+        await session.execute(text(f"SET LOCAL app.tenant_id = '{tid}'"))
         await session.execute(text(f"SET LOCAL statement_timeout = '{int(timeout_s)}s'"))
         yield session
         await session.commit()
