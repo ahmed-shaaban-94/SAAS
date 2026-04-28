@@ -84,6 +84,9 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/datapulse/pos/_repo_catalog.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

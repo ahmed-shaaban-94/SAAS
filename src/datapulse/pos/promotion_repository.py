@@ -35,6 +35,20 @@ from datapulse.pos.models.promotions import PreviewMatchesResponse
 
 log = get_logger(__name__)
 
+ALLOWED_COLUMNS: frozenset[str] = frozenset(
+    {
+        "name",
+        "description",
+        "discount_type",
+        "value",
+        "scope",
+        "starts_at",
+        "ends_at",
+        "min_purchase",
+        "max_discount",
+    }
+)
+
 
 def _row_to_response(
     row: dict,
@@ -183,6 +197,9 @@ class PromotionRepository:
             fields["max_discount"] = payload.max_discount
 
         if fields:
+            unknown = set(fields) - ALLOWED_COLUMNS
+            if unknown:
+                raise ValueError(f"Unknown promotion column(s): {unknown!r}")
             set_clause = ", ".join(f"{k} = :{k}" for k in fields)
             params = dict(fields)
             params.update({"tid": tenant_id, "pid": promotion_id})

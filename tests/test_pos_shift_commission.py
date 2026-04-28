@@ -115,7 +115,7 @@ class TestGetShiftCommissionSummary:
             mode="first",
         )
 
-        summary = repo.get_shift_commission_summary(1)
+        summary = repo.get_shift_commission_summary(1, tenant_id=1)
         assert summary["commission_earned_egp"] == Decimal("0")
         assert summary["transactions_so_far"] == 0
 
@@ -134,7 +134,7 @@ class TestGetShiftCommissionSummary:
             mode="first",
         )
 
-        repo.get_shift_commission_summary(1)
+        repo.get_shift_commission_summary(1, tenant_id=1)
         sql = str(mock_session.execute.call_args[0][0])
         # LEFT JOIN means drugs without a catalog_meta row contribute 0 commission,
         # so non-bonus SKUs don't block the query from returning.
