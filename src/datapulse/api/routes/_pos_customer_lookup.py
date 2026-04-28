@@ -11,9 +11,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from sqlalchemy.orm import Session
 
+from datapulse.analytics.churn_repository import ChurnRepository
 from datapulse.api.deps import get_tenant_session
 from datapulse.api.limiter import limiter
 from datapulse.api.routes._pos_routes_deps import CurrentUser
+from datapulse.pos.customer_contact_repository import CustomerContactRepository
 from datapulse.pos.customer_lookup_service import CustomerLookupService
 from datapulse.pos.models.customer import PosCustomerLookup
 
@@ -24,7 +26,10 @@ def get_customer_lookup_service(
     session: Annotated[Session, Depends(get_tenant_session)],
 ) -> CustomerLookupService:
     """FastAPI factory for :class:`CustomerLookupService`."""
-    return CustomerLookupService(session)
+    return CustomerLookupService(
+        contact_repo=CustomerContactRepository(session),
+        churn_repo=ChurnRepository(session),
+    )
 
 
 @router.get(

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from datapulse.analytics.churn_repository import ChurnRepository
+from datapulse.pos.customer_contact_repository import CustomerContactRepository
 from datapulse.pos.customer_lookup_service import CustomerLookupService
 from datapulse.pos.models.customer import PosCustomerLookup
 from datapulse.pos.phone import normalize_egyptian_phone
@@ -111,49 +112,48 @@ class TestChurnGetByCustomerKey:
 # ---------------------------------------------------------------------------
 
 
-def _mk_contact_session(contact_row: dict | None) -> MagicMock:
-    """Mock the `SELECT ... FROM pos.customer_contact JOIN dim_customer` call."""
-    session = MagicMock()
-    mapping_mock = MagicMock()
-    mapping_mock.first.return_value = contact_row
-    chain = MagicMock()
-    chain.mappings.return_value = mapping_mock
-    session.execute.return_value = chain
-    return session
+def _mk_contact_repo(contact_row: dict | None) -> MagicMock:
+    """Mock CustomerContactRepository.find_by_phone."""
+    repo = MagicMock(spec=CustomerContactRepository)
+    repo.find_by_phone.return_value = contact_row
+    return repo
+
+
+def _mk_churn_repo(churn_row: dict | None) -> MagicMock:
+    """Mock ChurnRepository.get_by_customer_key."""
+    repo = MagicMock(spec=ChurnRepository)
+    repo.get_by_customer_key.return_value = churn_row
+    return repo
 
 
 class TestCustomerLookupService:
     def test_returns_none_for_invalid_phone_shape(self) -> None:
         # Service short-circuits before hitting the DB on bad input.
-        session = MagicMock()
-        svc = CustomerLookupService(session)
+        contact_repo = MagicMock(spec=CustomerContactRepository)
+        churn_repo = MagicMock(spec=ChurnRepository)
+        svc = CustomerLookupService(contact_repo, churn_repo)
 
         assert svc.lookup_by_phone("nonsense") is None
         # DB was never touched.
-        session.execute.assert_not_called()
+        contact_repo.find_by_phone.assert_not_called()
 
     def test_returns_none_when_phone_unknown(self) -> None:
-        session = _mk_contact_session(None)
-        svc = CustomerLookupService(session)
+        svc = CustomerLookupService(_mk_contact_repo(None), _mk_churn_repo(None))
 
         assert svc.lookup_by_phone("01198765432") is None
 
     def test_returns_lookup_with_churn_risk(self) -> None:
-        session = _mk_contact_session(
+        contact_repo = _mk_contact_repo(
             {
                 "customer_key": 1234,
                 "phone_e164": "+201198765432",
                 "customer_name": "أستاذة منى",
-            },
+            }
         )
+        churn_repo = _mk_churn_repo({"churn_probability": 0.8, "risk_level": "high"})
 
-        with patch.object(
-            ChurnRepository,
-            "get_by_customer_key",
-            return_value={"churn_probability": 0.8, "risk_level": "high"},
-        ):
-            svc = CustomerLookupService(session)
-            result = svc.lookup_by_phone("01198765432")
+        svc = CustomerLookupService(contact_repo, churn_repo)
+        result = svc.lookup_by_phone("01198765432")
 
         assert isinstance(result, PosCustomerLookup)
         assert result.customer_key == 1234
@@ -165,46 +165,42 @@ class TestCustomerLookupService:
         assert result.outstanding_credit_egp == Decimal("0")
 
     def test_returns_lookup_without_churn_when_no_prediction(self) -> None:
-        session = _mk_contact_session(
+        contact_repo = _mk_contact_repo(
             {
                 "customer_key": 7,
                 "phone_e164": "+201198765432",
                 "customer_name": "Ahmed",
-            },
+            }
         )
+        churn_repo = _mk_churn_repo(None)
 
-        with patch.object(ChurnRepository, "get_by_customer_key", return_value=None):
-            svc = CustomerLookupService(session)
-            result = svc.lookup_by_phone("+201198765432")
+        svc = CustomerLookupService(contact_repo, churn_repo)
+        result = svc.lookup_by_phone("+201198765432")
 
         assert result is not None
         assert result.churn.risk is False
         assert result.churn.late_refills == []
 
     def test_low_probability_does_not_trigger_risk(self) -> None:
-        session = _mk_contact_session(
+        contact_repo = _mk_contact_repo(
             {
                 "customer_key": 7,
                 "phone_e164": "+201198765432",
                 "customer_name": "Ahmed",
-            },
+            }
         )
+        churn_repo = _mk_churn_repo({"churn_probability": 0.2, "risk_level": "low"})
 
-        with patch.object(
-            ChurnRepository,
-            "get_by_customer_key",
-            return_value={"churn_probability": 0.2, "risk_level": "low"},
-        ):
-            svc = CustomerLookupService(session)
-            result = svc.lookup_by_phone("+201198765432")
+        svc = CustomerLookupService(contact_repo, churn_repo)
+        result = svc.lookup_by_phone("+201198765432")
 
         assert result is not None
         assert result.churn.risk is False
 
     def test_service_passes_canonical_phone_to_db(self) -> None:
-        session = _mk_contact_session(None)
-        svc = CustomerLookupService(session)
+        contact_repo = _mk_contact_repo(None)
+        churn_repo = _mk_churn_repo(None)
+        svc = CustomerLookupService(contact_repo, churn_repo)
         svc.lookup_by_phone("01198765432")
 
-        call_kwargs = session.execute.call_args[0][1]
-        assert call_kwargs == {"phone": "+201198765432"}
+        contact_repo.find_by_phone.assert_called_once_with("+201198765432")

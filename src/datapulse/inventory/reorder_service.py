@@ -117,9 +117,9 @@ class ReorderConfigService:
             tenant_id=tenant_id,
             drug_code=request.drug_code,
             site_code=request.site_code,
-            min_stock=float(request.min_stock),
-            reorder_point=float(request.reorder_point),
-            max_stock=float(request.max_stock),
+            min_stock=request.min_stock,
+            reorder_point=request.reorder_point,
+            max_stock=request.max_stock,
             reorder_lead_days=request.reorder_lead_days,
             updated_by=updated_by,
         )
