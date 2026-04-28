@@ -29,9 +29,7 @@ class TestH6NofastapiInServiceCatalog:
         Uses an AST walk so string literals and comments containing "fastapi"
         don't produce false positives.
         """
-        src = pathlib.Path(
-            "src/datapulse/pos/_service_catalog.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path("src/datapulse/pos/_service_catalog.py").read_text(encoding="utf-8")
         tree = ast.parse(src)
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -141,9 +139,9 @@ class TestH7aCustomerContactRepository:
 
     def test_service_no_longer_imports_sqlalchemy_text(self) -> None:
         """After the refactor the service must not hold a direct sqlalchemy.text import."""
-        src = pathlib.Path(
-            "src/datapulse/pos/customer_lookup_service.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path("src/datapulse/pos/customer_lookup_service.py").read_text(
+            encoding="utf-8"
+        )
         tree = ast.parse(src)
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("sqlalchemy"):
@@ -173,9 +171,7 @@ class TestH7bChurnRepositoryProtocol:
         params = list(sig.parameters.keys())
         assert "contact_repo" in params, f"Expected 'contact_repo' param, got {params}"
         assert "churn_repo" in params, f"Expected 'churn_repo' param, got {params}"
-        assert "session" not in params, (
-            "session should be gone from CustomerLookupService.__init__"
-        )
+        assert "session" not in params, "session should be gone from CustomerLookupService.__init__"
 
     def test_concrete_churn_repository_satisfies_protocol(self) -> None:
         from datapulse.analytics.churn_repository import ChurnRepository
@@ -250,9 +246,7 @@ class TestH8DecimalPreservation:
         import ast
         import pathlib
 
-        src = pathlib.Path(
-            "src/datapulse/inventory/reorder_service.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path("src/datapulse/inventory/reorder_service.py").read_text(encoding="utf-8")
         tree = ast.parse(src)
 
         for node in ast.walk(tree):
