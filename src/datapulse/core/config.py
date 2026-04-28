@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 
 import structlog
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings
 
 logger = structlog.get_logger()
@@ -144,6 +144,27 @@ class Settings(BaseSettings):
     query_row_limit: int = 10_000  # Max rows for async queries
     query_max_concurrent_jobs: int = 4
     query_max_concurrent_jobs_per_tenant: int = 2
+
+    # Arq distributed task queue
+    arq_queue_name: str = Field(
+        default="datapulse:queries",
+        description="Arq Redis list key — keep distinct from the cache namespace.",
+    )
+    arq_queue_depth_limit: int = Field(
+        default=100,
+        ge=0,
+        description="Reject new requests with 503 when queued+running jobs exceed this.",
+    )
+    arq_max_jobs: int = Field(
+        default=10,
+        ge=1,
+        description="Per-worker concurrency. Multiply by replicas for total parallelism.",
+    )
+    arq_job_timeout: int = Field(
+        default=300,
+        ge=1,
+        description="Seconds before Arq cancels a stuck job.",
+    )
 
     # Embed (iframe white-label)
     embed_allowed_origins: list[str] = []  # Domains allowed to iframe embed
