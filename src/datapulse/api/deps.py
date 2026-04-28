@@ -51,16 +51,20 @@ from datapulse.billing.service import BillingService
 from datapulse.billing.stripe_client import StripeClient
 from datapulse.config import Settings, get_settings
 from datapulse.core.auth import (  # noqa: F401 (re-exported for routes + tests)
+    AsyncSessionDep,
     CurrentUser,
     SessionDep,
     SessionDepReadOnly,
     UserClaims,
     get_current_user,
     get_tenant_session,
+    get_tenant_session_async,
     get_tenant_session_readonly,
     require_api_key,
 )
 from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
+    get_async_engine,
+    get_async_session_factory,
     get_engine,
     get_session_factory,
 )

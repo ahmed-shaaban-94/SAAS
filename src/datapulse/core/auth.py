@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 import time
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from functools import lru_cache
 from typing import Annotated, Any, TypedDict
 
@@ -28,12 +28,17 @@ from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from datapulse.cache import current_tenant_id
 from datapulse.config import Settings, get_settings
 from datapulse.core.config import is_non_dev_env
-from datapulse.core.db import get_readonly_session_factory, get_session_factory
+from datapulse.core.db import (
+    get_async_session_factory,
+    get_readonly_session_factory,
+    get_session_factory,
+)
 from datapulse.core.jwt import verify_jwt
 from datapulse.core.security import compare_secrets
 
@@ -389,7 +394,46 @@ def get_tenant_session_readonly(
         structlog.contextvars.unbind_contextvars("tenant_id")
 
 
+async def get_tenant_session_async(
+    user: Annotated[UserClaims, Depends(get_current_user)],
+) -> AsyncGenerator[AsyncSession, None]:
+    """Async equivalent of get_tenant_session.
+
+    Same RLS contract: SET LOCAL app.tenant_id + 30s statement_timeout
+    + commit/rollback/close in dependency teardown.
+
+    Contract: ``user["tenant_id"]`` is guaranteed populated by
+    ``get_current_user`` (it 401s upstream when the JWT is missing the claim
+    in non-dev). Reaching this function without ``tenant_id`` means a
+    non-FastAPI caller bypassed the dependency tree — that's a programming
+    error, not a user error.
+    """
+    tenant_id = user["tenant_id"]
+    current_tenant_id.set(str(tenant_id))
+    structlog.contextvars.bind_contextvars(tenant_id=str(tenant_id))
+    factory = get_async_session_factory()
+    session = factory()
+    try:
+        await session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
+        await session.execute(text("SET LOCAL statement_timeout = '30s'"))
+        yield session
+        await session.commit()
+    except SQLAlchemyError:
+        _db_logger.exception(
+            "db_session_error", session_type="tenant_async", tenant_id=str(tenant_id)
+        )
+        await session.rollback()
+        raise
+    except BaseException:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+        structlog.contextvars.unbind_contextvars("tenant_id")
+
+
 # Type aliases for FastAPI dependency injection
+AsyncSessionDep = Annotated[AsyncSession, Depends(get_tenant_session_async)]
 SessionDep = Annotated[Session, Depends(get_tenant_session)]
 SessionDepReadOnly = Annotated[Session, Depends(get_tenant_session_readonly)]
 CurrentUser = Annotated[UserClaims, Depends(get_current_user)]

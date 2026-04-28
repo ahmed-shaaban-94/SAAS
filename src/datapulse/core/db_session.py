@@ -33,15 +33,16 @@ Usage (async / manual close)::
 
 from __future__ import annotations
 
-from collections.abc import Generator
-from contextlib import contextmanager
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager, contextmanager
 
 import structlog
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from datapulse.core.db import get_session_factory
+from datapulse.core.db import get_async_session_factory, get_session_factory
 from datapulse.logging import get_logger
 
 log = get_logger(__name__)
@@ -93,4 +94,36 @@ def tenant_session(
         raise
     finally:
         session.close()
+        structlog.contextvars.unbind_contextvars("tenant_id")
+
+
+@asynccontextmanager
+async def async_tenant_session(
+    tenant_id: str | int,
+    *,
+    timeout_s: int = 30,
+) -> AsyncGenerator[AsyncSession, None]:
+    """Async context manager yielding a tenant-scoped AsyncSession.
+
+    Same RLS contract as tenant_session(): SET LOCAL app.tenant_id,
+    statement_timeout, commit on clean exit, rollback on exception.
+    """
+    tid = str(tenant_id)
+    structlog.contextvars.bind_contextvars(tenant_id=tid)
+    factory = get_async_session_factory()
+    session = factory()
+    try:
+        await session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tid})
+        await session.execute(text(f"SET LOCAL statement_timeout = '{int(timeout_s)}s'"))
+        yield session
+        await session.commit()
+    except SQLAlchemyError:
+        log.exception("tenant_session_error", tenant_id=tid)
+        await session.rollback()
+        raise
+    except BaseException:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
         structlog.contextvars.unbind_contextvars("tenant_id")
