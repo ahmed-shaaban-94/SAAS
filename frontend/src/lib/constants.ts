@@ -77,6 +77,11 @@ const POS_GROUP: NavGroup = {
   label: "Point of Sale",
   icon: "ShoppingCart",
   minRole: "editor",
+  // Hidden from the SaaS web sidebar — POS is delivered via the dedicated
+  // Electron desktop app (`pos-desktop/`), which loads these same routes
+  // from `pos.smartdatapulse.tech`. Routes intentionally remain in the
+  // build so the Electron renderer keeps working.
+  archived: true,
   items: [
     { label: "Terminal", href: "/terminal", icon: "Monitor", minRole: "editor" },
     { label: "Checkout", href: "/checkout", icon: "CreditCard", minRole: "editor" },
