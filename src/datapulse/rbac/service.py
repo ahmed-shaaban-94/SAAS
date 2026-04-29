@@ -100,10 +100,30 @@ class RBACService:
                 f"User {user_id} has no email claim; cannot auto-register as a tenant member"
             )
 
-        # Check if invited by email (pending invite)
-        invited = self._repo.get_member_by_email(tenant_id, email)
-        if invited and not invited.get("accepted_at"):
-            return self._repo.accept_invite(invited["member_id"], user_id) or invited
+        # Check if a row already exists for this email under the same tenant.
+        # Two cases collapse here:
+        #   1. Pending invite (accepted_at IS NULL) — accept it.
+        #   2. Already accepted by an old IdP user_id (Clerk reissued the
+        #      `user_*` id, account was migrated, dev env reset, etc.) — the
+        #      `(tenant_id, email)` UNIQUE index would block a fresh INSERT,
+        #      so we relink the row to the new user_id instead. Without this
+        #      branch the api returns 500 IntegrityError on every sign-in
+        #      after such a reissue (incident 2026-04-29).
+        existing = self._repo.get_member_by_email(tenant_id, email)
+        if existing:
+            if not existing.get("accepted_at"):
+                return self._repo.accept_invite(existing["member_id"], user_id) or existing
+            if existing.get("user_id") != user_id:
+                logger.info(
+                    "relink_member_user_id",
+                    tenant_id=tenant_id,
+                    member_id=existing["member_id"],
+                    old_user_id=existing.get("user_id"),
+                    new_user_id=user_id,
+                )
+                return self._repo.relink_member_user_id(existing["member_id"], user_id) or existing
+            # Same email + same user_id + already accepted: nothing to do.
+            return existing
 
         # Determine role from config
         role = self._resolve_auto_role(email)

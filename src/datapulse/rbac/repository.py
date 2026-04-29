@@ -254,6 +254,25 @@ class RBACRepository:
         )
         return self.get_member_by_id(member_id)
 
+    def relink_member_user_id(self, member_id: int, user_id: str) -> dict | None:
+        """Update an existing accepted member's user_id to a new IdP id.
+
+        Used when Clerk reissues a `user_*` id for the same email (e.g. user
+        cleared session, dev environment reset, account migration) — the
+        unique `(tenant_id, email)` row exists but the new sign-in carries a
+        different `user_id`, so a blind INSERT would raise IntegrityError.
+        """
+        self._s.execute(
+            text("""
+                UPDATE public.tenant_members
+                SET user_id = :uid, updated_at = :now,
+                    accepted_at = COALESCE(accepted_at, :now)
+                WHERE member_id = :mid
+            """),
+            {"mid": member_id, "uid": user_id, "now": datetime.now(UTC)},
+        )
+        return self.get_member_by_id(member_id)
+
     # ── Sectors ──────────────────────────────────────────────
 
     def count_sectors(self, tenant_id: int) -> int:
