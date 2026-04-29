@@ -175,6 +175,15 @@ services:
       ARQ_QUEUE_NAME: ${ARQ_QUEUE_NAME:-datapulse:queries}
       ARQ_MAX_JOBS: ${ARQ_MAX_JOBS:-10}
       ARQ_JOB_TIMEOUT: ${ARQ_JOB_TIMEOUT:-300}
+      # Required by entrypoint.sh → prestart.sh (shared with the api image).
+      # Without this the worker restart-loops with "DB_READER_PASSWORD must be
+      # set" before arq ever boots — see incident 2026-04-29.
+      POSTGRES_USER: ${POSTGRES_USER:-datapulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-datapulse}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      DB_HOST: postgres
+      DB_READER_PASSWORD: ${DB_READER_PASSWORD:?DB_READER_PASSWORD must be set}
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-info}

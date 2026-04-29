@@ -338,7 +338,7 @@ class CatalogRepoMixin:
                     FROM   public_staging.stg_batches
                     WHERE  status = 'active'
                       AND  (:site IS NULL OR site_code = :site)
-                      AND  (:cursor IS NULL OR loaded_at > :cursor::timestamptz)
+                      AND  (:cursor IS NULL OR loaded_at > CAST(:cursor AS timestamptz))
                     ORDER  BY loaded_at, drug_code, site_code, batch_number
                     LIMIT  :limit
                 """),
