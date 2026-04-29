@@ -3,7 +3,12 @@
 import { memo } from "react";
 import { useWhyChanged } from "@/hooks/use-why-changed";
 import { useFilters } from "@/contexts/filter-context";
-import { WaterfallChart } from "@/components/dashboard/waterfall-chart";
+import dynamic from "next/dynamic";
+
+const WaterfallChart = dynamic(
+  () => import("@/components/dashboard/waterfall-chart").then((m) => m.WaterfallChart),
+  { ssr: false, loading: () => <div className="h-48 animate-pulse rounded-lg bg-white/5" /> },
+);
 import { LoadingCard } from "@/components/loading-card";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorRetry } from "@/components/error-retry";

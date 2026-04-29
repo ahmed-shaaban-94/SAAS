@@ -22,6 +22,8 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-datapulse}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-datapulse}?sslmode=disable
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
+      ARQ_QUEUE_NAME: ${ARQ_QUEUE_NAME:-datapulse:queries}
+      ARQ_QUEUE_DEPTH_LIMIT: ${ARQ_QUEUE_DEPTH_LIMIT:-100}
       DBT_HOST: postgres
       DBT_PROFILES_DIR: /app/dbt
       POSTGRES_USER: ${POSTGRES_USER:-datapulse}
@@ -153,9 +155,45 @@ services:
     networks:
       - frontend-net
 
-  # NOTE: Celery worker removed — async queries now run in-process via
-  # asyncio.to_thread + Redis job state (see datapulse.tasks.async_executor).
-  # This saves 512MB RAM and eliminates a separate container.
+  # ---------- Arq worker — distributed query executor (replaces in-process pool) ----------
+
+  arq-worker:
+    build:
+      context: .
+      target: api
+    image: datapulse-api:local
+    container_name: datapulse-arq-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-datapulse}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-datapulse}?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
+      ARQ_QUEUE_NAME: ${ARQ_QUEUE_NAME:-datapulse:queries}
+      ARQ_MAX_JOBS: ${ARQ_MAX_JOBS:-10}
+      ARQ_JOB_TIMEOUT: ${ARQ_JOB_TIMEOUT:-300}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    command: ["arq", "datapulse.tasks.worker.WorkerSettings"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import redis,os; redis.from_url(os.environ['REDIS_URL']).ping()\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    networks:
+      - backend
+    logging: *default-logging
+    stop_grace_period: 35s  # Arq drains in-flight jobs on SIGTERM
 
   redis:
     image: redis:7-alpine

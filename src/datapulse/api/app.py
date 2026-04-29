@@ -9,7 +9,7 @@ ordering rules that must be preserved when changing any step.
 import structlog
 from fastapi import FastAPI
 
-from datapulse.api.backpressure import AdmissionController
+from datapulse.api.backpressure import AdmissionController, QueueDepthGuard
 from datapulse.api.bootstrap import (
     build_lifespan,
     init_sentry,
@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
         max_in_flight_requests=settings.api_max_in_flight_requests,
         acquire_timeout_ms=settings.api_backpressure_timeout_ms,
     )
+    app.state.queue_depth_guard = QueueDepthGuard(limit=settings.arq_queue_depth_limit)
     app.state.limiter = limiter
 
     install_exception_handlers(app)

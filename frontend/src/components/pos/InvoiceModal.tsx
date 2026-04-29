@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Printer, X } from "lucide-react";
+import { FocusTrap } from "focus-trap-react";
 import type {
   CheckoutResponse,
   PaymentMethod,
@@ -129,6 +130,15 @@ export function InvoiceModal({
       aria-modal="true"
       aria-labelledby="pos-invoice-title"
     >
+      <FocusTrap
+        focusTrapOptions={{
+          escapeDeactivates: false, // Escape handled by window keydown listener above
+          allowOutsideClick: true, // backdrop click must reach the backdrop handler
+          initialFocus: "[data-autofocus]",
+        }}
+      >
+      {/* Trap container wrapping chrome + paper so FocusTrap has a single root */}
+      <div className="contents">
       {/* Chrome (Print / Close) */}
       <div
         className="pos-print-chrome absolute right-4 top-4 z-[2] flex gap-2"
@@ -136,6 +146,7 @@ export function InvoiceModal({
       >
         <button
           type="button"
+          data-autofocus
           onClick={() => window.print()}
           data-testid="pos-invoice-print-button"
           className="flex items-center gap-2 rounded-lg border-0 px-3.5 py-[9px] text-[13px] font-bold"
@@ -535,6 +546,8 @@ export function InvoiceModal({
           </div>
         </div>
       </div>
+      </div>{/* end trap container */}
+      </FocusTrap>
     </div>
   );
 }

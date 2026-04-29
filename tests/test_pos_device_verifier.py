@@ -19,6 +19,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from datapulse.api.deps import get_tenant_session
+from datapulse.core.auth import get_current_user
 from datapulse.pos import devices as devices_mod
 from datapulse.pos.devices import DeviceProof, TerminalDevice, device_token_verifier
 
@@ -78,11 +79,8 @@ def _make_app(
 
     app = FastAPI()
     app.dependency_overrides[get_tenant_session] = lambda: MagicMock()
+    app.dependency_overrides[get_current_user] = lambda: {"tenant_id": 1, "roles": ["pos"]}
 
-    # Stand in for the production auth middleware that populates
-    # request.state.tenant_id from the Clerk JWT. device_token_verifier now
-    # fails-closed with 401 if tenant context is missing (was: silent
-    # fallback to tenant_id=1), so tests must set it explicitly.
     @app.middleware("http")
     async def _inject_tenant(request, call_next):
         request.state.tenant_id = 1

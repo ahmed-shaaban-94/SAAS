@@ -16,32 +16,26 @@ vi.mock("@/hooks/use-eligible-promotions", () => ({
 
 const applyDiscount = vi.fn();
 
-vi.mock("@/contexts/pos-cart-context", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/contexts/pos-cart-context")
-  >("@/contexts/pos-cart-context");
-  return {
-    ...actual,
-    usePosCart: () => ({
-      items: [
-        {
-          drug_code: "MED-001",
-          drug_name: "Paracetamol",
-          batch_number: null,
-          expiry_date: null,
-          quantity: 2,
-          unit_price: 50,
-          discount: 0,
-          line_total: 100,
-          is_controlled: false,
-        },
-      ],
-      subtotal: 100,
-      applyDiscount,
-      appliedDiscount: null,
-    }),
-  };
-});
+vi.mock("@/hooks/use-pos-cart", () => ({
+  usePosCart: () => ({
+    items: [
+      {
+        drug_code: "MED-001",
+        drug_name: "Paracetamol",
+        batch_number: null,
+        expiry_date: null,
+        quantity: 2,
+        unit_price: 50,
+        discount: 0,
+        line_total: 100,
+        is_controlled: false,
+      },
+    ],
+    subtotal: 100,
+    applyDiscount,
+    appliedDiscount: null,
+  }),
+}));
 
 import { PromotionsModal } from "@/components/pos/PromotionsModal";
 

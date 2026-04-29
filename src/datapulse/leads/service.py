@@ -36,10 +36,10 @@ class LeadService:
     def __init__(self, repo: LeadRepository) -> None:
         self._repo = repo
 
-    def capture(self, data: LeadRequest) -> LeadResponse:
-        if self._repo.email_exists(data.email):
+    async def capture(self, data: LeadRequest) -> LeadResponse:
+        if await self._repo.email_exists(data.email):
             return LeadResponse(success=True, message="You're already on the list!")
-        self._repo.insert(
+        await self._repo.insert(
             email=data.email,
             name=data.name,
             company=data.company,

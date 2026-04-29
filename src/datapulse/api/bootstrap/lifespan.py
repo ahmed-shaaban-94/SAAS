@@ -6,6 +6,7 @@ uvicorn at ``Waiting for application startup``. DB ``connect_timeout=10s``
 already prevents indefinite hangs.
 """
 
+import contextlib
 from contextlib import asynccontextmanager
 
 import structlog
@@ -27,5 +28,9 @@ def build_lifespan():
             logger.error("scheduler_start_failed", exc_info=True)
         yield
         stop_scheduler()
+        from datapulse.tasks.queue import close_arq_pool
+
+        with contextlib.suppress(Exception):
+            await close_arq_pool()
 
     return lifespan

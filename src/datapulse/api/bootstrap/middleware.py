@@ -153,6 +153,20 @@ def _install_overload_guard(app: FastAPI) -> None:
         if controller.is_exempt(request):
             return await call_next(request)
 
+        queue_guard = getattr(request.app.state, "queue_depth_guard", None)
+        if queue_guard is not None and not await queue_guard.allow():
+            logger.warning(
+                "request_rejected_queue_depth",
+                method=request.method,
+                path=request.url.path,
+                limit=queue_guard.limit,
+            )
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Queue is saturated. Please retry shortly."},
+                headers={"Retry-After": "1", "X-DataPulse-Backpressure": "rejected"},
+            )
+
         if not await controller.try_acquire():
             logger.warning(
                 "request_rejected_overload",

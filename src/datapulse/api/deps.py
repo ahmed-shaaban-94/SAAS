@@ -21,6 +21,7 @@ import structlog
 from fastapi import Depends
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from datapulse.ai_light.service import AILightService
@@ -51,16 +52,21 @@ from datapulse.billing.service import BillingService
 from datapulse.billing.stripe_client import StripeClient
 from datapulse.config import Settings, get_settings
 from datapulse.core.auth import (  # noqa: F401 (re-exported for routes + tests)
+    AsyncSessionDep,
     CurrentUser,
     SessionDep,
     SessionDepReadOnly,
     UserClaims,
     get_current_user,
+    get_plain_session_async,
     get_tenant_session,
+    get_tenant_session_async,
     get_tenant_session_readonly,
     require_api_key,
 )
 from datapulse.core.db import (  # noqa: F401 (get_engine re-exported for health.py)
+    get_async_engine,
+    get_async_session_factory,
     get_engine,
     get_session_factory,
 )
@@ -480,9 +486,10 @@ def get_views_service(
     return ViewsService(ViewsRepository(session))
 
 
-def get_lead_service(
-    session: Annotated[Session, Depends(get_plain_session)],
+def get_lead_service_async(
+    session: Annotated[AsyncSession, Depends(get_plain_session_async)],
 ):
+    """Async lead service factory — preferred over get_lead_service."""
     from datapulse.leads.repository import LeadRepository
     from datapulse.leads.service import LeadService
 

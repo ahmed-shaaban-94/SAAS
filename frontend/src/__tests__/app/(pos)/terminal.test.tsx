@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "../../mocks/server";
 import { PosCartProvider } from "@/contexts/pos-cart-context";
+import { usePosCartStore } from "@/store/pos-cart-store";
 import PosTerminalPage from "@/app/(pos)/terminal/page";
 import type { PosProductResult } from "@/types/pos";
 
@@ -77,6 +78,8 @@ function renderPage() {
 
 describe("Terminal v2 integration", () => {
   beforeEach(() => {
+    // Reset Zustand store so cart state does not leak between tests
+    usePosCartStore.setState({ items: [], appliedDiscount: null });
     localStorage.clear();
     localStorage.setItem("pos:active_terminal", JSON.stringify(TERMINAL));
     primeHandlers();

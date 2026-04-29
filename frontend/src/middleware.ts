@@ -129,11 +129,18 @@ function applyCommonHeaders(
     ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${scriptExtras}`.trim()
     : `script-src 'self' 'unsafe-inline' ${scriptExtras}`.trim();
 
+  // Clerk spawns a blob: web worker for its token refresh loop.
+  // Without worker-src blob:, the browser falls back to script-src which
+  // blocks blob: URLs — Clerk logs "Cannot create worker from blob" and
+  // isLoaded never becomes true (permanent spinner in the POS desktop).
+  const workerSrc = clerkOrigin ? "worker-src blob:" : "worker-src 'self'";
+
   response.headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
       scriptSrc,
+      workerSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self'",

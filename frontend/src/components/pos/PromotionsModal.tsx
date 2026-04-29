@@ -4,10 +4,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ModalShell } from "@/components/pos/ModalShell";
 import { useEligiblePromotions } from "@/hooks/use-eligible-promotions";
-import {
-  usePosCart,
-  type AppliedCartDiscount,
-} from "@/contexts/pos-cart-context";
+import { usePosCart, type AppliedCartDiscount } from "@/hooks/use-pos-cart";
 import type {
   EligiblePromotion,
   EligiblePromotionsRequest,

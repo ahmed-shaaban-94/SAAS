@@ -9,6 +9,7 @@ if (dsn) {
     tracesSampleRate: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT === "production" ? 0.1 : 1.0,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT === "production" ? 1.0 : 0,
+    tracePropagationTargets: ["localhost", /^\//, process.env.NEXT_PUBLIC_API_URL].filter(Boolean) as (string | RegExp)[],
     debug: false,
     integrations: [
       // Captures Core Web Vitals (LCP, INP, CLS, FCP, TTFB) and sends them

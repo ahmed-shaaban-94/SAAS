@@ -64,3 +64,29 @@ class AdmissionController:
             return
         with suppress(ValueError):
             self._semaphore.release()
+
+
+from datapulse.tasks.queue import queue_depth as _queue_depth_probe  # noqa: E402
+
+# Module-level alias so tests can monkeypatch a single symbol.
+queue_depth = _queue_depth_probe
+
+
+class QueueDepthGuard:
+    """Reject requests when the Arq queue is saturated (cluster-wide signal)."""
+
+    def __init__(self, limit: int) -> None:
+        self.limit = max(0, limit)
+
+    @property
+    def enabled(self) -> bool:
+        return self.limit > 0
+
+    async def allow(self) -> bool:
+        if not self.enabled:
+            return True
+        try:
+            depth = await queue_depth()
+        except Exception:  # noqa: BLE001
+            return True  # fail open
+        return depth < self.limit

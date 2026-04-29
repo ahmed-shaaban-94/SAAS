@@ -13,6 +13,12 @@ import threading
 import structlog
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import Session, sessionmaker
 
 from datapulse.core.config import get_settings
@@ -34,7 +40,20 @@ _engine: Engine | None = None
 _session_factory: sessionmaker[Session] | None = None
 _readonly_engine: Engine | None = None
 _readonly_session_factory: sessionmaker[Session] | None = None
+_async_engine: AsyncEngine | None = None
+_async_session_factory: async_sessionmaker[AsyncSession] | None = None
 _init_lock = threading.Lock()
+
+
+def _to_async_url(url: str) -> str:
+    """Rewrite a sync DB URL to its async driver equivalent."""
+    if url.startswith("postgresql+asyncpg://") or url.startswith("sqlite+aiosqlite://"):
+        return url
+    if url.startswith("postgresql+psycopg2://"):
+        return "postgresql+asyncpg://" + url[len("postgresql+psycopg2://") :]
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://") :]
+    return url
 
 
 def get_engine() -> Engine:
@@ -123,3 +142,61 @@ def get_readonly_session_factory() -> sessionmaker[Session]:
             if _readonly_session_factory is None:
                 _readonly_session_factory = sessionmaker(bind=engine)
     return _readonly_session_factory
+
+
+def get_async_engine() -> AsyncEngine:
+    """Return the async SQLAlchemy engine singleton (asyncpg driver).
+
+    Coexists with the sync get_engine(). statement_cache_size=0 keeps
+    us PgBouncer-compatible in transaction-pooling mode.
+    """
+    global _async_engine
+    if _async_engine is None:
+        with _init_lock:
+            if _async_engine is None:
+                settings = get_settings()
+                _validate_database_url(settings.database_url)
+                async_url = _to_async_url(settings.database_url)
+                # TODO: asyncpg ignores ?sslmode= in the URL; translate
+                # sslmode=require → connect_args={"ssl": True} before shipping
+                # to a TLS-enforced prod cluster.
+                if async_url.startswith("sqlite+aiosqlite://"):
+                    _async_engine = create_async_engine(async_url, echo=False)
+                else:
+                    connect_args: dict[str, object] = {
+                        "statement_cache_size": 0,
+                        "timeout": 10,
+                    }
+                    _async_engine = create_async_engine(
+                        async_url,
+                        echo=False,
+                        pool_pre_ping=True,
+                        pool_size=settings.db_pool_size,
+                        max_overflow=settings.db_pool_max_overflow,
+                        pool_timeout=settings.db_pool_timeout,
+                        pool_recycle=settings.db_pool_recycle,
+                        connect_args=connect_args,
+                    )
+                logger.info("async_engine_initialized", driver=async_url.split("://", 1)[0])
+    return _async_engine
+
+
+def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Return the async session factory singleton.
+
+    expire_on_commit=False so attributes stay accessible after
+    await session.commit() in the dependency teardown.
+    """
+    global _async_session_factory
+    if _async_session_factory is None:
+        # Resolve the engine BEFORE acquiring _init_lock — get_async_engine
+        # also takes _init_lock, and threading.Lock is not re-entrant.
+        engine = get_async_engine()
+        with _init_lock:
+            if _async_session_factory is None:
+                _async_session_factory = async_sessionmaker(
+                    bind=engine,
+                    class_=AsyncSession,
+                    expire_on_commit=False,
+                )
+    return _async_session_factory

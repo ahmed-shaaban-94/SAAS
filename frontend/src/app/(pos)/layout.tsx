@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, type ReactNode } from "react";
+import { useEffect, useCallback, useRef, useState, type ReactNode } from "react";
 import { Fraunces, JetBrains_Mono, Cairo } from "next/font/google";
 import { useSession, signIn, AUTH_PROVIDER, CLERK_KEY_CONFIGURED } from "@/lib/auth-bridge";
 import { ThemeProvider } from "next-themes";
@@ -68,13 +68,45 @@ function isPosDesktopRuntime(): boolean {
   return Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
 }
 
+// How long to wait for Clerk to initialize before giving up in the desktop
+// shell. Clerk needs internet to boot; if offline or the origin is blocked,
+// isLoaded never fires. 8 s covers slow connections without blocking cashiers.
+const CLERK_LOAD_TIMEOUT_MS = 8_000;
+
 function isClerkAuthMissing(): boolean {
   return AUTH_PROVIDER === "clerk" && !CLERK_KEY_CONFIGURED;
 }
 
 function SessionGuard({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
+  const isDesktop = isPosDesktopRuntime();
   const clerkAuthMissing = isClerkAuthMissing();
+
+  // Track whether the Clerk load timeout has fired. Once it fires we stop
+  // blocking the render — the terminal renders and the offline-grant path
+  // in ShiftOpenModal handles authentication from the SQLite store.
+  const [clerkTimedOut, setClerkTimedOut] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Only arm the timeout in the Electron desktop shell — the web build
+    // always has internet, so Clerk loads promptly and the timer is wasted.
+    if (!isDesktop || status !== "loading") return;
+    if (timerRef.current) return; // already armed
+    timerRef.current = setTimeout(() => setClerkTimedOut(true), CLERK_LOAD_TIMEOUT_MS);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isDesktop, status]);
+
+  // Cancel the timeout as soon as Clerk resolves (online path).
+  useEffect(() => {
+    if (status !== "loading" && timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      setClerkTimedOut(false);
+    }
+  }, [status]);
 
   useEffect(() => {
     // No-op when Clerk was not configured — the render branch below handles it.
@@ -89,10 +121,10 @@ function SessionGuard({ children }: { children: ReactNode }) {
     // here — otherwise the terminal mounts, hits the API, and surfaces a
     // 401 banner instead of a sign-in flow. The web build keeps the
     // fall-through so middleware owns the redirect (E2E CI relies on it).
-    if (status === "unauthenticated" && isPosDesktopRuntime()) {
+    if (status === "unauthenticated" && isDesktop) {
       void signIn(undefined, { callbackUrl: "/terminal" });
     }
-  }, [status, session, clerkAuthMissing]);
+  }, [status, session, isDesktop, clerkAuthMissing]);
 
   // When Clerk was not configured at build time, show a build-config error.
   // Catches CI smoke builds (PR/branch without the secret) before they
@@ -129,11 +161,11 @@ function SessionGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  // Block rendering only during the initial loading phase — matches the
-  // (app) layout pattern. Unauthenticated renders fall through to children;
-  // the middleware redirect handles unauthenticated web-app access, and
-  // E2E CI tests need `main` to be reachable before session is confirmed.
-  if (status === "loading") {
+  // Block rendering only during the initial loading phase.
+  // Exception: in the desktop shell, if Clerk has not resolved within
+  // CLERK_LOAD_TIMEOUT_MS (no internet / origin blocked), stop blocking and
+  // let the terminal render — ShiftOpenModal's offline-grant path takes over.
+  if (status === "loading" && !clerkTimedOut) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />

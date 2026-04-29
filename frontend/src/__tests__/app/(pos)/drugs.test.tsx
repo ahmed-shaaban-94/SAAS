@@ -3,7 +3,9 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "../../mocks/server";
-import { PosCartProvider, usePosCart } from "@/contexts/pos-cart-context";
+import { PosCartProvider } from "@/contexts/pos-cart-context";
+import { usePosCart } from "@/hooks/use-pos-cart";
+import { usePosCartStore } from "@/store/pos-cart-store";
 import { ToastProvider } from "@/components/ui/toast";
 import PosDrugsPage from "@/app/(pos)/drugs/page";
 
@@ -99,6 +101,8 @@ function renderPage() {
 
 describe("Drugs tab (#467)", () => {
   beforeEach(() => {
+    // Reset Zustand store so cart state does not leak between tests
+    usePosCartStore.setState({ items: [], appliedDiscount: null });
     localStorage.clear();
     localStorage.setItem("pos:active_terminal", JSON.stringify(TERMINAL));
     primeHandlers();
