@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
 import { getSession, getLastClerkAuthError } from "@/lib/auth-bridge";
 import { API_BASE_URL } from "./constants";
 import type { FilterParams } from "@/types/filters";
@@ -84,16 +83,14 @@ async function _request<T>(url: string, init?: RequestInit): Promise<T> {
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
     const authHeaders = await getAuthHeaders();
-    // Sentry trace headers — guard against uninitialized Sentry contexts
-    // (Playwright E2E browser, SSR before init) that can cause getTraceData
-    // to throw and break every fetch. Tracing is best-effort.
-    let traceData: ReturnType<typeof Sentry.getTraceData> | Record<string, never> = {};
-    try {
-      traceData = Sentry.getTraceData();
-    } catch {
-      // no-op
-    }
-    const mergedHeaders = { ...authHeaders, ...traceData, ...init?.headers };
+    // Sentry trace-header injection (W3C traceparent / sentry-trace) was
+    // intentionally removed: @sentry/nextjs@8 does not re-export
+    // `getTraceData`, so the previous attempt compiled with a webpack
+    // warning then threw at runtime ("Sentry.getTraceData is not a
+    // function") — breaking every fetch on first POS load. Reintroduce
+    // via @sentry/core in a focused observability PR once the trace API
+    // surface stabilises.
+    const mergedHeaders = { ...authHeaders, ...init?.headers };
     const res = await fetch(url, {
       ...init,
       headers: mergedHeaders,
