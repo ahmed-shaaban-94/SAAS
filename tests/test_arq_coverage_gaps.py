@@ -155,7 +155,9 @@ async def test_run_query_task_translates_statement_timeout(monkeypatch) -> None:
         def close(self):
             pass
 
-    monkeypatch.setattr(worker, "open_tenant_session", lambda tenant_id, timeout_s: TimeoutSession())
+    monkeypatch.setattr(
+        worker, "open_tenant_session", lambda tenant_id, timeout_s: TimeoutSession()
+    )
 
     await worker.run_query_task(
         {}, job_id="job-to", sql="SELECT 1", params=None, tenant_id="t1", row_limit=10
