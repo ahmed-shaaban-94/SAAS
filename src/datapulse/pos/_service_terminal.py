@@ -38,7 +38,33 @@ class TerminalOpsMixin:
         terminal_name: str = "Terminal-1",
         opening_cash: Decimal = Decimal("0"),
     ) -> TerminalSession:
-        """Open a fresh terminal session in ``open`` state."""
+        """Open a fresh terminal session in ``open`` state.
+
+        Idempotent: if an active (non-closed) session already exists for
+        ``(tenant_id, terminal_name)``, return it instead of attempting a
+        new INSERT. Without this, the partial-unique index
+        ``uq_pos_terminal_active`` raises IntegrityError on the second
+        open — surfacing as a 500 to the cashier whenever the previous
+        session was not closed cleanly (browser refresh, app crash, power
+        loss). See incident 2026-04-29.
+        """
+        existing = next(
+            (
+                t
+                for t in self._repo.get_active_terminals(tenant_id)
+                if t["terminal_name"] == terminal_name
+            ),
+            None,
+        )
+        if existing is not None:
+            log.info(
+                "pos.terminal.resumed",
+                terminal_id=existing["id"],
+                staff_id=staff_id,
+                prior_staff_id=existing["staff_id"],
+            )
+            return TerminalSession.model_validate(existing)
+
         row = self._repo.create_terminal_session(
             tenant_id=tenant_id,
             site_code=site_code,
