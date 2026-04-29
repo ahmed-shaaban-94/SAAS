@@ -19,7 +19,18 @@ const PORT = 3847;
 // In dev, set DATAPULSE_DEV_RENDERER_URL=http://localhost:3000 to connect to
 // `next dev` directly instead of starting a standalone server.
 const DEV_RENDERER_URL = process.env.DATAPULSE_DEV_RENDERER_URL;
-const NEXTJS_URL = DEV_RENDERER_URL ?? `http://localhost:${PORT}`;
+// POS now loads its UI from the live web subdomain. Clerk's production
+// instance only allows real subdomains in its origins list — `localhost`
+// is rejected — so the Electron renderer must point at a public origin.
+// `DATAPULSE_POS_RENDERER_URL` overrides the default for staging/canary
+// builds; `DATAPULSE_USE_LOCAL_NEXTJS=1` falls back to the bundled server
+// (rollback path while we soak the remote-renderer change).
+const REMOTE_RENDERER_URL =
+  process.env.DATAPULSE_POS_RENDERER_URL ?? "https://pos.smartdatapulse.tech";
+const USE_LOCAL_NEXTJS = process.env.DATAPULSE_USE_LOCAL_NEXTJS === "1";
+const LOCAL_NEXTJS_URL = `http://localhost:${PORT}`;
+const NEXTJS_URL =
+  DEV_RENDERER_URL ?? (USE_LOCAL_NEXTJS ? LOCAL_NEXTJS_URL : REMOTE_RENDERER_URL);
 const POS_PATH = "/terminal";
 const APP_TITLE = "DataPulse POS";
 
@@ -273,26 +284,41 @@ function createWindow(): void {
     "/sign-up",
     "/api/auth",
   ];
+  // Trap navigations that leak outside the POS routes. The renderer URL
+  // moved off `localhost` to the live subdomain (Clerk production rejects
+  // localhost origins), so guard on the renderer's actual hostname.
+  const rendererHostname = (() => {
+    try {
+      return new URL(NEXTJS_URL).hostname;
+    } catch {
+      return "localhost";
+    }
+  })();
   mainWindow.webContents.on("did-navigate", (_event, url) => {
     try {
       const parsed = new URL(url);
       const path = parsed.pathname;
       const isPosRoute = POS_ROUTES.some((r) => path.startsWith(r));
-      if (!isPosRoute && parsed.hostname === "localhost") {
+      if (!isPosRoute && parsed.hostname === rendererHostname) {
         log.info({ from: path }, "redirecting back to POS terminal");
         mainWindow?.loadURL(`${NEXTJS_URL}${POS_PATH}`);
       }
     } catch { /* ignore parse errors */ }
   });
 
-  // Open external links (Auth0, etc.) in the same window — don't open system browser
-  // Auth0 Universal Login needs to render inside the Electron window.
+  // Open external links in the system browser; keep Clerk + renderer
+  // origins inside the Electron window. (Auth0 path is dead post-Clerk
+  // migration but the host-allowlist mirrors the renderer host so a
+  // Clerk hosted-page nav, e.g. on the new pos.smartdatapulse.tech
+  // origin, doesn't accidentally open the OS browser.)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Only block truly external links (not Auth0)
     const parsed = new URL(url);
-    if (!parsed.hostname.includes("auth0") && !parsed.hostname.includes("localhost")) {
+    const internalHost =
+      parsed.hostname === rendererHostname ||
+      parsed.hostname.endsWith(".clerk.accounts.dev") ||
+      parsed.hostname.endsWith(".clerk.com");
+    if (!internalHost) {
       shell.openExternal(url);
-      return { action: "deny" };
     }
     return { action: "deny" };
   });
@@ -454,7 +480,10 @@ app.whenReady().then(async () => {
     await new Promise<void>((resolve, reject) =>
       waitForServer(resolve, reject, 30_000),
     );
-  } else {
+  } else if (USE_LOCAL_NEXTJS) {
+    // Rollback path: serve the bundled Next.js standalone server on
+    // localhost (the pre-2026-04-29 behaviour). Only used when
+    // DATAPULSE_USE_LOCAL_NEXTJS=1; remote-renderer is the default.
     try {
       await startNextServer();
     } catch (err) {
@@ -462,6 +491,8 @@ app.whenReady().then(async () => {
       app.quit();
       return;
     }
+  } else {
+    log.info({ url: NEXTJS_URL }, "remote renderer mode: skipping local Next.js server");
   }
 
   createWindow();
