@@ -47,6 +47,20 @@ describe("ReceiptPaper shell", () => {
     ).toBe(false);
   });
 
+  it("never sets data-paper-noise when flatEdges overrides paperNoise", () => {
+    // flatEdges is the print-preview escape hatch — it must kill ALL
+    // on-screen-only decoration so the preview faithfully matches the
+    // printed output. Same semantics as flatEdges + jaggedEdges above.
+    render(
+      <ReceiptPaper flatEdges paperNoise>
+        body
+      </ReceiptPaper>,
+    );
+    expect(
+      screen.getByTestId("receipt-paper").hasAttribute("data-paper-noise"),
+    ).toBe(false);
+  });
+
   it("jagged edges carry data-torn-edge so the print pipeline strips them", () => {
     render(<ReceiptPaper jaggedEdges>body</ReceiptPaper>);
     // The print-pipeline @media rule keys off [data-torn-edge]. Asserting

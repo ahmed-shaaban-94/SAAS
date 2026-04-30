@@ -1451,7 +1451,6 @@ html {
 
   .pos-omni .pos-receipt::before,
   .pos-omni .pos-receipt::after,
-  .pos-omni .pos-receipt [data-torn-edge],
   .pos-omni [data-torn-edge] {
     display: none !important;
   }

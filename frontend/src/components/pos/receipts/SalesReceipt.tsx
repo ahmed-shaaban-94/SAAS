@@ -23,13 +23,33 @@ import {
 interface SalesReceiptProps {
   data: ReceiptData;
   flatEdges?: boolean;
+  /**
+   * Show torn-paper top/bottom edges. Defaults to true for the retail
+   * sales variant. Forced off when `flatEdges` is true (print-preview
+   * mode strips all on-screen-only decoration).
+   */
+  jaggedEdges?: boolean;
+  /**
+   * Show subtle paper-noise grain. Defaults to true for the retail
+   * sales variant. Forced off when `flatEdges` is true.
+   */
+  paperNoise?: boolean;
 }
 
-export function SalesReceipt({ data, flatEdges }: SalesReceiptProps) {
+export function SalesReceipt({
+  data,
+  flatEdges,
+  jaggedEdges = true,
+  paperNoise = true,
+}: SalesReceiptProps) {
   const { totals, customer, counseling_text, cross_sell } = data;
 
   return (
-    <ReceiptPaper flatEdges={flatEdges}>
+    <ReceiptPaper
+      flatEdges={flatEdges}
+      jaggedEdges={jaggedEdges}
+      paperNoise={paperNoise}
+    >
       <BaseReceiptBody data={data} />
       <GrandTotalBlock total={totals.grand_total} />
       <PaymentRow method={totals.payment_method} amount={totals.grand_total} />

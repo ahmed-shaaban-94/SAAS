@@ -33,7 +33,13 @@ function amountToWords(n: number): string {
 
 interface ReceiptPaperProps {
   children: ReactNode;
-  /** Suppress torn-edge pseudo-elements (used for print preview mode). */
+  /**
+   * Print-preview escape hatch — suppresses ALL on-screen-only
+   * decoration (torn edges + paper-noise overlay). When true, the
+   * receipt renders as it will appear on the thermal printer, so
+   * `jaggedEdges` and `paperNoise` are forced off regardless of caller
+   * intent.
+   */
   flatEdges?: boolean;
   /**
    * Render zig-zag torn-paper edges above and below the receipt body.
@@ -43,8 +49,10 @@ interface ReceiptPaperProps {
    */
   jaggedEdges?: boolean;
   /**
-   * Add a subtle, motion-safe paper-noise overlay on top of the existing
-   * thermal scan-line texture. Stripped at print. Defaults to false.
+   * Add a subtle paper-noise overlay on top of the existing thermal
+   * scan-line texture. Stripped at print and forced off when
+   * `flatEdges` is true (so on-screen-print-preview matches the actual
+   * printed output). Defaults to false.
    */
   paperNoise?: boolean;
 }
@@ -55,14 +63,17 @@ export function ReceiptPaper({
   jaggedEdges = false,
   paperNoise = false,
 }: ReceiptPaperProps) {
+  // flatEdges kills ALL on-screen-only decoration so it stays a faithful
+  // pre-print preview. Both jaggedEdges and paperNoise honor it.
   const showJagged = jaggedEdges && !flatEdges;
+  const showNoise = paperNoise && !flatEdges;
   return (
     <div className="pos-omni" dir="rtl">
       {showJagged && <JaggedEdge position="top" />}
       <div
         className={`pos-receipt${flatEdges ? " pos-receipt--flat" : ""}`}
         data-testid="receipt-paper"
-        data-paper-noise={paperNoise ? "" : undefined}
+        data-paper-noise={showNoise ? "" : undefined}
       >
         {children}
       </div>
