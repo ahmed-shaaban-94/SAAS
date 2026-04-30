@@ -13,8 +13,9 @@ to a tenant on the platform or enterprise plan — the parent
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
+from datapulse.api.limiter import limiter
 from datapulse.api.routes._pos_routes_deps import SessionDep
 from datapulse.pos.admin_release_service import upsert_release
 from datapulse.pos.models.admin_release import (
@@ -32,9 +33,12 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("pos:update:manage"))],
 )
+@limiter.limit("10/minute")
 def post_desktop_release(
+    request: Request,
     payload: DesktopReleaseCreate,
     session: SessionDep,
 ) -> DesktopReleaseResponse:
     """Idempotent upsert into ``pos.desktop_update_releases``."""
+    _ = request
     return upsert_release(session, payload)
