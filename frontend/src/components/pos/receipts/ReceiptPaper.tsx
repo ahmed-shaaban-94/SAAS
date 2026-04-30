@@ -8,10 +8,13 @@
  */
 
 import type { CSSProperties, ReactNode } from "react";
+import { HeartPulse } from "lucide-react";
 
 // Re-export real implementations (issue #635, C2)
 export { QrBlock } from "./QrBlock";
 export { BarcodeBlock } from "./BarcodeBlock";
+export { JaggedEdge } from "./JaggedEdge";
+import { JaggedEdge } from "./JaggedEdge";
 import type { ReceiptData, ReceiptItem, InsuranceInfo, DeliveryInfo } from "./receipt-mock";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
@@ -30,19 +33,51 @@ function amountToWords(n: number): string {
 
 interface ReceiptPaperProps {
   children: ReactNode;
-  /** Suppress torn-edge pseudo-elements (used for print preview mode). */
+  /**
+   * Print-preview escape hatch — suppresses ALL on-screen-only
+   * decoration (torn edges + paper-noise overlay). When true, the
+   * receipt renders as it will appear on the thermal printer, so
+   * `jaggedEdges` and `paperNoise` are forced off regardless of caller
+   * intent.
+   */
   flatEdges?: boolean;
+  /**
+   * Render zig-zag torn-paper edges above and below the receipt body.
+   * Decorative-only — `data-torn-edge` ensures the print pipeline strips
+   * them (see `@media print` rules in globals.css). Forced off when
+   * `flatEdges` is true. Defaults to false to preserve existing layouts.
+   */
+  jaggedEdges?: boolean;
+  /**
+   * Add a subtle paper-noise overlay on top of the existing thermal
+   * scan-line texture. Stripped at print and forced off when
+   * `flatEdges` is true (so on-screen-print-preview matches the actual
+   * printed output). Defaults to false.
+   */
+  paperNoise?: boolean;
 }
 
-export function ReceiptPaper({ children, flatEdges = false }: ReceiptPaperProps) {
+export function ReceiptPaper({
+  children,
+  flatEdges = false,
+  jaggedEdges = false,
+  paperNoise = false,
+}: ReceiptPaperProps) {
+  // flatEdges kills ALL on-screen-only decoration so it stays a faithful
+  // pre-print preview. Both jaggedEdges and paperNoise honor it.
+  const showJagged = jaggedEdges && !flatEdges;
+  const showNoise = paperNoise && !flatEdges;
   return (
     <div className="pos-omni" dir="rtl">
+      {showJagged && <JaggedEdge position="top" />}
       <div
         className={`pos-receipt${flatEdges ? " pos-receipt--flat" : ""}`}
         data-testid="receipt-paper"
+        data-paper-noise={showNoise ? "" : undefined}
       >
         {children}
       </div>
+      {showJagged && <JaggedEdge position="bottom" />}
     </div>
   );
 }
@@ -52,25 +87,53 @@ export function ReceiptPaper({ children, flatEdges = false }: ReceiptPaperProps)
 interface BrandBlockProps {
   siteNameAr: string;
   siteAddress?: string;
+  /**
+   * Header glyph style. `"monogram"` (default) renders the legacy "DP"
+   * outlined badge — preserves all existing receipt printouts.
+   * `"heartpulse"` renders a solid black circle with a HeartPulse glyph
+   * (Gemini receipt POV variant). Both are decorative; the brand
+   * wordmark beside them carries the accessible name.
+   */
+  iconVariant?: "monogram" | "heartpulse";
 }
 
-export function BrandBlock({ siteNameAr, siteAddress }: BrandBlockProps) {
+export function BrandBlock({
+  siteNameAr,
+  siteAddress,
+  iconVariant = "monogram",
+}: BrandBlockProps) {
   return (
     <div className="mb-3 pb-3" style={{ borderBottom: "1px dashed var(--pos-paper-ink-2)" }}>
       <div className="flex items-center justify-center gap-2 mb-1">
-        <div
-          className="flex h-[38px] w-[38px] items-center justify-center"
-          style={{
-            border: "2px solid var(--pos-paper-ink)",
-            borderRadius: 10,
-            fontSize: 14,
-            fontWeight: 900,
-            fontFamily: "var(--font-jetbrains-mono, monospace)",
-          }}
-          aria-hidden="true"
-        >
-          DP
-        </div>
+        {iconVariant === "monogram" ? (
+          <div
+            data-testid="brand-icon-monogram"
+            className="flex h-[38px] w-[38px] items-center justify-center"
+            style={{
+              border: "2px solid var(--pos-paper-ink)",
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 900,
+              fontFamily: "var(--font-jetbrains-mono, monospace)",
+            }}
+            aria-hidden="true"
+          >
+            DP
+          </div>
+        ) : (
+          <div
+            data-testid="brand-icon-heartpulse"
+            className="flex h-[38px] w-[38px] items-center justify-center"
+            style={{
+              background: "var(--pos-paper-ink)",
+              color: "var(--pos-paper)",
+              borderRadius: "50%",
+            }}
+            aria-hidden="true"
+          >
+            <HeartPulse size={20} />
+          </div>
+        )}
         <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: "0.04em" }}>
           DataPulse Omni
         </span>
