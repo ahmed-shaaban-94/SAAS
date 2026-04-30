@@ -318,14 +318,39 @@ export default function PosTerminalPage() {
   const handleCheckout = useCallback(async () => {
     if (!terminal || items.length === 0 || grandTotal <= 0) return;
     try {
-      let txnId = activeTransactionId;
-      if (!txnId) {
-        const txn = await checkout.createTransaction({
-          terminal_id: terminal.id,
-          site_code: terminal.site_code,
+      // Always mint a fresh draft transaction at Charge-time. The cart
+      // context is React-only state and is only flushed to the backend
+      // here, so reusing a previous activeTransactionId would re-POST
+      // items that were already synced to it on a prior failed attempt.
+      // A few orphaned empty drafts on the backend is cheaper than
+      // double-billed items in the receipt.
+      const txn = await checkout.createTransaction({
+        terminal_id: terminal.id,
+        site_code: terminal.site_code,
+      });
+      const txnId = txn.id;
+      setActiveTransactionId(txnId);
+      // Bulk-sync the client-side cart to the new backend transaction
+      // before /checkout fires. Without this loop the backend draft txn
+      // is empty and `/checkout` would 400 with "Transaction N has no
+      // items to check out". See
+      // docs/brain/incidents/2026-04-30-charge-empty-transaction.md.
+      // We POST sequentially (not Promise.all) because the backend
+      // rejects concurrent /items writes to the same draft with a
+      // row-level lock contention error. Sequential keeps semantics
+      // simple and matches the cashier's mental model (lines were added
+      // one at a time).
+      for (const cartLine of items) {
+        await checkout.addItem(txnId, {
+          drug_code: cartLine.drug_code,
+          drug_name: cartLine.drug_name,
+          batch_number: cartLine.batch_number ?? undefined,
+          expiry_date: cartLine.expiry_date ?? undefined,
+          quantity: cartLine.quantity,
+          unit_price: cartLine.unit_price,
+          discount: cartLine.discount,
+          is_controlled: cartLine.is_controlled,
         });
-        txnId = txn.id;
-        setActiveTransactionId(txnId);
       }
       // Hand off the active transaction + selected payment method to
       // /checkout. The applied cart discount (voucher OR promotion) is
@@ -347,9 +372,8 @@ export default function PosTerminalPage() {
     }
   }, [
     terminal,
-    items.length,
+    items,
     grandTotal,
-    activeTransactionId,
     checkout,
     activePayment,
     insuranceNumber,
