@@ -7,6 +7,7 @@
 > - [Postmortem template](ops/postmortem-template.md) — blameless write-up after P0/P1
 > - [DR strategy](disaster-recovery.md) + [DR drill](ops/dr-drill.md) — what we back up + how we rehearse
 > - [Key rotation](ops/key-rotation.md) — cadence + runbook per credential
+> - [POS Desktop update verification](ops/pos-desktop-update-verify.md) — confirm a cashier got the latest installer + diagnose failures
 
 ---
 
