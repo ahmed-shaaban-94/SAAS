@@ -29,6 +29,7 @@ from fastapi import APIRouter, Depends, Request
 from datapulse.api.auth import get_current_user
 from datapulse.api.limiter import limiter
 from datapulse.api.routes import (
+    _pos_admin_releases,
     _pos_catalog,
     _pos_clinical,
     _pos_customer_lookup,
@@ -100,6 +101,7 @@ for _sub in (
     _pos_offline,
     _pos_delivery,
     _pos_updates,
+    _pos_admin_releases,
 ):
     router.include_router(_sub.router)
 
