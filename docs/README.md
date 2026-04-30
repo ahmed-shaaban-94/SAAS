@@ -4,21 +4,38 @@
 
 ```
 docs/
-├── README.md               ← You are here
-├── plans/                   # Project plans (organized by phase)
-│   ├── README.md            #   Master index with navigation
-│   ├── phase-1-data-pipeline/
-│   ├── phase-2-automation/
-│   ├── phase-4-public-website/
-│   └── validation-and-debugging/
-├── reports/                 # Project reports, audits, reviews
-├── assets/                  # Presentations, diagrams
-└── archive/                 # Historical planning documents
+├── README.md                  ← You are here
+├── ARCHITECTURE.md            # System architecture (Mermaid diagrams, ERD, deployment)
+├── RUNBOOK.md                 # Operations procedures
+├── CLAUDE_REFERENCE.md        # Tech stack, directory tree, schemas, agents, roadmap
+├── PLATFORM_MATRIX.md         # Authoritative surface/platform status
+│
+├── plans/                     # Project plans
+│   ├── README.md              #   Master index
+│   ├── active/                #   Active / in-flight plans
+│   ├── sprints/               #   Dated sprint plans
+│   ├── specs/                 #   Design specifications
+│   ├── future/                #   Future phase roadmap (Phase 5–10)
+│   └── completed/             #   Historical plans (and audits/ codename plans)
+│
+├── audit/                     # Codebase audits (project, bronze, silver, calculation)
+├── reports/                   # Reviews, analyses, post-mortems
+├── ops/                       # Operations runbooks (oncall, key rotation, DR drill)
+├── adr/                       # Architecture Decision Records
+├── design/                    # UX/UI designs (POS terminal, POS v9)
+├── team-configs/              # Per-role CLAUDE.md configs
+├── pharma-expansion/          # Pharma vertical expansion notes
+├── brain/                     # Obsidian vault (decisions, incidents, sessions)
+├── CONVENTIONS/               # Engineering conventions
+└── assets/                    # Presentations, diagrams
 ```
 
 ## Quick Links
 
-- **[Plans Index](./plans/)** — All phase plans with sub-phase breakdowns
-- **[Reports](./reports/)** — Project reviews, security audits, post-mortems
-- **[CLAUDE.md](../CLAUDE.md)** — Full technical reference
+- **[Plans Index](./plans/README.md)** — All active, sprint, future, and completed plans
+- **[Audits](./audit/)** — Project, bronze, silver, calculation audits
+- **[Reports](./reports/)** — Project reviews, post-mortems, deep analyses
+- **[ADR](./adr/)** — Architecture decision records
+- **[Ops](./ops/)** — Disaster recovery, on-call, key rotation
+- **[CLAUDE.md](../CLAUDE.md)** — Project rules and entry point
 - **[CONTRIBUTING.md](../CONTRIBUTING.md)** — Development guide

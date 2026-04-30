@@ -1,7 +1,7 @@
 # DataPulse Implementation Plan (Graph-Validated)
 
 > **Date:** 2026-04-10 | **Validated with:** DataPulse Graph MCP (`dp_impact`, `dp_context`, `dp_query`)
-> **Companion report:** `docs/DEEP_ANALYSIS_REPORT.md`
+> **Companion report:** `docs/reports/deep-analysis-report.md`
 
 ---
 

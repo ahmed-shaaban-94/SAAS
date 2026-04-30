@@ -14,7 +14,7 @@
  *
  * The updater emits events to the renderer via `mainWindow.webContents.send`.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §2.4.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §2.4.
  */
 
 import { autoUpdater } from "electron-updater";

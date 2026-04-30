@@ -8,7 +8,7 @@
  * the design spec (§3.2) and provides a home for future HID scanners that
  * require a raw USB channel (node-hid) rather than keyboard emulation.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §5.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §5.
  */
 
 export interface ScannerAdapter {

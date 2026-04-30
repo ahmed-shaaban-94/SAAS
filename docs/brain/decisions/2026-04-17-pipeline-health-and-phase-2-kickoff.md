@@ -8,10 +8,10 @@
 
 DataPulse pivoted today from "broad catalog of capabilities" posture toward a **narrower, sharper pharma operating product**. The `MASTER_CONVERSATION_REPORT.md` (a CEO + designer + manager joint diagnosis) landed and was translated into concrete shippable work:
 
-1. A **Strategic Lever filter** — every future PR must declare which of four levers it moves: **clarity / trust / activation / monetization**. Enforced via PR template. Labels created. `docs/ROADMAP_FILTER.md` codifies it.
+1. A **Strategic Lever filter** — every future PR must declare which of four levers it moves: **clarity / trust / activation / monetization**. Enforced via PR template. Labels created. `docs/plans/active/roadmap-filter.md` codifies it.
 2. The top-nav was **narrowed**: "Data Quality" → "Pipeline Health" (reframed around freshness, completeness, trust), and "Data Lineage" was **demoted** out of primary nav into an admin/debug surface at `/lineage`.
 3. An **API contract bug** that had been silently breaking the Pipeline Health run-detail panel was fixed. The backend returned `{items, total}` while the web hook expected `{run_id, checks, total_checks, passed, failed, warned}`. Flagged in the master report; now resolved with a new `QualityRunDetail` Pydantic model.
-4. A **Phase 2 Golden Path sprint** was planned (`docs/superpowers/plans/2026-04-17-phase2-golden-path.md`) with success metric **TTFI < 5 minutes** and a 7-task backlog (#399–#405) tracked under epic #398.
+4. A **Phase 2 Golden Path sprint** was planned (`docs/plans/sprints/2026-04-17-phase2-golden-path.md`) with success metric **TTFI < 5 minutes** and a 7-task backlog (#399–#405) tracked under epic #398.
 
 ## Why
 
@@ -53,7 +53,7 @@ Captured in: [[docs/brain/incidents]] (follow-up). Also worth a `global-lessons.
 
 ## Next session entry point
 
-Start with `docs/superpowers/plans/2026-04-17-phase2-golden-path.md` and [[issue #399]]. The self-contained kickoff prompt lives in this decision note's sibling conversation — if lost, regenerate from the plan doc. Task 0 (baseline TTFI) has zero dependencies and is the cleanest first move.
+Start with `docs/plans/sprints/2026-04-17-phase2-golden-path.md` and [[issue #399]]. The self-contained kickoff prompt lives in this decision note's sibling conversation — if lost, regenerate from the plan doc. Task 0 (baseline TTFI) has zero dependencies and is the cleanest first move.
 
 ## Linked work
 

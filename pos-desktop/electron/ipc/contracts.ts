@@ -11,7 +11,7 @@
  * stronger runtime validation. For now the canonical TypeScript types are
  * the source of truth.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
  */
 
 // ─────────────────────────────────────────────────────────────

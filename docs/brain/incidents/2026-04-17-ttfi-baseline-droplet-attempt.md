@@ -2,7 +2,7 @@
 
 **Tags:** [[phase-2]] [[deploy]] [[testing]] [[droplet]]
 **Parent issue:** [#399](https://github.com/ahmed-shaaban-94/Data-Pulse/issues/399)
-**Related plan:** [`docs/superpowers/plans/2026-04-17-phase2-followups.md`](../../superpowers/plans/2026-04-17-phase2-followups.md#follow-up-1--record-the-ttfi-baseline-on-the-droplet)
+**Related plan:** [`docs/plans/sprints/2026-04-17-phase2-followups.md`](../../superpowers/plans/2026-04-17-phase2-followups.md#follow-up-1--record-the-ttfi-baseline-on-the-droplet)
 **Status:** Attempted, pivoted. New follow-up queued.
 
 ## What was attempted

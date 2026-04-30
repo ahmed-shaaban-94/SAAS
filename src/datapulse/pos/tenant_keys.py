@@ -8,7 +8,7 @@ Keys rotate daily. Each key stays valid for verification for
 ``KEY_ROTATION_INTERVAL + KEY_OVERLAP_WINDOW`` so clients on brief offline
 stints can still verify grants signed before the last rotation.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §8.8.2.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §8.8.2.
 """
 
 from __future__ import annotations

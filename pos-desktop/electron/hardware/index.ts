@@ -4,7 +4,7 @@
  * Real mode requires `printer_interface` and optionally `printer_type` to be
  * set in the SQLite settings table before switching to `hardware_mode=real`.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §5.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §5.
  */
 
 import {

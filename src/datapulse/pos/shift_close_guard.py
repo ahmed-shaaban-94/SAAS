@@ -11,7 +11,7 @@ Close is a joint client + server invariant:
 Every outcome (accepted/rejected_client/rejected_server) is recorded in
 ``pos.shifts_close_attempts`` for forensic audit.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §3.6.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §3.6.
 """
 
 from __future__ import annotations

@@ -9,7 +9,7 @@
  *
  * Printer type comes from `printer_type` (default: "EPSON").
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §5.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §5.
  */
 
 import {

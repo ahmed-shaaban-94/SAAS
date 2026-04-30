@@ -4,7 +4,7 @@
 -- `app.getPath('userData')/pos.db`. Pragmas (set in connection.ts):
 --   journal_mode=WAL, foreign_keys=ON, synchronous=NORMAL.
 --
--- Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §4.2.
+-- Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §4.2.
 --
 -- All financial values stored as TEXT (decimal.js string) — never REAL.
 -- All timestamps ISO-8601 UTC strings.

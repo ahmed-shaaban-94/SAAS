@@ -12,7 +12,7 @@
  * signing at the HTTP layer via the main process's `net` forwarder
  * (landing in M3).
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
  */
 
 import { ApiError, fetchAPI } from "../api-client";

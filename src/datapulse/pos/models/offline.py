@@ -2,7 +2,7 @@
 offline grants, and override tokens.
 
 These wire together the Electron POS desktop's trust handshake with the
-backend and are defined in ``docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md``.
+backend and are defined in ``docs/plans/specs/2026-04-17-pos-electron-desktop-design.md``.
 """
 
 from __future__ import annotations

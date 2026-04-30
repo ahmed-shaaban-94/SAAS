@@ -8,7 +8,7 @@
  * `real.ts` module implements the same interfaces and the factory in
  * `hardware/index.ts` returns one or the other based on the setting.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §5, §9.3.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §5, §9.3.
  */
 
 import type { ReceiptPayload } from "../ipc/contracts";

@@ -6,7 +6,7 @@
  * gate, Sync Issues UI count). Every section that needs "is this work
  * unresolved?" MUST call `isUnresolved(status)` instead of re-implementing.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §6.1.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §6.1.
  */
 
 import type { Confirmation, QueueStatus } from "../ipc/contracts";

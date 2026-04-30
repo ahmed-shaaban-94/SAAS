@@ -22,7 +22,7 @@ step is no longer theoretical.
   process + preload code
 - `pos-desktop/dist/win-unpacked/resources/nextjs/server.js` — standalone
   Next.js server (loads at `http://localhost:3847/terminal` from the main
-  process per `docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md`)
+  process per `docs/plans/specs/2026-04-17-pos-electron-desktop-design.md`)
 - `pos-desktop/dist/win-unpacked/resources/app.asar.unpacked/` — native modules
   including `better-sqlite3` rebuilt for Electron's Node ABI
 
@@ -86,5 +86,5 @@ IPC to the Next.js renderer resolves and packages.
 
 - PR #444 — M3 finish (hooks, tests, icons, auto-updater config)
 - PR #446 — IPC handler test coverage (0% → 100%)
-- Spec — `docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md`
+- Spec — `docs/plans/specs/2026-04-17-pos-electron-desktop-design.md`
 - Previous milestone — PR #434 M3c real hardware adapters + electron-updater

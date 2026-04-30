@@ -6,7 +6,7 @@
  * Four vertical zones: AttentionQueue (hero) -> KpiStrip -> Evidence rows
  * (RevenueChart + ExpiryHeatmap, then InventoryTable + BranchListRollup)
  * -> DashboardFooterBar. Spec:
- * docs/superpowers/specs/2026-04-21-home-dashboard-action-center-design.md
+ * docs/plans/specs/2026-04-21-home-dashboard-action-center-design.md
  *
  * All data bindings use existing SWR hooks -- no new endpoints.
  * Golden-Path telemetry (#398/#399) retained via trackFirstDashboardView.

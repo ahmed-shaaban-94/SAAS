@@ -68,7 +68,7 @@ Every Phase 2 PR explicitly stated what was **deferred** and why (e.g. remaining
 
 ## What's parked (good-timing follow-ups)
 
-All recorded here, with self-contained kickoff prompts in [`docs/superpowers/plans/2026-04-17-phase2-followups.md`](../../superpowers/plans/2026-04-17-phase2-followups.md):
+All recorded here, with self-contained kickoff prompts in [`docs/plans/sprints/2026-04-17-phase2-followups.md`](../../superpowers/plans/2026-04-17-phase2-followups.md):
 
 1. **Real droplet TTFI baseline runs** — `RUN_TTFI_BASELINE=1 ×5` against the droplet; fill the numbers in `docs/brain/incidents/2026-04-17-ttfi-baseline.md`.
 2. **Richer first-insight fetchers** — `mom_change`, `expiry_risk`, `stock_risk`. Picker + service already accept them; one fetcher per PR.
