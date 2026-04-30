@@ -66,10 +66,10 @@ export function ShiftOpenModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-md">
       <div
         className={cn(
-          "w-full max-w-xs rounded-2xl border border-[var(--pos-line)] bg-[var(--pos-card)] p-6 shadow-2xl",
+          "w-full max-w-xs rounded-3xl border border-[var(--pos-line)] bg-[var(--pos-card)] p-6 shadow-2xl",
         )}
         data-testid="shift-open-modal"
       >

@@ -110,14 +110,14 @@ export function ManagerPinOverrideModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-md"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
       <div
         className={cn(
-          "w-full max-w-xs rounded-2xl bg-[var(--pos-card)] p-6 shadow-2xl",
+          "w-full max-w-xs rounded-3xl bg-[var(--pos-card)] p-6 shadow-2xl",
           "border-2 border-amber-400/60",
         )}
         data-testid="manager-pin-modal"
