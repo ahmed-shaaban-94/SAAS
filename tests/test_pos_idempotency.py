@@ -260,26 +260,30 @@ def test_raise_for_replayed_error_restores_cached_http_status() -> None:
             id="pharmacist",
         ),
         pytest.param(
-            __import__("datapulse.pos.exceptions", fromlist=["WhatsAppDisabledError"])
-            .WhatsAppDisabledError(),
+            __import__(
+                "datapulse.pos.exceptions", fromlist=["WhatsAppDisabledError"]
+            ).WhatsAppDisabledError(),
             503,
             id="whatsapp-disabled",
         ),
         pytest.param(
-            __import__("datapulse.pos.exceptions", fromlist=["WhatsAppDeliveryFailedError"])
-            .WhatsAppDeliveryFailedError("provider down"),
+            __import__(
+                "datapulse.pos.exceptions", fromlist=["WhatsAppDeliveryFailedError"]
+            ).WhatsAppDeliveryFailedError("provider down"),
             502,
             id="whatsapp-delivery",
         ),
         pytest.param(
-            __import__("datapulse.pos.exceptions", fromlist=["PosValidationError"])
-            .PosValidationError("bad"),
+            __import__(
+                "datapulse.pos.exceptions", fromlist=["PosValidationError"]
+            ).PosValidationError("bad"),
             400,
             id="validation",
         ),
         pytest.param(
-            __import__("datapulse.pos.exceptions", fromlist=["PosInternalError"])
-            .PosInternalError("broken"),
+            __import__("datapulse.pos.exceptions", fromlist=["PosInternalError"]).PosInternalError(
+                "broken"
+            ),
             500,
             id="internal",
         ),
