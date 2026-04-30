@@ -32,6 +32,10 @@ const PRODUCTS: PosProductResult[] = Array.from({ length: 9 }, (_, i) => ({
   stock_available: 100,
 }));
 
+// Module-level spy so individual tests can assert addItem invocations.
+// Reset in beforeEach via `addItemCalls.length = 0`.
+const addItemCalls: Array<{ txnId: string; body: unknown }> = [];
+
 function primeHandlers() {
   server.use(
     http.get("*/api/v1/pos/products/search", () => HttpResponse.json(PRODUCTS)),
@@ -54,6 +58,25 @@ function primeHandlers() {
         created_at: "2026-04-19T09:00:00Z",
       }),
     ),
+    // Bulk-sync mock — handleCheckout POSTs every cart line here before
+    // redirecting to /checkout. See docs/brain/incidents/2026-04-30-charge-empty-transaction.md.
+    http.post("*/api/v1/pos/transactions/:txnId/items", async ({ params, request }) => {
+      const body = await request.json();
+      addItemCalls.push({ txnId: String(params.txnId), body });
+      return HttpResponse.json({
+        drug_code: (body as { drug_code: string }).drug_code,
+        drug_name: (body as { drug_name: string }).drug_name,
+        batch_number: null,
+        expiry_date: null,
+        quantity: (body as { quantity: number }).quantity,
+        unit_price: (body as { unit_price: number }).unit_price,
+        discount: (body as { discount?: number }).discount ?? 0,
+        line_total:
+          (body as { unit_price: number }).unit_price *
+          (body as { quantity: number }).quantity,
+        is_controlled: (body as { is_controlled?: boolean }).is_controlled ?? false,
+      });
+    }),
     http.post("*/api/v1/pos/vouchers/validate", async ({ request }) => {
       const body = (await request.json()) as { code: string; cart_subtotal?: number };
       return HttpResponse.json({
@@ -80,6 +103,7 @@ describe("Terminal v2 integration", () => {
   beforeEach(() => {
     // Reset Zustand store so cart state does not leak between tests
     usePosCartStore.setState({ items: [], appliedDiscount: null });
+    addItemCalls.length = 0;
     localStorage.clear();
     localStorage.setItem("pos:active_terminal", JSON.stringify(TERMINAL));
     primeHandlers();
@@ -317,4 +341,51 @@ describe("Terminal v2 integration", () => {
       });
     },
   );
+
+  // Regression — see docs/brain/incidents/2026-04-30-charge-empty-transaction.md.
+  // The cart context is React-only state; before this fix, handleCheckout
+  // minted a draft txn but never POSTed cart items to it, so /checkout
+  // always 400'd with "Transaction N has no items to check out".
+  it("bulk-syncs every cart line to the backend transaction before redirecting to /checkout", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId("quick-pick-1")).toBeInTheDocument());
+
+    // Add three different SKUs to the cart
+    await user.click(screen.getByTestId("quick-pick-1"));
+    await user.click(screen.getByTestId("quick-pick-3"));
+    await user.click(screen.getByTestId("quick-pick-7"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-row-SKU-1")).toBeInTheDocument();
+      expect(screen.getByTestId("cart-row-SKU-3")).toBeInTheDocument();
+      expect(screen.getByTestId("cart-row-SKU-7")).toBeInTheDocument();
+    });
+
+    // Before Charge: no /items POSTs yet — cart is client-only state.
+    expect(addItemCalls).toHaveLength(0);
+
+    await user.click(screen.getByTestId("start-checkout-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("checkout-confirm-modal")).toBeInTheDocument(),
+    );
+    await user.click(screen.getByTestId("charge-button"));
+
+    // After Charge: every cart line was POSTed to /transactions/{id}/items.
+    await waitFor(() => {
+      expect(addItemCalls).toHaveLength(3);
+    });
+    const codes = addItemCalls.map(
+      (c) => (c.body as { drug_code: string }).drug_code,
+    );
+    expect(codes).toEqual(["SKU-1", "SKU-3", "SKU-7"]);
+    // All three POSTs target the freshly minted draft (id 1001).
+    expect(addItemCalls.every((c) => c.txnId === "1001")).toBe(true);
+
+    // Pending checkout payload still hands off the same txn id.
+    const stored = localStorage.getItem("pos:pending_checkout");
+    expect(stored).toBeTruthy();
+    expect(JSON.parse(stored as string).transactionId).toBe(1001);
+  });
 });

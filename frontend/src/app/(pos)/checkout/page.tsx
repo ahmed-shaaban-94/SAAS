@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-bridge";
-import { ArrowLeft, FileText, Loader2, Printer, SkipForward } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, Loader2, Printer, SkipForward } from "lucide-react";
 import { PaymentPanel } from "@/components/pos/PaymentPanel";
 import { InvoiceModal } from "@/components/pos/InvoiceModal";
 import { OfflineBadge } from "@/components/pos/OfflineBadge";
@@ -227,8 +227,8 @@ export default function CheckoutPage() {
 
   if (checkout.error) {
     return (
-      <div className="pos-root flex min-h-screen flex-col">
-        <header className="flex h-14 items-center border-b border-border bg-surface px-4">
+      <div className="pos-root flex min-h-screen flex-col bg-[var(--pos-bg)]">
+        <header className="flex h-14 items-center border-b border-[var(--pos-line)] bg-[var(--pos-card)] px-4">
           <button
             type="button"
             onClick={() => router.back()}
@@ -238,16 +238,40 @@ export default function CheckoutPage() {
             Back
           </button>
         </header>
-        <main className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
-          <p className="text-base font-medium text-destructive">Checkout Failed</p>
-          <p className="text-sm text-text-secondary">{checkout.error}</p>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground"
+        <main className="flex flex-1 items-center justify-center p-6">
+          <div
+            data-testid="checkout-error-card"
+            className="w-full max-w-md rounded-3xl border border-rose-400/30 bg-[var(--pos-card)] p-6 shadow-2xl"
           >
-            Try Again
-          </button>
+            <div className="mb-5 flex flex-col items-center gap-3 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/15">
+                <AlertTriangle className="h-7 w-7 text-rose-400" aria-hidden="true" />
+              </div>
+              <h2 className="text-lg font-bold text-text-primary">Checkout Failed</h2>
+              <p
+                className="break-words text-center text-sm text-text-secondary"
+                data-testid="checkout-error-detail"
+              >
+                {checkout.error}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => router.push("/terminal")}
+                className="flex-1 rounded-xl border border-[var(--pos-line)] bg-transparent px-4 py-3 text-sm font-semibold text-text-secondary hover:bg-white/[0.04]"
+              >
+                Back to terminal
+              </button>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="flex-[1.5] rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
         </main>
       </div>
     );
