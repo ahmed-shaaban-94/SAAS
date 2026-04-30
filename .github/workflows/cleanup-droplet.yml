@@ -1,0 +1,109 @@
+name: Cleanup Droplet (Docker images, build cache, env backups)
+
+# Removes unused Docker images, dangling layers, build cache, and stale
+# .env.bak.* files from the production Droplet. Safe to run while the
+# stack is up — `docker image prune` only touches images NOT referenced
+# by any container, and `docker builder prune` only clears the BuildKit
+# cache (not running container layers).
+#
+# Triggered:
+#   - Manually via the GitHub UI (workflow_dispatch)
+#   - On a schedule (Sunday 04:00 UTC = 06:00 Africa/Cairo)
+#   - From the weekly Claude routine via `gh workflow run`
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview only — list what would be removed without removing it'
+        required: false
+        default: 'false'
+        type: boolean
+  schedule:
+    - cron: '0 4 * * 0'  # Sundays 04:00 UTC
+
+concurrency:
+  group: cleanup-droplet
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Cleanup Droplet
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run cleanup via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          envs: DRY_RUN
+          command_timeout: 8m
+          script: |
+            set -e
+            DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+            echo "=== Droplet Cleanup ($([ "$DRY_RUN" = "true" ] && echo DRY-RUN || echo REAL)) ==="
+            echo
+
+            BEFORE_DISK=$(df -h / | tail -1 | awk '{print $4}')
+            BEFORE_DOCKER=$(docker system df --format 'table {{.Type}}\t{{.TotalCount}}\t{{.Active}}\t{{.Size}}\t{{.Reclaimable}}')
+            echo "=== Disk free before ==="
+            echo "$BEFORE_DISK"
+            echo
+            echo "=== Docker disk usage before ==="
+            echo "$BEFORE_DOCKER"
+            echo
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "=== DRY RUN — would remove ==="
+              echo "--- Dangling images ---"
+              docker images -f dangling=true
+              echo
+              echo "--- All unused images (not referenced by any container) ---"
+              docker image ls --filter dangling=false --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}}'
+              echo
+              echo "--- BuildKit cache ---"
+              docker builder du 2>/dev/null || docker builder prune --filter until=24h --force --dry-run 2>/dev/null || echo "(builder dry-run not supported on this docker version)"
+              echo
+              echo "--- .env.bak.* files in /opt/datapulse ---"
+              ls -lh /opt/datapulse/.env.bak.* 2>/dev/null || echo "(none)"
+              echo
+              echo "=== END DRY RUN ==="
+              exit 0
+            fi
+
+            echo "=== Pruning dangling and unused images ==="
+            # -a removes all images not in use by a running container.
+            # We DO NOT use --volumes (would clear named volumes — db data!).
+            docker image prune -af --filter "until=72h" 2>&1 | tail -20
+
+            echo
+            echo "=== Pruning stopped containers older than 72h ==="
+            docker container prune -f --filter "until=72h" 2>&1 | tail -10
+
+            echo
+            echo "=== Pruning BuildKit cache older than 72h ==="
+            docker builder prune -af --filter "until=72h" 2>&1 | tail -10
+
+            echo
+            echo "=== Pruning unused networks ==="
+            docker network prune -f --filter "until=72h" 2>&1 | tail -5
+
+            echo
+            echo "=== Removing .env.bak.* older than 7 days ==="
+            cd /opt/datapulse
+            find . -maxdepth 1 -name '.env.bak.*' -mtime +7 -print -delete 2>&1 | tail -20
+
+            echo
+            echo "=== Disk free after ==="
+            df -h /
+            echo
+            echo "=== Docker disk usage after ==="
+            docker system df --format 'table {{.Type}}\t{{.TotalCount}}\t{{.Active}}\t{{.Size}}\t{{.Reclaimable}}'
+            echo
+            echo "=== Running containers (sanity check) ==="
+            docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -i datapulse || true
+
+            echo
+            echo "=== Cleanup complete ==="

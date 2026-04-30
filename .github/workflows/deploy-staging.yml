@@ -182,6 +182,34 @@ jobs:
               exit 1
             fi
 
+            # Self-heal: a previous failed deploy may have left containers
+            # in `Created` / `Exited` state (recreate started but never
+            # finished). Compose then fails with "container name already
+            # in use" on the next --force-recreate. Force-remove any
+            # datapulse-* container that is NOT currently running, before
+            # we re-up. Running containers are untouched — compose's
+            # --force-recreate handles them.
+            echo "=== Self-heal: removing stuck non-running containers ==="
+            STUCK=$(docker ps -a \
+              --filter 'name=datapulse-' \
+              --filter 'status=created' \
+              --format '{{.Names}}')
+            STUCK_EXITED=$(docker ps -a \
+              --filter 'name=datapulse-' \
+              --filter 'status=exited' \
+              --format '{{.Names}}')
+            STUCK_DEAD=$(docker ps -a \
+              --filter 'name=datapulse-' \
+              --filter 'status=dead' \
+              --format '{{.Names}}')
+            ALL_STUCK=$(echo "$STUCK $STUCK_EXITED $STUCK_DEAD" | tr ' ' '\n' | grep -v '^$' | sort -u)
+            if [ -n "$ALL_STUCK" ]; then
+              echo "Removing: $(echo "$ALL_STUCK" | tr '\n' ' ')"
+              echo "$ALL_STUCK" | xargs -r docker rm -f 2>&1 | tail -10 || true
+            else
+              echo "No stuck containers — nothing to clean"
+            fi
+
             # Deploy in two phases:
             # 1. Bring up infra (postgres, redis) normally — no recreate needed
             # 2. Force-recreate app services (api, frontend, nginx) so nginx
