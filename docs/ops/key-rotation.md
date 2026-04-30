@@ -24,6 +24,8 @@
 | DigitalOcean API token | 180 days | Tech lead | Team departure |
 | Admin `API_KEY` (service-to-service) | 90 days | Tech lead | Any |
 | `PIPELINE_WEBHOOK_SECRET` | 180 days | Tech lead | Any |
+| `POS_ADMIN_TOKEN` (workflow → `/api/v1/pos/admin/desktop-releases`) | 180 days | Tech lead | Any team departure with `pos:update:manage` |
+| Windows code-signing cert (`CSC_LINK` + `CSC_KEY_PASSWORD`) | At expiry (typically 1y from CA) | Tech lead | CA breach notice; private key suspected leaked |
 | Backup encryption passphrase | Never (rotating invalidates old backups) | — | Only if confirmed compromised — then re-encrypt all retained backups |
 
 ## General rotation pattern
@@ -101,6 +103,29 @@ If a route is wired to accept either, flip `<NAME>_NEXT` → `<NAME>` and drop t
 ### DigitalOcean API token
 
 Console → API → Tokens → generate new → revoke old once all GitHub workflows using it run green on the new token. No dual-accept needed — DO tokens are independent.
+
+### POS admin token (`POS_ADMIN_TOKEN`)
+
+Used by `.github/workflows/pos-desktop-release.yml` to call `POST /api/v1/pos/admin/desktop-releases` after each successful publish, replacing the per-release SQL migration pattern (#802).
+
+1. Mint a fresh service-account Bearer for a tenant on the platform/enterprise plan with the `pos:update:manage` permission. (RBAC console → Service Accounts → New → grant `pos:update:manage`.)
+2. Update `POS_ADMIN_TOKEN` in repo Settings → Secrets → Actions.
+3. Re-trigger any pending pos-desktop tag build, or push a throwaway tag like `pos-desktop-v0.0.0-test` on a branch — verify the "Register rollout in DB" step succeeds and the row appears in `pos.desktop_update_releases`.
+4. Revoke the old service-account token in the RBAC console.
+
+If the secret is unset, the auto-register step is a no-op with a workflow notice rather than a hard fail — the GitHub Release still publishes, but the rollout row is not written and cashiers will not see the update until it is registered manually (legacy migration path).
+
+### Windows code-signing cert (`CSC_LINK` + `CSC_KEY_PASSWORD`)
+
+Used by electron-builder to sign the POS desktop installer (#476). When both secrets are present the workflow runs `Get-AuthenticodeSignature` to verify the signature is `Valid` before publishing.
+
+1. Obtain the renewed `.pfx` from the signing CA (DigiCert / Sectigo / etc.) before the existing cert's expiry.
+2. Base64-encode without line wrapping: `base64 -w 0 datapulse-pos.pfx > datapulse-pos.pfx.b64` (Linux) or `[Convert]::ToBase64String((Get-Content -Encoding Byte datapulse-pos.pfx))` (PowerShell).
+3. Update `CSC_LINK` (the base64 string) and `CSC_KEY_PASSWORD` in repo Settings → Secrets → Actions.
+4. Push a throwaway tag and confirm the "Verify installer signature" step reports `Status: Valid` and the new `SignerCertificate.NotAfter` date.
+5. Securely destroy the old `.pfx` (shred / wipe). Note the old certificate's serial number in the rotation record so any binary signed with the old cert can still be cross-referenced.
+
+If signing secrets are missing, the workflow falls back to an unsigned installer with a loud notice. SmartScreen reputation does not transfer between certs — expect cashiers to see warnings on the first install run after every rotation until reputation accrues again.
 
 ## Verification after any rotation
 
