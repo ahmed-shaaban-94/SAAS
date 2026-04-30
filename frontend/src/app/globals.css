@@ -1109,6 +1109,53 @@ html {
   --pos-paper-rule: #bbbbbb;
   --pos-paper-ribbon-from: #0b1a29;
   --pos-paper-ribbon-to: #163452;
+
+  /* ── Macro-visual tokens (Gemini POV port — 2026-04-30) ── */
+  --pos-accent-from: #6366f1;
+  --pos-accent-to: #9333ea;
+  --pos-accent-fg: #a5b4fc;
+  --pos-glow-indigo: 99 102 241;
+  --pos-glow-purple: 168 85 247;
+  --pos-success-from: #10b981;
+  --pos-success-to: #14b8a6;
+  --pos-tab-active-border: #6366f1;
+  --pos-stock-low: #f43f5e;
+  --pos-stock-ok: #10b981;
+}
+
+/* Ambient indigo+purple background blobs — Gemini POV port.
+   Mount once on terminal <main>. Parent must have position:relative + overflow:hidden.
+   Visible in both light + dark, but stronger in dark mode. */
+.pos-glow-halo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  transition: opacity 600ms ease;
+  z-index: 0;
+}
+.dark .pos-glow-halo,
+.pos-root .pos-glow-halo {
+  opacity: 0.20;
+}
+.pos-glow-halo::before,
+.pos-glow-halo::after {
+  content: "";
+  position: absolute;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 9999px;
+  filter: blur(120px);
+}
+.pos-glow-halo::before {
+  top: -10%;
+  inset-inline-end: -5%;
+  background: rgb(var(--pos-glow-indigo));
+}
+.pos-glow-halo::after {
+  bottom: -10%;
+  inset-inline-start: -5%;
+  background: rgb(var(--pos-glow-purple));
 }
 
 /* Giant italic display total — Terminal v2 Totals Hero */
