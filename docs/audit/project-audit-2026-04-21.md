@@ -108,7 +108,7 @@ Router registration, middleware wiring, exception handlers, and startup hooks al
 ### 9. Orphan stacks at repo root
 - `keycloak/realm-export.json` — project moved to Auth0; leftover config
 - `flutter_app/` + `flutter_instructions.md` — coexists with an active Kotlin `android/` app; no doc clarifies which is canonical
-- `LANGRAPH ai light plan.md` at repo root — belongs under `docs/plans/` or `docs/superpowers/plans/`
+- `LANGRAPH ai light plan.md` at repo root — belongs under `docs/plans/` or `docs/plans/sprints/`
 
 Decide each: archive, delete, or document.
 

@@ -7,7 +7,7 @@
 <!--
 Which of the four strategic levers does this PR move? Pick at least one.
 If none apply, explain why this work is still worth shipping now.
-See docs/superpowers/specs/MASTER_CONVERSATION_REPORT.md for the filter.
+See docs/plans/specs/MASTER_CONVERSATION_REPORT.md for the filter.
 -->
 
 - [ ] **Clarity** — narrows product story, sharpens positioning, reduces surface

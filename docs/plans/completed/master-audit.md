@@ -789,7 +789,7 @@ Code comments, error messages quality
 | Verify | If Missing, Implement | Where to Look |
 |--------|----------------------|---------------|
 | H7: Tenant RLS policies exist? | Add tenant-scoped USING clauses | `migrations/` — check all RLS policies |
-| DR runbook exists? | Create step-by-step procedures | `docs/disaster-recovery.md` |
+| DR runbook exists? | Create step-by-step procedures | `docs/ops/disaster-recovery.md` |
 | M12: Architecture docs current? | Update or create | `docs/ARCHITECTURE.md` |
 | Tenant provisioning API? | Add self-serve endpoint | `src/datapulse/api/routes/` |
 | Per-tenant rate limiting? | Implement tier-based limits | `src/datapulse/api/limiter.py` |

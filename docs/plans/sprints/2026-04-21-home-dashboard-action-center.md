@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 14 + TypeScript + Tailwind + Recharts + SWR + Vitest + Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-04-21-home-dashboard-action-center-design.md`
+**Spec:** `docs/plans/specs/2026-04-21-home-dashboard-action-center-design.md`
 
 ---
 
@@ -1453,7 +1453,7 @@ Overwrite `frontend/src/app/dashboard/page.tsx`:
  * Four vertical zones: AttentionQueue (hero) -> KpiStrip -> Evidence rows
  * (RevenueChart + ExpiryHeatmap, then InventoryTable + BranchListRollup)
  * -> DashboardFooterBar. Spec:
- * docs/superpowers/specs/2026-04-21-home-dashboard-action-center-design.md
+ * docs/plans/specs/2026-04-21-home-dashboard-action-center-design.md
  *
  * All data bindings use existing SWR hooks — no new endpoints.
  * Golden-Path telemetry (#398/#399) retained via trackFirstDashboardView.
@@ -2056,7 +2056,7 @@ git commit -am "chore(frontend): post-verification fixups for dashboard redesign
 
 ---
 
-**Plan complete and saved to `docs/superpowers/plans/2026-04-21-home-dashboard-action-center.md`. Two execution options:**
+**Plan complete and saved to `docs/plans/sprints/2026-04-21-home-dashboard-action-center.md`. Two execution options:**
 
 **1. Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration.
 

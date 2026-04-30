@@ -30,8 +30,8 @@ offline clients that haven't migrated; if both ``applied_discount`` and
 Any discount-validation failure raises ``HTTPException(400)`` with a
 ``voucher_*`` or ``promotion_*`` detail string, rolling back the commit.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §3
-and docs/superpowers/plans/2026-04-19-pos-promotions-phase-2-admin-managed.md.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §3
+and docs/plans/sprints/2026-04-19-pos-promotions-phase-2-admin-managed.md.
 """
 
 from __future__ import annotations

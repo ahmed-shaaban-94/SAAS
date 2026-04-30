@@ -19,15 +19,15 @@ You are continuing work on DataPulse, a pharma-first sales and operations analyt
 Read in order before writing any code:
 1. `CLAUDE.md` (project conventions, tooling, security)
 2. `docs/brain/decisions/2026-04-17-phase-2-golden-path-shipped.md` (what shipped + what was parked + engineering lessons)
-3. `docs/superpowers/plans/2026-04-17-phase2-golden-path.md` (original plan — for reference only; the sprint is done)
-4. `docs/ROADMAP_FILTER.md` (the four-lever filter every PR must tick)
+3. `docs/plans/sprints/2026-04-17-phase2-golden-path.md` (original plan — for reference only; the sprint is done)
+4. `docs/plans/active/roadmap-filter.md` (the four-lever filter every PR must tick)
 5. `.claude/rules/use-graph-mcp.md` and `.claude/rules/use-second-brain.md` (tooling rules)
 6. `docs/brain/_INDEX.md` (recent session context)
 
 Rules that must hold for every PR:
 - TDD: write failing tests before production code (see `superpowers:test-driven-development`).
 - `superpowers:verification-before-completion` before claiming done — run the actual verification command fresh in the same message as the claim.
-- Every PR body ticks at least one Strategic Lever box per `docs/ROADMAP_FILTER.md`.
+- Every PR body ticks at least one Strategic Lever box per `docs/plans/active/roadmap-filter.md`.
 - Lint + type-check + test suite must be fresh-green locally before pushing. Specifically:
   - `ruff check src/ tests/` exit 0
   - `ruff format --check src/ tests/` exit 0

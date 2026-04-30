@@ -7,7 +7,7 @@
  * electron/ipc/contracts.ts — kept inline so the Next.js build does not
  * need to import from pos-desktop/.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
  */
 
 import { contextBridge, ipcRenderer } from "electron";

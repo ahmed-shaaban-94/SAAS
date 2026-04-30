@@ -9,7 +9,7 @@
  * Interface string is shared with the printer (read from `printer_interface`
  * settings key). Printer type defaults to EPSON.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §5.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §5.
  */
 
 import { ThermalPrinter, PrinterTypes } from "node-thermal-printer";

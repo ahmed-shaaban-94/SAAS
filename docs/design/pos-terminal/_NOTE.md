@@ -33,7 +33,7 @@ to copy-paste the JSX.
 
 ## Planned recreation PRs
 
-The implementation plan lives at `docs/superpowers/plans/2026-04-19-pos-design-recreation.md`
+The implementation plan lives at `docs/plans/sprints/2026-04-19-pos-design-recreation.md`
 (to be written). Short version:
 
 1. Design tokens + Google Fonts + TopBar shell

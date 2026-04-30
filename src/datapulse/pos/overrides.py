@@ -11,7 +11,7 @@ retry) require an ``X-Override-Token`` header carrying a device-signed
    on ``(grant_id, code_id)`` returns 409 ``override_already_consumed``
    and prevents the business write from executing.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §8.8.6.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §8.8.6.
 """
 
 from __future__ import annotations

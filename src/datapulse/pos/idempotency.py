@@ -4,7 +4,7 @@ Retention (168h) strictly exceeds the provisional queue window (72h), so every
 client retry falls inside the server dedupe horizon and double-processing is
 impossible even at the edges.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §6.4.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §6.4.
 """
 
 from __future__ import annotations

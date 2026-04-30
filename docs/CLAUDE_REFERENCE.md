@@ -225,7 +225,7 @@ See `docs/CONVENTIONS/second-brain.md` for when to read/write the vault.
 ## Phase Roadmap
 
 - Phases 1.3–2.8 + The Great Fix + Enhancements 2–3 + Phase 4 = **DONE**.
-- **Phase 2 Golden Path** (in flight): Upload → first-insight in <5 min. Epic #398, tasks #399–#405. Plan: `docs/superpowers/plans/2026-04-17-phase2-golden-path.md`.
+- **Phase 2 Golden Path** (in flight): Upload → first-insight in <5 min. Epic #398, tasks #399–#405. Plan: `docs/plans/sprints/2026-04-17-phase2-golden-path.md`.
 - **Phase 5**: Multi-tenancy & Billing — Stripe subscriptions, usage metering, admin panel [PLANNED]
 - **Phase 6**: Data Sources & Connectors — Google Sheets, MySQL/SQL Server, Shopify, schema mapping [PLANNED]
 - **Phase 7**: Self-Service Analytics — saved views, dashboard builder, scheduled reports, export [PLANNED]

@@ -1,7 +1,7 @@
 # Phase 2 — Golden Path Sprint Plan
 
 > **Lever:** Activation (primary) + Trust (secondary).
-> **Source strategy:** [MASTER_CONVERSATION_REPORT.md §Phase 2](../specs/MASTER_CONVERSATION_REPORT.md) + [ROADMAP_FILTER.md](../../ROADMAP_FILTER.md).
+> **Source strategy:** [MASTER_CONVERSATION_REPORT.md §Phase 2](../specs/MASTER_CONVERSATION_REPORT.md) + [roadmap-filter.md](../active/roadmap-filter.md).
 > **For agentic workers:** Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to execute task-by-task.
 
 **Goal:** Turn the upload → dashboard → "one thing to act on" flow into the unmistakable product heartbeat. A first-time user should go from landing in the app to seeing a pharma-relevant decision cue in under 5 minutes.

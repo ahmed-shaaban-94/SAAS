@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11 + FastAPI + SQLAlchemy 2.0 + pytest · Next.js 14 + TypeScript + Tailwind + next-intl + Vitest + Playwright · PostgreSQL 16.
 
-**Related docs:** Spec at [`docs/superpowers/specs/2026-04-22-egypt-foundation-design.md`](../specs/2026-04-22-egypt-foundation-design.md). GitHub issue #604.
+**Related docs:** Spec at [`docs/plans/specs/2026-04-22-egypt-foundation-design.md`](../specs/2026-04-22-egypt-foundation-design.md). GitHub issue #604.
 
 **Important note:** A pre-implementation codebase probe (2026-04-22) found that `next-intl` is more fully wired than the spec's §2 snapshot claimed — `ar.json` is populated, `dir="rtl"` is live in `layout.tsx`, `/api/locale` cookie-setter exists. PR 4 is consequently smaller than the spec's estimate (3-4 days instead of 5).
 
@@ -152,7 +152,7 @@ git commit -m "feat(migrations): add locale + currency to bronze.tenants (#604-1
 Enabler for the Egypt PMF bundle. Columns default to en-US + USD so
 existing tenants are unaffected. Migration is idempotent (IF NOT EXISTS).
 
-Spec: docs/superpowers/specs/2026-04-22-egypt-foundation-design.md §3.3"
+Spec: docs/plans/specs/2026-04-22-egypt-foundation-design.md §3.3"
 ```
 
 ---

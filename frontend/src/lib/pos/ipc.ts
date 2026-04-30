@@ -13,7 +13,7 @@
  * M2 proper can introduce a shared-types package + copy-build step to
  * remove this duplication.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
  */
 
 // ─────────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@
  * currently-focused element so the cashier can type freely into a
  * search or discount field without accidentally triggering a scan.
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §5.1.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §5.1.
  */
 
 export interface ScannerConfig {

@@ -5,7 +5,7 @@
 -- Dedupes retried mutating POS requests by client-supplied Idempotency-Key.
 -- Retention (168h) strictly exceeds provisional queue window (72h) so every
 -- client retry falls inside the server dedupe horizon. See design spec
--- docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §6.4.
+-- docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §6.4.
 
 CREATE TABLE IF NOT EXISTS pos.idempotency_keys (
     key             TEXT PRIMARY KEY,

@@ -8,7 +8,7 @@ The client refuses to sync against any server that does not advertise
 Tenant state (active terminals, multi-terminal flag) lives at
 ``GET /pos/terminals/active-for-me`` — this document is feature-only.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §6.6.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §6.6.
 """
 
 from __future__ import annotations

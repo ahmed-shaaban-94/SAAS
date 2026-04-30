@@ -84,7 +84,7 @@ Copy numbers from `playwright-report/ttfi-real.json → passes[].events` deltas.
 
 ## Why this matters
 
-TTFI is the one number that says whether a first-time pharma operator can go from "I have a spreadsheet" to "I see a decision" without help. The whole Phase 2 plan ([docs/superpowers/plans/2026-04-17-phase2-golden-path.md](../../superpowers/plans/2026-04-17-phase2-golden-path.md)) optimizes it. Without a baseline recorded _before_ the wizard + first-insight card ship, "we improved the flow" becomes a feeling instead of a number.
+TTFI is the one number that says whether a first-time pharma operator can go from "I have a spreadsheet" to "I see a decision" without help. The whole Phase 2 plan ([docs/plans/sprints/2026-04-17-phase2-golden-path.md](../../superpowers/plans/2026-04-17-phase2-golden-path.md)) optimizes it. Without a baseline recorded _before_ the wizard + first-insight card ship, "we improved the flow" becomes a feeling instead of a number.
 
 Task 6 (#405) will convert this measurement into a CI-enforced assertion (`TTFI < 5 min`). This note is the predecessor.
 

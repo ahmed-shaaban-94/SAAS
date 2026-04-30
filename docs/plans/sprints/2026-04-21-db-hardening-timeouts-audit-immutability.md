@@ -8,7 +8,7 @@
 
 **Tech Stack:** PostgreSQL 16, `psql`, `psycopg2` (in tests), `pytest`, SQLAlchemy (for the reader-role engine fixture).
 
-**Spec:** `docs/superpowers/specs/2026-04-21-db-hardening-timeouts-audit-immutability-design.md`
+**Spec:** `docs/plans/specs/2026-04-21-db-hardening-timeouts-audit-immutability-design.md`
 
 ---
 
@@ -626,7 +626,7 @@ gh pr create --title "feat(db): fortification #1 — role timeouts + audit_log i
 - No application code changes. `deps.py` SET LOCAL still wins per-transaction.
 
 ## Spec
-`docs/superpowers/specs/2026-04-21-db-hardening-timeouts-audit-immutability-design.md`
+`docs/plans/specs/2026-04-21-db-hardening-timeouts-audit-immutability-design.md`
 
 ## Test plan
 - [x] `pytest -m integration tests/test_audit_log_immutability.py tests/test_db_role_timeouts.py -v` — all green

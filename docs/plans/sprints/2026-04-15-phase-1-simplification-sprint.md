@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+, Ruff, pytest, existing SQLAlchemy + FastAPI + Pydantic layout.
 
-**Design reference:** [docs/superpowers/specs/2026-04-15-cleanup-and-brain-obsidian-design.md](../specs/2026-04-15-cleanup-and-brain-obsidian-design.md) §3.
+**Design reference:** [docs/plans/specs/2026-04-15-cleanup-and-brain-obsidian-design.md](../specs/2026-04-15-cleanup-and-brain-obsidian-design.md) §3.
 
 **Graph-validated findings that changed the scope:**
 - `_set_cache` duplication was **already consolidated** into `datapulse/api/cache_helpers.py::set_cache_headers`. The graph index showed stale data. Consolidation task is **removed** from this plan.
@@ -1450,7 +1450,7 @@ preserved via barrel re-exports so no downstream code changes.
 
 ## Design reference
 
-docs/superpowers/specs/2026-04-15-cleanup-and-brain-obsidian-design.md
+docs/plans/specs/2026-04-15-cleanup-and-brain-obsidian-design.md
 
 ## Follow-up (separate PR)
 
@@ -1468,7 +1468,7 @@ Capture the PR URL in the final report. Hand off to the reviewer.
 
 ## Phase 2 note
 
-Once Phase 1 PR merges, write the Phase 2 plan against [docs/superpowers/specs/2026-04-15-cleanup-and-brain-obsidian-design.md](../specs/2026-04-15-cleanup-and-brain-obsidian-design.md) §4 (Brain → Obsidian export CLI). That plan is deliberately deferred so it can reference real post-refactor module names.
+Once Phase 1 PR merges, write the Phase 2 plan against [docs/plans/specs/2026-04-15-cleanup-and-brain-obsidian-design.md](../specs/2026-04-15-cleanup-and-brain-obsidian-design.md) §4 (Brain → Obsidian export CLI). That plan is deliberately deferred so it can reference real post-refactor module names.
 
 ---
 

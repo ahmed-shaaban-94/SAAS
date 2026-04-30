@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 · `cryptography` (Ed25519) · pytest.
 
-**Spec:** `docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md`.
+**Spec:** `docs/plans/specs/2026-04-17-pos-electron-desktop-design.md`.
 
 ---
 

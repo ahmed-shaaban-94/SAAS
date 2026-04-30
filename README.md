@@ -596,8 +596,10 @@ See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 | Document | Description |
 |:---------|:------------|
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System architecture with Mermaid diagrams |
-| [docs/plans/](./docs/plans/) | Phase plans organized by topic |
-| [docs/reports/](./docs/reports/) | Project reviews, audits, and post-mortems |
+| [docs/plans/](./docs/plans/) | Active, sprint, future, and completed plans |
+| [docs/audit/](./docs/audit/) | Codebase audits (project, bronze, silver, calculation) |
+| [docs/reports/](./docs/reports/) | Project reviews, analyses, and post-mortems |
+| [docs/adr/](./docs/adr/) | Architecture Decision Records |
 | [CLAUDE.md](./CLAUDE.md) | Full technical reference |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Development setup and code standards |
 | [SECURITY.md](./SECURITY.md) | Security policy and vulnerability reporting |

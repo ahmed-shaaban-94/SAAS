@@ -28,8 +28,8 @@
 
 ## Key Files
 
-- **Design spec:** `docs/superpowers/specs/2026-04-15-cleanup-and-brain-obsidian-design.md`
-- **Implementation plan:** `docs/superpowers/plans/2026-04-15-phase-1-simplification-sprint.md`
+- **Design spec:** `docs/plans/specs/2026-04-15-cleanup-and-brain-obsidian-design.md`
+- **Implementation plan:** `docs/plans/sprints/2026-04-15-phase-1-simplification-sprint.md`
 - Full step-by-step for every remaining task is in the plan doc.
 
 ## Invariants to Maintain

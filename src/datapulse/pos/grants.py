@@ -12,7 +12,7 @@ M1 keeps plaintexts ephemeral (in-memory during grant issuance) and does
 not persist them server-side; §14.2 hardening backlog proposes AEAD-sealed
 plaintext proof when the product matures toward regulated markets.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §8.8.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §8.8.
 """
 
 from __future__ import annotations

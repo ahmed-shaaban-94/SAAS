@@ -2,7 +2,7 @@
  * Registers all ipcMain.handle() entries that back the ElectronAPI surface.
  * Call once from app.whenReady() after openDb() and createHardware().
  *
- * Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
+ * Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §4.3.
  */
 
 import { ipcMain, app } from "electron";

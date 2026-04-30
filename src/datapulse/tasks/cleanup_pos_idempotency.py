@@ -4,7 +4,7 @@ Run from an ops cron / scheduler entry (n8n workflow, systemd timer, …).
 Safe to run multiple times per day; idempotent — keys with
 ``expires_at < now()`` are deleted.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §6.5.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §6.5.
 """
 
 from __future__ import annotations

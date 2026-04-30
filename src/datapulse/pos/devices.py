@@ -16,7 +16,7 @@ During the deprecation window the verifier prefers v2 when the client sends
 it, falls back to v1 for older pilots, and rejects v1-only requests once
 the tenant's ``pos_fingerprint_v1_deprecated_at`` is in the past.
 
-Design ref: docs/superpowers/specs/2026-04-17-pos-electron-desktop-design.md §8.9.
+Design ref: docs/plans/specs/2026-04-17-pos-electron-desktop-design.md §8.9.
 """
 
 from __future__ import annotations
