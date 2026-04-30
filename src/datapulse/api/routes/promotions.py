@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from datapulse.api.auth import get_current_user
 from datapulse.api.deps import get_promotion_service
 from datapulse.api.limiter import limiter
+from datapulse.api.routes._pos_routes_deps import _tenant_id_of
 from datapulse.billing.pos_guard import require_pos_plan
 from datapulse.logging import get_logger
 from datapulse.pos.models import (
@@ -42,11 +43,6 @@ router = APIRouter(
 
 ServiceDep = Annotated[PromotionService, Depends(get_promotion_service)]
 CurrentUser = Annotated[dict, Depends(get_current_user)]
-
-
-def _tenant_id_of(user: CurrentUser) -> int:
-    """Coerce the JWT ``tenant_id`` claim to int; defaults to 1 in dev."""
-    return int(user.get("tenant_id") or 1)
 
 
 # ---------------------------------------------------------------------------

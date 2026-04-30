@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from datapulse.logging import get_logger
 from datapulse.pos._service_helpers import build_receipt_number, to_decimal
 from datapulse.pos.constants import TransactionStatus
-from datapulse.pos.exceptions import PosError
+from datapulse.pos.exceptions import PosConflictError, PosNotFoundError, PosValidationError
 from datapulse.pos.inventory_contract import StockMovement
 from datapulse.pos.models import CheckoutRequest, CheckoutResponse
 from datapulse.pos.payment import PaymentGateway, get_gateway
@@ -57,22 +57,24 @@ class CheckoutMixin:
         """
         header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
-            raise PosError(
+            raise PosNotFoundError(
+                "transaction_not_found",
                 message=f"Transaction {transaction_id} not found",
-                detail=f"transaction_id={transaction_id}",
             )
         if header["status"] != TransactionStatus.draft.value:
-            raise PosError(
-                message=f"Transaction {transaction_id} is not in draft state "
-                f"(current: {header['status']}). Only draft transactions can be checked out.",
-                detail=f"transaction_id={transaction_id} status={header['status']}",
+            raise PosConflictError(
+                "transaction_not_draft",
+                message=(
+                    f"Transaction {transaction_id} is not in draft state "
+                    f"(current: {header['status']}). Only draft transactions can be checked out."
+                ),
             )
 
         items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
         if not items:
-            raise PosError(
+            raise PosConflictError(
+                "transaction_empty",
                 message=f"Transaction {transaction_id} has no items to check out",
-                detail=f"transaction_id={transaction_id}",
             )
 
         # ── Totals ──────────────────────────────────────────────────
@@ -110,9 +112,10 @@ class CheckoutMixin:
             voucher_code = discount_ref
             voucher = self._voucher_repo.get_by_code(tenant_id, voucher_code)
             if voucher is None:
-                raise PosError(
+                raise PosNotFoundError(
+                    "voucher_not_found",
+                    http_status=400,
                     message=f"Voucher '{voucher_code}' not found",
-                    detail="voucher_not_found",
                 )
             voucher_discount = VoucherService.compute_discount(
                 voucher.discount_type, to_decimal(voucher.value), subtotal
@@ -124,15 +127,16 @@ class CheckoutMixin:
             try:
                 promotion_id = int(discount_ref)
             except ValueError as e:
-                raise PosError(
+                raise PosValidationError(
+                    "promotion_ref_invalid",
                     message=f"Invalid promotion ref: {discount_ref!r}",
-                    detail="promotion_ref_invalid",
                 ) from e
             promo = self._promotion_repo.get(tenant_id, promotion_id)
             if promo is None:
-                raise PosError(
+                raise PosNotFoundError(
+                    "promotion_not_found",
+                    http_status=400,
                     message=f"Promotion {promotion_id} not found",
-                    detail="promotion_not_found",
                 )
             # Preview discount — scope='category' isn't resolvable here
             # because cart items lack drug_cluster on the draft rows; the
@@ -151,9 +155,9 @@ class CheckoutMixin:
             else:
                 base = subtotal
             if promo.min_purchase is not None and base < to_decimal(promo.min_purchase):
-                raise PosError(
+                raise PosValidationError(
+                    "promotion_min_purchase_not_met",
                     message="Cart does not meet the minimum purchase for this promotion",
-                    detail="promotion_min_purchase_not_met",
                 )
             voucher_discount = PromotionService.compute_discount(
                 promo.discount_type,
@@ -215,12 +219,12 @@ class CheckoutMixin:
             expected_status=TransactionStatus.draft.value,
         )
         if updated is None:
-            raise PosError(
+            raise PosConflictError(
+                "checkout_status_race",
                 message=(
                     f"Transaction {transaction_id} could not be finalised — "
                     "another request may have completed it first."
                 ),
-                detail=f"transaction_id={transaction_id} cas_failed=true",
             )
 
         # ── Voucher / promotion redemption (atomic, post-CAS) ───────

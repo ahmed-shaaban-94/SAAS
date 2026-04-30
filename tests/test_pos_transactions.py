@@ -187,6 +187,7 @@ class TestAddItemIdempotency:
             return IdempotencyContext(
                 key="replay-key",
                 tenant_id=1,
+                endpoint="POST /pos/transactions/{id}/items",
                 request_hash="a" * 64,
                 replay=True,
                 cached_status=200,
@@ -271,6 +272,7 @@ class TestUpdateItemIdempotency:
             return IdempotencyContext(
                 key="upd-replay",
                 tenant_id=1,
+                endpoint="PATCH /pos/transactions/{id}/items/{item_id}",
                 request_hash="b" * 64,
                 replay=True,
                 cached_status=200,
@@ -326,6 +328,7 @@ class TestRemoveItemIdempotency:
             return IdempotencyContext(
                 key="del-replay",
                 tenant_id=1,
+                endpoint="DELETE /pos/transactions/{id}/items/{item_id}",
                 request_hash="c" * 64,
                 replay=True,
                 cached_status=204,
@@ -393,3 +396,32 @@ def test_concurrent_same_key_409() -> None:
         check_and_claim(session, "same-key", 1, "POST /pos/transactions/{id}/items", h2)
 
     assert exc_info.value.status_code == 409
+
+
+def test_add_item_replays_cached_failure_without_service_call(mock_service: MagicMock) -> None:
+    """A failed idempotent add retry must replay the original 4xx, not validate as a cart."""
+    from datapulse.api.routes import _pos_transactions as pos_module
+
+    async def _replay_error_dep(request: Request) -> IdempotencyContext:  # noqa: ARG001
+        return IdempotencyContext(
+            key="add-failed-replay",
+            tenant_id=1,
+            endpoint="POST /pos/transactions/{id}/items",
+            request_hash="d" * 64,
+            replay=True,
+            cached_status=409,
+            cached_body={"detail": "Insufficient stock for DRUG001"},
+        )
+
+    app = _make_app(mock_service)
+    app.dependency_overrides[pos_module._add_item_idempotency_dep] = _replay_error_dep
+    with TestClient(app) as c:
+        resp = c.post(
+            "/api/v1/pos/transactions/100/items",
+            json={"drug_code": "DRUG001", "quantity": "3"},
+            headers={"Idempotency-Key": "add-failed-replay"},
+        )
+
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "Insufficient stock for DRUG001"
+    mock_service.add_item.assert_not_called()

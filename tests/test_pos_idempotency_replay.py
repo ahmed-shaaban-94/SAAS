@@ -89,6 +89,7 @@ def _make_replay_app(service: MagicMock, replay_after_first: bool = True) -> Fas
         return IdempotencyContext(
             key="offline-queue-key",
             tenant_id=1,
+            endpoint="POST /pos/transactions/{id}/items",
             request_hash="d" * 64,
             replay=is_replay,
             cached_status=200 if is_replay else None,

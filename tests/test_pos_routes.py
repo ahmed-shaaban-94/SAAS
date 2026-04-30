@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, Request
@@ -321,14 +321,19 @@ class TestTransactionRoutes:
             items=[],
         )
         mock_service.add_item.return_value = _cart_item()
-        resp = client.post(
-            "/api/v1/pos/transactions/100/items",
-            json={"drug_code": "DRUG001", "quantity": "3"},
-            headers={"Idempotency-Key": "test-key-add-1"},
-        )
+        with patch("datapulse.api.routes._pos_transactions.record_idempotent_success") as record:
+            resp = client.post(
+                "/api/v1/pos/transactions/100/items",
+                json={"drug_code": "DRUG001", "quantity": "3"},
+                headers={"Idempotency-Key": "test-key-add-1"},
+            )
         assert resp.status_code == 201
         body = resp.json()
         assert body["drug_code"] == "DRUG001"
+        args, _kwargs = record.call_args
+        assert args[1].key == "test-key-add-1"
+        assert args[1].tenant_id == 1
+        assert args[2] == 201
 
     def test_add_item_409_insufficient_stock(
         self,
@@ -395,12 +400,17 @@ class TestTransactionRoutes:
 
     def test_remove_item_204(self, client: TestClient, mock_service: MagicMock):
         mock_service.remove_item.return_value = True
-        resp = client.delete(
-            "/api/v1/pos/transactions/100/items/1",
-            headers={"Idempotency-Key": "test-key-remove-1"},
-        )
+        with patch("datapulse.api.routes._pos_transactions.record_idempotent_success") as record:
+            resp = client.delete(
+                "/api/v1/pos/transactions/100/items/1",
+                headers={"Idempotency-Key": "test-key-remove-1"},
+            )
         assert resp.status_code == 204
         mock_service.remove_item.assert_called_once_with(1, transaction_id=100, tenant_id=1)
+        args, _kwargs = record.call_args
+        assert args[1].key == "test-key-remove-1"
+        assert args[1].tenant_id == 1
+        assert args[2] == 204
 
     def test_remove_item_404(self, client: TestClient, mock_service: MagicMock):
         mock_service.remove_item.return_value = False
@@ -416,16 +426,21 @@ class TestTransactionRoutes:
         mock_service: MagicMock,
     ):
         mock_service.update_item.return_value = _cart_item()
-        resp = client.patch(
-            "/api/v1/pos/transactions/100/items/1",
-            json={"quantity": "4"},
-            headers={"Idempotency-Key": "test-key-update-1"},
-        )
+        with patch("datapulse.api.routes._pos_transactions.record_idempotent_success") as record:
+            resp = client.patch(
+                "/api/v1/pos/transactions/100/items/1",
+                json={"quantity": "4"},
+                headers={"Idempotency-Key": "test-key-update-1"},
+            )
         assert resp.status_code == 200
         mock_service.update_item.assert_called_once()
         kwargs = mock_service.update_item.call_args.kwargs
         assert kwargs["transaction_id"] == 100
         assert kwargs["unit_price"] is None
+        args, _idem_kwargs = record.call_args
+        assert args[1].key == "test-key-update-1"
+        assert args[1].tenant_id == 1
+        assert args[2] == 200
 
     def test_add_item_rejects_completed_transaction(
         self,

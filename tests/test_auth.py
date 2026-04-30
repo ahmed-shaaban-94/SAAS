@@ -134,6 +134,23 @@ class TestGetCurrentUser:
         assert result["tenant_id"] == "42"
         assert result["roles"] == ["admin"]
 
+    def test_jwt_roles_string_is_normalized(self):
+        """Clerk templates may emit a single role string; downstream expects a list."""
+        creds = MagicMock()
+        creds.credentials = "jwt-token-value"
+        fake_claims = {
+            "sub": "user123",
+            "tenant_id": "42",
+            "roles": "admin,cashier",
+        }
+        with patch("datapulse.core.auth.verify_jwt", return_value=fake_claims):
+            result = get_current_user(
+                credentials=creds,
+                api_key=None,
+                settings=_settings(api_key="key"),
+            )
+        assert result["roles"] == ["admin", "cashier"]
+
     def test_jwt_missing_tenant_id_falls_back_to_default(self):
         """When tenant_id is missing from JWT claims, falls back to default_tenant_id."""
         creds = MagicMock()
@@ -293,6 +310,17 @@ class TestGetCurrentUser:
             settings=_settings(api_key="secret123", default_tenant_id="42"),
         )
         assert result["tenant_id"] == "42"
+
+    def test_api_key_invalid_default_tenant_raises_401(self):
+        """Bad DEFAULT_TENANT_ID must fail in auth, not crash later in POS routes."""
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(
+                credentials=None,
+                api_key="secret123",
+                settings=_settings(api_key="secret123", default_tenant_id="tenant-a"),
+            )
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Invalid tenant context"
 
     def test_api_key_fallback_invalid(self):
         """No Bearer token, invalid API key -> 401."""

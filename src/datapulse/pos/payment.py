@@ -18,7 +18,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
-from datapulse.pos.exceptions import PosError
+from datapulse.pos.exceptions import PosValidationError
 
 # ---------------------------------------------------------------------------
 # Result type
@@ -39,7 +39,10 @@ class PaymentResult:
     def raise_if_failed(self) -> None:
         """Raise ``PosError`` with the failure message if not successful."""
         if not self.success:
-            raise PosError(message=self.message, detail=f"method={self.method}")
+            raise PosValidationError(
+                "payment_failed",
+                message=self.message or f"Payment failed for method {self.method}",
+            )
 
 
 # ---------------------------------------------------------------------------

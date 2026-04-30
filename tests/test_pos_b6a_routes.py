@@ -9,10 +9,10 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
@@ -76,6 +76,7 @@ def _make_app(service: MagicMock) -> FastAPI:
     _execute_result.scalar.return_value = 0
     _execute_result.mappings.return_value.first.return_value = None
     _mock_session.execute.return_value = _execute_result
+    app.state.mock_session = _mock_session
 
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_pos_service] = lambda: service
@@ -448,6 +449,42 @@ def test_close_shift_rejects_nonzero_unresolved_claim(
     assert resp.status_code == 409
     assert resp.json()["detail"] == "provisional_work_pending"
     mock_service.close_shift.assert_not_called()
+
+
+def test_close_shift_guard_rejection_records_idempotent_response(
+    client: TestClient,
+    mock_service: MagicMock,
+) -> None:
+    """Guard rejections must be committed for retry replay and forensic audit."""
+    mock_service.get_shift_by_id.return_value = _shift_record()
+    with patch("datapulse.api.routes._pos_shifts.record_idempotent_exception") as record:
+        resp = client.post(
+            "/api/v1/pos/shifts/1/close",
+            json={
+                "closing_cash": "750",
+                "local_unresolved": {"count": 2, "digest": "pending-two"},
+            },
+            headers=_idem("shift-close-unresolved-recorded"),
+        )
+
+    assert resp.status_code == 409
+    record.assert_called_once()
+    args, kwargs = record.call_args
+    assert args[1].key == "shift-close-unresolved-recorded"
+    assert args[1].tenant_id == 1
+    assert isinstance(args[2], PosError)
+    assert args[2].message == "provisional_work_pending"
+    assert kwargs == {}
+
+
+def test_pos_tenant_helper_rejects_invalid_tenant_id() -> None:
+    from datapulse.api.routes._pos_routes_deps import _tenant_id_of
+
+    with pytest.raises(HTTPException) as exc_info:
+        _tenant_id_of({**MOCK_USER, "tenant_id": "tenant-a"})
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail == "Invalid tenant context"
 
 
 # ---------------------------------------------------------------------------

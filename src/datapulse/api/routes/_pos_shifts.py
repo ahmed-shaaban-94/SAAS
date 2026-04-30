@@ -19,7 +19,13 @@ from datapulse.api.routes._pos_routes_deps import (
     _staff_id_of,
     _tenant_id_of,
 )
-from datapulse.pos.idempotency import IdempotencyContext, record_response
+from datapulse.pos.exceptions import PosError
+from datapulse.pos.idempotency import (
+    IdempotencyContext,
+    raise_for_replayed_error,
+    record_idempotent_exception,
+    record_idempotent_success,
+)
 from datapulse.pos.models import (
     CashCountRequest,
     CashDrawerEventResponse,
@@ -150,16 +156,14 @@ def close_shift(
     instead of double-closing.
     """
     if idem.replay:
-        if idem.cached_status and idem.cached_status >= 400:
-            detail = (idem.cached_body or {}).get("detail", "idempotent request failed")
-            raise HTTPException(status_code=idem.cached_status, detail=detail)
+        raise_for_replayed_error(idem)
         return ShiftSummaryResponse.model_validate(idem.cached_body)
 
-    tenant_id = _tenant_id_of(user)
-    shift = service.get_shift_by_id(shift_id, tenant_id=tenant_id)
-    if shift is None:
-        raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found")
     try:
+        tenant_id = _tenant_id_of(user)
+        shift = service.get_shift_by_id(shift_id, tenant_id=tenant_id)
+        if shift is None:
+            raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found")
         enforce_close_guard(
             db_session,
             shift_id=shift_id,
@@ -168,30 +172,16 @@ def close_shift(
             claim_count=body.local_unresolved.count,
             claim_digest=body.local_unresolved.digest,
         )
-    except HTTPException as exc:
-        record_response(
-            db_session,
-            idem.key,
-            exc.status_code,
-            {"detail": exc.detail},
-            tenant_id=idem.tenant_id,
+        result = service.close_shift(
+            shift_id=shift_id,
+            closing_cash=Decimal(str(body.closing_cash)),
+            tenant_id=tenant_id,
         )
-        db_session.commit()
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
         raise
 
-    result = service.close_shift(
-        shift_id=shift_id,
-        closing_cash=Decimal(str(body.closing_cash)),
-        tenant_id=tenant_id,
-    )
-    record_response(
-        db_session,
-        idem.key,
-        200,
-        result.model_dump(mode="json"),
-        tenant_id=idem.tenant_id,
-    )
-    db_session.commit()
+    record_idempotent_success(db_session, idem, 200, result.model_dump(mode="json"))
     return result
 
 

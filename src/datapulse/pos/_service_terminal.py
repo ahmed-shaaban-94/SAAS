@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from datapulse.logging import get_logger
 from datapulse.pos.constants import TerminalStatus
-from datapulse.pos.exceptions import PosError
+from datapulse.pos.exceptions import PosInternalError, PosNotFoundError
 from datapulse.pos.models import TerminalSession
 from datapulse.pos.terminal import assert_can_transition
 
@@ -86,18 +86,18 @@ class TerminalOpsMixin:
         """Validate + apply a terminal status change. Raises if illegal."""
         current = self._repo.get_terminal_session(terminal_id, tenant_id=tenant_id)
         if current is None:
-            raise PosError(
+            raise PosNotFoundError(
+                "terminal_not_found",
                 message=f"Terminal {terminal_id} does not exist",
-                detail=f"terminal_id={terminal_id}",
             )
         assert_can_transition(terminal_id, current["status"], target)
         updated = self._repo.update_terminal_status(
             terminal_id, target.value, tenant_id=tenant_id, closing_cash=closing_cash
         )
         if updated is None:
-            raise PosError(
+            raise PosInternalError(
+                "terminal_update_failed",
                 message=f"Terminal {terminal_id} update failed",
-                detail=f"terminal_id={terminal_id} target={target.value}",
             )
         return TerminalSession.model_validate(updated)
 

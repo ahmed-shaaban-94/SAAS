@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
 
@@ -15,16 +15,31 @@ from datapulse.api.limiter import limiter
 from datapulse.api.routes._pos_routes_deps import (
     CurrentUser,
     ServiceDep,
+    SessionDep,
+    _receipt_email_idempotency_dep,
+    _receipt_whatsapp_idempotency_dep,
     _tenant_id_of,
 )
 from datapulse.logging import get_logger
+from datapulse.pos.exceptions import PosError
+from datapulse.pos.idempotency import (
+    IdempotencyContext,
+    raise_for_replayed_error,
+    record_idempotent_exception,
+    record_idempotent_success,
+)
+from datapulse.pos.models import EmailReceiptRequest
+from datapulse.rbac.dependencies import require_permission
 
 log = get_logger(__name__)
 
 router = APIRouter()
 
 
-@router.get("/receipts/{transaction_id}")
+@router.get(
+    "/receipts/{transaction_id}",
+    dependencies=[Depends(require_permission("pos:receipt:read"))],
+)
 @limiter.limit("60/minute")
 def get_receipt_pdf(
     request: Request,
@@ -37,7 +52,10 @@ def get_receipt_pdf(
     return Response(content=content, media_type="application/pdf")
 
 
-@router.get("/receipts/{transaction_id}/thermal")
+@router.get(
+    "/receipts/{transaction_id}/thermal",
+    dependencies=[Depends(require_permission("pos:receipt:read"))],
+)
 @limiter.limit("60/minute")
 def get_receipt_thermal(
     request: Request,
@@ -50,30 +68,43 @@ def get_receipt_thermal(
     return Response(content=content, media_type="application/octet-stream")
 
 
-class _EmailReceiptRequest(BaseModel):
-    email: str
-
-
-@router.post("/receipts/{transaction_id}/email")
+@router.post(
+    "/receipts/{transaction_id}/email",
+    dependencies=[Depends(require_permission("pos:receipt:send"))],
+)
 @limiter.limit("10/minute")
 def send_receipt_email(
     request: Request,
     transaction_id: Annotated[int, Path(ge=1)],
-    body: _EmailReceiptRequest,
+    body: EmailReceiptRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_receipt_email_idempotency_dep)],
 ) -> dict:
     """Send the PDF receipt to the given email address (stub — email delivery in Phase 2)."""
-    _ = service.get_receipt_pdf(transaction_id, _tenant_id_of(user))
-    log.info("pos.receipt.email_queued", transaction_id=transaction_id, email=body.email)
-    return {"sent": True, "email": body.email}
+    if idem.replay:
+        raise_for_replayed_error(idem)
+        return idem.cached_body or {"sent": True, "email": body.email}
+    try:
+        _ = service.get_receipt_pdf(transaction_id, _tenant_id_of(user))
+        response = {"sent": True, "email": body.email}
+        log.info("pos.receipt.email_queued", transaction_id=transaction_id, email=body.email)
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 200, response)
+    return response
 
 
 class _WhatsAppReceiptRequest(BaseModel):
     phone: str
 
 
-@router.post("/receipts/{transaction_id}/whatsapp")
+@router.post(
+    "/receipts/{transaction_id}/whatsapp",
+    dependencies=[Depends(require_permission("pos:receipt:send"))],
+)
 @limiter.limit("10/minute")
 def send_receipt_whatsapp(
     request: Request,
@@ -81,6 +112,8 @@ def send_receipt_whatsapp(
     body: _WhatsAppReceiptRequest,
     service: ServiceDep,
     user: CurrentUser,
+    db_session: SessionDep,
+    idem: Annotated[IdempotencyContext, Depends(_receipt_whatsapp_idempotency_dep)],
 ) -> dict:
     """Send the PDF receipt to the given phone via WhatsApp (#629).
 
@@ -88,8 +121,17 @@ def send_receipt_whatsapp(
     :class:`WhatsAppDisabledError` -> 503 so the UI can fall back to print.
     The raw phone is never logged — only a truncated sha256 hash.
     """
-    return service.send_receipt_whatsapp(
-        transaction_id,
-        body.phone,
-        _tenant_id_of(user),
-    )
+    if idem.replay:
+        raise_for_replayed_error(idem)
+        return idem.cached_body or {"sent": True}
+    try:
+        response = service.send_receipt_whatsapp(
+            transaction_id,
+            body.phone,
+            _tenant_id_of(user),
+        )
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 200, response)
+    return response

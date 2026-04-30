@@ -62,6 +62,13 @@ try:
         ["reason"],  # "unconfigured", "error"
     )
 
+    # -- POS idempotency / retry observability --
+    pos_idempotency_events_total = Counter(
+        "datapulse_pos_idempotency_events_total",
+        "POS idempotency events by endpoint template, event, and HTTP status",
+        ["event", "endpoint", "status"],
+    )
+
     METRICS_AVAILABLE = True
 
 except ImportError:
@@ -87,3 +94,4 @@ except ImportError:
     pipeline_stale_detected = _NoOp()  # type: ignore[assignment]
     db_replica_hits = _NoOp()  # type: ignore[assignment]
     db_replica_fallbacks = _NoOp()  # type: ignore[assignment]
+    pos_idempotency_events_total = _NoOp()  # type: ignore[assignment]

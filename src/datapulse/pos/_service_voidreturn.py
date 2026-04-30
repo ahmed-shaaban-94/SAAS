@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 from datapulse.logging import get_logger
 from datapulse.pos._service_helpers import to_decimal
 from datapulse.pos.constants import ReturnReason, TransactionStatus
-from datapulse.pos.exceptions import PosError
+from datapulse.pos.exceptions import PosConflictError, PosNotFoundError, PosValidationError
 from datapulse.pos.inventory_contract import StockMovement
 from datapulse.pos.models import (
     PosCartItem,
@@ -57,25 +57,25 @@ class VoidReturnMixin:
         """
         header = self._repo.get_transaction(transaction_id, tenant_id=tenant_id)
         if header is None:
-            raise PosError(
+            raise PosNotFoundError(
+                "transaction_not_found",
                 message=f"Transaction {transaction_id} not found",
-                detail=f"transaction_id={transaction_id}",
             )
         if header["status"] != TransactionStatus.completed.value:
-            raise PosError(
+            raise PosConflictError(
+                "transaction_not_completed",
                 message=(
                     f"Only completed transactions can be voided (current: {header['status']})"
                 ),
-                detail=f"transaction_id={transaction_id} status={header['status']}",
             )
 
         returned = self._repo.get_returned_quantities_for_transaction(
             transaction_id, tenant_id=tenant_id
         )
         if any(to_decimal(row["returned_qty"]) > 0 for row in returned):
-            raise PosError(
+            raise PosConflictError(
+                "transaction_has_returns",
                 message="Transaction has existing returns and cannot be voided.",
-                detail=f"transaction_id={transaction_id} existing_returns=true",
             )
 
         updated = self._repo.update_transaction_status(
@@ -85,9 +85,9 @@ class VoidReturnMixin:
             expected_status=TransactionStatus.completed.value,
         )
         if updated is None:
-            raise PosError(
+            raise PosConflictError(
+                "void_status_race",
                 message="Transaction changed while voiding; refresh and retry.",
-                detail=f"transaction_id={transaction_id} status_race=completed_to_other",
             )
 
         items = self._repo.get_transaction_items(transaction_id, tenant_id=tenant_id)
@@ -144,24 +144,22 @@ class VoidReturnMixin:
             original_transaction_id, tenant_id=tenant_id
         )
         if original is None:
-            raise PosError(
+            raise PosNotFoundError(
+                "transaction_not_found",
                 message=f"Transaction {original_transaction_id} not found",
-                detail=f"original_transaction_id={original_transaction_id}",
             )
         if original["status"] != TransactionStatus.completed.value:
-            raise PosError(
+            raise PosConflictError(
+                "transaction_not_completed",
                 message=(
                     f"Returns only allowed on completed transactions "
                     f"(current: {original['status']})"
                 ),
-                detail=(
-                    f"original_transaction_id={original_transaction_id} status={original['status']}"
-                ),
             )
         if not items:
-            raise PosError(
+            raise PosValidationError(
+                "return_empty",
                 message="Return must include at least one item",
-                detail=f"original_transaction_id={original_transaction_id}",
             )
 
         # ── Authoritative original lines, keyed by (drug_code, batch_number) ──
@@ -186,12 +184,12 @@ class VoidReturnMixin:
         for item in items:
             key = (item.drug_code, item.batch_number or "")
             if key not in orig_index:
-                raise PosError(
+                raise PosValidationError(
+                    "return_item_not_on_original",
                     message=(
                         f"Return item {item.drug_code!r} "
                         f"(batch {item.batch_number!r}) is not on the original transaction."
                     ),
-                    detail=f"original_transaction_id={original_transaction_id}",
                 )
             requested_cumulative = in_this_request.get(key, Decimal("0")) + to_decimal(
                 item.quantity
@@ -200,15 +198,12 @@ class VoidReturnMixin:
             original_qty = to_decimal(orig_index[key]["quantity"])
             remaining = original_qty - already
             if requested_cumulative > remaining:
-                raise PosError(
+                raise PosConflictError(
+                    "return_quantity_exceeds_available",
                     message=(
                         f"Return quantity {requested_cumulative} for drug "
                         f"{item.drug_code!r} exceeds returnable {remaining} "
                         f"(sold: {original_qty}, already returned: {already})."
-                    ),
-                    detail=(
-                        f"original_transaction_id={original_transaction_id} "
-                        f"drug_code={item.drug_code} batch_number={item.batch_number}"
                     ),
                 )
             in_this_request[key] = requested_cumulative

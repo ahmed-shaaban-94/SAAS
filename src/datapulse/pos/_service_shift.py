@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING
 
 from datapulse.logging import get_logger
 from datapulse.pos._service_helpers import to_decimal
-from datapulse.pos.exceptions import PharmacistVerificationRequiredError, PosError
+from datapulse.pos.exceptions import (
+    PharmacistVerificationRequiredError,
+    PosConflictError,
+    PosInternalError,
+    PosNotFoundError,
+)
 from datapulse.pos.models import (
     CashDrawerEventResponse,
     PharmacistVerifyResponse,
@@ -55,12 +60,12 @@ class ShiftCashMixin:
         """
         existing = self._repo.get_current_shift(terminal_id, tenant_id=tenant_id)
         if existing is not None:
-            raise PosError(
+            raise PosConflictError(
+                "shift_already_open",
                 message=(
                     f"Terminal {terminal_id} already has an open shift "
                     f"(shift_id={existing['id']}). Close it before starting a new one."
                 ),
-                detail=f"terminal_id={terminal_id} shift_id={existing['id']}",
             )
 
         now = datetime.now(tz=UTC)
@@ -91,14 +96,11 @@ class ShiftCashMixin:
 
         shift = self._repo.get_shift_by_id(shift_id, tenant_id=tenant_id)
         if shift is None:
-            raise PosError(
-                message=f"Shift {shift_id} not found",
-                detail=f"shift_id={shift_id}",
-            )
+            raise PosNotFoundError("shift_not_found", message=f"Shift {shift_id} not found")
         if shift.get("closed_at") is not None:
-            raise PosError(
+            raise PosConflictError(
+                "shift_already_closed",
                 message=f"Shift {shift_id} is already closed",
-                detail=f"shift_id={shift_id}",
             )
 
         # Aggregate cash drawer events since shift opened
@@ -148,9 +150,9 @@ class ShiftCashMixin:
             closed_at=now,
         )
         if updated is None:
-            raise PosError(
+            raise PosInternalError(
+                "shift_close_failed",
                 message=f"Failed to close shift {shift_id}",
-                detail=f"shift_id={shift_id}",
             )
 
         summary_data = self._repo.get_shift_summary_data(

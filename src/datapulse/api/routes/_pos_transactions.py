@@ -26,7 +26,13 @@ from datapulse.api.routes._pos_routes_deps import (
 from datapulse.pos.commit import atomic_commit
 from datapulse.pos.constants import TransactionStatus
 from datapulse.pos.devices import DeviceProof, device_token_verifier
-from datapulse.pos.idempotency import IdempotencyContext, record_response
+from datapulse.pos.exceptions import PosError
+from datapulse.pos.idempotency import (
+    IdempotencyContext,
+    raise_for_replayed_error,
+    record_idempotent_exception,
+    record_idempotent_success,
+)
 from datapulse.pos.models import (
     AddItemRequest,
     CheckoutRequest,
@@ -142,25 +148,30 @@ async def add_item(
 ) -> PosCartItem:
     """Add a drug to the active draft transaction (FEFO batch + stock check)."""
     if idem.replay:
+        raise_for_replayed_error(idem)
         return PosCartItem.model_validate(idem.cached_body)
-    txn = service.get_transaction_detail(transaction_id, tenant_id=_tenant_id_of(user))
-    if txn is None:
-        raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
-    if txn.status != TransactionStatus.draft:
-        raise HTTPException(status_code=409, detail="Only draft transactions can be edited")
-    result = await service.add_item(
-        transaction_id=transaction_id,
-        tenant_id=_tenant_id_of(user),
-        site_code=txn.site_code,
-        drug_code=body.drug_code,
-        quantity=Decimal(str(body.quantity)),
-        override_price=(
-            Decimal(str(body.override_price)) if body.override_price is not None else None
-        ),
-        pharmacist_id=body.pharmacist_id,
-    )
-    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
-    db_session.commit()
+    try:
+        tenant_id = _tenant_id_of(user)
+        txn = service.get_transaction_detail(transaction_id, tenant_id=tenant_id)
+        if txn is None:
+            raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
+        if txn.status != TransactionStatus.draft:
+            raise HTTPException(status_code=409, detail="Only draft transactions can be edited")
+        result = await service.add_item(
+            transaction_id=transaction_id,
+            tenant_id=tenant_id,
+            site_code=txn.site_code,
+            drug_code=body.drug_code,
+            quantity=Decimal(str(body.quantity)),
+            override_price=(
+                Decimal(str(body.override_price)) if body.override_price is not None else None
+            ),
+            pharmacist_id=body.pharmacist_id,
+        )
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 201, result.model_dump(mode="json"))
     return result
 
 
@@ -187,18 +198,24 @@ async def update_item(
     quantity-only PATCHes (Codex P1).
     """
     if idem.replay:
+        raise_for_replayed_error(idem)
         return PosCartItem.model_validate(idem.cached_body)
-    tenant_id = _tenant_id_of(user)
-    result = service.update_item(
-        item_id,
-        transaction_id=transaction_id,
-        tenant_id=tenant_id,
-        quantity=Decimal(str(body.quantity)),
-        unit_price=(Decimal(str(body.override_price)) if body.override_price is not None else None),
-        discount=Decimal(str(body.discount)) if body.discount is not None else None,
-    )
-    record_response(db_session, idem.key, 200, result.model_dump(mode="json"))
-    db_session.commit()
+    try:
+        tenant_id = _tenant_id_of(user)
+        result = service.update_item(
+            item_id,
+            transaction_id=transaction_id,
+            tenant_id=tenant_id,
+            quantity=Decimal(str(body.quantity)),
+            unit_price=(
+                Decimal(str(body.override_price)) if body.override_price is not None else None
+            ),
+            discount=Decimal(str(body.discount)) if body.discount is not None else None,
+        )
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 200, result.model_dump(mode="json"))
     return result
 
 
@@ -219,13 +236,17 @@ async def remove_item(
 ) -> Response:
     """Remove a single line item from a draft transaction."""
     if idem.replay:
+        raise_for_replayed_error(idem)
         return Response(status_code=204)
-    tenant_id = _tenant_id_of(user)
-    deleted = service.remove_item(item_id, transaction_id=transaction_id, tenant_id=tenant_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
-    record_response(db_session, idem.key, 204, None)
-    db_session.commit()
+    try:
+        tenant_id = _tenant_id_of(user)
+        deleted = service.remove_item(item_id, transaction_id=transaction_id, tenant_id=tenant_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 204, None)
     return Response(status_code=204)
 
 
@@ -253,20 +274,18 @@ async def checkout(
     ``/transactions/commit`` route — browser pilots have no private keypair.
     """
     if idem.replay:
+        raise_for_replayed_error(idem)
         return CheckoutResponse.model_validate(idem.cached_body)
-    result = await service.checkout(
-        transaction_id=transaction_id,
-        tenant_id=_tenant_id_of(user),
-        request=body,
-    )
-    record_response(
-        db_session,
-        idem.key,
-        200,
-        result.model_dump(mode="json"),
-        tenant_id=idem.tenant_id,
-    )
-    db_session.commit()
+    try:
+        result = await service.checkout(
+            transaction_id=transaction_id,
+            tenant_id=_tenant_id_of(user),
+            request=body,
+        )
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 200, result.model_dump(mode="json"))
     return result
 
 
@@ -292,19 +311,17 @@ async def commit_transaction(
     the registered device public key before any state is touched (§8.9).
     """
     if idem.replay:
+        raise_for_replayed_error(idem)
         return CommitResponse.model_validate(idem.cached_body)
 
-    if payload.terminal_id != proof.terminal_id:
-        raise HTTPException(status_code=400, detail="body/header terminal_id mismatch")
+    try:
+        if payload.terminal_id != proof.terminal_id:
+            raise HTTPException(status_code=400, detail="body/header terminal_id mismatch")
 
-    tenant_id = _tenant_id_of(user)
-    response = atomic_commit(db_session, tenant_id=tenant_id, payload=payload)
-    record_response(
-        db_session,
-        idem.key,
-        200,
-        response.model_dump(mode="json"),
-        tenant_id=idem.tenant_id,
-    )
-    db_session.commit()
+        tenant_id = _tenant_id_of(user)
+        response = atomic_commit(db_session, tenant_id=tenant_id, payload=payload)
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 200, response.model_dump(mode="json"))
     return response

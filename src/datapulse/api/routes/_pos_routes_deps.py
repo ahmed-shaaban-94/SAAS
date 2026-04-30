@@ -35,6 +35,8 @@ _void_idempotency_dep = idempotency_dependency("POST /pos/transactions/{id}/void
 _return_idempotency_dep = idempotency_dependency("POST /pos/returns")
 _shift_close_idempotency_dep = idempotency_dependency("POST /pos/shifts/{id}/close")
 _terminal_close_idempotency_dep = idempotency_dependency("POST /pos/terminals/{id}/close")
+_receipt_email_idempotency_dep = idempotency_dependency("POST /pos/receipts/{id}/email")
+_receipt_whatsapp_idempotency_dep = idempotency_dependency("POST /pos/receipts/{id}/whatsapp")
 _add_item_idempotency_dep = idempotency_dependency("POST /pos/transactions/{id}/items")
 _update_item_idempotency_dep = idempotency_dependency(
     "PATCH /pos/transactions/{id}/items/{item_id}"
@@ -54,7 +56,10 @@ def _tenant_id_of(user: CurrentUser) -> int:  # type: ignore[valid-type]
     tid = user.get("tenant_id")
     if not tid:
         raise HTTPException(status_code=401, detail="Missing tenant context")
-    return int(tid)
+    try:
+        return int(tid)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=401, detail="Invalid tenant context") from exc
 
 
 def _staff_id_of(user: CurrentUser) -> str:  # type: ignore[valid-type]

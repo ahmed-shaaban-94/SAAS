@@ -208,8 +208,8 @@ class PosNotFoundError(PosError):
     (e.g. ``"voucher_not_found"``, ``"promotion_not_found"``).
     """
 
-    def __init__(self, code: str, *, http_status: int = 404) -> None:
-        super().__init__(message=code, detail=code)
+    def __init__(self, code: str, *, http_status: int = 404, message: str | None = None) -> None:
+        super().__init__(message=message or code, detail=code)
         self.code = code
         self.http_status = http_status
 
@@ -223,8 +223,8 @@ class PosConflictError(PosError):
     (e.g. ``"voucher_code_already_exists:X"``, ``"provisional_work_pending"``).
     """
 
-    def __init__(self, code: str) -> None:
-        super().__init__(message=code, detail=code)
+    def __init__(self, code: str, *, message: str | None = None) -> None:
+        super().__init__(message=message or code, detail=code)
         self.code = code
 
 
@@ -237,8 +237,8 @@ class PosValidationError(PosError):
     (e.g. ``"voucher_inactive"``, ``"promotion_expired"``).
     """
 
-    def __init__(self, code: str) -> None:
-        super().__init__(message=code, detail=code)
+    def __init__(self, code: str, *, message: str | None = None) -> None:
+        super().__init__(message=message or code, detail=code)
         self.code = code
 
 
@@ -248,6 +248,6 @@ class PosInternalError(PosError):
     Maps to HTTP 500 Internal Server Error.
     """
 
-    def __init__(self, code: str) -> None:
-        super().__init__(message=code, detail=code)
+    def __init__(self, code: str, *, message: str | None = None) -> None:
+        super().__init__(message=message or code, detail=code)
         self.code = code

@@ -22,7 +22,13 @@ from datapulse.api.routes._pos_routes_deps import (
     _tenant_id_of,
     _terminal_close_idempotency_dep,
 )
-from datapulse.pos.idempotency import IdempotencyContext, record_response
+from datapulse.pos.exceptions import PosError
+from datapulse.pos.idempotency import (
+    IdempotencyContext,
+    raise_for_replayed_error,
+    record_idempotent_exception,
+    record_idempotent_success,
+)
 from datapulse.pos.models import (
     TerminalCloseRequest,
     TerminalOpenRequest,
@@ -211,21 +217,19 @@ def close_terminal(
     seeded — just was never required by the route.
     """
     if idem.replay:
+        raise_for_replayed_error(idem)
         return TerminalSessionResponse.model_validate(idem.cached_body)
 
-    tenant_id = _tenant_id_of(user)
-    session = service.close_terminal(
-        terminal_id,
-        closing_cash=Decimal(str(body.closing_cash)),
-        tenant_id=tenant_id,
-    )
+    try:
+        tenant_id = _tenant_id_of(user)
+        session = service.close_terminal(
+            terminal_id,
+            closing_cash=Decimal(str(body.closing_cash)),
+            tenant_id=tenant_id,
+        )
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
     result = TerminalSessionResponse.model_validate(session.model_dump())
-    record_response(
-        db_session,
-        idem.key,
-        200,
-        result.model_dump(mode="json"),
-        tenant_id=idem.tenant_id,
-    )
-    db_session.commit()
+    record_idempotent_success(db_session, idem, 200, result.model_dump(mode="json"))
     return result

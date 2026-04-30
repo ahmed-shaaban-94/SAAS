@@ -19,7 +19,13 @@ from datapulse.api.routes._pos_routes_deps import (
     _tenant_id_of,
     _void_idempotency_dep,
 )
-from datapulse.pos.idempotency import IdempotencyContext, record_response
+from datapulse.pos.exceptions import PosError
+from datapulse.pos.idempotency import (
+    IdempotencyContext,
+    raise_for_replayed_error,
+    record_idempotent_exception,
+    record_idempotent_success,
+)
 from datapulse.pos.models import (
     ReturnDetailResponse,
     ReturnRequest,
@@ -53,23 +59,21 @@ async def void_transaction(
     may be voided; draft transactions should be abandoned by removing items.
     """
     if idem.replay:
+        raise_for_replayed_error(idem)
         return VoidResponse.model_validate(idem.cached_body)
 
-    tenant_id = _tenant_id_of(user)
-    result = await service.void_transaction(
-        transaction_id=transaction_id,
-        tenant_id=tenant_id,
-        reason=body.reason,
-        voided_by=_staff_id_of(user),
-    )
-    record_response(
-        db_session,
-        idem.key,
-        200,
-        result.model_dump(mode="json"),
-        tenant_id=idem.tenant_id,
-    )
-    db_session.commit()
+    try:
+        tenant_id = _tenant_id_of(user)
+        result = await service.void_transaction(
+            transaction_id=transaction_id,
+            tenant_id=tenant_id,
+            reason=body.reason,
+            voided_by=_staff_id_of(user),
+        )
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 200, result.model_dump(mode="json"))
     return result
 
 
@@ -94,26 +98,24 @@ async def process_return(
     and records a ``pos.returns`` audit entry.
     """
     if idem.replay:
+        raise_for_replayed_error(idem)
         return ReturnResponse.model_validate(idem.cached_body)
 
-    tenant_id = _tenant_id_of(user)
-    result = await service.process_return(
-        original_transaction_id=body.original_transaction_id,
-        tenant_id=tenant_id,
-        staff_id=_staff_id_of(user),
-        items=list(body.items),
-        reason=body.reason,
-        refund_method=body.refund_method,
-        notes=body.notes,
-    )
-    record_response(
-        db_session,
-        idem.key,
-        201,
-        result.model_dump(mode="json"),
-        tenant_id=idem.tenant_id,
-    )
-    db_session.commit()
+    try:
+        tenant_id = _tenant_id_of(user)
+        result = await service.process_return(
+            original_transaction_id=body.original_transaction_id,
+            tenant_id=tenant_id,
+            staff_id=_staff_id_of(user),
+            items=list(body.items),
+            reason=body.reason,
+            refund_method=body.refund_method,
+            notes=body.notes,
+        )
+    except (HTTPException, PosError) as exc:
+        record_idempotent_exception(db_session, idem, exc)
+        raise
+    record_idempotent_success(db_session, idem, 201, result.model_dump(mode="json"))
     return result
 
 

@@ -52,6 +52,32 @@ _TENANT_ID_RE = re.compile(r"^\d{1,10}$")
 API_KEY_USER_ID = "api-key-user"
 
 
+def _validate_tenant_id(raw: object) -> str:
+    """Return a normalized tenant_id string or raise a safe auth error."""
+    tenant_id = str(raw or "")
+    if not tenant_id or not _TENANT_ID_RE.match(tenant_id):
+        _auth_logger.warning("invalid_tenant_id", raw_type=type(raw).__name__)
+        raise HTTPException(status_code=401, detail="Invalid tenant context")
+    return tenant_id
+
+
+def _normalize_roles(raw: object) -> list[str]:
+    """Normalize Clerk/Auth template role claims into a list of strings."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [role.strip() for role in raw.split(",") if role.strip()]
+    if isinstance(raw, (list, tuple, set)):
+        roles: list[str] = []
+        for role in raw:
+            value = str(role).strip()
+            if value:
+                roles.append(value)
+        return roles
+    _auth_logger.warning("invalid_roles_claim", raw_type=type(raw).__name__)
+    return []
+
+
 class UserClaims(TypedDict):
     """Typed structure for authenticated user JWT claims."""
 
@@ -175,10 +201,7 @@ def get_current_user(
             # Dev: rate-limited warning so the log isn't flooded under load.
             tenant_id = settings.default_tenant_id
             _log_dev_tenant_fallback_once(int(time.monotonic() // 60))
-        tenant_id_str = str(tenant_id)
-        if tenant_id_str and not _TENANT_ID_RE.match(tenant_id_str):
-            _auth_logger.warning("invalid_tenant_id", raw=tenant_id)
-            raise HTTPException(status_code=401, detail="Invalid tenant context")
+        tenant_id_str = _validate_tenant_id(tenant_id)
         roles = (
             claims.get("https://datapulse.tech/roles")
             or claims.get("permissions")
@@ -192,7 +215,7 @@ def get_current_user(
             "preferred_username": claims.get("preferred_username", ""),
             "tenant_id": tenant_id_str,
             "locale": locale,
-            "roles": roles,
+            "roles": _normalize_roles(roles),
             "raw_claims": claims,
         }
 
@@ -203,9 +226,9 @@ def get_current_user(
                 "sub": API_KEY_USER_ID,
                 "email": "",
                 "preferred_username": "api-key",
-                "tenant_id": settings.default_tenant_id,
+                "tenant_id": _validate_tenant_id(settings.default_tenant_id),
                 "locale": "en-US",
-                "roles": list(settings.api_key_roles),
+                "roles": _normalize_roles(settings.api_key_roles),
                 "raw_claims": {},
             }
         raise HTTPException(status_code=401, detail="Authentication failed")
@@ -232,7 +255,7 @@ def get_current_user(
             "sub": "dev-user",
             "email": "dev@datapulse.local",
             "preferred_username": "dev",
-            "tenant_id": settings.default_tenant_id,
+            "tenant_id": _validate_tenant_id(settings.default_tenant_id),
             "locale": "en-US",
             "roles": ["viewer"],
             "raw_claims": {},

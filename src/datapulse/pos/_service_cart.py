@@ -21,7 +21,8 @@ from datapulse.pos.constants import TerminalStatus, TransactionStatus
 from datapulse.pos.exceptions import (
     InsufficientStockError,
     PharmacistVerificationRequiredError,
-    PosError,
+    PosConflictError,
+    PosNotFoundError,
 )
 from datapulse.pos.inventory_contract import StockMovement  # noqa: F401 - re-exported for tests
 from datapulse.pos.models import (
@@ -63,9 +64,9 @@ class CartOpsMixin:
         """Open a draft transaction on an active/open terminal."""
         terminal = self._repo.get_terminal_session(terminal_id, tenant_id=tenant_id)
         if terminal is None:
-            raise PosError(
+            raise PosNotFoundError(
+                "terminal_not_found",
                 message=f"Terminal {terminal_id} does not exist",
-                detail=f"terminal_id={terminal_id}",
             )
         assert_transactable(terminal_id, terminal["status"])
 
@@ -143,9 +144,9 @@ class CartOpsMixin:
         stock_check_ms = round((time.perf_counter() - t0) * 1000, 2)
 
         if product is None:
-            raise PosError(
+            raise PosNotFoundError(
+                "drug_not_found",
                 message=f"Drug {drug_code} not found in product catalog",
-                detail=f"drug_code={drug_code}",
             )
 
         controlled = is_controlled(product.get("drug_category"))
@@ -280,27 +281,24 @@ class CartOpsMixin:
         """
         existing = self._repo.get_transaction_item(item_id, tenant_id=tenant_id)
         if existing is None:
-            raise PosError(
-                message=f"Item {item_id} not found",
-                detail=f"item_id={item_id}",
-            )
+            raise PosNotFoundError("item_not_found", message=f"Item {item_id} not found")
         existing_transaction_id = int(existing["transaction_id"])
         if transaction_id is not None and existing_transaction_id != transaction_id:
-            raise PosError(
+            raise PosConflictError(
+                "item_transaction_mismatch",
                 message=f"Item {item_id} does not belong to transaction {transaction_id}",
-                detail=f"item_id={item_id} transaction_id={transaction_id}",
             )
 
         header = self._repo.get_transaction(existing_transaction_id, tenant_id=tenant_id)
         if header is None:
-            raise PosError(
+            raise PosNotFoundError(
+                "transaction_not_found",
                 message=f"Transaction {existing_transaction_id} not found",
-                detail=f"transaction_id={existing_transaction_id}",
             )
         if header["status"] != TransactionStatus.draft.value:
-            raise PosError(
-                message=(f"Only draft transactions can be edited (current: {header['status']})."),
-                detail=f"transaction_id={existing_transaction_id} status={header['status']}",
+            raise PosConflictError(
+                "transaction_not_draft",
+                message=f"Only draft transactions can be edited (current: {header['status']}).",
             )
 
         t0 = time.perf_counter()
@@ -316,10 +314,7 @@ class CartOpsMixin:
         db_write_ms = round((time.perf_counter() - t0) * 1000, 2)
 
         if row is None:
-            raise PosError(
-                message=f"Item {item_id} not found",
-                detail=f"item_id={item_id}",
-            )
+            raise PosNotFoundError("item_not_found", message=f"Item {item_id} not found")
 
         log.info(
             "cart_update_item_timing",
@@ -351,9 +346,9 @@ class CartOpsMixin:
             return False
         header = self._repo.get_transaction(existing_transaction_id, tenant_id=tenant_id)
         if header is not None and header["status"] != TransactionStatus.draft.value:
-            raise PosError(
-                message=(f"Only draft transactions can be edited (current: {header['status']})."),
-                detail=f"transaction_id={existing_transaction_id} status={header['status']}",
+            raise PosConflictError(
+                "transaction_not_draft",
+                message=f"Only draft transactions can be edited (current: {header['status']}).",
             )
         t0 = time.perf_counter()
         result = self._repo.remove_item(
