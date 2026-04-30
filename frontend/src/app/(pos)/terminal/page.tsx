@@ -13,6 +13,7 @@ import {
 import { ScanBar } from "@/components/pos/terminal/ScanBar";
 import { QuickPickGrid } from "@/components/pos/terminal/QuickPickGrid";
 import { CartTable } from "@/components/pos/terminal/CartTable";
+import { OrderTabs } from "@/components/pos/terminal/OrderTabs";
 import { TotalsHero } from "@/components/pos/terminal/TotalsHero";
 import { ShortcutLegend } from "@/components/pos/terminal/ShortcutLegend";
 import { ShortcutsCheatSheet } from "@/components/pos/ShortcutsCheatSheet";
@@ -520,12 +521,14 @@ export default function PosTerminalPage() {
        */}
       <main
         className={cn(
-          "grid flex-1 gap-3.5 overflow-hidden p-3.5",
+          "relative grid flex-1 gap-3.5 overflow-hidden p-3.5",
           "grid-cols-1",
           "lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)_minmax(0,auto)]",
           "xl:grid-cols-[minmax(0,4fr)_minmax(0,3fr)_minmax(0,2.5fr)] xl:grid-rows-1",
         )}
       >
+        {/* Ambient indigo+purple glow halos — Gemini POV port (2026-04-30). */}
+        <div className="pos-glow-halo" aria-hidden="true" />
         {/* COL 1 — Cart column (handoff §1.3: customer bar → churn alert →
             scan → cart list → cart foot with grand total + CTA). D3 adds
             the customer bar and churn card above the scan bar;
@@ -534,11 +537,12 @@ export default function PosTerminalPage() {
         <section
           aria-label="Cart column"
           className={cn(
-            "flex min-w-0 flex-col gap-3 overflow-hidden",
+            "relative z-[1] flex min-w-0 flex-col gap-3 overflow-hidden",
             "lg:row-start-1 lg:col-start-1",
             "xl:col-start-1",
           )}
         >
+          <OrderTabs orderName="طلب #101" itemCount={itemCount} />
           <CustomerBar
             phone={customerPhone}
             onPhoneChange={setCustomerPhone}
@@ -626,7 +630,7 @@ export default function PosTerminalPage() {
         <section
           aria-label="Quick catalog column"
           className={cn(
-            "flex min-w-0 flex-col gap-3 overflow-hidden",
+            "relative z-[1] flex min-w-0 flex-col gap-3 overflow-hidden",
             "lg:row-start-1 lg:col-start-2",
             "xl:col-start-2",
           )}
@@ -645,7 +649,7 @@ export default function PosTerminalPage() {
         <section
           aria-label="Clinical and AI column"
           className={cn(
-            "flex min-w-0 flex-col overflow-hidden",
+            "relative z-[1] flex min-w-0 flex-col overflow-hidden",
             "lg:col-span-2 lg:row-start-2",
             "xl:col-start-3 xl:col-span-1 xl:row-start-1",
           )}
