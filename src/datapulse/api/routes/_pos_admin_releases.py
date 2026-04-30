@@ -39,6 +39,14 @@ def post_desktop_release(
     payload: DesktopReleaseCreate,
     session: SessionDep,
 ) -> DesktopReleaseResponse:
-    """Idempotent upsert into ``pos.desktop_update_releases``."""
+    """Idempotent upsert into pos.desktop_update_releases.
+
+    Body: see :class:`DesktopReleaseCreate`. Idempotent on
+    `(version, channel, platform)` — re-calls update the row in place
+    without minting a new release_id.
+
+    Rate-limited to 10 req/min — service accounts call this once per
+    release; a flood means the bearer leaked.
+    """
     _ = request
     return upsert_release(session, payload)
