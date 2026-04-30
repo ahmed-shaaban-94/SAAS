@@ -102,6 +102,36 @@ jobs:
         working-directory: pos-desktop
         run: npx electron-builder install-app-deps
 
+      # Phase 2 of pipeline standardization (spec §4.1): on tag pushes, fail
+      # loudly if the tag suffix and pos-desktop/package.json don't agree.
+      # PR #802 was the silent-fail incident — the workflow ran, electron-builder
+      # used the package.json version (1.0.1), and the GitHub Release for tag
+      # pos-desktop-v2.0.0 ended up empty because no v2.0.0 build was produced.
+      # The recovery runbook is embedded in the error so an operator hitting
+      # this can fix it without context-switching to docs.
+      - name: Assert tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/pos-desktop-v')
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/pos-desktop-v}"
+          PKG_VERSION=$(node -p "require('./pos-desktop/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            cat <<EOF
+          ::error::Tag version mismatch
+            Tag:           pos-desktop-v$TAG_VERSION
+            package.json:  $PKG_VERSION
+
+          Recovery:
+            1. Bump pos-desktop/package.json + package-lock.json to $TAG_VERSION
+            2. Commit + push to main
+            3. Delete bad tag:    git push origin :refs/tags/pos-desktop-v$TAG_VERSION
+            4. Re-tag from new HEAD:
+                 git tag pos-desktop-v$TAG_VERSION && git push origin pos-desktop-v$TAG_VERSION
+          EOF
+            exit 1
+          fi
+          echo "::notice::Tag and package.json both at $TAG_VERSION"
+
       # Detect whether Windows code-signing secrets are available (#476).
       # CSC_LINK (base64-encoded .pfx) + CSC_KEY_PASSWORD are standard
       # electron-builder env vars — when both are set the build produces
