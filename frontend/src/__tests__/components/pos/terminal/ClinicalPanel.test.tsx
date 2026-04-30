@@ -121,6 +121,33 @@ describe("ClinicalPanel memo", () => {
       );
     });
 
+    it("renders the dark gradient header card with the drug name (Gemini POV port)", () => {
+      vi.mocked(usePosDrugClinical).mockReturnValue({
+        detail: {
+          drug_code: "MED-005",
+          drug_name: "أوجمنتين",
+          drug_brand: null,
+          drug_cluster: null,
+          drug_category: "antibiotic",
+          unit_price: 95.5,
+          counseling_text: null,
+          active_ingredient: "Amoxicillin",
+        },
+        crossSell: [],
+        alternatives: [],
+        isLoading: false,
+        error: null,
+      });
+      render(<ClinicalPanel activeDrugCode="MED-005" />);
+      const header = screen.getByTestId("clinical-header-card");
+      expect(header).toBeInTheDocument();
+      expect(header).toHaveTextContent("أوجمنتين");
+      // The new header card MUST NOT introduce a safety-score-gauge or
+      // badge-controlled — guardrail still holds inside the new layout.
+      expect(screen.queryByTestId("safety-score-gauge")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("badge-controlled")).not.toBeInTheDocument();
+    });
+
     it("does not display any aggregate 0-100 number, controlled-substance claim, or other invented clinical signal", () => {
       vi.mocked(usePosDrugClinical).mockReturnValue({
         detail: {

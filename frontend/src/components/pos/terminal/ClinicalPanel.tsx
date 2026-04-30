@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, Suspense } from "react";
-import { HeartPulse, Plus, Zap } from "lucide-react";
+import { HeartPulse, Plus, Stethoscope, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   usePosDrugClinical,
@@ -83,30 +83,50 @@ function SelectedSkuHeader({
   drugCategory,
   badges,
 }: SelectedSkuHeaderProps) {
+  // Gemini POV port (2026-04-30): wrap header in a dark gradient card with
+  // a subtle stethoscope watermark. Drug name is honest; no synthetic
+  // safety-score or controlled-substance signals are derived here. The
+  // existing ContentBadges (counseling / alternatives) remain as the
+  // single source of clinical-content metadata.
   return (
-    <div className="flex items-start gap-3 border-b border-[var(--pos-line)] px-4 py-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p
-          dir="rtl"
-          className="truncate text-sm font-bold leading-snug text-[var(--pos-ink)]"
-          title={drugName}
-        >
-          {drugName}
-        </p>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {activeIngredient && (
-            <span className="rounded bg-[var(--pos-accent)]/10 px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.15em] text-[var(--pos-accent)]">
-              {activeIngredient}
-            </span>
-          )}
-          {drugCategory && (
-            <span className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-[0.15em] text-[var(--pos-ink-3)]">
-              {drugCategory}
-            </span>
-          )}
+    <div
+      data-testid="clinical-header-card"
+      className={cn(
+        "relative overflow-hidden border-b border-[var(--pos-line)]",
+        "bg-gradient-to-br from-slate-900 to-slate-800",
+        "dark:from-black dark:to-slate-900",
+        "px-4 py-4",
+      )}
+    >
+      <Stethoscope
+        aria-hidden="true"
+        size={120}
+        className="pointer-events-none absolute -bottom-6 start-2 rotate-12 text-white/[0.05]"
+      />
+      <div className="relative z-10 flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <p
+            dir="rtl"
+            className="truncate text-base font-black leading-snug text-white"
+            title={drugName}
+          >
+            {drugName}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {activeIngredient && (
+              <span className="rounded bg-[var(--pos-accent-fg)]/15 px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.15em] text-[var(--pos-accent-fg)]">
+                {activeIngredient}
+              </span>
+            )}
+            {drugCategory && (
+              <span className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-[0.15em] text-white/70">
+                {drugCategory}
+              </span>
+            )}
+          </div>
         </div>
+        {badges && <ContentBadges {...badges} />}
       </div>
-      {badges && <ContentBadges {...badges} />}
     </div>
   );
 }
