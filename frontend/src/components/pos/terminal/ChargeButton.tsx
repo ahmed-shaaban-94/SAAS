@@ -32,6 +32,9 @@ export function ChargeButton({ grandTotal, disabled, onCharge }: ChargeButtonPro
               "bg-gradient-to-b from-[#5cdfff] to-[#00a6cc]",
               "shadow-[0_0_24px_rgba(0,199,242,0.4),0_6px_16px_rgba(0,199,242,0.25),inset_0_1px_0_rgba(255,255,255,0.35)]",
               "hover:from-[#6be5ff] hover:to-[#00b5dd]",
+              // Gemini POV port (2026-04-30) — tactile lift + deeper halo on hover.
+              "motion-safe:hover:scale-[1.02] motion-safe:active:scale-[0.98]",
+              "motion-safe:hover:shadow-[0_0_32px_rgba(0,199,242,0.5),0_10px_24px_rgba(0,199,242,0.32),inset_0_1px_0_rgba(255,255,255,0.4)]",
             ),
       )}
     >
