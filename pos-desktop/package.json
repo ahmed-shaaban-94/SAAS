@@ -1,6 +1,6 @@
 {
   "name": "datapulse-pos",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "DataPulse POS — Pharmacy Point of Sale Desktop App",
   "main": "dist/electron/main.js",
   "author": "DataPulse <support@smartdatapulse.tech>",

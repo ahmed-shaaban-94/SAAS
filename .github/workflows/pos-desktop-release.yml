@@ -169,10 +169,17 @@ jobs:
           # electron-builder skips signing silently in that case.
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          # Clerk build-time env. Next.js inlines NEXT_PUBLIC_* at build,
-          # so these MUST be set before `next build` runs in build.sh.
+          # Clerk build-time env. Vite's define block (vite.config.ts) inlines
+          # every NEXT_PUBLIC_* into the renderer bundle, so these MUST be set
+          # before `npm run build:renderer` runs in scripts/build.sh.
           # Missing keys produce a working installer that fails at runtime
           # when Clerk initialises (acceptable for draft / fork PRs).
+          # NEXT_PUBLIC_AUTH_PROVIDER selects clerk vs auth0; without it the
+          # auth-bridge defaults to auth0 → NextAuth.SessionProvider needs
+          # /api/auth/* endpoints that don't exist in pos-desktop's static
+          # bundle, so useSession hangs forever and the app shows a black
+          # screen. Pin to clerk for the desktop installer.
+          NEXT_PUBLIC_AUTH_PROVIDER: clerk
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_CLERK_JWT_TEMPLATE: ${{ secrets.NEXT_PUBLIC_CLERK_JWT_TEMPLATE }}
           # Opt-in: upload the .pfx to a hardware token / EV signer in a
