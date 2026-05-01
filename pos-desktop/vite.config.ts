@@ -7,9 +7,32 @@ import path from "node:path";
 //   BrowserWindow.loadFile() (file:// protocol).
 // - build.outDir: 'dist/renderer' — Electron loads from there in prod.
 // - server.port: 5173 (dev), Electron loadURL('http://localhost:5173').
+//
+// NEXT_PUBLIC_* env replacement: the @shared/* code paths still reference
+// process.env.NEXT_PUBLIC_CLERK_* (they're shared with the Next.js frontend
+// which inlines those at build time). Vite does NOT replace process.env.*
+// by default, so without the define block below the Clerk publishable key
+// stays undefined at runtime — CLERK_KEY_CONFIGURED becomes false and the
+// app shows the "Authentication not configured" error screen instead of
+// initialising. Inline every NEXT_PUBLIC_* the build environment provides.
+const inlineNextPublicEnv = (): Record<string, string> => {
+  const inlined: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith("NEXT_PUBLIC_") && value !== undefined) {
+      inlined[`process.env.${key}`] = JSON.stringify(value);
+    }
+  }
+  // Always emit a stable NODE_ENV — Clerk's SDK branches on it.
+  inlined["process.env.NODE_ENV"] = JSON.stringify(
+    process.env.NODE_ENV ?? "production",
+  );
+  return inlined;
+};
+
 export default defineConfig({
   plugins: [react()],
   base: "./",
+  define: inlineNextPublicEnv(),
   resolve: {
     alias: {
       "@pos": path.resolve(__dirname, "src"),
