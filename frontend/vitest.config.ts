@@ -19,6 +19,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@pos": path.resolve(__dirname, "../pos-desktop/src"),
     },
   },
 });

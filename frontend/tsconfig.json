@@ -24,6 +24,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@pos/*": [
+        "../pos-desktop/src/*"
       ]
     },
     "target": "ES2017"
