@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-import { PaymentPanel } from "@/components/pos/PaymentPanel";
+import { PaymentPanel } from "@pos/components/PaymentPanel";
 
 describe("PaymentPanel", () => {
   it("renders all four payment method buttons", () => {

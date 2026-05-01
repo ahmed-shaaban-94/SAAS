@@ -15,6 +15,20 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+// Mock react-router-dom hooks so POS page tests can render without a Router
+// wrapper. Test files that need real routing wrap the render in a
+// <MemoryRouter> manually; these stubs cover the unwrapped case.
+vi.mock("react-router-dom", async (importActual) => {
+  const actual = await importActual<typeof import("react-router-dom")>();
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+    useLocation: () => ({ pathname: "/", search: "", hash: "", state: null, key: "default" }),
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+    useParams: () => ({}),
+  };
+});
+
 // Mock next-themes
 vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "dark", setTheme: vi.fn(), resolvedTheme: "dark" }),

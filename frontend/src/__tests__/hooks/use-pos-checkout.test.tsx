@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { renderHook, act } from "@testing-library/react";
 import { server } from "../mocks/server";
-import { usePosCheckout } from "@/hooks/use-pos-checkout";
+import { usePosCheckout } from "@pos/hooks/use-pos-checkout";
 
 interface CapturedRequest {
   body: unknown;

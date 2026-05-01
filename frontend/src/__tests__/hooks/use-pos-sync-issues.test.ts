@@ -3,14 +3,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { SWRConfig } from "swr";
 import React from "react";
 
-vi.mock("@/lib/pos/offline-db", () => ({
+vi.mock("@pos/lib/offline-db", () => ({
   getRejectedQueue: vi.fn(),
   reconcileQueue: vi.fn(),
 }));
 
-import { getRejectedQueue, reconcileQueue } from "@/lib/pos/offline-db";
-import { usePosSyncIssues } from "@/hooks/use-pos-sync-issues";
-import type { QueueRow } from "@/lib/pos/ipc";
+import { getRejectedQueue, reconcileQueue } from "@pos/lib/offline-db";
+import { usePosSyncIssues } from "@pos/hooks/use-pos-sync-issues";
+import type { QueueRow } from "@pos/lib/ipc";
 
 const getRejected = vi.mocked(getRejectedQueue);
 const reconcile = vi.mocked(reconcileQueue);

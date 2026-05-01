@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { buildReceiptPayload, printReceipt } from "@/lib/pos/print-bridge";
-import type { TransactionDetailResponse, CheckoutResponse } from "@/types/pos";
+import { buildReceiptPayload, printReceipt } from "@pos/lib/print-bridge";
+import type { TransactionDetailResponse, CheckoutResponse } from "@pos/types/pos";
 
 const TXN: TransactionDetailResponse = {
   id: 7,

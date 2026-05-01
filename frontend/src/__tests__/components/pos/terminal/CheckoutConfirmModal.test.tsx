@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, act } from "@testing-library/react";
-import { CheckoutConfirmModal } from "@/components/pos/terminal/CheckoutConfirmModal";
+import { CheckoutConfirmModal } from "@pos/components/terminal/CheckoutConfirmModal";
 
 // Wrap focus-trap-react with a sentinel `data-focus-trap-mounted` attribute
 // so we can assert from the rendered DOM that the trap is active. The real

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { OrderTabs } from "@/components/pos/terminal/OrderTabs";
+import { OrderTabs } from "@pos/components/terminal/OrderTabs";
 
 describe("OrderTabs", () => {
   it("renders the active tab with order name and item count", () => {

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { StocktakingModal } from "@/components/pos/StocktakingModal";
-import type { DrugRow } from "@/components/pos/drugs/types";
+import { StocktakingModal } from "@pos/components/StocktakingModal";
+import type { DrugRow } from "@pos/components/drugs/types";
 
 function makeRow(overrides: Partial<DrugRow> = {}): DrugRow {
   return {

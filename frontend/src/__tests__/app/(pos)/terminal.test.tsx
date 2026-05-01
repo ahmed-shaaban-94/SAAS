@@ -3,10 +3,10 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "../../mocks/server";
-import { PosCartProvider } from "@/contexts/pos-cart-context";
-import { usePosCartStore } from "@/store/pos-cart-store";
-import PosTerminalPage from "@/app/(pos)/terminal/page";
-import type { PosProductResult } from "@/types/pos";
+import { PosCartProvider } from "@pos/contexts/pos-cart-context";
+import { usePosCartStore } from "@pos/store/cart-store";
+import PosTerminalPage from "@pos/pages/terminal";
+import type { PosProductResult } from "@pos/types/pos";
 
 // --- Test fixtures ---
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { cleanDrugName } from "@/lib/pos/format-drug-name";
+import { cleanDrugName } from "@pos/lib/format-drug-name";
 
 describe("cleanDrugName", () => {
   it("returns empty string for null/undefined/empty", () => {

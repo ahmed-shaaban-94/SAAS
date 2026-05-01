@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CartTable } from "@/components/pos/terminal/CartTable";
-import type { PosCartItem } from "@/types/pos";
+import { CartTable } from "@pos/components/terminal/CartTable";
+import type { PosCartItem } from "@pos/types/pos";
 
 function makeItem(code: string, name: string, qty = 1, price = 25): PosCartItem {
   return {

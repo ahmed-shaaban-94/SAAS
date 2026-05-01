@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { InvoiceModal } from "@/components/pos/InvoiceModal";
+import { InvoiceModal } from "@pos/components/InvoiceModal";
 import type {
   CheckoutResponse,
   PosCartItem,
   TransactionDetailResponse,
-} from "@/types/pos";
+} from "@pos/types/pos";
 
 function makeItem(overrides: Partial<PosCartItem> = {}): PosCartItem {
   const quantity = overrides.quantity ?? 2;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { hasElectron, electron } from "@/lib/pos/ipc";
+import { hasElectron, electron } from "@pos/lib/ipc";
 
 export interface OfflineState {
   isOnline: boolean;

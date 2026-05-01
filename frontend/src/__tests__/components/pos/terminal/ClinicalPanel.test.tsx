@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { useCallback } from "react";
-import { ClinicalPanel } from "@/components/pos/terminal/ClinicalPanel";
-import { usePosDrugClinical } from "@/hooks/use-pos-drug-clinical";
+import { ClinicalPanel } from "@pos/components/terminal/ClinicalPanel";
+import { usePosDrugClinical } from "@pos/hooks/use-pos-drug-clinical";
 
 // Mock the hook so the inner panel renders without an API call.
-vi.mock("@/hooks/use-pos-drug-clinical", () => ({
+vi.mock("@pos/hooks/use-pos-drug-clinical", () => ({
   usePosDrugClinical: vi.fn(() => ({
     detail: null,
     crossSell: [],

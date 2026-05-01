@@ -87,3 +87,7 @@ docs/brain/_INDEX.md
 # Git worktrees
 .worktrees/
 .superpowers/
+
+# Local untracked dirs
+mobile/
+android/
