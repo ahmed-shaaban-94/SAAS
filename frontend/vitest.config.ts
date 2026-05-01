@@ -20,6 +20,28 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@pos": path.resolve(__dirname, "../pos-desktop/src"),
+      "@shared": path.resolve(__dirname, "./src"),
     },
+    // Force a single instance of every React-context-bearing package across
+    // both pos-desktop/node_modules and frontend/node_modules. Without this,
+    // the package gets bundled twice and useContext returns null when a
+    // pos-desktop file calls a hook that the frontend test rendered.
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "swr",
+      "react-router-dom",
+      "@tanstack/react-query",
+      "zustand",
+      "next-themes",
+      "sonner",
+      // Mocked by tests; the dedupe ensures vi.mock("focus-trap-react") in
+      // frontend test files reaches the same module instance the moved POS
+      // components import from pos-desktop/node_modules.
+      "focus-trap-react",
+      "qrcode.react",
+    ],
   },
 });

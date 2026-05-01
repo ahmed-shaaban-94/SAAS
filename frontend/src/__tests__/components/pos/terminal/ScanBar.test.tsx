@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ScanBar } from "@/components/pos/terminal/ScanBar";
+import { ScanBar } from "@pos/components/terminal/ScanBar";
 
 describe("ScanBar", () => {
   it("calls onSubmit with the current value on form submit", async () => {

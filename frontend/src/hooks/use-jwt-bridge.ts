@@ -26,7 +26,7 @@
 import { useEffect, useRef } from "react";
 
 import { useSession } from "@/lib/auth-bridge";
-import { db as posDb, hasElectron } from "@/lib/pos/ipc";
+import { db as posDb, hasElectron } from "@pos/lib/ipc";
 
 const POLL_INTERVAL_MS = 30_000;
 const JWT_SETTING_KEY = "jwt";

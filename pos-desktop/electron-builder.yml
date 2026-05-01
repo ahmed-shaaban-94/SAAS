@@ -5,10 +5,11 @@ appId: tech.smartdatapulse.pos
 productName: DataPulse POS
 copyright: Copyright (c) 2026 DataPulse
 
-# Include the compiled Next.js standalone output and icon assets
+# Include the Vite-built renderer bundle and icon assets. Replaces the
+# embedded Next.js standalone server (Sub-PR 2 of POS extraction).
 extraResources:
-  - from: resources/nextjs
-    to: nextjs
+  - from: dist/renderer
+    to: renderer
     filter:
       - "**/*"
   - from: assets

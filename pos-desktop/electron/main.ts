@@ -1,7 +1,5 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, shell } from "electron";
-import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
-import * as http from "http";
 import { openDb } from "./db/connection";
 import { applySchema } from "./db/migrate";
 import { createHardware } from "./hardware/index";
@@ -15,29 +13,25 @@ import { createLogger } from "./logging/index";
 import { initSentry, isCrashReportingEnabled } from "./observability/sentry";
 
 // ── Configuration ──────────────────────────────────────────
-const PORT = 3847;
-// In dev, set DATAPULSE_DEV_RENDERER_URL=http://localhost:3000 to connect to
-// `next dev` directly instead of starting a standalone server.
+// Renderer source after Vite migration (Sub-PR 2 of POS extraction):
+//   - Production: load static Vite bundle from `dist/renderer/index.html`
+//     via Electron `loadFile`. No embedded Node server, no remote origin —
+//     the bundle is shipped inside the installer and runs offline-first.
+//     Clerk auth happens via the live API; the renderer origin is `file://`,
+//     for which Clerk needs the redirect URL allowlist updated to match.
+//   - Dev: when DATAPULSE_DEV_RENDERER_URL is set, point at the Vite dev
+//     server (default http://localhost:5173). Hot reload + source maps.
+//   - Remote-renderer fallback (rollback escape hatch): when
+//     DATAPULSE_REMOTE_RENDERER_URL is set, load that URL via loadURL.
+//     Used by the rollback path if the static bundle ships broken.
 const DEV_RENDERER_URL = process.env.DATAPULSE_DEV_RENDERER_URL;
-// POS now loads its UI from the live web subdomain. Clerk's production
-// instance only allows real subdomains in its origins list — `localhost`
-// is rejected — so the Electron renderer must point at a public origin.
-// `DATAPULSE_POS_RENDERER_URL` overrides the default for staging/canary
-// builds; `DATAPULSE_USE_LOCAL_NEXTJS=1` falls back to the bundled server
-// (rollback path while we soak the remote-renderer change).
-const REMOTE_RENDERER_URL =
-  process.env.DATAPULSE_POS_RENDERER_URL ?? "https://pos.smartdatapulse.tech";
-const USE_LOCAL_NEXTJS = process.env.DATAPULSE_USE_LOCAL_NEXTJS === "1";
-const LOCAL_NEXTJS_URL = `http://localhost:${PORT}`;
-const NEXTJS_URL =
-  DEV_RENDERER_URL ?? (USE_LOCAL_NEXTJS ? LOCAL_NEXTJS_URL : REMOTE_RENDERER_URL);
-const POS_PATH = "/terminal";
+const REMOTE_RENDERER_URL = process.env.DATAPULSE_REMOTE_RENDERER_URL;
+const POS_HASH_PATH = "#/terminal";
 const APP_TITLE = "DataPulse POS";
 
 // ── State ──────────────────────────────────────────────────
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-let nextServer: ChildProcess | null = null;
 let isQuitting = false;
 
 // Logger is created lazily — `app.getPath('logs')` requires Electron
@@ -66,22 +60,17 @@ let log = createLogger({
 });
 
 // ── Paths ──────────────────────────────────────────────────
-function getNextJsDir(): string {
-  // In packaged app: resources/nextjs/
-  // In dev: first try resources/nextjs (copied by build script),
-  //         then fall back to frontend/.next/standalone/
+function getRendererIndexHtml(): string {
+  // After the Vite migration, the renderer ships as a static bundle.
+  // In packaged app: resources/renderer/index.html (electron-builder
+  // extraResources copies dist/renderer there).
+  // In dev: dist/renderer/index.html (produced by `vite build`) when
+  // DATAPULSE_DEV_RENDERER_URL is unset; otherwise the dev server URL
+  // is used directly via loadURL.
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "nextjs");
+    return path.join(process.resourcesPath, "renderer", "index.html");
   }
-  const resourcesDir = path.join(__dirname, "..", "..", "resources", "nextjs");
-  const devDir = path.join(__dirname, "..", "..", "..", "frontend", ".next", "standalone");
-  // Prefer the copied resources dir (built via build.sh)
-  try {
-    require("fs").accessSync(path.join(resourcesDir, "server.js"));
-    return resourcesDir;
-  } catch {
-    return devDir;
-  }
+  return path.join(__dirname, "..", "..", "dist", "renderer", "index.html");
 }
 
 function getAssetsDir(): string {
@@ -91,146 +80,24 @@ function getAssetsDir(): string {
   return path.join(__dirname, "..", "assets");
 }
 
-// ── Next.js Server ─────────────────────────────────────────
-function startNextServer(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const nextDir = getNextJsDir();
-    const serverScript = path.join(nextDir, "server.js");
+// ── Renderer ───────────────────────────────────────────────
+// After Vite migration: load the static bundle via `loadFile` (prod) or the
+// Vite dev server URL (dev). No Node.js subprocess; no Next.js standalone.
+// The bundle uses HashRouter, so /terminal is reachable via `#/terminal`
+// regardless of whether the URL scheme is `file://` or `http://`.
 
-    log.info({ serverScript }, "starting Next.js server");
-
-    // Set env vars for the Next.js server.
-    // API vars are passed through from the Electron process env so a single
-    // .env file at the pos-desktop root controls everything.
-    //
-    // NEXTAUTH_SECRET note: the Clerk migration (#668) left behind a
-    // `/api/auth/[...nextauth]/route.ts` handler that still ships in the
-    // Next.js bundle. When NODE_ENV=production, next-auth's assertConfig
-    // refuses to boot without a secret — even though Clerk-based
-    // deployments never hit the route. Set a placeholder here so the
-    // server starts; the dead NextAuth path will be deleted in a
-    // separate cleanup PR.
-    const env = {
-      ...process.env,
-      PORT: String(PORT),
-      HOSTNAME: "localhost",
-      NODE_ENV: "production",
-      NEXTAUTH_URL: `http://localhost:${PORT}`,
-      NEXTAUTH_SECRET:
-        process.env.NEXTAUTH_SECRET ||
-        "clerk-deployment-nextauth-unused-placeholder",
-      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "https://pos.smartdatapulse.tech",
-      INTERNAL_API_URL: process.env.INTERNAL_API_URL || "https://pos.smartdatapulse.tech",
-      // Clerk runtime env — `NEXT_PUBLIC_*` values were also inlined at
-      // build time (see build.sh); re-exposing here keeps dev-mode
-      // (`DEV_RENDERER_URL` pointed at `next dev`) working when the
-      // developer has the keys in their shell env.
-      //
-      // NO `CLERK_SECRET_KEY` is set here. The embedded Next.js server
-      // runs with `POS_DESKTOP_MODE=1` (below), which short-circuits the
-      // auth middleware entirely. The real auth boundary is the
-      // `smartdatapulse.tech` backend. Shipping a server secret inside
-      // the installer would leak it to every pilot machine.
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "",
-      NEXT_PUBLIC_CLERK_JWT_TEMPLATE: process.env.NEXT_PUBLIC_CLERK_JWT_TEMPLATE || "datapulse",
-      // Comma-separated JWT templates tried when the primary throws or
-      // returns null. Observed 2026-04-24: Clerk's session-token endpoint
-      // intermittently 404-s our primary template even though it exists
-      // per Backend API + Dashboard. The sibling `datapulse-pos` template
-      // carries the same `tenant_id`/`roles` claims the backend reads,
-      // so falling through to it keeps the pilot unblocked while we
-      // chase the root cause with Clerk support.
-      NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES:
-        process.env.NEXT_PUBLIC_CLERK_JWT_FALLBACK_TEMPLATES || "datapulse-pos",
-      // Tells middleware.ts to skip server-side auth checks. The browser-
-      // side Clerk SDK still handles session display using the public
-      // key; API calls still go to the backend with the JWT attached.
-      POS_DESKTOP_MODE: "1",
-    };
-
-    // Use spawn('node') instead of fork() — Electron's fork() uses the
-    // Electron binary as the Node interpreter which doesn't work for
-    // plain Node.js scripts like Next.js server.js
-    nextServer = spawn("node", [serverScript], {
-      cwd: nextDir,
-      env,
-      stdio: "pipe",
-      shell: false,
-    });
-
-    nextServer.stdout?.on("data", (data: Buffer) => {
-      const msg = data.toString().trim();
-      if (msg) log.info({ source: "next" }, msg);
-    });
-
-    nextServer.stderr?.on("data", (data: Buffer) => {
-      const msg = data.toString().trim();
-      if (msg) log.error({ source: "next" }, msg);
-    });
-
-    nextServer.on("error", (err) => {
-      log.error({ err }, "failed to start Next.js server");
-      reject(err);
-    });
-
-    nextServer.on("exit", (code) => {
-      nextServer = null;
-      if (isQuitting) {
-        // Electron tears down Node worker threads during quit, so pino's
-        // `thread-stream` file transport may already be gone by the time
-        // this handler fires on SIGTERM. `log.info()` would throw
-        // "Error: the worker is ending" from `thread-stream/index.js` and
-        // surface as an "Uncaught Exception" dialog the user sees when
-        // closing the app (reported 2026-04-24). Skipping the log here is
-        // safe — the user-initiated quit is the canonical exit path and
-        // we already logged intent in `stopNextServer()`.
-        return;
-      }
-      log.info({ code }, "Next.js server exited");
-      // Server crashed unexpectedly — escalate to a full app quit so the
-      // tray/window state stays consistent with the absent renderer.
-      app.quit();
-    });
-
-    // Poll until the server is ready
-    waitForServer(resolve, reject, 30_000);
-  });
-}
-
-function waitForServer(
-  resolve: () => void,
-  reject: (err: Error) => void,
-  timeoutMs: number,
-): void {
-  const start = Date.now();
-  const check = () => {
-    if (Date.now() - start > timeoutMs) {
-      reject(new Error("Next.js server did not start within timeout"));
-      return;
-    }
-    // Probe the POS terminal route the app actually loads (line 208).
-    // Any HTTP response — even a 500 — proves the server is listening;
-    // the prior probe against `/api/auth/session` required < 500, which
-    // hung forever whenever the dead-NextAuth route (see #682) errored.
-    http
-      .get(`${NEXTJS_URL}${POS_PATH}`, (res) => {
-        log.info({ status: res.statusCode }, "Next.js server ready");
-        resolve();
-        res.resume();
-      })
-      .on("error", () => {
-        setTimeout(check, 500);
-      });
-  };
-  check();
-}
-
-function stopNextServer(): void {
-  if (nextServer) {
-    log.info("stopping Next.js server");
-    nextServer.kill("SIGTERM");
-    nextServer = null;
+function loadRenderer(window: BrowserWindow): Promise<void> {
+  if (DEV_RENDERER_URL) {
+    log.info({ url: DEV_RENDERER_URL }, "loading dev renderer");
+    return window.loadURL(`${DEV_RENDERER_URL}${POS_HASH_PATH}`);
   }
+  if (REMOTE_RENDERER_URL) {
+    log.info({ url: REMOTE_RENDERER_URL }, "loading remote renderer (rollback path)");
+    return window.loadURL(`${REMOTE_RENDERER_URL}${POS_HASH_PATH}`);
+  }
+  const indexHtml = getRendererIndexHtml();
+  log.info({ indexHtml }, "loading static Vite bundle");
+  return window.loadFile(indexHtml, { hash: POS_HASH_PATH.replace(/^#/, "") });
 }
 
 // ── Window ─────────────────────────────────────────────────
@@ -251,11 +118,11 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      // DevTools remain toggleable via Ctrl+Shift+I during the alpha/beta
-      // smoke runs so pilots (also our testers) can surface network +
-      // console errors without requiring a separate dev build. Re-gate
-      // on `app.isPackaged` before GA.
-      devTools: true,
+      // DevTools enabled only in dev / packaged builds with explicit env
+      // override. Production installs ship with DevTools disabled to keep
+      // pharmacy cashiers from inadvertently surfacing internal state via
+      // Ctrl+Shift+I (Sub-PR 2 review §MEDIUM: gate before GA).
+      devTools: !app.isPackaged || process.env.DATAPULSE_POS_DEVTOOLS === "1",
     },
   });
 
@@ -265,112 +132,40 @@ function createWindow(): void {
     mainWindow?.focus();
   });
 
-  // Load POS terminal page from the remote renderer (pos.smartdatapulse.tech).
-  mainWindow.loadURL(`${NEXTJS_URL}${POS_PATH}`);
+  // Load the renderer (Vite static bundle in prod, Vite dev server in dev,
+  // or a remote rollback URL when DATAPULSE_REMOTE_RENDERER_URL is set).
+  void loadRenderer(mainWindow);
 
-  // Cold-boot offline fallback (#offline-B).
-  //
-  // When the laptop has no internet at launch time, loadURL(remote) raises
-  // `did-fail-load` with a hard network error code. Without this handler
-  // the renderer is left blank and pilots can't open the till.
-  //
-  // We only fall back on the *hard* network error codes — silent fall-back
-  // on Cloudflare 5xx or slow-network timeouts would mask incidents and
-  // surface confusing UX (the local bundle has different cache state than
-  // the remote). See Chromium net error list for the full table.
-  //
-  // Hard network errors that justify falling back to the bundled local
-  // server:
-  //   -2   ERR_FAILED              (generic catastrophic failure)
-  //   -7   ERR_TIMED_OUT           (no response within timeout)
-  //   -105 ERR_NAME_NOT_RESOLVED   (DNS lookup failed → likely offline)
-  //   -106 ERR_INTERNET_DISCONNECTED
-  //   -109 ERR_ADDRESS_UNREACHABLE
-  //   -118 ERR_CONNECTION_TIMED_OUT
-  //   -130 ERR_PROXY_CONNECTION_FAILED
-  const COLD_BOOT_OFFLINE_CODES = new Set([-2, -7, -105, -106, -109, -118, -130]);
-  let coldBootFallbackTriggered = false;
+  // Renderer load failure surfacing — without an embedded fallback server
+  // we can no longer self-recover, but we MUST surface the failure so the
+  // pilot doesn't sit on a blank window. Sentry already captures the event
+  // via the renderer-crash bridge for online users; this handler logs the
+  // raw Chromium error code locally so a tech can grep the log file.
   mainWindow.webContents.on(
     "did-fail-load",
-    async (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
       if (!isMainFrame) return;
-      if (coldBootFallbackTriggered) return;
-      if (USE_LOCAL_NEXTJS || DEV_RENDERER_URL) return; // already local — nothing to fall back to
-      if (!COLD_BOOT_OFFLINE_CODES.has(errorCode)) {
-        // Surface, don't switch surfaces. Cloudflare 5xx etc. land here.
-        log.error(
-          { errorCode, errorDescription, validatedURL },
-          "renderer load failed (not a hard network error — staying on remote)",
-        );
-        return;
-      }
-
-      coldBootFallbackTriggered = true;
-      log.warn(
+      log.error(
         { errorCode, errorDescription, validatedURL },
-        "remote renderer unreachable — falling back to bundled local Next.js",
+        "renderer load failed — bundle missing or static asset 404",
       );
-
-      try {
-        await startNextServer();
-      } catch (err) {
-        log.fatal({ err }, "cold-boot fallback failed: bundled Next.js did not start");
-        return;
-      }
-
-      const localTarget = `${LOCAL_NEXTJS_URL}${POS_PATH}`;
-      log.info({ url: localTarget }, "cold-boot fallback: loading local renderer");
-      mainWindow?.loadURL(localTarget);
     },
   );
 
-  // POS navigation guard — after auth callback, redirect back to POS
-  // instead of landing on the dashboard or marketing page.
-  // `/sign-in` + `/sign-up` are Clerk's hosted routes (catch-all
-  // `[[...sign-in]]`); they must be allow-listed so SessionGuard's
-  // `signIn()` redirect isn't bounced back to /terminal in a loop.
-  const POS_ROUTES = [
-    "/terminal",
-    "/checkout",
-    "/shift",
-    "/history",
-    "/pos-returns",
-    "/login",
-    "/sign-in",
-    "/sign-up",
-    "/api/auth",
-  ];
-  // Trap navigations that leak outside the POS routes. The renderer URL
-  // moved off `localhost` to the live subdomain (Clerk production rejects
-  // localhost origins), so guard on the renderer's actual hostname.
-  const rendererHostname = (() => {
-    try {
-      return new URL(NEXTJS_URL).hostname;
-    } catch {
-      return "localhost";
-    }
-  })();
-  mainWindow.webContents.on("did-navigate", (_event, url) => {
-    try {
-      const parsed = new URL(url);
-      const path = parsed.pathname;
-      const isPosRoute = POS_ROUTES.some((r) => path.startsWith(r));
-      if (!isPosRoute && parsed.hostname === rendererHostname) {
-        log.info({ from: path }, "redirecting back to POS terminal");
-        mainWindow?.loadURL(`${NEXTJS_URL}${POS_PATH}`);
-      }
-    } catch { /* ignore parse errors */ }
-  });
+  // Hash-router routes (createHashRouter): the URL is `file:///.../index.html#/<path>`.
+  // The path-based redirect logic from the Next.js era is no longer needed;
+  // React Router owns navigation entirely within the rendered page.
 
-  // Open external links in the system browser; keep Clerk + renderer
-  // origins inside the Electron window. (Auth0 path is dead post-Clerk
-  // migration but the host-allowlist mirrors the renderer host so a
-  // Clerk hosted-page nav, e.g. on the new pos.smartdatapulse.tech
-  // origin, doesn't accidentally open the OS browser.)
+  // Open external links in the system browser. The static-bundle origin is
+  // `file://` and the dev server is `http://localhost:5173`; both are
+  // implicitly internal. Only Clerk hosted pages need an allowlist so the
+  // sign-in flow can navigate inside the Electron window without bouncing
+  // out to the OS browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     const parsed = new URL(url);
     const internalHost =
-      parsed.hostname === rendererHostname ||
+      parsed.protocol === "file:" ||
+      parsed.hostname === "localhost" ||
       parsed.hostname.endsWith(".clerk.accounts.dev") ||
       parsed.hostname.endsWith(".clerk.com");
     if (!internalHost) {
@@ -419,21 +214,21 @@ function createTray(): void {
       label: "Terminal",
       click: () => {
         mainWindow?.show();
-        mainWindow?.loadURL(`${NEXTJS_URL}/terminal`);
+        mainWindow?.webContents.send("navigate", "/terminal");
       },
     },
     {
       label: "Shift Management",
       click: () => {
         mainWindow?.show();
-        mainWindow?.loadURL(`${NEXTJS_URL}/shift`);
+        mainWindow?.webContents.send("navigate", "/shift");
       },
     },
     {
       label: "Transaction History",
       click: () => {
         mainWindow?.show();
-        mainWindow?.loadURL(`${NEXTJS_URL}/history`);
+        mainWindow?.webContents.send("navigate", "/history");
       },
     },
     { type: "separator" },
@@ -530,25 +325,16 @@ app.whenReady().then(async () => {
   // Register all IPC handlers before windows are created
   registerIpcHandlers(db, hw);
 
+  // Renderer source is selected at load-time (see `loadRenderer`):
+  // dev server / remote rollback / static bundle. No server-side wait
+  // needed — Vite produces a static bundle and the dev server is the
+  // user's responsibility to start (`npm run dev:vite`).
   if (DEV_RENDERER_URL) {
-    // Dev mode: frontend is served by `next dev` — just wait for it to be ready.
-    log.info({ url: DEV_RENDERER_URL }, "dev mode: waiting for Next.js dev server");
-    await new Promise<void>((resolve, reject) =>
-      waitForServer(resolve, reject, 30_000),
-    );
-  } else if (USE_LOCAL_NEXTJS) {
-    // Rollback path: serve the bundled Next.js standalone server on
-    // localhost (the pre-2026-04-29 behaviour). Only used when
-    // DATAPULSE_USE_LOCAL_NEXTJS=1; remote-renderer is the default.
-    try {
-      await startNextServer();
-    } catch (err) {
-      log.fatal({ err }, "cannot start Next.js server");
-      app.quit();
-      return;
-    }
+    log.info({ url: DEV_RENDERER_URL }, "dev renderer mode");
+  } else if (REMOTE_RENDERER_URL) {
+    log.info({ url: REMOTE_RENDERER_URL }, "remote renderer rollback mode");
   } else {
-    log.info({ url: NEXTJS_URL }, "remote renderer mode: skipping local Next.js server");
+    log.info("static renderer mode (Vite bundle via loadFile)");
   }
 
   createWindow();
@@ -588,7 +374,6 @@ app.whenReady().then(async () => {
 
 app.on("before-quit", () => {
   isQuitting = true;
-  stopNextServer();
 });
 
 app.on("window-all-closed", () => {

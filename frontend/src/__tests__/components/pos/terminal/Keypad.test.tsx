@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { Keypad } from "@/components/pos/terminal/Keypad";
+import { Keypad } from "@pos/components/terminal/Keypad";
 
 function KeypadHarness({ initial = "", disabled = false }: { initial?: string; disabled?: boolean }) {
   const [v, setV] = useState(initial);

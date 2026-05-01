@@ -6,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/pos/ipc", () => ({
+vi.mock("@pos/lib/ipc", () => ({
   hasElectron: vi.fn(),
   db: {
     products: {
@@ -28,8 +28,8 @@ vi.mock("@/lib/api-client", async () => {
 });
 
 import { ApiError, fetchAPI } from "@/lib/api-client";
-import * as ipc from "@/lib/pos/ipc";
-import { getProductByCode, getQueueStats, searchProducts } from "@/lib/pos/offline-db";
+import * as ipc from "@pos/lib/ipc";
+import { getProductByCode, getQueueStats, searchProducts } from "@pos/lib/offline-db";
 
 // The `vi.mock` factories above return `vi.fn()` for each nested helper,
 // but the compile-time type of `ipc.db.products.search` is still the real

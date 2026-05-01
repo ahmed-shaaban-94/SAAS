@@ -120,4 +120,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("barcode-scanned", listener);
     return () => ipcRenderer.removeListener("barcode-scanned", listener);
   },
+
+  // ── tray menu navigation events ─────────────────────────────
+  // Main process sends "navigate" with a hash-router path ("/terminal",
+  // "/shift", "/history") when the user picks a tray menu item. The
+  // renderer wires this to React Router via createHashRouter.navigate
+  // in src/main.tsx.
+  onNavigate: (callback: (path: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, path: string) =>
+      callback(path);
+    ipcRenderer.on("navigate", listener);
+    return () => ipcRenderer.removeListener("navigate", listener);
+  },
 });

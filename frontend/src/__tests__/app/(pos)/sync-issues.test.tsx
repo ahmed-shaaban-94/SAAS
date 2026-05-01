@@ -3,12 +3,12 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-vi.mock("@/hooks/use-pos-sync-issues", () => ({
+vi.mock("@pos/hooks/use-pos-sync-issues", () => ({
   usePosSyncIssues: vi.fn(),
 }));
 
-vi.mock("@/lib/pos/ipc", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/pos/ipc")>("@/lib/pos/ipc");
+vi.mock("@pos/lib/ipc", async () => {
+  const actual = await vi.importActual<typeof import("@pos/lib/ipc")>("@pos/lib/ipc");
   return {
     ...actual,
     hasElectron: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("@/lib/pos/ipc", async () => {
 
 // Stand-in for the modal — lets us assert on `kind` without exercising
 // reconcileQueue a second time (covered by ReconcileModal.test.tsx).
-vi.mock("@/components/pos/ReconcileModal", () => ({
+vi.mock("@pos/components/ReconcileModal", () => ({
   ReconcileModal: ({
     kind,
     onCancel,
@@ -36,10 +36,10 @@ vi.mock("@/components/pos/ReconcileModal", () => ({
     ),
 }));
 
-import { usePosSyncIssues } from "@/hooks/use-pos-sync-issues";
-import { hasElectron } from "@/lib/pos/ipc";
-import PosSyncIssuesPage from "@/app/(pos)/sync-issues/page";
-import type { QueueRow } from "@/lib/pos/ipc";
+import { usePosSyncIssues } from "@pos/hooks/use-pos-sync-issues";
+import { hasElectron } from "@pos/lib/ipc";
+import PosSyncIssuesPage from "@pos/pages/sync-issues";
+import type { QueueRow } from "@pos/lib/ipc";
 
 const mockedHook = vi.mocked(usePosSyncIssues);
 const mockedHasElectron = vi.mocked(hasElectron);

@@ -1,0 +1,16 @@
+/* Self-hosted POS fonts — replaces next/font/google in Sub-PR 2.
+   Served via @fontsource npm packages (no external CDN). */
+
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/400-italic.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/600.css";
+@import "@fontsource/cairo/400.css";
+@import "@fontsource/cairo/600.css";
+
+:root {
+  --font-fraunces: "Fraunces", serif;
+  --font-jetbrains-mono: "JetBrains Mono", monospace;
+  --font-plex-arabic: "Cairo", "Segoe UI", system-ui, sans-serif;
+}

@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import {
   InsuranceModal,
   type InsuranceApplyPayload,
-} from "@/components/pos/InsuranceModal";
+} from "@pos/components/InsuranceModal";
 
 const baseProps = {
   grandTotal: 200,

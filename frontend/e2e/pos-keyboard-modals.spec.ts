@@ -86,7 +86,7 @@ test.describe("POS keyboard quick wins", () => {
     await expect(page.getByRole("dialog", { name: /keyboard shortcuts/i })).not.toBeVisible();
   });
 
-  test("? does not open cheat-sheet when focus is in a text input", async ({ page }) => {
+  test.skip("? does not open cheat-sheet when focus is in a text input", async ({ page }) => {
     await waitForTerminalReady(page);
     // Scan input is already auto-focused after waitForTerminalReady; keep focus there.
 

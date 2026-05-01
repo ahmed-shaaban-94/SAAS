@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { TerminalSessionResponse } from "@/types/pos";
+import type { TerminalSessionResponse } from "@pos/types/pos";
 
-vi.mock("@/hooks/use-pos-terminal", () => ({
+vi.mock("@pos/hooks/use-pos-terminal", () => ({
   openTerminal: vi.fn(),
   closeTerminal: vi.fn(),
 }));
 
-import { closeTerminal } from "@/hooks/use-pos-terminal";
-import ShiftPage from "@/app/(pos)/shift/page";
+import { closeTerminal } from "@pos/hooks/use-pos-terminal";
+import ShiftPage from "@pos/pages/shift";
 
 const mockedClose = vi.mocked(closeTerminal);
 

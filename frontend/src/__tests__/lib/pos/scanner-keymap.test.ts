@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_CONFIG, ScannerEngine } from "@/lib/pos/scanner-keymap";
+import { DEFAULT_CONFIG, ScannerEngine } from "@pos/lib/scanner-keymap";
 
 describe("ScannerEngine", () => {
   it("emits a scan when N chars arrive inside the gap window and end in Enter", () => {

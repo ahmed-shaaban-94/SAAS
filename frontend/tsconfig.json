@@ -27,6 +27,9 @@
       ],
       "@pos/*": [
         "../pos-desktop/src/*"
+      ],
+      "@shared/*": [
+        "./src/*"
       ]
     },
     "target": "ES2017"

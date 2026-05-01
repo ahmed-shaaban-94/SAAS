@@ -20,6 +20,14 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  // Type-check + lint run in dedicated Frontend CI job (with pos-desktop
+  // node_modules installed for cross-package @pos/* resolution). Skip
+  // them inside the Docker build because the build context is just
+  // ./frontend — pos-desktop/ isn't reachable, and `npm run build`
+  // would fail on `@pos/*` imports during type-check even though the
+  // bundled JS resolves the alias correctly via tsconfig paths.
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   experimental: {
     // Tree-shake named exports from large icon/chart packages so only used
     // symbols are included in the client bundle (verified with ANALYZE=true).

@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-vi.mock("@/lib/pos/offline-db", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/pos/offline-db")>(
-    "@/lib/pos/offline-db",
+vi.mock("@pos/lib/offline-db", async () => {
+  const actual = await vi.importActual<typeof import("@pos/lib/offline-db")>(
+    "@pos/lib/offline-db",
   );
   return {
     ...actual,
@@ -12,9 +12,9 @@ vi.mock("@/lib/pos/offline-db", async () => {
   };
 });
 
-import { reconcileQueue } from "@/lib/pos/offline-db";
-import { ReconcileModal } from "@/components/pos/ReconcileModal";
-import type { QueueRow } from "@/lib/pos/ipc";
+import { reconcileQueue } from "@pos/lib/offline-db";
+import { ReconcileModal } from "@pos/components/ReconcileModal";
+import type { QueueRow } from "@pos/lib/ipc";
 
 const reconcile = vi.mocked(reconcileQueue);
 

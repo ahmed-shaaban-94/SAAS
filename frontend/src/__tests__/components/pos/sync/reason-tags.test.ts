@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyReason } from "@/components/pos/sync/reason-tags";
+import { classifyReason } from "@pos/components/sync/reason-tags";
 
 describe("classifyReason", () => {
   it("returns UNKNOWN for null or empty error", () => {

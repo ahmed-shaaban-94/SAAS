@@ -15,7 +15,7 @@ vi.mock("@/hooks/use-voucher-validate", () => ({
   }),
 }));
 
-import { VoucherCodeModal } from "@/components/pos/VoucherCodeModal";
+import { VoucherCodeModal } from "@pos/components/VoucherCodeModal";
 
 describe("VoucherCodeModal (PR 6 redesign)", () => {
   beforeEach(() => {

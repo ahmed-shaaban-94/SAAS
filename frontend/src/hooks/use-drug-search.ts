@@ -1,6 +1,6 @@
 import useSWR from "swr";
 import { fetchAPI } from "@/lib/api-client";
-import type { PosProductResult } from "@/types/pos";
+import type { PosProductResult } from "@pos/types/pos";
 
 interface CatalogPage {
   items: Array<{

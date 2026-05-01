@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { usePosCartStore } from "@/store/pos-cart-store";
+import { usePosCartStore } from "@pos/store/cart-store";
 
 beforeEach(() => {
   usePosCartStore.setState({

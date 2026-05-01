@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QuickPickGrid } from "@/components/pos/terminal/QuickPickGrid";
-import type { QuickPickItem } from "@/components/pos/terminal/types";
+import { QuickPickGrid } from "@pos/components/terminal/QuickPickGrid";
+import type { QuickPickItem } from "@pos/components/terminal/types";
 
 const CATALOG: QuickPickItem[] = Array.from({ length: 8 }, (_, i) => ({
   drug_code: `SKU-${i + 1}`,

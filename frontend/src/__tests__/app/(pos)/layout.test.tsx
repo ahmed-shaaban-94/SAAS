@@ -54,7 +54,7 @@ vi.mock("@/components/error-boundary", () => ({
 vi.mock("@/components/ui/toast", () => ({
   ToastProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
-vi.mock("@/contexts/pos-cart-context", () => ({
+vi.mock("@pos/contexts/pos-cart-context", () => ({
   PosCartProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("@/components/branding/brand-provider", () => ({
@@ -64,7 +64,7 @@ vi.mock("@/hooks/use-renderer-crash-bridge", () => ({
   useRendererCrashBridge: vi.fn(),
 }));
 
-import PosLayout from "@/app/(pos)/layout";
+import PosLayout from "@pos/pages/layout";
 
 describe("PosLayout / SessionGuard — audit C3", () => {
   const originalElectronAPI = (window as unknown as { electronAPI?: unknown }).electronAPI;

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import {
   ReceiptPaper,
   BrandBlock,
-} from "@/components/pos/receipts/ReceiptPaper";
+} from "@pos/components/receipts/ReceiptPaper";
 
 describe("ReceiptPaper shell", () => {
   it("renders the paper container with default props (no decoration)", () => {
