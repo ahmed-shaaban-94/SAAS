@@ -118,11 +118,11 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      // DevTools enabled only in dev / packaged builds with explicit env
-      // override. Production installs ship with DevTools disabled to keep
-      // pharmacy cashiers from inadvertently surfacing internal state via
-      // Ctrl+Shift+I (Sub-PR 2 review §MEDIUM: gate before GA).
-      devTools: !app.isPackaged || process.env.DATAPULSE_POS_DEVTOOLS === "1",
+      // DevTools enabled in packaged builds during the Phase 1 stabilization
+      // window — pharmacists need a way to surface launch errors without
+      // flashing an env var (#824 will gate this back to !isPackaged for GA).
+      // Press Ctrl+Shift+I in the running app to inspect.
+      devTools: true,
     },
   });
 
@@ -149,6 +149,23 @@ function createWindow(): void {
         { errorCode, errorDescription, validatedURL },
         "renderer load failed — bundle missing or static asset 404",
       );
+    },
+  );
+
+  // Mirror renderer console messages (errors + warnings) into the main-
+  // process log so a black-screen launch leaves a paper trail without the
+  // user having to open DevTools. Useful when CSP / runtime exceptions
+  // happen before Sentry can connect.
+  mainWindow.webContents.on(
+    "console-message",
+    (_event, level, message, line, sourceId) => {
+      // 0=verbose, 1=info, 2=warning, 3=error
+      if (level >= 2) {
+        log.warn(
+          { level, sourceId, line, message },
+          "renderer console",
+        );
+      }
     },
   );
 

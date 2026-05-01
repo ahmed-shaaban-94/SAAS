@@ -37,6 +37,15 @@ export default defineConfig({
     alias: {
       "@pos": path.resolve(__dirname, "src"),
       "@shared": path.resolve(__dirname, "../frontend/src"),
+      // Clerk's Next.js SDK pulls in next/navigation hooks (usePathname,
+      // useRouter, useSearchParams) which only work inside a Next.js app.
+      // The pos-desktop renderer is a pure Vite/React-Router bundle, so we
+      // alias to @clerk/react — the framework-agnostic SDK that exposes
+      // the same ClerkProvider / useAuth / useClerk / useUser surface
+      // auth-bridge.tsx actually uses. Without this alias the bundle
+      // tries to call useRouter() at boot, which throws under file://
+      // and produces the v3.0.x black screen.
+      "@clerk/nextjs": "@clerk/react",
     },
     // Force a single instance of every React-context-bearing package
     // across both pos-desktop/node_modules and frontend/node_modules.
