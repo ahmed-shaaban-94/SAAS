@@ -458,13 +458,9 @@
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   D6 — Tactile press animation for QuickPickGrid buttons
+/* === .active-tactile (D6 — QuickPickGrid press animation) ═══════════
    80ms ease-out down, 160ms ease-in up; respects prefers-reduced-motion
    ═══════════════════════════════════════════════════════════════════ */
-.active-tactile {
-
-/* === .active-tactile (D6 — QuickPickGrid press animation) === */
 .active-tactile {
   transition:
     transform 160ms ease-in,
