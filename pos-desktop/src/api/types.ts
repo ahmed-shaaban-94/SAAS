@@ -1249,6 +1249,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispensing/days-of-stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Days Of Stock
+         * @description Return estimated days of stock remaining per product per site.
+         *
+         *     Returns NULL for days_of_stock when no recent dispense history exists.
+         */
+        get: operations["get_days_of_stock_api_v1_dispensing_days_of_stock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispensing/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dispense Rates
+         * @description Return average daily/weekly/monthly dispense rates per product per site (last 90 days).
+         */
+        get: operations["get_dispense_rates_api_v1_dispensing_rates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispensing/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Reconciliation
+         * @description Return reconciliation report: physical inventory counts vs calculated stock levels.
+         */
+        get: operations["get_reconciliation_api_v1_dispensing_reconciliation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispensing/stockout-risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stockout Risk
+         * @description Return products where days_of_stock < reorder_lead_days or stock <= reorder_point.
+         *
+         *     Risk levels: stockout (qty <= 0), critical (days < lead_days), at_risk (qty <= reorder_point).
+         */
+        get: operations["get_stockout_risk_api_v1_dispensing_stockout_risk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispensing/velocity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Product Velocity
+         * @description Return product velocity classification (fast_mover / normal_mover / slow_mover / dead_stock).
+         *
+         *     Classification is relative to the category average dispense rate.
+         */
+        get: operations["get_product_velocity_api_v1_dispensing_velocity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/embed/token": {
         parameters: {
             query?: never;
@@ -1285,6 +1391,210 @@ export interface paths {
          *     Validates the embed token, then runs the query with tenant-scoped RLS.
          */
         post: operations["embed_query_api_v1_embed__token__query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Expiry Alerts
+         * @description Return batches expiring within the given threshold (30/60/90 days).
+         */
+        get: operations["get_expiry_alerts_api_v1_expiry_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Batches
+         * @description Return active batches with computed expiry alert level.
+         */
+        get: operations["get_batches_api_v1_expiry_batches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/batches/{drug_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Batches By Drug
+         * @description Return all batches for a specific drug across all sites.
+         */
+        get: operations["get_batches_by_drug_api_v1_expiry_batches__drug_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Expiry Calendar
+         * @description Return day-by-day expiry counts for the calendar view.
+         */
+        get: operations["get_expiry_calendar_api_v1_expiry_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/expired": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Expired Batches
+         * @description Return batches that have already passed their expiry date.
+         */
+        get: operations["get_expired_batches_api_v1_expiry_expired_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/exposure-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Expiry Exposure Summary
+         * @description Tenant-aggregate expiry exposure (EGP + batch count) per 30/60/90-day tier.
+         *
+         *     Powers the three-card exposure widget on the new dashboard design.
+         *     Always returns exactly three rows in fixed order (30d/60d/90d), even
+         *     when a tier has no batches (#506).
+         */
+        get: operations["get_expiry_exposure_summary_api_v1_expiry_exposure_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/fefo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select Fefo
+         * @description Select batches using FEFO (First Expiry First Out) for a dispense request.
+         */
+        post: operations["select_fefo_api_v1_expiry_fefo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Quarantine Batch
+         * @description Move a batch to quarantine status and create a stock adjustment event.
+         */
+        post: operations["quarantine_batch_api_v1_expiry_quarantine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Expiry Summary
+         * @description Return expiry counts (expired/near_expiry/active) aggregated per site.
+         */
+        get: operations["get_expiry_summary_api_v1_expiry_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expiry/write-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Write Off Batch
+         * @description Write off a batch quantity and record the reason.
+         */
+        post: operations["write_off_batch_api_v1_expiry_write_off_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1773,6 +2083,254 @@ export interface paths {
          * @description Return the single best insight for a new user's first dashboard view.
          */
         get: operations["get_first_insight_api_v1_insights_first_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Adjustment
+         * @description Create a manual stock adjustment (damage, shrinkage, correction, etc.).
+         */
+        post: operations["create_adjustment_api_v1_inventory_adjustments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/alerts/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Reorder Alerts
+         * @description Return products whose stock has fallen at or below the reorder point.
+         */
+        get: operations["get_reorder_alerts_api_v1_inventory_alerts_reorder_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Counts
+         * @description Return physical inventory count records.
+         */
+        get: operations["get_counts_api_v1_inventory_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Movements
+         * @description Return stock movement events filtered by site, drug, type, or date range.
+         */
+        get: operations["get_movements_api_v1_inventory_movements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/movements/{drug_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Movements By Drug
+         * @description Return all movement events for a specific drug.
+         */
+        get: operations["get_movements_by_drug_api_v1_inventory_movements__drug_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Reconciliation
+         * @description Return reconciliation report: physical counts vs calculated stock levels.
+         */
+        get: operations["get_reconciliation_api_v1_inventory_reconciliation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/reorder-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reorder Configs
+         * @description List reorder configurations for the current tenant.
+         */
+        get: operations["list_reorder_configs_api_v1_inventory_reorder_config_get"];
+        /**
+         * Upsert Reorder Config
+         * @description Create or update a reorder config. Validates min_stock <= reorder_point <= max_stock.
+         */
+        put: operations["upsert_reorder_config_api_v1_inventory_reorder_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/reorder-config/{drug_code}/{site_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Reorder Config
+         * @description Return reorder config for a specific drug/site combination.
+         */
+        get: operations["get_reorder_config_api_v1_inventory_reorder_config__drug_code___site_code__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Deactivate Reorder Config
+         * @description Soft-delete (deactivate) a reorder config entry.
+         */
+        delete: operations["deactivate_reorder_config_api_v1_inventory_reorder_config__drug_code___site_code__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/stock-levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stock Levels
+         * @description Return current stock levels, optionally filtered by site or drug.
+         */
+        get: operations["get_stock_levels_api_v1_inventory_stock_levels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/stock-levels/{drug_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stock Level Detail
+         * @description Return stock levels for a specific drug across all sites.
+         */
+        get: operations["get_stock_level_detail_api_v1_inventory_stock_levels__drug_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/valuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Valuation
+         * @description Return stock valuation (weighted average cost) per product/site.
+         */
+        get: operations["get_valuation_api_v1_inventory_valuation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/valuation/{drug_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Valuation By Drug
+         * @description Return valuation for a specific drug across all sites.
+         */
+        get: operations["get_valuation_by_drug_api_v1_inventory_valuation__drug_code__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2529,6 +3087,1194 @@ export interface paths {
          *     Uses JWT-derived tenant_id for all authorization — never the request body.
          */
         post: operations["trigger_pipeline_api_v1_pipeline_trigger_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/admin/desktop-releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Desktop Release
+         * @description Idempotent upsert into pos.desktop_update_releases.
+         *
+         *     Body: see :class:`DesktopReleaseCreate`. Idempotent on
+         *     `(version, channel, platform)` — re-calls update the row in place
+         *     without minting a new release_id.
+         *
+         *     Rate-limited to 10 req/min — service accounts call this once per
+         *     release; a flood means the bearer leaked.
+         */
+        post: operations["post_desktop_release_api_v1_pos_admin_desktop_releases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Capabilities
+         * @description Return the server's POS capability document (feature-only, no tenant state).
+         */
+        get: operations["capabilities_api_v1_pos_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/catalog/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paginated product catalog for offline sync
+         * @description Return a page of products ordered by ``drug_code``.
+         *
+         *     Pass the returned ``next_cursor`` on subsequent requests to page forward.
+         *     When ``next_cursor`` is null the catalog is exhausted; reset to
+         *     ``cursor=null`` on the next sync cycle.
+         */
+        get: operations["get_catalog_products_api_v1_pos_catalog_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/catalog/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paginated active-batch stock for offline sync
+         * @description Return a page of active batches from ``stg_batches`` ordered by ``loaded_at``.
+         *
+         *     Pass the returned ``next_cursor`` on subsequent requests.  Optionally
+         *     filter by ``site`` to pull stock for a single branch.
+         */
+        get: operations["get_catalog_stock_api_v1_pos_catalog_stock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/controlled/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Pharmacist
+         * @description Verify a pharmacist PIN for controlled-substance dispensing.
+         *
+         *     The pharmacist submits their ``pharmacist_id`` (JWT sub) and ``credential``
+         *     (PIN) for a specific ``drug_code``.  On success, returns a short-lived
+         *     signed token (5 min TTL) to be passed as ``pharmacist_id`` in the
+         *     subsequent ``add_item`` call — avoiding a PIN re-entry per item.
+         *
+         *     Requires the ``pos:controlled:verify`` permission (``pos_pharmacist`` or
+         *     ``pos_manager`` roles).  Rate-limited to 10 requests/minute to limit
+         *     brute-force exposure.
+         */
+        post: operations["verify_pharmacist_api_v1_pos_controlled_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/customers/by-phone/{phone}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve an Egyptian mobile number to a customer + churn signal
+         * @description Return the customer matching ``phone`` or 404.
+         *
+         *     ``phone`` accepts any of ``01XXXXXXXXX`` / ``201XXXXXXXXX`` /
+         *     ``+201XXXXXXXXX``; the service normalises to E.164 before the DB lookup.
+         *     Invalid shapes and unknown phones both return 404 — the UI treats the
+         *     two cases identically ("No customer found").
+         */
+        get: operations["get_customer_by_phone_api_v1_pos_customers_by_phone__phone__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Delivery
+         * @description Create a delivery order for a completed transaction.
+         *
+         *     Optionally assigns a rider at creation time; marks the rider busy.
+         *     Returns the delivery record with embedded rider details.
+         */
+        post: operations["create_delivery_api_v1_pos_deliveries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/drugs/{drug_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Drug detail including clinical metadata
+         * @description Return drug detail (dim_product + POS-owned clinical metadata).
+         *
+         *     404 when the drug_code is unknown in ``dim_product``; 200 with
+         *     ``counseling_text=null`` when the drug exists but has no clinical entry.
+         */
+        get: operations["get_drug_detail_api_v1_pos_drugs__drug_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/drugs/{drug_code}/alternatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Generic alternatives with savings for a drug
+         * @description Return generics that share the same ``active_ingredient`` and cost less.
+         *
+         *     Empty array (not 404) when the drug has no active ingredient on file or
+         *     when no cheaper alternatives exist.
+         */
+        get: operations["get_alternatives_api_v1_pos_drugs__drug_code__alternatives_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/drugs/{drug_code}/cross-sell": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * AI cross-sell recommendations for a drug
+         * @description Return cross-sell recommendations for a primary drug.
+         *
+         *     Empty array (not 404) when the drug has no configured suggestions — the
+         *     clinical panel card stays hidden client-side.
+         */
+        get: operations["get_cross_sell_api_v1_pos_drugs__drug_code__cross_sell_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/products/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Products
+         * @description Search the product catalog by drug code, name, or brand.
+         */
+        get: operations["search_products_api_v1_pos_products_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/products/{drug_code}/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stock Info
+         * @description Return live stock + per-batch info for a drug at a site.
+         */
+        get: operations["get_stock_info_api_v1_pos_products__drug_code__stock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/promotions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Promotions
+         * @description List tenant promotions, newest first. Optional status filter.
+         */
+        get: operations["list_promotions_api_v1_pos_promotions_get"];
+        put?: never;
+        /**
+         * Create Promotion
+         * @description Create a new promotion. Starts paused — admin activates explicitly.
+         */
+        post: operations["create_promotion_api_v1_pos_promotions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/promotions/eligible": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List Eligible Promotions
+         * @description Return promotions the cashier can apply to the current cart.
+         *
+         *     Evaluates active + in-window promotions against the cart's drug codes,
+         *     clusters, and subtotal. Returns the list with a preview discount each
+         *     promotion would yield so the UI can show "Save EGP X".
+         */
+        post: operations["list_eligible_promotions_api_v1_pos_promotions_eligible_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/promotions/preview-matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Promotion Matches
+         * @description Return the count of SKUs that match the given scope+values.
+         *
+         *     Used by the admin UI for live "matches N SKUs" feedback before saving
+         *     a brand or active_ingredient scope promotion. Returns 0 for scopes
+         *     where a catalog count is not meaningful (all, items, category).
+         */
+        post: operations["preview_promotion_matches_api_v1_pos_promotions_preview_matches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/promotions/{promotion_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Promotion
+         * @description Fetch one promotion including scope items/categories + usage audit.
+         */
+        get: operations["get_promotion_api_v1_pos_promotions__promotion_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Promotion
+         * @description Partial update — all fields optional. Scope joins rewritten when scope changes.
+         */
+        patch: operations["update_promotion_api_v1_pos_promotions__promotion_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/pos/promotions/{promotion_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Set Promotion Status
+         * @description Toggle between ``active`` and ``paused``. ``expired`` is auto-managed.
+         */
+        patch: operations["set_promotion_status_api_v1_pos_promotions__promotion_id__status_patch"];
+        trace?: never;
+    };
+    "/api/v1/pos/receipts/{transaction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Receipt Pdf
+         * @description Return the PDF receipt for a completed transaction.
+         */
+        get: operations["get_receipt_pdf_api_v1_pos_receipts__transaction_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/receipts/{transaction_id}/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Receipt Email
+         * @description Send the PDF receipt to the given email address (stub — email delivery in Phase 2).
+         */
+        post: operations["send_receipt_email_api_v1_pos_receipts__transaction_id__email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/receipts/{transaction_id}/thermal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Receipt Thermal
+         * @description Return the raw ESC/POS thermal receipt bytes.
+         */
+        get: operations["get_receipt_thermal_api_v1_pos_receipts__transaction_id__thermal_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/receipts/{transaction_id}/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Receipt Whatsapp
+         * @description Send the PDF receipt to the given phone via WhatsApp (#629).
+         *
+         *     Feature-flag gated. When disabled the service raises
+         *     :class:`WhatsAppDisabledError` -> 503 so the UI can fall back to print.
+         *     The raw phone is never logged — only a truncated sha256 hash.
+         */
+        post: operations["send_receipt_whatsapp_api_v1_pos_receipts__transaction_id__whatsapp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Returns
+         * @description List all return records for the tenant, most recent first.
+         */
+        get: operations["list_returns_api_v1_pos_returns_get"];
+        put?: never;
+        /**
+         * Process Return
+         * @description Process a drug return against a completed transaction.
+         *
+         *     Creates a return transaction, restocks inventory via FEFO movement,
+         *     and records a ``pos.returns`` audit entry.
+         */
+        post: operations["process_return_api_v1_pos_returns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/returns/{return_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Return
+         * @description Fetch a single return record with its line items.
+         */
+        get: operations["get_return_api_v1_pos_returns__return_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/riders/available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Available Riders
+         * @description Return riders currently available for delivery dispatch.
+         */
+        get: operations["list_available_riders_api_v1_pos_riders_available_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Shifts
+         * @description List shift records for the tenant, most recent first.
+         */
+        get: operations["list_shifts_api_v1_pos_shifts_get"];
+        put?: never;
+        /**
+         * Start Shift
+         * @description Start a new cashier shift on the specified terminal.
+         *
+         *     Raises 409 if the terminal already has an open shift.
+         */
+        post: operations["start_shift_api_v1_pos_shifts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/shifts/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Shift For Me
+         * @description Return the authenticated staff's active shift + commission + target (#627).
+         *
+         *     Terminal status-strip polls this after every sale so the commission pill
+         *     and trophy bar update live. 404 when the staff has no open shift (UI
+         *     shows the "open shift" prompt instead of the status strip).
+         */
+        get: operations["get_current_shift_for_me_api_v1_pos_shifts_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/shifts/current/{terminal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Shift
+         * @description Return the currently open shift for a terminal.
+         */
+        get: operations["get_current_shift_api_v1_pos_shifts_current__terminal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/shifts/{shift_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Shift
+         * @description Close a cashier shift and compute cash reconciliation.
+         *
+         *     Returns ``expected_cash``, ``variance`` (closing - expected), transaction count,
+         *     and total sales for the shift.
+         *
+         *     Codex P2: ``enforce_close_guard`` runs before delegating to the
+         *     service and rejects the close when any ``pos.transactions`` row for
+         *     this shift still has ``commit_confirmed_at IS NULL`` (provisional /
+         *     unreconciled transactions on disk). The client also supplies its own
+         *     ``local_unresolved`` claim (count + digest) which the guard
+         *     cross-checks against the server-side count. The whole route is
+         *     idempotency-keyed so a network retry replays the cached response
+         *     instead of double-closing.
+         */
+        post: operations["close_shift_api_v1_pos_shifts__shift_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/shifts/{shift_id}/refresh-grant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Grant
+         * @description Mint a fresh offline grant for an existing open shift.
+         *
+         *     The terminal calls this when it regains connectivity (e.g. after a half-day
+         *     offline session) so its local grant doesn't expire. Fails with 404 if the
+         *     shift doesn't exist or belongs to another tenant; 409 if the shift is
+         *     already closed.
+         */
+        post: operations["refresh_grant_api_v1_pos_shifts__shift_id__refresh_grant_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/tenant-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tenant Key
+         * @description Return the tenant's currently-valid POS signing public keys.
+         *
+         *     Clients use these keys to verify offline grants (§8.8.2). Private keys
+         *     never leave the server; only public material is returned here.
+         */
+        get: operations["tenant_key_api_v1_pos_tenant_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Terminal
+         * @description Open a fresh POS terminal session (cashier shift).
+         *
+         *     §1.4 single-terminal enforcement is delivered by three other layers
+         *     (client guard via GET /terminals/active-for-me, device-bound per-request
+         *     Ed25519 proof via device_token_verifier, and tenant-level flags in
+         *     bronze.tenants). The server-side guard ON THIS ROUTE belongs in the
+         *     service layer so it can share PosService's existing DB session; moving
+         *     it there is tracked as M2 follow-up work.
+         */
+        post: operations["open_terminal_api_v1_pos_terminals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Active Terminals
+         * @description List all non-closed terminals for the tenant.
+         */
+        get: operations["list_active_terminals_api_v1_pos_terminals_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/active-for-me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Active Terminals For Me
+         * @description Return the caller tenant's currently-active POS terminals + multi-terminal flag.
+         *
+         *     Used by the desktop client on launch to detect "another terminal is
+         *     already open for this pharmacy" before attempting to open a shift (§1.4).
+         *     Response model is resolved at import time via the forward-declared
+         *     ``ActiveForMeResponse`` imported in the module-late block.
+         */
+        get: operations["active_terminals_for_me_api_v1_pos_terminals_active_for_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/register-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register Terminal Device
+         * @description Register a physical device (Ed25519 public key + fingerprint) to a terminal.
+         *
+         *     First-launch flow: the desktop client generates a keypair locally, keeps
+         *     the private key in Windows DPAPI, and posts the public key here. Every
+         *     subsequent mutating POS request is signed with that private key and
+         *     verified by ``device_token_verifier`` (§8.9).
+         */
+        post: operations["register_terminal_device_api_v1_pos_terminals_register_device_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/{terminal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Terminal
+         * @description Fetch a single terminal session by ID.
+         */
+        get: operations["get_terminal_api_v1_pos_terminals__terminal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/{terminal_id}/cash-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Cash Events
+         * @description List cash drawer events for a terminal, most recent first.
+         */
+        get: operations["list_cash_events_api_v1_pos_terminals__terminal_id__cash_events_get"];
+        put?: never;
+        /**
+         * Record Cash Event
+         * @description Record a mid-shift cash drawer event (float, pickup, sale, refund).
+         */
+        post: operations["record_cash_event_api_v1_pos_terminals__terminal_id__cash_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/{terminal_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Terminal
+         * @description Close a terminal — records closing cash and seals the shift.
+         *
+         *     Requires ``pos:terminal:close`` (Codex P2): prior code had no RBAC
+         *     on this mutating endpoint, so any authenticated POS user could
+         *     close another cashier's active terminal. The permission is already
+         *     seeded — just was never required by the route.
+         */
+        post: operations["close_terminal_api_v1_pos_terminals__terminal_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/{terminal_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause Terminal
+         * @description Pause a terminal — operator stepped away; blocks new transactions.
+         */
+        post: operations["pause_terminal_api_v1_pos_terminals__terminal_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/terminals/{terminal_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Terminal
+         * @description Resume a paused terminal back to ``active`` state.
+         */
+        post: operations["resume_terminal_api_v1_pos_terminals__terminal_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Transactions
+         * @description List transactions for the tenant with optional filters.
+         */
+        get: operations["list_transactions_api_v1_pos_transactions_get"];
+        put?: never;
+        /**
+         * Create Transaction
+         * @description Open a new draft transaction on an active terminal.
+         */
+        post: operations["create_transaction_api_v1_pos_transactions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/transactions/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Commit Transaction
+         * @description Atomic POS commit — draft + items + checkout in one payload (§3).
+         *
+         *     Designed for offline queue replay: a retried push with the same
+         *     ``Idempotency-Key`` returns the cached response without re-executing
+         *     the business write. The ``X-Terminal-Token`` header is verified against
+         *     the registered device public key before any state is touched (§8.9).
+         */
+        post: operations["commit_transaction_api_v1_pos_transactions_commit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/transactions/{transaction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Transaction
+         * @description Return a transaction header with its full line items.
+         *
+         *     ``cost_per_unit`` is included on each line item only for users with the
+         *     ``pos:cost:read`` permission. For all other roles the field is nulled out
+         *     so cost data is never accidentally exposed to cashier-level users.
+         */
+        get: operations["get_transaction_api_v1_pos_transactions__transaction_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/transactions/{transaction_id}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checkout
+         * @description Finalise a draft transaction: totals -> payment -> stock -> bronze write.
+         *
+         *     Audit C1 hardening: this route now requires an ``Idempotency-Key`` header
+         *     (the client should mint a fresh UUID per user-initiated checkout and
+         *     re-send it on retry) and the ``pos:transaction:checkout`` permission.
+         *     Device-bound Ed25519 verification stays exclusive to the desktop
+         *     ``/transactions/commit`` route — browser pilots have no private keypair.
+         */
+        post: operations["checkout_api_v1_pos_transactions__transaction_id__checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/transactions/{transaction_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Item
+         * @description Add a drug to the active draft transaction (FEFO batch + stock check).
+         */
+        post: operations["add_item_api_v1_pos_transactions__transaction_id__items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/transactions/{transaction_id}/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Item
+         * @description Remove a single line item from a draft transaction.
+         */
+        delete: operations["remove_item_api_v1_pos_transactions__transaction_id__items__item_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Item
+         * @description Update an existing line item's quantity / price / discount.
+         *
+         *     ``override_price=None`` means "leave the persisted unit_price as-is"
+         *     — passing ``Decimal("0")`` here used to zero the line on innocent
+         *     quantity-only PATCHes (Codex P1).
+         */
+        patch: operations["update_item_api_v1_pos_transactions__transaction_id__items__item_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/pos/transactions/{transaction_id}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Transaction Returns
+         * @description List all return records for an original transaction.
+         */
+        get: operations["list_transaction_returns_api_v1_pos_transactions__transaction_id__returns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/transactions/{transaction_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Transaction
+         * @description Void a completed transaction — reverses inventory and writes an audit log.
+         *
+         *     Restricted to supervisors / managers. Only ``completed`` transactions
+         *     may be voided; draft transactions should be abandoned by removing items.
+         */
+        post: operations["void_transaction_api_v1_pos_transactions__transaction_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/updates/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Desktop Update Policy
+         * @description Return whether this tenant may install a newer POS desktop release.
+         */
+        get: operations["desktop_update_policy_api_v1_pos_updates_policy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/updates/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Desktop Update Releases
+         * @description List configured POS desktop update rollouts.
+         */
+        get: operations["list_desktop_update_releases_api_v1_pos_updates_releases_get"];
+        put?: never;
+        /**
+         * Upsert Desktop Update Release
+         * @description Create/update a release and choose all tenants or a selected tenant list.
+         */
+        post: operations["upsert_desktop_update_release_api_v1_pos_updates_releases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/vouchers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Vouchers
+         * @description List all vouchers for the tenant, newest first. Optional status filter.
+         */
+        get: operations["list_vouchers_api_v1_pos_vouchers_get"];
+        put?: never;
+        /**
+         * Create Voucher
+         * @description Create a new discount voucher for the tenant.
+         *
+         *     Returns 409 if (tenant_id, code) already exists.
+         */
+        post: operations["create_voucher_api_v1_pos_vouchers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pos/vouchers/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Voucher
+         * @description Check whether a voucher code can be redeemed by the caller's cart.
+         *
+         *     Returns 404 if the code does not exist for the tenant. Returns 400 with
+         *     one of the ``voucher_*`` detail strings if the voucher is inactive,
+         *     expired, not yet active, exhausted, or if ``cart_subtotal`` was supplied
+         *     and fails ``min_purchase``.
+         */
+        post: operations["validate_voucher_api_v1_pos_vouchers_validate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3730,6 +5476,71 @@ export interface components {
             period: string;
         };
         /**
+         * ActiveShiftResponse
+         * @description The authenticated staff's active shift + commission + target.
+         *
+         *     Returned by ``GET /pos/shifts/current``. Extends the standard shift shape
+         *     with:
+         *
+         *     * ``commission_earned_egp`` — live-computed sum over the shift's completed
+         *       transactions (``line_total × product_catalog_meta.commission_rate``).
+         *       Zero when no sales yet or no drugs on the commission list.
+         *     * ``daily_sales_target_egp`` — terminal-level target, ``None`` when unset.
+         *     * ``transactions_so_far`` / ``sales_so_far_egp`` — running totals for the
+         *       status-strip progress ring.
+         */
+        ActiveShiftResponse: {
+            /**
+             * Commission Earned Egp
+             * @default 0
+             */
+            commission_earned_egp: number;
+            /** Daily Sales Target Egp */
+            daily_sales_target_egp?: number | null;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Opening Cash */
+            opening_cash: number;
+            /**
+             * Sales So Far Egp
+             * @default 0
+             */
+            sales_so_far_egp: number;
+            /**
+             * Shift Date
+             * Format: date
+             */
+            shift_date: string;
+            /** Shift Id */
+            shift_id: number;
+            /** Staff Id */
+            staff_id: string;
+            /** Terminal Id */
+            terminal_id: number;
+            /**
+             * Transactions So Far
+             * @default 0
+             */
+            transactions_so_far: number;
+        };
+        /**
+         * AddItemRequest
+         * @description Request body to add a drug to the active cart.
+         */
+        AddItemRequest: {
+            /** Drug Code */
+            drug_code: string;
+            /** Override Price */
+            override_price?: number | string | null;
+            /** Pharmacist Id */
+            pharmacist_id?: string | null;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /**
          * Adjustment
          * @description Single parameter adjustment for simulation.
          */
@@ -3745,6 +5556,24 @@ export interface components {
          * @enum {string}
          */
         AdjustmentParam: "price" | "volume" | "cost";
+        /**
+         * AdjustmentRequest
+         * @description Request body for creating a manual stock adjustment.
+         */
+        AdjustmentRequest: {
+            /** Adjustment Type */
+            adjustment_type: string;
+            /** Batch Number */
+            batch_number?: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Reason */
+            reason: string;
+            /** Site Code */
+            site_code: string;
+        };
         /**
          * AffinityPair
          * @description A pair of frequently co-purchased products.
@@ -3842,6 +5671,24 @@ export interface components {
             metric_value?: number | null;
             /** Threshold Value */
             threshold_value?: number | null;
+        };
+        /**
+         * AlternativeItem
+         * @description One generic alternative for a primary drug, with savings vs the primary.
+         *
+         *     ``savings_egp`` = primary.unit_price − alt.unit_price; zero or negative
+         *     alternatives are filtered out server-side so the UI only surfaces true
+         *     cost-savers.
+         */
+        AlternativeItem: {
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Savings Egp */
+            savings_egp: number;
+            /** Unit Price */
+            unit_price: number;
         };
         /** AnnotationCreate */
         AnnotationCreate: {
@@ -3971,6 +5818,25 @@ export interface components {
             /** Total Checked */
             total_checked: number;
         };
+        /**
+         * AppliedDiscount
+         * @description Cart-level discount attached to a ``CommitRequest`` or ``CheckoutRequest``.
+         *
+         *     One of two sources: a redeemable voucher code or an admin-configured
+         *     promotion. The server routes ``ref`` to the right redemption function
+         *     based on ``source``. Mutually exclusive with the legacy ``voucher_code``
+         *     field (the latter remains for back-compat with offline POS clients that
+         *     have not yet migrated).
+         */
+        AppliedDiscount: {
+            /** Ref */
+            ref: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "voucher" | "promotion";
+        };
         /** AuditLogEntry */
         AuditLogEntry: {
             /** Action */
@@ -4003,6 +5869,13 @@ export interface components {
             page: number;
             /** Page Size */
             page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** AvailableRidersResponse */
+        AvailableRidersResponse: {
+            /** Riders */
+            riders: components["schemas"]["RiderResponse"][];
             /** Total */
             total: number;
         };
@@ -4058,6 +5931,47 @@ export interface components {
             title_ar?: string | null;
             /** Title En */
             title_en: string;
+        };
+        /**
+         * BatchInfo
+         * @description Batch dimension row with computed expiry status.
+         */
+        BatchInfo: {
+            /** Alert Level */
+            alert_level: string;
+            /** Batch Key */
+            batch_key: number;
+            /** Batch Number */
+            batch_number: string;
+            /** Computed Status */
+            computed_status: string;
+            /** Current Quantity */
+            current_quantity: number;
+            /** Days To Expiry */
+            days_to_expiry: number;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /**
+             * Expiry Date
+             * Format: date
+             */
+            expiry_date: string;
+            /** Site Code */
+            site_code: string;
+        };
+        /**
+         * BatchSummary
+         * @description Summary of a single drug batch at the POS.
+         */
+        BatchSummary: {
+            /** Batch Number */
+            batch_number: string;
+            /** Expiry Date */
+            expiry_date?: string | null;
+            /** Quantity Available */
+            quantity_available: number;
         };
         /**
          * BillingBreakdown
@@ -4354,6 +6268,133 @@ export interface components {
             variance: number;
         };
         /**
+         * CapabilitiesDoc
+         * @description Feature-only capability document returned by GET /pos/capabilities.
+         */
+        CapabilitiesDoc: {
+            /** Capabilities */
+            capabilities: {
+                [key: string]: boolean;
+            };
+            /** Device Registration Endpoint */
+            device_registration_endpoint: string;
+            /** Enforced Policies */
+            enforced_policies: {
+                [key: string]: number;
+            };
+            /** Idempotency */
+            idempotency: string;
+            /** Max Client Version */
+            max_client_version: string | null;
+            /** Min Client Version */
+            min_client_version: string;
+            /** Server Version */
+            server_version: string;
+            /** Tenant Key Endpoint */
+            tenant_key_endpoint: string;
+            /** Update Policy Endpoint */
+            update_policy_endpoint: string;
+        };
+        /**
+         * CashCountRequest
+         * @description Request body to record a mid-shift cash count.
+         */
+        CashCountRequest: {
+            /** Amount */
+            amount: number | string;
+            event_type: components["schemas"]["CashDrawerEventType"];
+            /** Reference Id */
+            reference_id?: string | null;
+        };
+        /**
+         * CashDrawerEventResponse
+         * @description API response for a recorded cash drawer event.
+         */
+        CashDrawerEventResponse: {
+            /** Amount */
+            amount: number;
+            event_type: components["schemas"]["CashDrawerEventType"];
+            /** Id */
+            id: number;
+            /** Reference Id */
+            reference_id?: string | null;
+            /** Terminal Id */
+            terminal_id: number;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+        };
+        /**
+         * CashDrawerEventType
+         * @description Types of cash drawer movements recorded during a shift.
+         * @enum {string}
+         */
+        CashDrawerEventType: "sale" | "refund" | "float" | "pickup";
+        /**
+         * CatalogProductEntry
+         * @description One product entry in the offline-catalog pull response.
+         */
+        CatalogProductEntry: {
+            /** Drug Brand */
+            drug_brand?: string | null;
+            /** Drug Category */
+            drug_category?: string | null;
+            /** Drug Cluster */
+            drug_cluster?: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Is Controlled */
+            is_controlled: boolean;
+            /** Requires Pharmacist */
+            requires_pharmacist: boolean;
+            /** Unit Price */
+            unit_price: number;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * CatalogProductPage
+         * @description Cursor-paginated catalog product response (M3b pull-sync).
+         */
+        CatalogProductPage: {
+            /** Items */
+            items: components["schemas"]["CatalogProductEntry"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /**
+         * CatalogStockEntry
+         * @description One batch-level stock entry in the offline-catalog pull response.
+         */
+        CatalogStockEntry: {
+            /** Batch Number */
+            batch_number: string;
+            /** Drug Code */
+            drug_code: string;
+            /** Expiry Date */
+            expiry_date?: string | null;
+            /** Quantity */
+            quantity: number;
+            /** Site Code */
+            site_code: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * CatalogStockPage
+         * @description Cursor-paginated catalog stock response (M3b pull-sync).
+         */
+        CatalogStockPage: {
+            /** Items */
+            items: components["schemas"]["CatalogStockEntry"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /**
          * CategoryGroup
          * @description Top-level category grouping in the product hierarchy.
          */
@@ -4438,46 +6479,6 @@ export interface components {
             total_egp: number;
         };
         /**
-         * CheckoutRequest
-         * @description Request to create a Checkout session.
-         *
-         *     For Stripe (USD): ``price_id`` is the Stripe Price ID.
-         *     For Paymob/InstaPay (EGP): ``price_id`` is the plan key (e.g. ``"pro"``).
-         *     Set ``currency="EGP"`` to route to the Egyptian payment provider.
-         */
-        CheckoutRequest: {
-            /**
-             * Cancel Url
-             * @default /billing?canceled=true
-             */
-            cancel_url: string;
-            /**
-             * Currency
-             * @description ISO-4217 currency code — determines the payment provider
-             * @default USD
-             * @enum {string}
-             */
-            currency: "USD" | "EGP";
-            /**
-             * Price Id
-             * @description Stripe Price ID (USD) or plan key (EGP)
-             */
-            price_id: string;
-            /**
-             * Success Url
-             * @default /billing?success=true
-             */
-            success_url: string;
-        };
-        /**
-         * CheckoutResponse
-         * @description Response with the Stripe Checkout session URL.
-         */
-        CheckoutResponse: {
-            /** Checkout Url */
-            checkout_url: string;
-        };
-        /**
          * ChurnPrediction
          * @description Customer churn prediction result.
          */
@@ -4504,6 +6505,17 @@ export interface components {
             risk_level: string;
             /** Trend */
             trend: string;
+        };
+        /**
+         * CloseShiftRequestV2
+         * @description Shift-close with client-reported unresolved-queue claim (§3.6).
+         */
+        CloseShiftRequestV2: {
+            /** Closing Cash */
+            closing_cash: number | string;
+            local_unresolved: components["schemas"]["LocalUnresolvedClaim"];
+            /** Notes */
+            notes?: string | null;
         };
         /** ColumnInfo */
         ColumnInfo: {
@@ -4542,6 +6554,77 @@ export interface components {
              * @default
              */
             tenant_name: string;
+        };
+        /**
+         * CommitRequest
+         * @description Atomic transaction commit payload — draft + items + checkout in one body.
+         */
+        CommitRequest: {
+            applied_discount?: components["schemas"]["AppliedDiscount"] | null;
+            /** Card Approval Code */
+            card_approval_code?: string | null;
+            /** Card Last4 */
+            card_last4?: string | null;
+            /** Card Terminal Id */
+            card_terminal_id?: string | null;
+            /** Cash Tendered */
+            cash_tendered?: number | string | null;
+            /** Customer Id */
+            customer_id?: string | null;
+            /**
+             * Discount Total
+             * @default 0
+             */
+            discount_total: number | string;
+            /** Grand Total */
+            grand_total: number | string;
+            /** Items */
+            items: components["schemas"]["PosCartItem-Input"][];
+            payment_method: components["schemas"]["PaymentMethod"];
+            /** Shift Id */
+            shift_id: number;
+            /** Site Code */
+            site_code: string;
+            /** Staff Id */
+            staff_id: string;
+            /** Subtotal */
+            subtotal: number | string;
+            /**
+             * Tax Total
+             * @default 0
+             */
+            tax_total: number | string;
+            /** Terminal Id */
+            terminal_id: number;
+            /** Voucher Code */
+            voucher_code?: string | null;
+        };
+        /**
+         * CommitResponse
+         * @description Response body for POST /pos/transactions/commit (idempotent).
+         */
+        CommitResponse: {
+            /** Applied Promotion Id */
+            applied_promotion_id?: number | null;
+            /**
+             * Change Due
+             * @default 0
+             */
+            change_due: number;
+            /**
+             * Commit Confirmed At
+             * Format: date-time
+             */
+            commit_confirmed_at: string;
+            /** Receipt Number */
+            receipt_number: string;
+            /** Transaction Id */
+            transaction_id: number;
+            /**
+             * Voucher Discount
+             * @default 0
+             */
+            voucher_discount: number;
         };
         /**
          * CompetitionCreate
@@ -4662,6 +6745,47 @@ export interface components {
         ConfirmResponse: {
             /** Moved Files */
             moved_files: string[];
+        };
+        /** CreateDeliveryRequest */
+        CreateDeliveryRequest: {
+            /** Address */
+            address: string;
+            /** Assigned Rider Id */
+            assigned_rider_id?: number | null;
+            /** @default phone */
+            channel: components["schemas"]["DeliveryChannel"];
+            /**
+             * Delivery Fee
+             * @default 0
+             */
+            delivery_fee: number | string;
+            /** Eta Minutes */
+            eta_minutes?: number | null;
+            /** Landmark */
+            landmark?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Transaction Id */
+            transaction_id: number;
+        };
+        /**
+         * CrossSellItem
+         * @description One cross-sell recommendation for a primary drug.
+         *
+         *     ``reason_tag`` is an uppercase short tag (e.g. ``ROUTE``, ``PROTECT``);
+         *     unknown tags fall back to a neutral pill style in the UI.
+         */
+        CrossSellItem: {
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Reason */
+            reason: string;
+            /** Reason Tag */
+            reason_tag: string;
+            /** Unit Price */
+            unit_price: number;
         };
         /**
          * CustomerAnalytics
@@ -4799,6 +6923,41 @@ export interface components {
              */
             min_date: string;
         };
+        /**
+         * DaysOfStock
+         * @description Days of stock remaining per product per site.
+         */
+        DaysOfStock: {
+            /** Avg Daily Dispense */
+            avg_daily_dispense: number | null;
+            /** Avg Monthly Dispense */
+            avg_monthly_dispense: number | null;
+            /** Avg Weekly Dispense */
+            avg_weekly_dispense: number | null;
+            /** Current Quantity */
+            current_quantity: number;
+            /** Days Of Stock */
+            days_of_stock: number | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Last Dispense Date Key */
+            last_dispense_date_key?: number | null;
+            /** Product Key */
+            product_key: number;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /** Site Name */
+            site_name: string;
+        };
+        /**
+         * DeliveryChannel
+         * @enum {string}
+         */
+        DeliveryChannel: "in_store" | "phone" | "app";
         /** DeliveryLogResponse */
         DeliveryLogResponse: {
             /** Attempt Count */
@@ -4829,6 +6988,272 @@ export interface components {
             status: "pending" | "sent" | "failed" | "dead";
             /** Subscription Id */
             subscription_id: number;
+        };
+        /** DeliveryResponse */
+        DeliveryResponse: {
+            /** Address */
+            address: string;
+            /** Assigned Rider Id */
+            assigned_rider_id?: number | null;
+            channel: components["schemas"]["DeliveryChannel"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Delivery Fee */
+            delivery_fee: number;
+            /** Eta Minutes */
+            eta_minutes?: number | null;
+            /** Id */
+            id: number;
+            /** Landmark */
+            landmark?: string | null;
+            /** Notes */
+            notes?: string | null;
+            rider?: components["schemas"]["RiderResponse"] | null;
+            status: components["schemas"]["DeliveryStatus"];
+            /** Tenant Id */
+            tenant_id: number;
+            /** Transaction Id */
+            transaction_id: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * DeliveryStatus
+         * @enum {string}
+         */
+        DeliveryStatus: "pending" | "dispatched" | "delivered" | "failed";
+        /**
+         * DesktopReleaseCreate
+         * @description Body of POST /api/v1/pos/admin/desktop-releases.
+         *
+         *     Idempotent on (version, channel, platform) at the service layer.
+         */
+        DesktopReleaseCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Channel
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /** Max Schema Version */
+            max_schema_version?: number | null;
+            /** Min App Version */
+            min_app_version?: string | null;
+            /** Min Schema Version */
+            min_schema_version?: number | null;
+            /**
+             * Platform
+             * @default win32
+             * @enum {string}
+             */
+            platform: "win32" | "darwin" | "linux";
+            /** Release Notes */
+            release_notes?: string | null;
+            /**
+             * Rollout Scope
+             * @default all
+             * @enum {string}
+             */
+            rollout_scope: "all" | "selected" | "paused";
+            /** Version */
+            version: string;
+        };
+        /**
+         * DesktopReleaseResponse
+         * @description Echo of the inserted/updated row, including DB-assigned columns.
+         */
+        DesktopReleaseResponse: {
+            /** Active */
+            active: boolean;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Max Schema Version */
+            max_schema_version?: number | null;
+            /** Min App Version */
+            min_app_version?: string | null;
+            /** Min Schema Version */
+            min_schema_version?: number | null;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "win32" | "darwin" | "linux";
+            /** Release Id */
+            release_id: number;
+            /** Release Notes */
+            release_notes?: string | null;
+            /**
+             * Rollout Scope
+             * @enum {string}
+             */
+            rollout_scope: "all" | "selected" | "paused";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * DesktopUpdatePolicyResponse
+         * @description Tenant-specific answer consumed by the Electron auto-updater gate.
+         */
+        DesktopUpdatePolicyResponse: {
+            /** Allowed */
+            allowed: boolean;
+            /** Channel */
+            channel?: string | null;
+            /** Platform */
+            platform?: string | null;
+            /** Reason */
+            reason: string;
+            /** Release Id */
+            release_id?: number | null;
+            /** Release Notes */
+            release_notes?: string | null;
+            /** Rollout Scope */
+            rollout_scope?: ("all" | "selected" | "paused") | null;
+            /** Update Available */
+            update_available: boolean;
+            /** Version */
+            version?: string | null;
+        };
+        /**
+         * DesktopUpdateReleaseRequest
+         * @description Create or replace a desktop release rollout.
+         */
+        DesktopUpdateReleaseRequest: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /**
+             * Channel
+             * @default stable
+             */
+            channel: string;
+            /** Ends At */
+            ends_at?: string | null;
+            /** Max Schema Version */
+            max_schema_version?: number | null;
+            /** Min App Version */
+            min_app_version?: string | null;
+            /** Min Schema Version */
+            min_schema_version?: number | null;
+            /**
+             * Platform
+             * @default win32
+             */
+            platform: string;
+            /** Release Notes */
+            release_notes?: string | null;
+            /**
+             * Rollout Scope
+             * @default selected
+             * @enum {string}
+             */
+            rollout_scope: "all" | "selected" | "paused";
+            /** Starts At */
+            starts_at?: string | null;
+            /** Tenant Ids */
+            tenant_ids?: number[];
+            /** Version */
+            version: string;
+        };
+        /**
+         * DesktopUpdateReleaseResponse
+         * @description Admin-facing release rollout record.
+         */
+        DesktopUpdateReleaseResponse: {
+            /** Active */
+            active: boolean;
+            /** Channel */
+            channel: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Ends At */
+            ends_at?: string | null;
+            /** Max Schema Version */
+            max_schema_version?: number | null;
+            /** Min App Version */
+            min_app_version?: string | null;
+            /** Min Schema Version */
+            min_schema_version?: number | null;
+            /** Platform */
+            platform: string;
+            /** Release Id */
+            release_id: number;
+            /** Release Notes */
+            release_notes?: string | null;
+            /**
+             * Rollout Scope
+             * @enum {string}
+             */
+            rollout_scope: "all" | "selected" | "paused";
+            /** Starts At */
+            starts_at?: string | null;
+            /** Tenant Ids */
+            tenant_ids: number[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * DeviceRegisterRequest
+         * @description Request body for POST /pos/devices (device registration, §8.9).
+         */
+        DeviceRegisterRequest: {
+            /** Device Fingerprint */
+            device_fingerprint: string;
+            /** Device Fingerprint V2 */
+            device_fingerprint_v2?: string | null;
+            /** Public Key */
+            public_key: string;
+            /** Terminal Id */
+            terminal_id: number;
+        };
+        /**
+         * DeviceRegisterResponse
+         * @description Response body for POST /pos/devices.
+         */
+        DeviceRegisterResponse: {
+            /** Device Id */
+            device_id: number;
+            /**
+             * Registered At
+             * Format: date-time
+             */
+            registered_at: string;
+            /** Terminal Id */
+            terminal_id: number;
         };
         /**
          * Dimension
@@ -4864,6 +7289,139 @@ export interface components {
          * @enum {string}
          */
         DimensionType: "string" | "number" | "date" | "boolean";
+        /**
+         * DispenseRate
+         * @description Average quantity dispensed per day for a product at a site (last 90 days).
+         */
+        DispenseRate: {
+            /** Active Days */
+            active_days: number;
+            /** Avg Daily Dispense */
+            avg_daily_dispense: number | null;
+            /** Avg Monthly Dispense */
+            avg_monthly_dispense: number | null;
+            /** Avg Weekly Dispense */
+            avg_weekly_dispense: number | null;
+            /** Drug Brand */
+            drug_brand: string;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Last Dispense Date Key */
+            last_dispense_date_key?: number | null;
+            /** Product Key */
+            product_key: number;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /** Site Name */
+            site_name: string;
+            /** Total Dispensed 90D */
+            total_dispensed_90d: number;
+        };
+        /**
+         * DrugDetail
+         * @description Drug detail response — dim_product core fields plus POS-owned clinical meta.
+         *
+         *     ``counseling_text`` is the cyan-bubble tip shown in the clinical panel;
+         *     ``null`` when the drug has no guidance on file. Frontend contract is
+         *     ``string | null`` so the card can hide cleanly (#623).
+         */
+        DrugDetail: {
+            /** Active Ingredient */
+            active_ingredient?: string | null;
+            /** Counseling Text */
+            counseling_text?: string | null;
+            /** Drug Brand */
+            drug_brand?: string | null;
+            /** Drug Category */
+            drug_category?: string | null;
+            /** Drug Cluster */
+            drug_cluster?: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Unit Price */
+            unit_price: number;
+        };
+        /**
+         * EligibleCartItem
+         * @description One cart line sent to ``POST /pos/promotions/eligible`` for scoring.
+         *
+         *     ``drug_brand`` is optional; when null the line cannot match ``scope='brand'``.
+         *     ``active_ingredient`` is optional; when null the line cannot match
+         *     ``scope='active_ingredient'`` (added in migration 106).
+         */
+        EligibleCartItem: {
+            /** Active Ingredient */
+            active_ingredient?: string | null;
+            /** Drug Brand */
+            drug_brand?: string | null;
+            /** Drug Cluster */
+            drug_cluster?: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit Price */
+            unit_price: number | string;
+        };
+        /**
+         * EligiblePromotion
+         * @description One entry in the eligible-promotion response — promo + preview discount.
+         */
+        EligiblePromotion: {
+            /** Description */
+            description?: string | null;
+            discount_type: components["schemas"]["PromotionDiscountType"];
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Id */
+            id: number;
+            /** Max Discount */
+            max_discount?: number | null;
+            /** Min Purchase */
+            min_purchase?: number | null;
+            /** Name */
+            name: string;
+            /** Preview Discount */
+            preview_discount: number;
+            scope: components["schemas"]["PromotionScope"];
+            /** Value */
+            value: number;
+        };
+        /**
+         * EligiblePromotionsRequest
+         * @description Request body for ``POST /pos/promotions/eligible``.
+         */
+        EligiblePromotionsRequest: {
+            /** Items */
+            items: components["schemas"]["EligibleCartItem"][];
+            /** Subtotal */
+            subtotal: number | string;
+        };
+        /**
+         * EligiblePromotionsResponse
+         * @description Response body for ``POST /pos/promotions/eligible``.
+         */
+        EligiblePromotionsResponse: {
+            /** Promotions */
+            promotions: components["schemas"]["EligiblePromotion"][];
+        };
+        /**
+         * EmailReceiptRequest
+         * @description Request body to email a receipt to a customer.
+         */
+        EmailReceiptRequest: {
+            /** Email */
+            email: string;
+        };
         /**
          * EmbedTokenRequest
          * @description Request body for generating an embed token.
@@ -4932,6 +7490,91 @@ export interface components {
             rows_loaded?: number | null;
             /** Success */
             success: boolean;
+        };
+        /**
+         * ExpiryAlert
+         * @description A batch approaching or past its expiry date.
+         */
+        ExpiryAlert: {
+            /** Alert Level */
+            alert_level: string;
+            /** Batch Number */
+            batch_number: string;
+            /** Current Quantity */
+            current_quantity: number;
+            /** Days To Expiry */
+            days_to_expiry: number;
+            /** Drug Brand */
+            drug_brand?: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /**
+             * Expiry Date
+             * Format: date
+             */
+            expiry_date: string;
+            /** Site Code */
+            site_code: string;
+        };
+        /**
+         * ExpiryCalendarDay
+         * @description Day-by-day expiry count for the calendar view.
+         */
+        ExpiryCalendarDay: {
+            /** Alert Level */
+            alert_level: string;
+            /** Batch Count */
+            batch_count: number;
+            /**
+             * Expiry Date
+             * Format: date
+             */
+            expiry_date: string;
+            /** Total Quantity */
+            total_quantity: number;
+        };
+        /**
+         * ExpiryExposureTier
+         * @description Tenant-aggregate expiry exposure for a single 30/60/90-day tier.
+         *
+         *     Powers the three-card tier widget on the new dashboard design (#506).
+         *     The response always contains exactly three rows — zero-valued tiers
+         *     included — so the frontend can render the fixed layout without
+         *     conditional logic.
+         */
+        ExpiryExposureTier: {
+            /** Batch Count */
+            batch_count: number;
+            /** Label */
+            label: string;
+            /** Tier */
+            tier: string;
+            /** Tone */
+            tone: string;
+            /** Total Egp */
+            total_egp: number;
+        };
+        /**
+         * ExpirySummary
+         * @description Expiry counts aggregated per site.
+         */
+        ExpirySummary: {
+            /** Batch Count */
+            batch_count: number;
+            /** Expiry Bucket */
+            expiry_bucket: string;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /** Site Name */
+            site_name: string;
+            /** Total Quantity */
+            total_quantity: number;
+            /** Total Value */
+            total_value: number;
         };
         /**
          * ExploreCatalog
@@ -5091,6 +7734,38 @@ export interface components {
             staff_name: string;
             /** Title */
             title: string;
+        };
+        /**
+         * FefoRequest
+         * @description Request body for FEFO batch selection.
+         */
+        FefoRequest: {
+            /** Drug Code */
+            drug_code: string;
+            /** Required Quantity */
+            required_quantity: number | string;
+            /** Site Code */
+            site_code: string;
+        };
+        /**
+         * FefoResponse
+         * @description Result of FEFO batch selection.
+         */
+        FefoResponse: {
+            /** Drug Code */
+            drug_code: string;
+            /** Fulfilled */
+            fulfilled: boolean;
+            /** Remaining Unfulfilled */
+            remaining_unfulfilled: number;
+            /** Required Quantity */
+            required_quantity: number;
+            /** Selections */
+            selections: {
+                [key: string]: unknown;
+            }[];
+            /** Site Code */
+            site_code: string;
         };
         /**
          * FilterOption
@@ -5414,6 +8089,35 @@ export interface components {
             /** Target Dir */
             target_dir?: string | null;
         };
+        /**
+         * InventoryCount
+         * @description A physical inventory count record.
+         */
+        InventoryCount: {
+            /** Batch Number */
+            batch_number?: string | null;
+            /**
+             * Count Date
+             * Format: date
+             */
+            count_date: string;
+            /** Count Key */
+            count_key: number;
+            /** Counted By */
+            counted_by?: string | null;
+            /** Counted Quantity */
+            counted_quantity: number;
+            /** Drug Code */
+            drug_code?: string | null;
+            /** Product Key */
+            product_key: number;
+            /** Site Code */
+            site_code?: string | null;
+            /** Site Key */
+            site_key: number;
+            /** Tenant Id */
+            tenant_id: number;
+        };
         /** InventoryPreviewResult */
         InventoryPreviewResult: {
             /** Columns */
@@ -5554,6 +8258,16 @@ export interface components {
              */
             ytd_transactions: number;
         };
+        /**
+         * LateRefillItem
+         * @description One overdue-refill line shown on the churn alert card.
+         */
+        LateRefillItem: {
+            /** Days Late */
+            days_late: number;
+            /** Drug Name */
+            drug_name: string;
+        };
         /** LeadRequest */
         LeadRequest: {
             /** Company */
@@ -5667,6 +8381,16 @@ export interface components {
             model_type: string;
             /** Name */
             name: string;
+        };
+        /**
+         * LocalUnresolvedClaim
+         * @description Client-reported digest of any unresolved local queue rows at shift close.
+         */
+        LocalUnresolvedClaim: {
+            /** Count */
+            count: number;
+            /** Digest */
+            digest: string;
         };
         /**
          * MarginAnalysisList
@@ -5881,6 +8605,58 @@ export interface components {
             type: string;
         };
         /**
+         * OfflineGrantEnvelope
+         * @description Signed envelope carrying a grant payload + Ed25519 signature.
+         */
+        OfflineGrantEnvelope: {
+            /** Key Id */
+            key_id: string;
+            payload: components["schemas"]["OfflineGrantPayload"];
+            /** Signature Ed25519 */
+            signature_ed25519: string;
+        };
+        /**
+         * OfflineGrantPayload
+         * @description Claims body inside a signed offline grant envelope.
+         */
+        OfflineGrantPayload: {
+            /**
+             * Capabilities Version
+             * @default v1
+             */
+            capabilities_version: string;
+            /** Device Fingerprint */
+            device_fingerprint: string;
+            /** Grant Id */
+            grant_id: string;
+            /**
+             * Iss
+             * @default datapulse-pos
+             */
+            iss: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+            /**
+             * Offline Expires At
+             * Format: date-time
+             */
+            offline_expires_at: string;
+            /** Override Codes */
+            override_codes: components["schemas"]["OverrideCodeEntry"][];
+            role_snapshot: components["schemas"]["RoleSnapshot"];
+            /** Shift Id */
+            shift_id: number;
+            /** Staff Id */
+            staff_id: string;
+            /** Tenant Id */
+            tenant_id: number;
+            /** Terminal Id */
+            terminal_id: number;
+        };
+        /**
          * OnboardingStatus
          * @description Current onboarding progress for a user.
          */
@@ -5921,6 +8697,20 @@ export interface components {
             tenant_id: number;
             /** User Id */
             user_id: string;
+        };
+        /**
+         * OverrideCodeEntry
+         * @description One hashed pharmacist/supervisor override code packed into an offline grant.
+         */
+        OverrideCodeEntry: {
+            /** Code Id */
+            code_id: string;
+            /** Hash */
+            hash: string;
+            /** Issued To Staff Id */
+            issued_to_staff_id?: string | null;
+            /** Salt */
+            salt: string;
         };
         /**
          * POCreateLineRequest
@@ -6052,6 +8842,12 @@ export interface components {
          */
         ParameterType: "text" | "number" | "date" | "select";
         /**
+         * PaymentMethod
+         * @description Accepted payment methods at checkout.
+         * @enum {string}
+         */
+        PaymentMethod: "cash" | "card" | "insurance" | "voucher" | "mixed";
+        /**
          * PayoutResponse
          * @description A payout record for a reseller.
          */
@@ -6080,6 +8876,39 @@ export interface components {
             status: string;
             /** Stripe Transfer Id */
             stripe_transfer_id?: string | null;
+        };
+        /**
+         * PharmacistVerifyRequest
+         * @description Request body to verify a pharmacist for controlled substance dispensing.
+         */
+        PharmacistVerifyRequest: {
+            /** Credential */
+            credential: string;
+            /** Drug Code */
+            drug_code: string;
+            /** Pharmacist Id */
+            pharmacist_id: string;
+        };
+        /**
+         * PharmacistVerifyResponse
+         * @description Response from a successful pharmacist PIN verification.
+         *
+         *     The ``token`` is a short-lived HMAC-signed bearer that must be passed
+         *     as ``pharmacist_id`` in subsequent ``add_item`` calls for the same
+         *     ``drug_code``.  Tokens expire after ``TOKEN_TTL_SECONDS`` (5 minutes).
+         */
+        PharmacistVerifyResponse: {
+            /** Drug Code */
+            drug_code: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Pharmacist Id */
+            pharmacist_id: string;
+            /** Token */
+            token: string;
         };
         /**
          * PipelineHealth
@@ -6241,6 +9070,181 @@ export interface components {
             /** Portal Url */
             portal_url: string;
         };
+        /**
+         * PosCartItem
+         * @description A single line item in a POS cart or completed transaction.
+         */
+        "PosCartItem-Input": {
+            /** Batch Number */
+            batch_number?: string | null;
+            /** Cost Per Unit */
+            cost_per_unit?: number | string | null;
+            /**
+             * Discount
+             * @default 0
+             */
+            discount: number | string;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Expiry Date */
+            expiry_date?: string | null;
+            /**
+             * Is Controlled
+             * @default false
+             */
+            is_controlled: boolean;
+            /** Line Total */
+            line_total: number | string;
+            /** Pharmacist Id */
+            pharmacist_id?: string | null;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit Price */
+            unit_price: number | string;
+        };
+        /**
+         * PosCartItem
+         * @description A single line item in a POS cart or completed transaction.
+         */
+        "PosCartItem-Output": {
+            /** Batch Number */
+            batch_number?: string | null;
+            /** Cost Per Unit */
+            cost_per_unit?: number | null;
+            /**
+             * Discount
+             * @default 0
+             */
+            discount: number;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Expiry Date */
+            expiry_date?: string | null;
+            /**
+             * Is Controlled
+             * @default false
+             */
+            is_controlled: boolean;
+            /** Line Total */
+            line_total: number;
+            /** Pharmacist Id */
+            pharmacist_id?: string | null;
+            /** Quantity */
+            quantity: number;
+            /** Unit Price */
+            unit_price: number;
+        };
+        /**
+         * PosCustomerChurn
+         * @description Per-customer churn signal returned by the POS customer lookup.
+         */
+        PosCustomerChurn: {
+            /** Last Refill Due */
+            last_refill_due?: string | null;
+            /** Late Refills */
+            late_refills?: components["schemas"]["LateRefillItem"][];
+            /** Risk */
+            risk: boolean;
+        };
+        /**
+         * PosCustomerLookup
+         * @description Result of ``GET /pos/customers/by-phone/{phone}``.
+         *
+         *     ``loyalty_points`` / ``loyalty_tier`` / ``outstanding_credit_egp`` are part
+         *     of the frontend contract but are stubbed to neutral defaults (``0`` /
+         *     ``None``) until the loyalty + credit tables land. Keeping them in the
+         *     response shape means the UI can ship against the final contract today
+         *     and light up additional fields without an API change (#624).
+         */
+        PosCustomerLookup: {
+            churn: components["schemas"]["PosCustomerChurn"];
+            /** Customer Key */
+            customer_key: number;
+            /** Customer Name */
+            customer_name: string;
+            /**
+             * Loyalty Points
+             * @default 0
+             */
+            loyalty_points: number;
+            /** Loyalty Tier */
+            loyalty_tier?: string | null;
+            /** Outstanding Credit Egp */
+            outstanding_credit_egp: number;
+            /** Phone */
+            phone: string;
+            /** Vip Since */
+            vip_since?: string | null;
+        };
+        /**
+         * PosProductResult
+         * @description Search result for a drug at the POS terminal.
+         */
+        PosProductResult: {
+            /** Drug Brand */
+            drug_brand?: string | null;
+            /** Drug Cluster */
+            drug_cluster?: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /**
+             * Is Controlled
+             * @default false
+             */
+            is_controlled: boolean;
+            /**
+             * Requires Pharmacist
+             * @default false
+             */
+            requires_pharmacist: boolean;
+            /** Stock Quantity */
+            stock_quantity: number;
+            /** Unit Price */
+            unit_price: number;
+        };
+        /**
+         * PosStockInfo
+         * @description Stock and batch information for a specific drug at a site.
+         */
+        PosStockInfo: {
+            /** Batches */
+            batches?: components["schemas"]["BatchSummary"][];
+            /** Drug Code */
+            drug_code: string;
+            /** Quantity Available */
+            quantity_available: number;
+            /** Site Code */
+            site_code: string;
+        };
+        /**
+         * PreviewMatchesRequest
+         * @description Request body for ``POST /pos/promotions/preview-matches``.
+         *
+         *     Returns the number of SKUs in the product catalog whose ``scope``-matched
+         *     attribute contains any of the supplied ``values``.
+         */
+        PreviewMatchesRequest: {
+            scope: components["schemas"]["PromotionScope"];
+            /** Values */
+            values: string[];
+        };
+        /**
+         * PreviewMatchesResponse
+         * @description Response for ``POST /pos/promotions/preview-matches``.
+         */
+        PreviewMatchesResponse: {
+            /** Matched Sku Count */
+            matched_sku_count: number;
+            scope: components["schemas"]["PromotionScope"];
+            /** Values */
+            values: string[];
+        };
         /** PreviewResult */
         PreviewResult: {
             /** Columns */
@@ -6350,6 +9354,166 @@ export interface components {
             total_sales: number;
             /** Unique Customers */
             unique_customers: number;
+        };
+        /**
+         * PromotionCreate
+         * @description Request body to create a new promotion.
+         *
+         *     Defaults to ``status='paused'`` on the server side — admins toggle to
+         *     ``active`` explicitly after previewing. ``scope_items`` is required when
+         *     ``scope='items'`` and ``scope_categories`` is required when
+         *     ``scope='category'``. Both lists are ignored for ``scope='all'``.
+         */
+        PromotionCreate: {
+            /** Description */
+            description?: string | null;
+            discount_type: components["schemas"]["PromotionDiscountType"];
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Max Discount */
+            max_discount?: number | string | null;
+            /** Min Purchase */
+            min_purchase?: number | string | null;
+            /** Name */
+            name: string;
+            scope: components["schemas"]["PromotionScope"];
+            /** Scope Active Ingredients */
+            scope_active_ingredients?: string[];
+            /** Scope Brands */
+            scope_brands?: string[];
+            /** Scope Categories */
+            scope_categories?: string[];
+            /** Scope Items */
+            scope_items?: string[];
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /** Value */
+            value: number | string;
+        };
+        /**
+         * PromotionDiscountType
+         * @description Kind of discount applied by a promotion.
+         * @enum {string}
+         */
+        PromotionDiscountType: "amount" | "percent";
+        /**
+         * PromotionResponse
+         * @description API response representing a single promotion.
+         */
+        PromotionResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description?: string | null;
+            discount_type: components["schemas"]["PromotionDiscountType"];
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Id */
+            id: number;
+            /** Max Discount */
+            max_discount?: number | null;
+            /** Min Purchase */
+            min_purchase?: number | null;
+            /** Name */
+            name: string;
+            scope: components["schemas"]["PromotionScope"];
+            /** Scope Active Ingredients */
+            scope_active_ingredients?: string[];
+            /** Scope Brands */
+            scope_brands?: string[];
+            /** Scope Categories */
+            scope_categories?: string[];
+            /** Scope Items */
+            scope_items?: string[];
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            status: components["schemas"]["PromotionStatus"];
+            /** Tenant Id */
+            tenant_id: number;
+            /**
+             * Total Discount Given
+             * @default 0
+             */
+            total_discount_given: number;
+            /**
+             * Usage Count
+             * @default 0
+             */
+            usage_count: number;
+            /** Value */
+            value: number;
+        };
+        /**
+         * PromotionScope
+         * @description Which cart items a promotion may be applied against.
+         *
+         *     ``brand`` matches against ``dim_product.drug_brand`` (migration 104).
+         *     ``active_ingredient`` matches against ``pos.product_catalog_meta.active_ingredient``
+         *     (migration 106); case-insensitive on both sides.
+         * @enum {string}
+         */
+        PromotionScope: "all" | "items" | "category" | "brand" | "active_ingredient";
+        /**
+         * PromotionStatus
+         * @description Lifecycle states of a promotion.
+         * @enum {string}
+         */
+        PromotionStatus: "active" | "paused" | "expired";
+        /**
+         * PromotionStatusUpdate
+         * @description Request body for ``PATCH /pos/promotions/{id}/status``.
+         */
+        PromotionStatusUpdate: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "paused";
+        };
+        /**
+         * PromotionUpdate
+         * @description Request body for partial update. All fields optional.
+         */
+        PromotionUpdate: {
+            /** Description */
+            description?: string | null;
+            discount_type?: components["schemas"]["PromotionDiscountType"] | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /** Max Discount */
+            max_discount?: number | string | null;
+            /** Min Purchase */
+            min_purchase?: number | string | null;
+            /** Name */
+            name?: string | null;
+            scope?: components["schemas"]["PromotionScope"] | null;
+            /** Scope Active Ingredients */
+            scope_active_ingredients?: string[] | null;
+            /** Scope Brands */
+            scope_brands?: string[] | null;
+            /** Scope Categories */
+            scope_categories?: string[] | null;
+            /** Scope Items */
+            scope_items?: string[] | null;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Value */
+            value?: number | string | null;
         };
         /**
          * PublicBrandingResponse
@@ -6607,6 +9771,20 @@ export interface components {
             total_runs: number;
         };
         /**
+         * QuarantineRequest
+         * @description Request body for quarantining a batch.
+         */
+        QuarantineRequest: {
+            /** Batch Number */
+            batch_number: string;
+            /** Drug Code */
+            drug_code: string;
+            /** Reason */
+            reason: string;
+            /** Site Code */
+            site_code: string;
+        };
+        /**
          * QueryResponse
          * @description Response after submitting a query (before results are ready).
          */
@@ -6708,6 +9886,19 @@ export interface components {
             total: number;
         };
         /**
+         * RefreshGrantRequest
+         * @description Body for POST /pos/shifts/{shift_id}/refresh-grant.
+         */
+        RefreshGrantRequest: {
+            /** Device Fingerprint */
+            device_fingerprint: string;
+            /**
+             * Offline Ttl Hours
+             * @default 12
+             */
+            offline_ttl_hours: number;
+        };
+        /**
          * RenderRequest
          * @description Request body for rendering a report.
          */
@@ -6766,6 +9957,97 @@ export interface components {
              * @default
              */
             title: string;
+        };
+        /**
+         * ReorderAlert
+         * @description A product/site that has fallen at or below its reorder point.
+         *
+         *     ``daily_velocity`` / ``days_of_stock`` / ``status`` power the reorder
+         *     watchlist on the new dashboard design (#507). Status tiers:
+         *
+         *         days_of_stock < 5   → "critical"
+         *         days_of_stock < 10  → "low"
+         *         otherwise           → "healthy"
+         *
+         *     When velocity is 0 (no recent sales) ``days_of_stock`` is ``None`` and
+         *     ``status`` defaults to ``"low"`` — the item is below its reorder
+         *     point, so it is never ``healthy``, but we also can't compute an
+         *     honest burn-down.
+         */
+        ReorderAlert: {
+            /** Current Quantity */
+            current_quantity: number;
+            /**
+             * Daily Velocity
+             * @default 0
+             */
+            daily_velocity: number;
+            /** Days Of Stock */
+            days_of_stock?: number | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Product Key */
+            product_key: number;
+            /** Reorder Point */
+            reorder_point: string;
+            /** Reorder Quantity */
+            reorder_quantity: string;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /**
+             * Status
+             * @default low
+             */
+            status: string;
+        };
+        /**
+         * ReorderConfigRequest
+         * @description Validated request body for create or update of a reorder config.
+         */
+        ReorderConfigRequest: {
+            /** Drug Code */
+            drug_code: string;
+            /** Max Stock */
+            max_stock: number | string;
+            /** Min Stock */
+            min_stock: number | string;
+            /**
+             * Reorder Lead Days
+             * @default 7
+             */
+            reorder_lead_days: number;
+            /** Reorder Point */
+            reorder_point: number | string;
+            /** Site Code */
+            site_code: string;
+        };
+        /**
+         * ReorderConfigResponse
+         * @description API response shape for a reorder config row.
+         */
+        ReorderConfigResponse: {
+            /** Drug Code */
+            drug_code: string;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Max Stock */
+            max_stock: string;
+            /** Min Stock */
+            min_stock: string;
+            /** Reorder Lead Days */
+            reorder_lead_days: number;
+            /** Reorder Point */
+            reorder_point: string;
+            /** Site Code */
+            site_code: string;
+            /** Tenant Id */
+            tenant_id: number;
         };
         /**
          * ReportParameter
@@ -7035,6 +10317,77 @@ export interface components {
             return_quantity: number;
         };
         /**
+         * ReturnDetailResponse
+         * @description Full return detail including items.
+         */
+        ReturnDetailResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Items */
+            items?: components["schemas"]["PosCartItem-Output"][];
+            /** Notes */
+            notes?: string | null;
+            /** Original Transaction Id */
+            original_transaction_id: number;
+            reason: components["schemas"]["ReturnReason"];
+            /** Refund Amount */
+            refund_amount: number;
+            /** Refund Method */
+            refund_method: string;
+            /** Return Transaction Id */
+            return_transaction_id?: number | null;
+            /** Staff Id */
+            staff_id: string;
+        };
+        /**
+         * ReturnReason
+         * @description Allowed reasons for a drug return.
+         * @enum {string}
+         */
+        ReturnReason: "defective" | "wrong_drug" | "expired" | "customer_request";
+        /**
+         * ReturnRequest
+         * @description Request body to process a drug return.
+         */
+        ReturnRequest: {
+            /** Items */
+            items: components["schemas"]["PosCartItem-Input"][];
+            /** Notes */
+            notes?: string | null;
+            /** Original Transaction Id */
+            original_transaction_id: number;
+            reason: components["schemas"]["ReturnReason"];
+            /** Refund Method */
+            refund_method: string;
+        };
+        /**
+         * ReturnResponse
+         * @description Response for a processed return.
+         */
+        ReturnResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Original Transaction Id */
+            original_transaction_id: number;
+            reason: components["schemas"]["ReturnReason"];
+            /** Refund Amount */
+            refund_amount: number;
+            /** Refund Method */
+            refund_method: string;
+            /** Return Transaction Id */
+            return_transaction_id?: number | null;
+        };
+        /**
          * ReturnsTrend
          * @description Returns trend over time.
          */
@@ -7210,6 +10563,81 @@ export interface components {
             status: string;
             /** Value */
             value: number;
+        };
+        /** RiderResponse */
+        RiderResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current Terminal Id */
+            current_terminal_id?: number | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Phone */
+            phone: string;
+            status: components["schemas"]["RiderStatus"];
+            /** Tenant Id */
+            tenant_id: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * RiderStatus
+         * @enum {string}
+         */
+        RiderStatus: "available" | "busy" | "offline";
+        /**
+         * RoleSnapshot
+         * @description Capability snapshot baked into an offline grant at issuance.
+         */
+        RoleSnapshot: {
+            /**
+             * Can Apply Discount
+             * @default true
+             */
+            can_apply_discount: boolean;
+            /**
+             * Can Checkout
+             * @default true
+             */
+            can_checkout: boolean;
+            /**
+             * Can Close Shift
+             * @default true
+             */
+            can_close_shift: boolean;
+            /**
+             * Can Open Drawer No Sale
+             * @default false
+             */
+            can_open_drawer_no_sale: boolean;
+            /**
+             * Can Override Price
+             * @default false
+             */
+            can_override_price: boolean;
+            /**
+             * Can Process Returns
+             * @default false
+             */
+            can_process_returns: boolean;
+            /**
+             * Can Void
+             * @default false
+             */
+            can_void: boolean;
+            /**
+             * Max Discount Pct
+             * @default 15
+             */
+            max_discount_pct: number;
         };
         /** RoleWithPermissions */
         RoleWithPermissions: {
@@ -7480,6 +10908,82 @@ export interface components {
             total_revenue: number;
         };
         /**
+         * ShiftRecord
+         * @description Internal domain model for a shift record.
+         */
+        ShiftRecord: {
+            /** Closed At */
+            closed_at?: string | null;
+            /** Closing Cash */
+            closing_cash?: number | null;
+            /** Expected Cash */
+            expected_cash?: number | null;
+            /** Id */
+            id: number;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Opening Cash */
+            opening_cash: number;
+            /**
+             * Shift Date
+             * Format: date
+             */
+            shift_date: string;
+            /** Staff Id */
+            staff_id: string;
+            /** Tenant Id */
+            tenant_id: number;
+            /** Terminal Id */
+            terminal_id: number;
+            /** Variance */
+            variance?: number | null;
+        };
+        /**
+         * ShiftSummaryResponse
+         * @description API response summarizing a shift's cash reconciliation.
+         */
+        ShiftSummaryResponse: {
+            /** Closed At */
+            closed_at?: string | null;
+            /** Closing Cash */
+            closing_cash?: number | null;
+            /** Expected Cash */
+            expected_cash?: number | null;
+            /** Id */
+            id: number;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Opening Cash */
+            opening_cash: number;
+            /**
+             * Shift Date
+             * Format: date
+             */
+            shift_date: string;
+            /** Staff Id */
+            staff_id: string;
+            /** Terminal Id */
+            terminal_id: number;
+            /**
+             * Total Sales
+             * @default 0
+             */
+            total_sales: number;
+            /**
+             * Transaction Count
+             * @default 0
+             */
+            transaction_count: number;
+            /** Variance */
+            variance?: number | null;
+        };
+        /**
          * SiteDetail
          * @description Detailed metrics for a single site.
          */
@@ -7614,6 +11118,19 @@ export interface components {
             year: number;
         };
         /**
+         * StartShiftRequest
+         * @description Request body to start a new cashier shift on a terminal.
+         */
+        StartShiftRequest: {
+            /**
+             * Opening Cash
+             * @default 0
+             */
+            opening_cash: number | string;
+            /** Terminal Id */
+            terminal_id: number;
+        };
+        /**
          * StatisticalAnnotation
          * @description Statistical confidence metadata for a metric or trend.
          */
@@ -7624,6 +11141,152 @@ export interface components {
             significance?: string | null;
             /** Z Score */
             z_score?: number | null;
+        };
+        /**
+         * StockLevel
+         * @description Current stock level for a product at a site.
+         */
+        StockLevel: {
+            /** Current Quantity */
+            current_quantity: number;
+            /** Drug Brand */
+            drug_brand: string;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Last Movement Date */
+            last_movement_date?: string | null;
+            /** Product Key */
+            product_key: number;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /** Site Name */
+            site_name: string;
+            /** Total Dispensed */
+            total_dispensed: number;
+            /** Total Received */
+            total_received: number;
+            /** Total Wastage */
+            total_wastage: number;
+        };
+        /**
+         * StockMovement
+         * @description A single movement event from the stock movements fact table.
+         */
+        StockMovement: {
+            /** Batch Number */
+            batch_number?: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /**
+             * Movement Date
+             * Format: date
+             */
+            movement_date: string;
+            /** Movement Key */
+            movement_key: number;
+            /** Movement Type */
+            movement_type: string;
+            /** Quantity */
+            quantity: number;
+            /** Reference */
+            reference?: string | null;
+            /** Site Code */
+            site_code: string;
+            /** Unit Cost */
+            unit_cost?: number | null;
+        };
+        /**
+         * StockReconciliation
+         * @description Reconciliation between physical count and calculated stock level.
+         */
+        StockReconciliation: {
+            /** Calculated Quantity */
+            calculated_quantity: number;
+            /**
+             * Count Date
+             * Format: date
+             */
+            count_date: string;
+            /** Counted Quantity */
+            counted_quantity: number;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Product Key */
+            product_key: number;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /** Site Name */
+            site_name: string;
+            /** Variance */
+            variance: number;
+            /** Variance Pct */
+            variance_pct?: number | null;
+        };
+        /**
+         * StockValuation
+         * @description Stock valuation (weighted average cost) for a product at a site.
+         */
+        StockValuation: {
+            /** Current Quantity */
+            current_quantity: number;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Product Key */
+            product_key: number;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /** Stock Value */
+            stock_value: number;
+            /** Weighted Avg Cost */
+            weighted_avg_cost: number;
+        };
+        /**
+         * StockoutRisk
+         * @description Product at risk of stockout with risk level and suggested reorder quantity.
+         */
+        StockoutRisk: {
+            /** Avg Daily Dispense */
+            avg_daily_dispense: number | null;
+            /** Current Quantity */
+            current_quantity: number;
+            /** Days Of Stock */
+            days_of_stock: number | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Min Stock */
+            min_stock: string;
+            /** Product Key */
+            product_key: number;
+            /** Reorder Lead Days */
+            reorder_lead_days: number;
+            /** Reorder Point */
+            reorder_point: string;
+            /** Risk Level */
+            risk_level: string;
+            /** Site Code */
+            site_code: string;
+            /** Site Key */
+            site_key: number;
+            /** Site Name */
+            site_name: string;
+            /** Suggested Reorder Qty */
+            suggested_reorder_qty: number;
         };
         /**
          * StreakResponse
@@ -7902,6 +11565,14 @@ export interface components {
             /** Variance */
             variance: number;
         };
+        /**
+         * TenantKeysResponse
+         * @description Response body for GET /pos/tenant-key.
+         */
+        TenantKeysResponse: {
+            /** Keys */
+            keys: components["schemas"]["TenantPublicKey"][];
+        };
         /** TenantPatch */
         TenantPatch: {
             /** Currency */
@@ -7909,6 +11580,86 @@ export interface components {
             /** Locale */
             locale?: string | null;
         };
+        /**
+         * TenantPublicKey
+         * @description Public Ed25519 verification key advertised to POS clients.
+         */
+        TenantPublicKey: {
+            /** Key Id */
+            key_id: string;
+            /** Public Key */
+            public_key: string;
+            /**
+             * Valid From
+             * Format: date-time
+             */
+            valid_from: string;
+            /**
+             * Valid Until
+             * Format: date-time
+             */
+            valid_until: string;
+        };
+        /**
+         * TerminalCloseRequest
+         * @description Request body to close a terminal session and reconcile cash.
+         */
+        TerminalCloseRequest: {
+            /** Closing Cash */
+            closing_cash: number | string;
+            /** Notes */
+            notes?: string | null;
+        };
+        /**
+         * TerminalOpenRequest
+         * @description Request body to open a new POS terminal session.
+         */
+        TerminalOpenRequest: {
+            /**
+             * Opening Cash
+             * @default 0
+             */
+            opening_cash: number | string;
+            /** Site Code */
+            site_code: string;
+            /**
+             * Terminal Name
+             * @default Terminal-1
+             */
+            terminal_name: string;
+        };
+        /**
+         * TerminalSessionResponse
+         * @description API response for a terminal session.
+         */
+        TerminalSessionResponse: {
+            /** Closed At */
+            closed_at?: string | null;
+            /** Closing Cash */
+            closing_cash?: number | null;
+            /** Id */
+            id: number;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Opening Cash */
+            opening_cash: number;
+            /** Site Code */
+            site_code: string;
+            /** Staff Id */
+            staff_id: string;
+            status: components["schemas"]["TerminalStatus"];
+            /** Terminal Name */
+            terminal_name: string;
+        };
+        /**
+         * TerminalStatus
+         * @description Lifecycle states of a POS terminal session.
+         * @enum {string}
+         */
+        TerminalStatus: "open" | "active" | "paused" | "closed";
         /**
          * TimePoint
          * @description Single point in a scenario time series.
@@ -7971,6 +11722,74 @@ export interface components {
             losers: components["schemas"]["MoverItem"][];
         };
         /**
+         * TransactionDetailResponse
+         * @description Full API response for a POS transaction including line items.
+         */
+        TransactionDetailResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Customer Id */
+            customer_id?: string | null;
+            /** Discount Total */
+            discount_total: number;
+            /** Grand Total */
+            grand_total: number;
+            /** Id */
+            id: number;
+            /** Items */
+            items?: components["schemas"]["PosCartItem-Output"][];
+            payment_method?: components["schemas"]["PaymentMethod"] | null;
+            /** Pharmacist Id */
+            pharmacist_id?: string | null;
+            /** Receipt Number */
+            receipt_number?: string | null;
+            /** Site Code */
+            site_code: string;
+            /** Staff Id */
+            staff_id: string;
+            status: components["schemas"]["TransactionStatus"];
+            /** Subtotal */
+            subtotal: number;
+            /** Tax Total */
+            tax_total: number;
+            /** Terminal Id */
+            terminal_id: number;
+        };
+        /**
+         * TransactionResponse
+         * @description Minimal API response for a POS transaction (list views).
+         */
+        TransactionResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Customer Id */
+            customer_id?: string | null;
+            /** Grand Total */
+            grand_total: number;
+            /** Id */
+            id: number;
+            payment_method?: components["schemas"]["PaymentMethod"] | null;
+            /** Receipt Number */
+            receipt_number?: string | null;
+            /** Staff Id */
+            staff_id: string;
+            status: components["schemas"]["TransactionStatus"];
+            /** Terminal Id */
+            terminal_id: number;
+        };
+        /**
+         * TransactionStatus
+         * @description Lifecycle states of a POS transaction.
+         * @enum {string}
+         */
+        TransactionStatus: "draft" | "completed" | "voided" | "returned";
+        /**
          * TrendResult
          * @description Aggregated time-series result with summary statistics.
          */
@@ -8018,6 +11837,18 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * UpdateItemRequest
+         * @description Request body to update quantity or price of a cart item.
+         */
+        UpdateItemRequest: {
+            /** Discount */
+            discount?: number | string | null;
+            /** Override Price */
+            override_price?: number | string | null;
+            /** Quantity */
+            quantity: number | string;
+        };
         /** UploadedFile */
         UploadedFile: {
             /** Detected Type */
@@ -8043,6 +11874,30 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VelocityClassification
+         * @description Product velocity classification (fast/normal/slow/dead) relative to category average.
+         */
+        VelocityClassification: {
+            /** Avg Daily Dispense */
+            avg_daily_dispense: number | null;
+            /** Category Avg Daily */
+            category_avg_daily: number | null;
+            /** Drug Brand */
+            drug_brand: string;
+            /** Drug Category */
+            drug_category: string | null;
+            /** Drug Code */
+            drug_code: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Lifecycle Phase */
+            lifecycle_phase: string | null;
+            /** Product Key */
+            product_key: number;
+            /** Velocity Class */
+            velocity_class: string;
         };
         /**
          * VerifyPinRequest
@@ -8087,6 +11942,129 @@ export interface components {
             value: number;
         };
         /**
+         * VoidRequest
+         * @description Request body to void a completed transaction (supervisor only).
+         */
+        VoidRequest: {
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * VoidResponse
+         * @description Audit record returned after a transaction is voided.
+         */
+        VoidResponse: {
+            /** Id */
+            id: number;
+            /** Reason */
+            reason: string;
+            /** Tenant Id */
+            tenant_id: number;
+            /** Transaction Id */
+            transaction_id: number;
+            /**
+             * Voided At
+             * Format: date-time
+             */
+            voided_at: string;
+            /** Voided By */
+            voided_by: string;
+        };
+        /**
+         * VoucherCreate
+         * @description Request body to create a new voucher.
+         */
+        VoucherCreate: {
+            /** Code */
+            code: string;
+            discount_type: components["schemas"]["VoucherType"];
+            /** Ends At */
+            ends_at?: string | null;
+            /**
+             * Max Uses
+             * @default 1
+             */
+            max_uses: number;
+            /** Min Purchase */
+            min_purchase?: number | string | null;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Value */
+            value: number | string;
+        };
+        /**
+         * VoucherResponse
+         * @description API response representing a single voucher.
+         */
+        VoucherResponse: {
+            /** Code */
+            code: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            discount_type: components["schemas"]["VoucherType"];
+            /** Ends At */
+            ends_at?: string | null;
+            /** Id */
+            id: number;
+            /** Max Uses */
+            max_uses: number;
+            /** Min Purchase */
+            min_purchase?: number | null;
+            /** Redeemed Txn Id */
+            redeemed_txn_id?: number | null;
+            /** Starts At */
+            starts_at?: string | null;
+            status: components["schemas"]["VoucherStatus"];
+            /** Tenant Id */
+            tenant_id: number;
+            /** Uses */
+            uses: number;
+            /** Value */
+            value: number;
+        };
+        /**
+         * VoucherStatus
+         * @description Lifecycle states of a voucher.
+         * @enum {string}
+         */
+        VoucherStatus: "active" | "redeemed" | "expired" | "void";
+        /**
+         * VoucherType
+         * @description Kind of discount produced by a voucher when redeemed.
+         * @enum {string}
+         */
+        VoucherType: "amount" | "percent";
+        /**
+         * VoucherValidateRequest
+         * @description Request body for POST /pos/vouchers/validate.
+         */
+        VoucherValidateRequest: {
+            /** Cart Subtotal */
+            cart_subtotal?: number | string | null;
+            /** Code */
+            code: string;
+        };
+        /**
+         * VoucherValidateResponse
+         * @description Returned by POST /pos/vouchers/validate when the code is redeemable.
+         */
+        VoucherValidateResponse: {
+            /** Code */
+            code: string;
+            discount_type: components["schemas"]["VoucherType"];
+            /** Expires At */
+            expires_at?: string | null;
+            /** Min Purchase */
+            min_purchase?: number | null;
+            /** Remaining Uses */
+            remaining_uses: number;
+            /** Value */
+            value: number;
+        };
+        /**
          * WaterfallAnalysis
          * @description Revenue change decomposition across dimensions.
          */
@@ -8108,6 +12086,22 @@ export interface components {
             unexplained: number;
         };
         /**
+         * WriteOffRequest
+         * @description Request body for writing off a batch.
+         */
+        WriteOffRequest: {
+            /** Batch Number */
+            batch_number: string;
+            /** Drug Code */
+            drug_code: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Reason */
+            reason: string;
+            /** Site Code */
+            site_code: string;
+        };
+        /**
          * XPEvent
          * @description Single XP transaction.
          */
@@ -8125,6 +12119,104 @@ export interface components {
             source_ref?: string | null;
             /** Xp Amount */
             xp_amount: number;
+        };
+        /** _WhatsAppReceiptRequest */
+        _WhatsAppReceiptRequest: {
+            /** Phone */
+            phone: string;
+        };
+        /**
+         * CheckoutRequest
+         * @description Request to create a Checkout session.
+         *
+         *     For Stripe (USD): ``price_id`` is the Stripe Price ID.
+         *     For Paymob/InstaPay (EGP): ``price_id`` is the plan key (e.g. ``"pro"``).
+         *     Set ``currency="EGP"`` to route to the Egyptian payment provider.
+         */
+        datapulse__billing__models__CheckoutRequest: {
+            /**
+             * Cancel Url
+             * @default /billing?canceled=true
+             */
+            cancel_url: string;
+            /**
+             * Currency
+             * @description ISO-4217 currency code — determines the payment provider
+             * @default USD
+             * @enum {string}
+             */
+            currency: "USD" | "EGP";
+            /**
+             * Price Id
+             * @description Stripe Price ID (USD) or plan key (EGP)
+             */
+            price_id: string;
+            /**
+             * Success Url
+             * @default /billing?success=true
+             */
+            success_url: string;
+        };
+        /**
+         * CheckoutResponse
+         * @description Response with the Stripe Checkout session URL.
+         */
+        datapulse__billing__models__CheckoutResponse: {
+            /** Checkout Url */
+            checkout_url: string;
+        };
+        /**
+         * CheckoutRequest
+         * @description Request body to finalize and pay a POS transaction.
+         */
+        datapulse__pos__models__checkout__CheckoutRequest: {
+            applied_discount?: components["schemas"]["AppliedDiscount"] | null;
+            /** Card Approval Code */
+            card_approval_code?: string | null;
+            /** Card Last4 */
+            card_last4?: string | null;
+            /** Card Terminal Id */
+            card_terminal_id?: string | null;
+            /** Cash Tendered */
+            cash_tendered?: number | string | null;
+            /** Customer Id */
+            customer_id?: string | null;
+            /** Insurance No */
+            insurance_no?: string | null;
+            payment_method: components["schemas"]["PaymentMethod"];
+            /**
+             * Transaction Discount
+             * @default 0
+             */
+            transaction_discount: number | string;
+            /** Voucher Code */
+            voucher_code?: string | null;
+        };
+        /**
+         * CheckoutResponse
+         * @description Response returned after a successful checkout.
+         */
+        datapulse__pos__models__checkout__CheckoutResponse: {
+            /** Applied Promotion Id */
+            applied_promotion_id?: number | null;
+            /**
+             * Change Due
+             * @default 0
+             */
+            change_due: number;
+            /** Grand Total */
+            grand_total: number;
+            payment_method: components["schemas"]["PaymentMethod"];
+            /** Receipt Number */
+            receipt_number: string;
+            status: components["schemas"]["TransactionStatus"];
+            /** Transaction Id */
+            transaction_id: number;
+            /**
+             * Voucher Discount
+             * @default 0
+             */
+            voucher_discount: number;
         };
     };
     responses: never;
@@ -9822,7 +13914,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CheckoutRequest"];
+                "application/json": components["schemas"]["datapulse__billing__models__CheckoutRequest"];
             };
         };
         responses: {
@@ -9832,7 +13924,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CheckoutResponse"];
+                    "application/json": components["schemas"]["datapulse__billing__models__CheckoutResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10116,6 +14208,172 @@ export interface operations {
             };
         };
     };
+    get_days_of_stock_api_v1_dispensing_days_of_stock_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DaysOfStock"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dispense_rates_api_v1_dispensing_rates_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispenseRate"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reconciliation_api_v1_dispensing_reconciliation_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockReconciliation"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stockout_risk_api_v1_dispensing_stockout_risk_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                risk_level?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockoutRisk"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_product_velocity_api_v1_dispensing_velocity_get: {
+        parameters: {
+            query?: {
+                drug_code?: string | null;
+                velocity_class?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VelocityClassification"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     generate_embed_token_api_v1_embed_token_post: {
         parameters: {
             query?: never;
@@ -10171,6 +14429,338 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExploreResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_expiry_alerts_api_v1_expiry_alerts_get: {
+        parameters: {
+            query?: {
+                days_threshold?: number;
+                site_code?: string | null;
+                drug_code?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpiryAlert"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_batches_api_v1_expiry_batches_get: {
+        parameters: {
+            query?: {
+                site_code?: string | null;
+                drug_code?: string | null;
+                alert_level?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_batches_by_drug_api_v1_expiry_batches__drug_code__get: {
+        parameters: {
+            query?: {
+                site_code?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                drug_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_expiry_calendar_api_v1_expiry_calendar_get: {
+        parameters: {
+            query?: {
+                start_date?: string | null;
+                end_date?: string | null;
+                site_code?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpiryCalendarDay"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_expired_batches_api_v1_expiry_expired_get: {
+        parameters: {
+            query?: {
+                site_code?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpiryAlert"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_expiry_exposure_summary_api_v1_expiry_exposure_summary_get: {
+        parameters: {
+            query?: {
+                site_code?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpiryExposureTier"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_fefo_api_v1_expiry_fefo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FefoRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FefoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quarantine_batch_api_v1_expiry_quarantine_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuarantineRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_expiry_summary_api_v1_expiry_summary_get: {
+        parameters: {
+            query?: {
+                site_code?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpirySummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    write_off_batch_api_v1_expiry_write_off_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WriteOffRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -10923,6 +15513,501 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FirstInsightResponse"];
+                };
+            };
+        };
+    };
+    create_adjustment_api_v1_inventory_adjustments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reorder_alerts_api_v1_inventory_alerts_reorder_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderAlert"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_counts_api_v1_inventory_counts_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryCount"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_movements_api_v1_inventory_movements_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockMovement"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_movements_by_drug_api_v1_inventory_movements__drug_code__get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                drug_code: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockMovement"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reconciliation_api_v1_inventory_reconciliation_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockReconciliation"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reorder_configs_api_v1_inventory_reorder_config_get: {
+        parameters: {
+            query?: {
+                site_code?: string | null;
+                drug_code?: string | null;
+                is_active?: boolean | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderConfigResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_reorder_config_api_v1_inventory_reorder_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reorder_config_api_v1_inventory_reorder_config__drug_code___site_code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                drug_code: string;
+                site_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_reorder_config_api_v1_inventory_reorder_config__drug_code___site_code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                drug_code: string;
+                site_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stock_levels_api_v1_inventory_stock_levels_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLevel"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stock_level_detail_api_v1_inventory_stock_levels__drug_code__get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                drug_code: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockLevel"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_valuation_api_v1_inventory_valuation_get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                drug_code?: string | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockValuation"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_valuation_by_drug_api_v1_inventory_valuation__drug_code__get: {
+        parameters: {
+            query?: {
+                site_key?: number | null;
+                movement_type?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                drug_code: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockValuation"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -12040,6 +17125,1930 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TriggerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_desktop_release_api_v1_pos_admin_desktop_releases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesktopReleaseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopReleaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capabilities_api_v1_pos_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilitiesDoc"];
+                };
+            };
+        };
+    };
+    get_catalog_products_api_v1_pos_catalog_products_get: {
+        parameters: {
+            query?: {
+                /** @description Last drug_code from previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogProductPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_catalog_stock_api_v1_pos_catalog_stock_get: {
+        parameters: {
+            query?: {
+                /** @description Filter to a specific site_code */
+                site?: string | null;
+                /** @description Last loaded_at ISO (cursor) */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogStockPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_pharmacist_api_v1_pos_controlled_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacistVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PharmacistVerifyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_customer_by_phone_api_v1_pos_customers_by_phone__phone__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                phone: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PosCustomerLookup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_delivery_api_v1_pos_deliveries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_drug_detail_api_v1_pos_drugs__drug_code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                drug_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrugDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alternatives_api_v1_pos_drugs__drug_code__alternatives_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                drug_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlternativeItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cross_sell_api_v1_pos_drugs__drug_code__cross_sell_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                drug_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossSellItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_products_api_v1_pos_products_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                site_code?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PosProductResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stock_info_api_v1_pos_products__drug_code__stock_get: {
+        parameters: {
+            query: {
+                site_code: string;
+            };
+            header?: never;
+            path: {
+                drug_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PosStockInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_promotions_api_v1_pos_promotions_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PromotionStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_promotion_api_v1_pos_promotions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_eligible_promotions_api_v1_pos_promotions_eligible_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EligiblePromotionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EligiblePromotionsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_promotion_matches_api_v1_pos_promotions_preview_matches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewMatchesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewMatchesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_promotion_api_v1_pos_promotions__promotion_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promotion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_promotion_api_v1_pos_promotions__promotion_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promotion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_promotion_status_api_v1_pos_promotions__promotion_id__status_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promotion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionStatusUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_receipt_pdf_api_v1_pos_receipts__transaction_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_receipt_email_api_v1_pos_receipts__transaction_id__email_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailReceiptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_receipt_thermal_api_v1_pos_receipts__transaction_id__thermal_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_receipt_whatsapp_api_v1_pos_receipts__transaction_id__whatsapp_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_WhatsAppReceiptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_returns_api_v1_pos_returns_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    process_return_api_v1_pos_returns_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_return_api_v1_pos_returns__return_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                return_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_available_riders_api_v1_pos_riders_available_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailableRidersResponse"];
+                };
+            };
+        };
+    };
+    list_shifts_api_v1_pos_shifts_get: {
+        parameters: {
+            query?: {
+                terminal_id?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftRecord"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_shift_api_v1_pos_shifts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_current_shift_for_me_api_v1_pos_shifts_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveShiftResponse"];
+                };
+            };
+        };
+    };
+    get_current_shift_api_v1_pos_shifts_current__terminal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                terminal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_shift_api_v1_pos_shifts__shift_id__close_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                shift_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseShiftRequestV2"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_grant_api_v1_pos_shifts__shift_id__refresh_grant_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shift_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfflineGrantEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenant_key_api_v1_pos_tenant_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantKeysResponse"];
+                };
+            };
+        };
+    };
+    open_terminal_api_v1_pos_terminals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TerminalOpenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TerminalSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_active_terminals_api_v1_pos_terminals_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TerminalSessionResponse"][];
+                };
+            };
+        };
+    };
+    active_terminals_for_me_api_v1_pos_terminals_active_for_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    register_terminal_device_api_v1_pos_terminals_register_device_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRegisterResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_terminal_api_v1_pos_terminals__terminal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                terminal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TerminalSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_cash_events_api_v1_pos_terminals__terminal_id__cash_events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                terminal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashDrawerEventResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_cash_event_api_v1_pos_terminals__terminal_id__cash_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                terminal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CashCountRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashDrawerEventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_terminal_api_v1_pos_terminals__terminal_id__close_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                terminal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TerminalCloseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TerminalSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_terminal_api_v1_pos_terminals__terminal_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                terminal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TerminalSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_terminal_api_v1_pos_terminals__terminal_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                terminal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TerminalSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_transactions_api_v1_pos_transactions_get: {
+        parameters: {
+            query?: {
+                terminal_id?: number | null;
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_transaction_api_v1_pos_transactions_post: {
+        parameters: {
+            query: {
+                terminal_id: number;
+                site_code: string;
+                customer_id?: string | null;
+                pharmacist_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    commit_transaction_api_v1_pos_transactions_commit_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Terminal-Id": number;
+                "X-Device-Fingerprint": string;
+                "X-Signed-At": string;
+                "X-Terminal-Token": string;
+                "Idempotency-Key": string;
+                "X-Device-Fingerprint-V2"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_transaction_api_v1_pos_transactions__transaction_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    checkout_api_v1_pos_transactions__transaction_id__checkout_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["datapulse__pos__models__checkout__CheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["datapulse__pos__models__checkout__CheckoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_item_api_v1_pos_transactions__transaction_id__items_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PosCartItem-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_item_api_v1_pos_transactions__transaction_id__items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                transaction_id: number;
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_item_api_v1_pos_transactions__transaction_id__items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                transaction_id: number;
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PosCartItem-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_transaction_returns_api_v1_pos_transactions__transaction_id__returns_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_transaction_api_v1_pos_transactions__transaction_id__void_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoidResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    desktop_update_policy_api_v1_pos_updates_policy_get: {
+        parameters: {
+            query?: {
+                current_version?: string;
+                channel?: string;
+                platform?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopUpdatePolicyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_desktop_update_releases_api_v1_pos_updates_releases_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopUpdateReleaseResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_desktop_update_release_api_v1_pos_updates_releases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesktopUpdateReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopUpdateReleaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vouchers_api_v1_pos_vouchers_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["VoucherStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoucherResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_voucher_api_v1_pos_vouchers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoucherCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoucherResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_voucher_api_v1_pos_vouchers_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoucherValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoucherValidateResponse"];
                 };
             };
             /** @description Validation Error */
