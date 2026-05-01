@@ -38,7 +38,7 @@ import { usePosProducts } from "@pos/hooks/use-pos-products";
 import { useOfflineState } from "@shared/hooks/use-offline-state";
 import { cn } from "@shared/lib/utils";
 import type { PosProductResult, TerminalSessionResponse } from "@pos/types/pos";
-import { computeVoucherDiscount, type CartVoucher } from "@pos/contexts/pos-cart-context";
+import { computeVoucherDiscount, type CartVoucher } from "@pos/lib/voucher";
 import { fmtEgp } from "@pos/components/terminal/types";
 
 // ---- Terminal guard ----

@@ -14,7 +14,6 @@ import { swrConfig } from "@shared/lib/swr-config";
 import { AuthProvider } from "@shared/components/auth-provider";
 import { ErrorBoundary } from "@shared/components/error-boundary";
 import { ToastProvider } from "@shared/components/ui/toast";
-import { PosCartProvider } from "@pos/contexts/pos-cart-context";
 import { useRendererCrashBridge } from "@shared/hooks/use-renderer-crash-bridge";
 import { useJwtBridge } from "@shared/hooks/use-jwt-bridge";
 import { BrandProvider } from "@shared/components/branding/brand-provider";
@@ -221,7 +220,6 @@ export default function PosLayout({ children }: { children: ReactNode }) {
               <SessionGuard>
                 <JwtBridge>
                 <BrandProvider>
-                <PosCartProvider>
                   <RendererCrashBridge>
                     <PosKeyboardHandler>
                       <div
@@ -231,7 +229,6 @@ export default function PosLayout({ children }: { children: ReactNode }) {
                       </div>
                     </PosKeyboardHandler>
                   </RendererCrashBridge>
-                </PosCartProvider>
                 </BrandProvider>
                 </JwtBridge>
               </SessionGuard>

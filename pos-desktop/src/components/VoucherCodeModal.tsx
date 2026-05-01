@@ -2,10 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Ticket } from "lucide-react";
 import { ModalShell } from "@pos/components/ModalShell";
 import { useVoucherValidate } from "@shared/hooks/use-voucher-validate";
-import {
-  computeVoucherDiscount,
-  type CartVoucher,
-} from "@pos/contexts/pos-cart-context";
+import { computeVoucherDiscount, type CartVoucher } from "@pos/lib/voucher";
 import { cn } from "@shared/lib/utils";
 
 /**

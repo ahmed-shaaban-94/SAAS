@@ -3,7 +3,6 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "../../mocks/server";
-import { PosCartProvider } from "@pos/contexts/pos-cart-context";
 import { usePosCartStore } from "@pos/store/cart-store";
 import PosTerminalPage from "@pos/pages/terminal";
 import type { PosProductResult } from "@pos/types/pos";
@@ -100,11 +99,7 @@ function primeHandlers() {
 }
 
 function renderPage() {
-  return render(
-    <PosCartProvider>
-      <PosTerminalPage />
-    </PosCartProvider>,
-  );
+  return render(<PosTerminalPage />);
 }
 
 describe("Terminal v2 integration", () => {

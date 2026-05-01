@@ -54,9 +54,6 @@ vi.mock("@/components/error-boundary", () => ({
 vi.mock("@/components/ui/toast", () => ({
   ToastProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
-vi.mock("@pos/contexts/pos-cart-context", () => ({
-  PosCartProvider: ({ children }: { children: React.ReactNode }) => children,
-}));
 vi.mock("@/components/branding/brand-provider", () => ({
   BrandProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

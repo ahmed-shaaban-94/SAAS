@@ -1,6 +1,21 @@
 import { create } from "zustand";
 import type { PosCartItem } from "@pos/types/pos";
-import type { AppliedCartDiscount } from "@pos/contexts/pos-cart-context";
+import type { AppliedDiscount } from "@/types/promotions";
+
+// ---- Applied cart-level discount ----
+//
+// A cart-level discount is EITHER a voucher (by code) or a promotion (by id),
+// carrying a human label for UI display and the computed discount amount in
+// EGP. This matches the backend union type on `CommitRequest.applied_discount`
+// and `CheckoutRequest.applied_discount`. Moved here from the now-deleted
+// passthrough context file (Sub-PR 3 cleanup) — this type is intrinsic to
+// the cart shape, not to the (gone) Provider.
+export interface AppliedCartDiscount {
+  source: AppliedDiscount["source"]; // "voucher" | "promotion"
+  ref: string; // voucher code or stringified promotion id
+  label: string; // user-friendly label ("Ramadan 2026" / voucher code)
+  discountAmount: number; // preview amount in EGP; backend re-computes canonically
+}
 
 // ---- State shape ----
 
