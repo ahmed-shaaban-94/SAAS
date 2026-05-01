@@ -4,7 +4,9 @@
 
 **Goal:** Extract POS into a focused, lint-clean, dead-code-free `pos-desktop/src/` module with a single Zustand cart store, a Vite-built static React renderer (no embedded Next.js), and a typed OpenAPI client — without breaking any of the 160 existing tests or any user-facing flow.
 
-**Architecture:** Five sequential sub-PRs, each independently mergeable, each with TDD gates. Phase 2-B catches up the still-pending pipeline-standardization commits to main. Phase 1's recon (Task 1) is already done — this plan picks up at Task 2 with concrete per-step task lists derived from the recon. Phase 3 is observation-only with a hard 2026-05-14 decision deadline.
+**Architecture:** Four sequential sub-PRs, each independently mergeable, each with TDD gates. Phase 2-B catches up the still-pending pipeline-standardization commits to main. Phase 1's recon (Task 1) is already done — this plan picks up at Task 2 with concrete per-step task lists derived from the recon. Phase 3 is observation-only with a hard 2026-05-14 decision deadline.
+
+> **REVISION 2026-05-01 (post-execution learning):** The original plan split Sub-PR 1 (move) and Sub-PR 2 (Vite) — but moving POS sources OUT of `frontend/src/` while Next.js still serves them creates cross-package npm resolution headaches (React, Zustand, lucide-react have no node_modules path from `pos-desktop/src/`). Spec §5 says Sub-PR 1 must "still produce a runnable Electron app". Folding the move into Sub-PR 2 (where pos-desktop gets its own `package.json` with renderer deps for Vite anyway) keeps Sub-PR 1 small, atomic, and zero-risk. **Sub-PR 1 (Task 2)** is now scoped to: dead-code drop (DONE) + POS-only CSS extract + line-level dead-export cleanup. **Sub-PR 2 (Task 3)** expands to: Vite migration + add renderer deps to pos-desktop + git-mv POS code + codemod imports + drop POS from frontend/ + Electron `loadFile` switch.
 
 **Tech Stack:** Vite (replaces Next.js for renderer), React Router (`createHashRouter` for Electron `loadFile`), Zustand (single cart store), `openapi-typescript` (typed API), TypeScript 5, Electron, electron-builder, FastAPI (existing backend, untouched), pytest, Vitest, Playwright.
 
@@ -204,9 +206,11 @@ git commit -m "docs(recon): POS dead-code scan — exports, fix-on-fix, orphan t
 
 ---
 
-### Task 2: Mechanical move — Sub-PR 1 (1–2 days)
+### Task 2: Cleanup — Sub-PR 1 (revised scope, 0.5 day)
 
-**Goal:** `git mv` every POS file to `pos-desktop/src/`, fix imports via codemod, drop dead code from Task 1.5, extract POS-only CSS. Existing tests pass unchanged. The Electron app at this point still uses the embedded Next.js standalone — only paths changed.
+> **REVISED 2026-05-01:** Sub-PR 1 no longer includes the file move. The move (Tasks 2.2, 2.4, 2.5) is folded into Sub-PR 2 (Task 3) where pos-desktop gets its own renderer deps for Vite. Sub-PR 1 now ships: dead-code drop (Task 2.3 — DONE) + POS-only CSS extract (Task 2.6) + line-level dead-export cleanup via `ts-prune` + smoke + PR. Tasks 2.2/2.4/2.5 below are kept for reference but **execute under Task 3 instead**.
+
+**Goal:** Drop dead code, extract POS-only CSS to a future-ready location (still under `frontend/src/styles/pos-globals.css` for now — moves to `pos-desktop/src/styles/` in Sub-PR 2), clean up unused exports flagged by recon. Existing tests pass unchanged. POS code stays in `frontend/src/` until Sub-PR 2 atomically moves + Vite-migrates it.
 
 **Files this task PRODUCES:**
 - Create: `pos-desktop/src/pages/{terminal,checkout,shift,drugs,history,pos-returns,sync-issues}/page.tsx` (moved)
