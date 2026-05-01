@@ -72,6 +72,8 @@ class TestH6RouteStillReturns404:
         from datapulse.api.deps import get_pos_service
         from datapulse.api.routes._pos_receipts import router
         from datapulse.pos.exceptions import PosNotFoundError
+        from datapulse.rbac.dependencies import get_access_context
+        from datapulse.rbac.models import AccessContext
 
         app = FastAPI()
         install_exception_handlers(app)
@@ -81,9 +83,22 @@ class TestH6RouteStillReturns404:
         mock_service.get_receipt_pdf.side_effect = PosNotFoundError("transaction_not_found")
 
         mock_user = {"sub": "test", "tenant_id": "1"}
+        admin_context = AccessContext(
+            member_id=1,
+            tenant_id=1,
+            user_id="test-user",
+            role_key="owner",
+            permissions={"pos:receipt:read"},
+            sector_ids=[],
+            is_admin=True,
+        )
 
         app.dependency_overrides[get_pos_service] = lambda: mock_service
         app.dependency_overrides[get_current_user] = lambda: mock_user
+        # require_permission resolves get_access_context, which by default
+        # tries get_session_factory() and hangs on DB connect (no DB in unit
+        # tests). Override here so the route reaches its handler.
+        app.dependency_overrides[get_access_context] = lambda: admin_context
 
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/pos/receipts/999")
