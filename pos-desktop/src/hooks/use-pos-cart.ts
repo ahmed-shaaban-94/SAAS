@@ -1,7 +1,5 @@
-"use client";
-
 import { usePosCartStore } from "@pos/store/cart-store";
-import type { AppliedCartDiscount } from "@pos/contexts/pos-cart-context";
+import type { AppliedCartDiscount } from "@pos/store/cart-store";
 import type { PosCartItem } from "@pos/types/pos";
 
 // Re-export types that consumers may import from this file
