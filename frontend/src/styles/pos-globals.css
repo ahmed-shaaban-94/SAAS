@@ -220,6 +220,24 @@
 
 /* Diagonal amber rail — provisional / offline indicator down the left edge */
 .pos-provisional-rail {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 171, 61, 0.18) 0,
+    rgba(255, 171, 61, 0.18) 6px,
+    transparent 6px,
+    transparent 14px
+  );
+}
+
+/* Reduced motion — kill scan pulse + row enter (POS-only via .pos-root scope) */
+@media (prefers-reduced-motion: reduce) {
+  .pos-root .pos-animate-scan,
+  .pos-root .pos-animate-row-enter,
+  .pos-root .pos-animate-slide-up,
+  .pos-root .pos-animate-key-fade {
+    animation: none !important;
+  }
+}
 
 /* === .pos-omni design tokens (v9 expanded) === */
 .pos-omni {
